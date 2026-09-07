@@ -177,12 +177,31 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Kvb));
 
-            // The whole list again, framed, and not just the kvi. Sending the kvi alone left the
-            // client holding the list it had BEFORE the creation: press play right after making a
-            // character and the previous one walked into the world, because the selection the
-            // client sent named the only character it knew about. Going back to the selection
-            // screen fixed it, which is what a stale list looks like from the outside.
+            // La lista entera otra vez, y CON EL RECIÉN CREADO EL PRIMERO.
+            //
+            // Las dos mitades hacen falta y la segunda es la que faltaba. Mandar sólo el kvi
+            // dejaba al cliente con la lista de ANTES de crear; eso ya se arregló. Pero seguía
+            // entrando en el mundo el personaje viejo, y el registro lo enseña sin lugar a dudas:
+            //
+            //   00:16:05.798  Creado Tymaviejas (id 13825564)
+            //   00:16:05.803  Selected character 13825558     <- cinco milisegundos después
+            //
+            // O sea que el cliente no elige: coge EL PRIMERO de la lista y manda su selección al
+            // instante. Y nuestra lista sale de un ORDER BY Id, así que el recién creado, que
+            // tiene el id más alto, iba el último.
+            //
+            // Que el nuevo va delante está medido en «crear personaje - borrar personaje»: el kvi
+            // que sigue al kvb lleva a «Vos-Xx», el que se acaba de crear, por delante de «Berru»,
+            // que ya estaba. Se reordena sólo aquí y no en GetCharactersByAccountId, porque el
+            // orden de la pantalla de selección normal es otra cosa y no se ha medido.
             var characters = DatabaseManager.GetCharactersByAccountId(accountId, serverId);
+            var elNuevo = characters.Find(c => c.Id == id);
+            if (elNuevo != null)
+            {
+                characters.Remove(elNuevo);
+                characters.Insert(0, elNuevo);
+            }
+
             foreach (byte[] frame in ConnectionProtocol.CharacterListFrames(characters))
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, frame);
 
