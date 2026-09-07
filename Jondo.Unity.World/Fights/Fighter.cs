@@ -215,9 +215,76 @@ namespace Jondo.Unity.World.Fights
             AccumulatedApLoss = 0;
         }
 
+        /// <summary>Dónde estaba antes del último movimiento. Menos uno si no se ha movido.</summary>
+        /// <remarks>
+        /// Lo pide el efecto 1100, «teletransporta a la posición anterior», que deshace el último
+        /// desplazamiento. Sin esta memoria el efecto no tiene a dónde devolver a nadie, y mandar
+        /// a un sitio cualquiera sería peor que no hacer nada.
+        /// </remarks>
+        public int CasillaAnterior { get; private set; } = -1;
+
+        /// <summary>Mueve al combatiente y se acuerda de dónde estaba.</summary>
+        public void MoverA(int casilla)
+        {
+            if (casilla == CellId) return;
+            CasillaAnterior = CellId;
+            CellId = casilla;
+        }
+
         public void TakeDamage(int damage)
         {
             CurrentHP = Math.Max(0, CurrentHP - damage);
+        }
+
+        // ─── El escudo ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Puntos de escudo: se gastan antes que la vida y no se curan.
+        /// </summary>
+        /// <remarks>
+        /// Los ponen dos familias de efectos, 401 hechizos entre las dos: el 1020, que da un
+        /// tanto por ciento del NIVEL del lanzador, y el 1039, un tanto por ciento de la VIDA.
+        /// El catálogo del cliente los declara sin característica, así que no salen del camino
+        /// genérico de los boosts: hacen falta aquí.
+        ///
+        /// No es vida: no se cura, no cuenta para la muerte y desaparece cuando caduca. Meterlo
+        /// en CurrentHP habría sido más corto y habría dejado a un personaje escudado curándose
+        /// hasta el tope del escudo.
+        /// </remarks>
+        public int PuntosDeEscudo { get; private set; }
+
+        /// <summary>La ronda en la que el escudo se cae. Cero cuando no hay escudo.</summary>
+        public int EscudoCaducaEnRonda { get; private set; }
+
+        /// <summary>Añade escudo. Se suma al que hubiera y se queda la caducidad más lejana.</summary>
+        public void Escudar(int cuanto, int caducaEnRonda)
+        {
+            if (cuanto <= 0) return;
+
+            PuntosDeEscudo += cuanto;
+            if (caducaEnRonda > EscudoCaducaEnRonda) EscudoCaducaEnRonda = caducaEnRonda;
+        }
+
+        /// <summary>
+        /// Le mete un golpe al escudo primero y devuelve lo que llega a la vida.
+        /// </summary>
+        public int PasarPorElEscudo(int dano)
+        {
+            if (dano <= 0 || PuntosDeEscudo <= 0) return dano;
+
+            int aguanta = Math.Min(PuntosDeEscudo, dano);
+            PuntosDeEscudo -= aguanta;
+            return dano - aguanta;
+        }
+
+        /// <summary>Quita el escudo si ya le tocaba caerse.</summary>
+        public void CaducarElEscudo(int ronda)
+        {
+            if (PuntosDeEscudo <= 0) return;
+            if (EscudoCaducaEnRonda == 0 || ronda < EscudoCaducaEnRonda) return;
+
+            PuntosDeEscudo = 0;
+            EscudoCaducaEnRonda = 0;
         }
 
         // ─── La erosión ─────────────────────────────────────────────────────────

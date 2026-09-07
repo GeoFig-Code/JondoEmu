@@ -145,9 +145,11 @@ namespace Jondo.Unity.Tests.World
                 Assert.True(sala.Grupo > 0, $"la sala {sala.Id} se ha quedado sin grupo");
                 Assert.True(sala.MapaId > 0, $"la sala {sala.Id} se ha quedado sin mapa");
 
-                // Los cuatro efectos medidos: fuerza, agilidad, vitalidad e inteligencia.
-                Assert.Contains(sala.Efecto, new[] { 118, 119, 125, 126 });
-                Assert.True(sala.Valor > 0);
+                // El potenciador sale de los veinte medidos en los 196 f15 de las capturas. Los
+                // cuatro de antes -118 fuerza, 119 agilidad, 125 vitalidad, 126 inteligencia-
+                // salieron de una lectura mía y no aparecen en ninguno de esos 196.
+                Assert.NotNull(sala.Regalo);
+                Assert.True(sala.Efecto > 0);
             }
         }
 
@@ -259,8 +261,7 @@ namespace Jondo.Unity.Tests.World
             var s = Uno();
             int ultimaFila = s.Salas.Max(x => x.Fila);
 
-            // Las de Favor no pelean: en ellas está el Rey Gob y se pasa hablando.
-            foreach (var sala in s.Salas.Where(x => x.Fila != 0 && x.Fila != ultimaFila && !x.EsFavor))
+            foreach (var sala in s.Salas.Where(x => x.Fila != 0 && x.Fila != ultimaFila))
             {
                 Assert.NotEmpty(sala.Miembros);
                 Assert.All(sala.Miembros, m => Assert.True(m.Monstruo > 0));
@@ -350,6 +351,83 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(300, dotacion);
             Assert.Equal(315, s.Puntos);
             Assert.Equal(300, s.PuntosDeSalida);
+        }
+
+        [Fact]
+        public void La_fuente_es_la_ultima_de_la_franja_y_abre_la_siguiente()
+        {
+            // Censadas las 665 salas de las quince capturas: filas 1, 2 y 3 son de pelea en las
+            // 529, y la fila 4 es Fuente en las 68. Ni una de jefe.
+            var s = Uno();
+
+            var fuentes = s.Salas.Where(x => x.EsFuente).ToList();
+            var fuente = Assert.Single(fuentes);
+            Assert.Equal(s.Salas.Max(x => x.Fila), fuente.Fila);
+            Assert.Empty(fuente.Miembros);
+
+            // Y las de en medio SÍ pelean, todas. Marcar una de Favor en la franja I era doble
+            // error: contradecía esas 529 y la guía dice que los Favores no salen en el primer
+            // palier.
+            int ultima = s.Salas.Max(x => x.Fila);
+            foreach (var sala in s.Salas.Where(x => x.Fila != 0 && x.Fila != ultima))
+            {
+                Assert.NotEmpty(sala.Miembros);
+            }
+
+            // Pisar la fuente encadena: «Chaque palier commencera toujours par une Fontaine».
+            int antes = s.Salas.Count;
+            Dreams.AnadirFranja(s);
+
+            Assert.Equal(2, s.Franja);
+            Assert.True(s.Salas.Count > antes, "la franja siguiente no ha añadido salas");
+            Assert.NotEmpty(fuente.Salidas);
+            Assert.False(fuente.EsFuente, "la fuente vieja sigue marcada; ahora es la puerta");
+            Assert.Single(s.Salas.Where(x => x.EsFuente));
+
+            // Y nadie se queda sin poder llegar.
+            foreach (var sala in s.Salas)
+            {
+                if (sala.Id == 0) continue;
+                Assert.Contains(s.Salas, x => x.Salidas.Contains(sala.Id));
+            }
+        }
+
+        [Fact]
+        public void Los_potenciadores_se_acumulan_al_entrar_y_viajan_en_el_estado()
+        {
+            var s = Uno();
+            Assert.Empty(s.Ganados);
+
+            // Se cobra al ENTRAR, no al ganar: lo dice la guía y encaja con que la ventana los
+            // enseñe antes de pelear.
+            var primera = s.Salas.First(x => x.Regalo != null);
+            s.Ganados.Add(primera.Regalo!);
+            s.Actual = primera.Id;
+
+            byte[] izg = DreamProtocol.BuildDreamState(s);
+            var campos = ProtoMessage.Parse(izg).Fields;
+
+            var bono = Assert.Single(campos.Where(f => f.FieldNumber == 15));
+            Assert.NotNull(bono.BytesValue);
+        }
+
+        [Fact]
+        public void Las_dos_formas_del_potenciador_son_las_medidas()
+        {
+            // Los bytes NO son de mi aritmética: están copiados de los f15 de las capturas, que
+            // es lo único que vale como referencia.
+            //
+            //   (111, 1)   0a042001586f1001            f1 { f4: 1, f11: 111 }, f2: 1
+            //   (281, 2)   0a07320208025899021001      f1 { f6 { f1: 2 }, f11: 281 }, f2: 1
+            var s = Uno();
+            s.Ganados.Clear();
+            s.Ganados.Add(new Dreams.Bono(111, 1));
+            s.Ganados.Add(new Dreams.Bono(281, 2, anidado: true));
+
+            string hexa = Convert.ToHexString(DreamProtocol.BuildDreamState(s)).ToLowerInvariant();
+
+            Assert.Contains("0a042001586f1001", hexa);
+            Assert.Contains("0a07320208025899021001", hexa);
         }
 
         [Fact]

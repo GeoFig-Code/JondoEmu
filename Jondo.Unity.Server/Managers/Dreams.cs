@@ -166,6 +166,75 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Cuántos sueños se le han ofrecido a cada personaje, para el f13.</summary>
         private static readonly Dictionary<long, int> _cuenta = new Dictionary<long, int>();
 
+        /// <summary>
+        /// Un potenciador de los Sueños: lo que una sala regala al entrar.
+        /// </summary>
+        /// <remarks>
+        /// Censados los 196 f15 de las quince capturas, y sólo hay dos formas:
+        ///
+        ///   f15 { f1 { f4: el valor,        f11: el efecto }, f2: 1 }   132 veces
+        ///   f15 { f1 { f6 { f1: cuántos },  f11: el efecto }, f2: 1 }    64 veces
+        ///
+        /// El f11 es un id del catálogo de efectos del propio cliente —2844 es «% vitalidad», 111
+        /// «PA», 128 «PM», 117 «alcance»—, así que no hay nada que inventar: el cliente sabe
+        /// escribir la línea él solo. La segunda forma es la de los efectos cuyo texto nombra un
+        /// hechizo, como el 281 «+#3 de alcance máximo».
+        /// </remarks>
+        public sealed class Bono
+        {
+            public Bono(int efecto, int valor, bool anidado = false)
+            {
+                Efecto = efecto;
+                Valor = valor;
+                Anidado = anidado;
+            }
+
+            /// <summary>El id del catálogo de efectos: el f11.</summary>
+            public int Efecto { get; }
+
+            /// <summary>Cuánto da.</summary>
+            public int Valor { get; }
+
+            /// <summary>
+            /// Si el valor viaja dentro del f6 en vez de en el f4.
+            /// </summary>
+            /// <remarks>
+            /// Es sólo dónde va el número, no a qué se aplica. El «+alcance máximo» del 281 sube
+            /// el alcance de TODOS los hechizos, no el de uno; leerlo como una referencia a un
+            /// hechizo concreto sería equivocarse con el mismo campo por segunda vez.
+            /// </remarks>
+            public bool Anidado { get; }
+        }
+
+        /// <summary>
+        /// Los veinte potenciadores medidos, con sus valores tal cual salen.
+        /// </summary>
+        /// <remarks>
+        /// No es una lista inventada ni una escala calculada: son las veinte parejas
+        /// (efecto, valor) distintas que aparecen en los 196 f15 de las capturas, ni una más ni
+        /// una menos. Antes se repartían los efectos 118, 119, 125 y 126 —fuerza, agilidad,
+        /// vitalidad e inteligencia—, que salieron de una lectura mía y no aparecen en ninguno de
+        /// los 196.
+        /// </remarks>
+        private static readonly Bono[] Potenciadores =
+        {
+            new Bono(111, 1),      new Bono(111, 3),      // PA
+            new Bono(115, 25),                            // % crítico
+            new Bono(117, 2),                             // alcance
+            new Bono(128, 1),      new Bono(128, 3),      // PM
+            new Bono(295, 1),                             // menos alcance mínimo
+            new Bono(1076, 10),                           // % resistencia
+            new Bono(2808, 20),                           // % daños de armas
+            new Bono(2844, 20),    new Bono(2844, 70),    new Bono(2844, 90),   // % vitalidad
+            new Bono(4041, 5),     new Bono(4041, 10),    // % de daños
+
+            new Bono(281, 1, true), new Bono(281, 2, true),   // alcance máximo, de todos
+            new Bono(286, 1, true),                           // menos reactivación
+            new Bono(792, 0, true),
+            new Bono(3281, 1, true),
+            new Bono(3290, 1, true),                          // un lanzamiento más por turno
+        };
+
         public sealed class Sala
         {
             /// <summary>Su número, que en el cable viaja como CADENA: «0», «1»…</summary>
@@ -199,12 +268,18 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>La casilla donde está plantado el grupo.</summary>
             public int Casilla { get; set; }
 
+            /// <summary>El potenciador que regala esta sala. Nulo en la entrada y en la fuente.</summary>
+            public Bono? Regalo { get; set; }
+
             /// <summary>El efecto que modifica la sala, y cuánto. Cero: sin modificación.</summary>
-            public int Efecto { get; set; }
-            public int Valor { get; set; }
+            public int Efecto => Regalo?.Efecto ?? 0;
+            public int Valor => Regalo?.Valor ?? 0;
 
             /// <summary>Si ya se ha peleado aquí.</summary>
             public bool Hecha { get; set; }
+
+            /// <summary>Si ya se cobró su potenciador. Se vuelve a entrar al continuar un sueño.</summary>
+            public bool Cobrada { get; set; }
 
             /// <summary>Los puntos de sueño que da limpiarla: el f1 de la sala en el iyj.</summary>
             /// <remarks>
@@ -220,13 +295,20 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>Sala señalada. El f7, que vale 1 en 8 de las 89 y siempre con Clase 15.</summary>
             public bool Senalada { get; set; }
 
-            /// <summary>Si en esta sala está el Rey Gob en vez de un grupo de monstruos.</summary>
+            /// <summary>Si esta sala es la Fuente Onírica: la tienda, y siempre la última.</summary>
             /// <remarks>
-            /// La guía la llama Favor Onírico. En la captura larga es el npc 7850 en la casilla
-            /// 232 del mapa 237783053, y no hay protocolo nuevo: se habla con él como con
-            /// cualquier NPC y lo que da va escrito en su respuesta.
+            /// Censadas las 665 salas de las quince capturas, el tipo -el f5- no admite dudas:
+            /// las filas 1, 2 y 3 valen 1 en las 529, y la fila 4 vale 3 en las 68. O sea que
+            /// TODA sala de en medio es de pelea y la última es SIEMPRE la fuente.
+            ///
+            /// El propio cliente lo dice al pasar el ratón: «Fuente onírica - TIENDA - te permite
+            /// intercambiar tus puntos de sueño por bonus». Lo saca de este número.
+            ///
+            /// Aquí no hay sala de jefe: en las 665 no sale ni una. El «Fin del Sueño» de la guía
+            /// tiene que estar al final del sueño entero, después de varias franjas, y de eso no
+            /// hay captura.
             /// </remarks>
-            public bool EsFavor { get; set; }
+            public bool EsFuente { get; set; }
         }
 
         public sealed class Sueno
@@ -257,6 +339,26 @@ namespace Jondo.Unity.Server.Managers
             /// estaba en curso—. Que se gaste al morir no está implementado.
             /// </remarks>
             public int Arena { get; set; } = 1;
+
+            /// <summary>Los potenciadores ya cobrados, en el orden en que cayeron.</summary>
+            /// <remarks>
+            /// Se cobra al ENTRAR en la sala, no al ganarla: la guía dice que los bonos se
+            /// recogen al entrar y que el combate empieza inmediatamente después.
+            /// </remarks>
+            public List<Bono> Ganados { get; } = new List<Bono>();
+
+            /// <summary>Por qué franja va, empezando por la I.</summary>
+            /// <remarks>
+            /// La guía del juego lo dice con todas las letras: «Chaque palier (à l'exception du
+            /// premier et du dernier) commencera toujours par une Fontaine Onirique». O sea que la
+            /// fuente que ABRE una franja es la última sala de la anterior: la misma vista desde
+            /// los dos lados, que es justo lo que se mide —fila 4 con tipo 3 en 68 de 68—.
+            ///
+            /// Por eso al entrar en la fuente el sueño no se acaba: se le añade la franja
+            /// siguiente y se sigue bajando. En la captura larga se ve el grafo creciendo, con
+            /// salas de fila 5 y más dentro del mismo f16.
+            /// </remarks>
+            public int Franja { get; set; } = 1;
 
             /// <summary>Cuántos sueños se le han ofrecido ya. Es el f13 del iyj.</summary>
             /// <remarks>
@@ -455,39 +557,101 @@ namespace Jondo.Unity.Server.Managers
 
             // El total de las tres filas de en medio va de siete a nueve —los sueños medidos
             // tienen nueve, diez u once salas—, así que no vale sortear cada fila por su cuenta:
-            // tres tiradas libres de 2 a 4 dan de seis a doce. Se reparte un total.
+            // tres tiradas libres de 2 a 4 dan de seis a doce. Se reparte un total. Y la primera
+            // fila nunca pasa de tres: la entrada abre a TODAS sus salas y un mapa sólo trae tres
+            // puertas, así que con cuatro una quedaría sin puerta que la abriese.
+            var anchos = AnchosDeLasFilas(dado);
+
+            MontarUnaFranja(sueno, anchos, nivel, primera: true);
+
+            _enCurso[characterId] = sueno;
+            return sueno;
+        }
+
+        /// <summary>
+        /// Añade la franja siguiente al sueño y devuelve por dónde se entra en ella.
+        /// </summary>
+        /// <remarks>
+        /// Se llama al pisar la Fuente, que es la última sala de la franja en curso y a la vez la
+        /// primera de la que viene. Sin esto el jugador se queda encerrado ahí: la fuente no tiene
+        /// salidas y el sueño no tiene forma de seguir ni de acabarse.
+        /// </remarks>
+        public static void AnadirFranja(Sueno sueno)
+        {
+            Cargar();
+
+            var dado = new Random(HashCode.Combine(sueno.CharacterId, sueno.Cuenta, sueno.Franja));
+            var anchos = AnchosDeLasFilas(dado);
+
+            sueno.Franja++;
+            MontarUnaFranja(sueno, anchos, sueno.Nivel, primera: false);
+        }
+
+        /// <summary>Las tres filas de en medio, con el total que sale medido.</summary>
+        private static int[] AnchosDeLasFilas(Random dado)
+        {
             var anchos = new int[] { MinimoPorFila, MinimoPorFila, MinimoPorFila };
             int sobran = dado.Next(MinimoDeEnMedio, MaximoDeEnMedio + 1) - MinimoPorFila * 3;
             while (sobran > 0)
             {
                 int donde = dado.Next(anchos.Length);
-
-                // La primera fila nunca pasa de tres, y no por gusto: la entrada abre a TODAS sus
-                // salas y un mapa de sala sólo trae tres puertas. Con cuatro, una quedaría sin
-                // puerta que la abriese. Medido además: en las nueve capturas la primera fila
-                // tiene dos o tres, nunca cuatro.
                 int tope = donde == 0 ? PuertasPorSala : MaximoPorFila;
                 if (anchos[donde] >= tope) continue;
-
                 anchos[donde]++;
                 sobran--;
             }
+            return anchos;
+        }
 
+        /// <summary>
+        /// Monta una franja: tres filas de pelea y una Fuente al final.
+        /// </summary>
+        /// <remarks>
+        /// La primera lleva además su sala de entrada; las demás entran por la fuente de la
+        /// anterior, que ya está puesta y sólo hay que colgarle las salidas nuevas.
+        /// </remarks>
+        private static void MontarUnaFranja(Sueno sueno, int[] anchos, int nivel, bool primera)
+        {
             int siguiente = 0;
-            var porFila = new List<List<Sala>>();
-            for (int fila = 0; fila < Filas.Length; fila++)
-            {
-                int cuantas = Filas[fila] == 1 ? 1 : anchos[fila - 1];
+            foreach (var puesta in sueno.Salas) siguiente = Math.Max(siguiente, puesta.Id + 1);
 
+            int filaBase = 0;
+            foreach (var puesta in sueno.Salas) filaBase = Math.Max(filaBase, puesta.Fila + 1);
+
+            var porFila = new List<List<Sala>>();
+
+            if (primera)
+            {
+                var entrada = new Sala { Id = siguiente++, Fila = filaBase++ };
+                sueno.Salas.Add(entrada);
+                porFila.Add(new List<Sala> { entrada });
+            }
+            else
+            {
+                // La fuente de la franja anterior es la puerta de ésta.
+                Sala? fuente = null;
+                foreach (var puesta in sueno.Salas) if (puesta.EsFuente) fuente = puesta;
+                if (fuente == null) return;
+                porFila.Add(new List<Sala> { fuente });
+                fuente.EsFuente = false;
+            }
+
+            for (int i = 0; i < anchos.Length; i++)
+            {
                 var deLaFila = new List<Sala>();
-                for (int i = 0; i < cuantas; i++)
+                for (int j = 0; j < anchos[i]; j++)
                 {
-                    var sala = new Sala { Id = siguiente++, Fila = fila };
+                    var sala = new Sala { Id = siguiente++, Fila = filaBase };
                     deLaFila.Add(sala);
                     sueno.Salas.Add(sala);
                 }
+                filaBase++;
                 porFila.Add(deLaFila);
             }
+
+            var laFuente = new Sala { Id = siguiente++, Fila = filaBase, EsFuente = true };
+            sueno.Salas.Add(laFuente);
+            porFila.Add(new List<Sala> { laFuente });
 
             // Y las salidas. Cada sala se abre a la de su misma posición en la fila siguiente y a
             // la de al lado, que es lo que hace que la de en medio se alcance por dos caminos: en
@@ -530,28 +694,22 @@ namespace Jondo.Unity.Server.Managers
                 }
             }
 
-            RepartirMapas(sueno, dado);
+            RepartirMapas(sueno);
 
-            foreach (var sala in sueno.Salas)
+            // Las de en medio pelean; la entrada y la fuente, no. Medido: filas 1, 2 y 3 con tipo
+            // 1 en las 529, fila 4 con tipo 3 en las 68.
+            for (int i = 1; i + 1 < porFila.Count; i++)
             {
-                if (sala.Fila == 0 || sala.Fila == Filas.Length - 1) continue;
-                Poblar(sala, nivel, sueno.Dificultad);
+                foreach (var sala in porFila[i])
+                {
+                    if (sala.Miembros.Count > 0) continue;
+                    Poblar(sala, nivel, sueno.Dificultad);
 
-                // Y lo que la ventana enseña de ella. La clase 15 y la marca del f7 van juntas en
-                // las ocho salas de las nueve capturas que las llevan, así que aquí también.
-                // Una sala de Favor por fila de en medio, la última de la fila. La guía dice que
-                // la Fuente sale en las filas 2, 3 y 4; aquí se reparte una por fila, que es lo
-                // que reproduce el ritmo sin inventar una regla que no se ha medido.
-                sala.EsFavor = sala.Fila >= 2 && EsLaUltimaDeSuFila(sueno, sala);
-                if (sala.EsFavor) sala.Miembros.Clear();
-
-                sala.Senalada = sala.Fila == Filas.Length - 2 && sala.Id % 3 == 0;
-                sala.Clase = sala.Senalada ? ClaseSenalada : ClaseNormal;
-                sala.Puntos = sala.Fila * 5 + (sala.Senalada ? 15 : 5);
+                    sala.Senalada = i == porFila.Count - 2 && sala.Id % 3 == 0;
+                    sala.Clase = sala.Senalada ? ClaseSenalada : ClaseNormal;
+                    sala.Puntos = i * 5 + (sala.Senalada ? 15 : 5);
+                }
             }
-
-            _enCurso[characterId] = sueno;
-            return sueno;
         }
 
         /// <summary>
@@ -563,13 +721,16 @@ namespace Jondo.Unity.Server.Managers
         /// dentro de un mismo sueño: dos salas en el mismo mapa harían que sus puertas fueran las
         /// mismas y el camino dejaría de significar nada.
         /// </remarks>
-        private static void RepartirMapas(Sueno sueno, Random dado)
+        private static void RepartirMapas(Sueno sueno)
         {
             var libres = new List<long>(MapasDeSala());
             if (libres.Count == 0) return;
 
+            var dado = new Random(HashCode.Combine(sueno.CharacterId, sueno.Cuenta, sueno.Franja));
+
             foreach (var sala in sueno.Salas)
             {
+                if (sala.MapaDeLaSala != 0) continue;
                 if (sala.Fila == 0)
                 {
                     sala.MapaDeLaSala = MapaDeEntrada;
@@ -651,16 +812,6 @@ namespace Jondo.Unity.Server.Managers
             return elementos[cual].Id;
         }
 
-        private static bool EsLaUltimaDeSuFila(Sueno sueno, Sala sala)
-        {
-            int mayor = -1;
-            foreach (var otra in sueno.Salas)
-            {
-                if (otra.Fila == sala.Fila && otra.Id > mayor) mayor = otra.Id;
-            }
-            return sala.Id == mayor;
-        }
-
         /// <summary>El Rey Gob del Favor Onírico, y dónde se pone.</summary>
         /// <remarks>
         /// Medido en «sueño infinito largo»: npc 7850, casilla 232, orientación 3, con el id
@@ -699,36 +850,15 @@ namespace Jondo.Unity.Server.Managers
             sala.Miembros.Clear();
             sala.Miembros.AddRange(MiembrosDe(elegido.Miembros));
 
-            // La modificación. En la captura son efectos de bonificación de característica —fuerza,
-            // agilidad, vitalidad, inteligencia— con su valor. Se saca del mismo catálogo que usa
-            // el motor de hechizos, así que no hay nada inventado.
-            var efectos = EfectosDeSala();
-            if (efectos.Count == 0) return;
-
+            // Y el potenciador que regala la sala, de los veinte medidos. No se escala con la
+            // dificultad: los valores vienen tal cual de las capturas, y son ellos los que ya
+            // traen el reparto —el «% vitalidad» sale con 20, 70 y 90 según el sueño—.
             lock (_azar)
             {
-                sala.Efecto = efectos[_azar.Next(efectos.Count)];
-                // Más dificultad, más regalo: es lo que hace que valga la pena subir.
-                sala.Valor = _azar.Next(1, 20 + dificultad * 10);
+                sala.Regalo = Potenciadores[_azar.Next(Potenciadores.Length)];
             }
         }
 
-        private static List<int>? _efectosDeSala;
-
-        /// <summary>Los efectos que pueden modificar una sala.</summary>
-        /// <remarks>
-        /// Los cuatro medidos en la captura son de característica —118 fuerza, 119 agilidad,
-        /// 125 vitalidad, 126 inteligencia— así que se usan esos cuatro y no los 114 de
-        /// bonificación que trae el catálogo: de los demás no se ha visto ni uno.
-        /// </remarks>
-        private static List<int> EfectosDeSala()
-        {
-            if (_efectosDeSala != null) return _efectosDeSala;
-            _efectosDeSala = new List<int> { 118, 119, 125, 126 };
-            return _efectosDeSala;
-        }
-
-        /// <summary>Sólo para las pruebas.</summary>
         internal static void OlvidarTodo()
         {
             _enCurso.Clear();

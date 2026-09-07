@@ -281,6 +281,26 @@ namespace Jondo.Unity.Server.Handlers
 
             sueno.Actual = salaId;
 
+            // El potenciador se cobra AL ENTRAR, antes de pelear, y una sola vez por sala.
+            if (sala.Regalo != null && !sala.Cobrada)
+            {
+                sala.Cobrada = true;
+                sueno.Ganados.Add(sala.Regalo);
+                Console.WriteLine($"[Sueños] Sala {sala.Id}: potenciador {sala.Regalo.Efecto} " +
+                                  $"de {sala.Regalo.Valor}. Lleva {sueno.Ganados.Count}.");
+            }
+
+            // Pisar la Fuente abre la franja siguiente, porque la fuente es a la vez la última
+            // sala de ésta y la primera de la que viene: «Chaque palier commencera toujours par
+            // une Fontaine Onirique». Si no se añade aquí, el jugador entra en una sala sin
+            // salidas y se queda encerrado, que es lo que pasaba.
+            if (sala.EsFuente && sala.Salidas.Count == 0)
+            {
+                Dreams.AnadirFranja(sueno);
+                Console.WriteLine($"[Sueños] Franja {sueno.Franja} abierta: " +
+                                  $"{sueno.Salas.Count} salas en total.");
+            }
+
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Izg, DreamProtocol.BuildDreamState(sueno)));
 
@@ -297,7 +317,7 @@ namespace Jondo.Unity.Server.Handlers
             // El grupo se planta ANTES del cambio de mapa: el jss que el cliente pide justo
             // después es el que lleva los actores, y un grupo plantado un instante tarde no
             // aparece hasta que se vuelve a entrar.
-            if (sala.EsFavor) PlantarElFavor(sala); else PlantarElGrupo(sala);
+            if (sala.EsFuente) PlantarLaTienda(sala); else PlantarElGrupo(sala);
 
             int aterriza = await TeleportHandler.ToMapAsync(stream, mapa, 0);
 
@@ -308,14 +328,14 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Pone en la sala al Rey Gob, que es la tienda.
+        /// Pone al vendedor en la Fuente Onírica.
         /// </summary>
         /// <remarks>
         /// No hace falta protocolo nuevo: la fuente de los Sueños es un NPC y punto. Se coloca
         /// como cualquier otro y el motor de diálogos hace el resto; lo que ofrece va escrito en
         /// su respuesta, con el porcentaje de puntos que da.
         /// </remarks>
-        private static void PlantarElFavor(Dreams.Sala sala)
+        private static void PlantarLaTienda(Dreams.Sala sala)
         {
             if (sala.MapaDeLaSala == 0) return;
 

@@ -514,6 +514,60 @@ namespace Jondo.Unity.World.Fights
         /// </remarks>
         public bool RegeneracionApagada { get; set; }
 
+        /// <summary>Lo que hay puesto en el suelo de esta arena: glifos, trampas y runas.</summary>
+        /// <remarks>
+        /// Vive en el combate y no en un registro global a propósito: dos combates a la vez en la
+        /// misma arena de instancia tendrían glifos distintos, y un registro por mapa los
+        /// mezclaría.
+        /// </remarks>
+        public List<Glifo> Glifos { get; } = new List<Glifo>();
+
+        private int _siguienteGlifo;
+
+        /// <summary>Pone algo en el suelo y le da su identificador.</summary>
+        public Glifo Poner(Glifo glifo)
+        {
+            glifo.Id = ++_siguienteGlifo;
+            Glifos.Add(glifo);
+            return glifo;
+        }
+
+        /// <summary>Lo que se dispara con alguien pisando esa casilla.</summary>
+        public List<Glifo> LosQuePisa(int casilla)
+        {
+            var salen = new List<Glifo>();
+            foreach (var g in Glifos)
+            {
+                if (g.SeDisparaAlPisar && g.Cubre(casilla)) salen.Add(g);
+            }
+            return salen;
+        }
+
+        /// <summary>Lo que se dispara con alguien empezando su turno ahí.</summary>
+        public List<Glifo> LosQueEmpiezan(int casilla)
+        {
+            var salen = new List<Glifo>();
+            foreach (var g in Glifos)
+            {
+                if (g.SeDisparaAlEmpezarElTurno && g.Cubre(casilla)) salen.Add(g);
+            }
+            return salen;
+        }
+
+        /// <summary>Quita los que se han gastado o cumplido. Devuelve cuántos se ha llevado.</summary>
+        public List<Glifo> BarrerLosGlifos()
+        {
+            var caidos = new List<Glifo>();
+            foreach (var g in Glifos)
+            {
+                if (g.Gastado) { caidos.Add(g); continue; }
+                if (g.CaducaEnRonda > 0 && RoundNumber >= g.CaducaEnRonda) caidos.Add(g);
+            }
+
+            foreach (var muerto in caidos) Glifos.Remove(muerto);
+            return caidos;
+        }
+
         public void StartFight()
         {
             CancelPlacementTimer();
@@ -685,6 +739,12 @@ namespace Jondo.Unity.World.Fights
                     CurrentTurnIndex = 0;
                     RoundNumber++;
                     StartsNewRound = true;
+
+                    // Los escudos que ya cumplieron se caen aquí, con el cambio de ronda. Si no
+                    // se caducan, un escudo de dos rondas se queda puesto hasta el final del
+                    // combate y no se nota: sólo se ve en que el jugador aguanta de más.
+                    foreach (var quien in Azul) quien?.CaducarElEscudo(RoundNumber);
+                    foreach (var quien in Rojo) quien?.CaducarElEscudo(RoundNumber);
                 }
                 attempts++;
             } while (!CurrentFighter.IsAlive && attempts < TurnOrder.Count);

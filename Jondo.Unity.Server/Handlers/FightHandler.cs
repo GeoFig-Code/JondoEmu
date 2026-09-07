@@ -2292,6 +2292,13 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             fighter.StartTurn();
+
+            // Lo que hubiera puesto en el suelo bajo sus pies. Va antes de devolverle los puntos
+            // porque un glifo que quita PA o PM tiene que morder sobre los del turno que empieza,
+            // no sobre los del anterior.
+            await DispararLosGlifosAsync(stream, fight, fighter, alPisar: false);
+            if (!fighter.IsAlive) return;
+
             await GivePointsBackAsync(stream, fight, fighter);
 
             // The sheets for expired buffs, and then the ones that give AP/MP back, can leave the
@@ -2488,7 +2495,9 @@ namespace Jondo.Unity.Server.Handlers
             foreach (int celda in camino) path.Add(celda);
 
             walker.CurrentMP -= steps;
-            walker.CellId = camino[camino.Count - 1];
+            // Por MoverA y no tocando CellId a pelo: así queda apuntado de dónde venía, que es
+            // lo que necesita el efecto 1100 para deshacer el movimiento.
+            walker.MoverA(camino[camino.Count - 1]);
             destination = walker.CellId;
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
@@ -2519,6 +2528,62 @@ namespace Jondo.Unity.Server.Handlers
             for (int paso = 0; paso < steps; paso++)
             {
                 await EngancheAsync(stream, fight, walker, Managers.EffectEngine.AlAndar);
+            }
+
+            // Y lo que hubiera puesto en el suelo donde ha ido a parar. Va DESPUÉS de andar y de
+            // los enganches: primero llega, y ya en su casilla nueva le salta lo que hubiera.
+            await DispararLosGlifosAsync(stream, fight, walker, alPisar: true);
+        }
+
+        /// <summary>
+        /// Dispara lo que hay puesto en el suelo bajo un combatiente.
+        /// </summary>
+        /// <remarks>
+        /// Un solo camino para las cuatro familias —glifo de aura, glifo de inicio de turno,
+        /// trampa y runa—, porque lo único que las distingue es el momento, y el momento es este
+        /// parámetro. Lo que hacen es siempre lo mismo: lanzar el hechizo que llevan dentro, con
+        /// su grado, a nombre de quien lo puso.
+        ///
+        /// La trampa se gasta al dispararse; el glifo se queda hasta que caduque. Y se barre al
+        /// final, no dentro del recorrido, porque disparar un glifo puede mover al que lo pisó y
+        /// dejarlo encima de otro.
+        /// </remarks>
+        private static async Task DispararLosGlifosAsync(NetworkStream stream, FightInstance fight,
+                                                         Fighter quien, bool alPisar)
+        {
+            if (quien == null || !quien.IsAlive || fight.Glifos.Count == 0) return;
+
+            var saltan = alPisar ? fight.LosQuePisa(quien.CellId) : fight.LosQueEmpiezan(quien.CellId);
+            if (saltan.Count == 0) return;
+
+            foreach (var glifo in saltan)
+            {
+                // El suyo no le salta. Es lo que impide que un Feca se queme con su propio glifo
+                // al pasar por encima, y lo que hace que poner uno debajo del enemigo tenga
+                // sentido en vez de ser un suicidio.
+                if (glifo.Dueno == quien.Id) continue;
+
+                var dueno = fight.Buscar(glifo.Dueno) ?? quien;
+
+                Program.LogDebug($"[Combate] {quien.Id} {(alPisar ? "pisa" : "empieza el turno en")} " +
+                                 $"el glifo {glifo.Id} de {glifo.Dueno}: lanza el hechizo " +
+                                 $"{glifo.Hechizo} grado {glifo.Grado}.");
+
+                // Por el mismo camino que cualquier otro lanzamiento. Lo que hace un glifo no
+                // es una categoría aparte: es un hechizo, con su dueño y su grado, y meterlo por
+                // aquí le da gratis los daños, las resistencias, los embrujos y los anuncios.
+                await AplicarEfectosAsync(stream, fight, dueno, glifo.Hechizo, glifo.Grado,
+                                          quien, Managers.EffectEngine.AlLanzar,
+                                          celdaApuntada: quien.CellId);
+
+                if (glifo.SeGastaAlDispararse) glifo.Gastado = true;
+                if (!quien.IsAlive) break;
+            }
+
+            var caidos = fight.BarrerLosGlifos();
+            if (caidos.Count > 0)
+            {
+                Program.LogDebug($"[Combate] Se llevan por delante {caidos.Count} glifo(s).");
             }
         }
 
@@ -3326,8 +3391,47 @@ namespace Jondo.Unity.Server.Handlers
                                      $"{c.Sobre.Id} con el hechizo {c.HechizoOrigen} " +
                                      $"({c.Sobre.CurrentHP} de vida).");
 
+                    int dondeEstaba = c.Sobre.CellId;
                     await UnGolpeAsync(stream, fight, c.Caster ?? quienLanza, c.HechizoOrigen,
                                        c.Efecto, 0, c.Sobre, 0, 0, false, 0, fulmina: true);
+
+                    // El 405, «mata y reemplaza»: la Siega saca el bicho EN LA CASILLA del que
+                    // acaba de caer, no al lado del que lanza. Si el muerto no ha dejado su sitio
+                    // libre, la invocación busca hueco como cualquier otra.
+                    if (c.Invoca != 0)
+                    {
+                        await InvocarAsync(stream, fight, quienLanza, c.Invoca, grado,
+                                           c.EnLaCasillaDelMuerto ? dondeEstaba : celdaApuntada);
+                    }
+                    continue;
+                }
+
+                // La vida que se va sin ser un golpe —el «-N% PdV»— y la que se transfiere.
+                // No pasan por el motor de daño a propósito: no hay elemento, ni resistencias,
+                // ni críticos que aplicar, y meterlas por ahí les inventaría los tres.
+                if (c.VidaQueSeVa > 0)
+                {
+                    int leQuedaba = c.Sobre.CurrentHP;
+                    c.Sobre.TakeDamage(c.Sobre.PasarPorElEscudo(c.VidaQueSeVa));
+                    Program.LogDebug($"[Combate] A {c.Sobre.Id} se le van {c.VidaQueSeVa} de vida " +
+                                     $"({leQuedaba} -> {c.Sobre.CurrentHP}) por el efecto " +
+                                     $"{c.Efecto.EffectId}.");
+                    await RefrescarLaVidaAsync(stream, fight, c.Sobre);
+                    continue;
+                }
+
+                if (c.VidaTransferida > 0)
+                {
+                    var daLaVida = c.Caster ?? quienLanza;
+                    daLaVida.TakeDamage(c.VidaTransferida);
+                    c.Sobre.CurrentHP = Math.Min(c.Sobre.MaxHP,
+                                                 c.Sobre.CurrentHP + c.VidaTransferida);
+
+                    Program.LogDebug($"[Combate] {daLaVida.Id} le pasa {c.VidaTransferida} de vida " +
+                                     $"a {c.Sobre.Id}.");
+
+                    await RefrescarLaVidaAsync(stream, fight, daLaVida);
+                    await RefrescarLaVidaAsync(stream, fight, c.Sobre);
                     continue;
                 }
 
@@ -3458,6 +3562,19 @@ namespace Jondo.Unity.Server.Handlers
                             c.CasillaDesde, c.CasillaHasta)));
                     Program.LogDebug($"[Combate] El hechizo {hechizo} mueve a {c.Sobre.Id} " +
                                      $"de la casilla {c.CasillaDesde} a la {c.CasillaHasta}.");
+
+                    // Y el segundo, si el efecto movía a dos. Es el intercambio de posiciones:
+                    // sin este anuncio el cliente deja al lanzador pintado donde estaba, y a
+                    // partir de ahí su tablero y el nuestro ya no coinciden en nada.
+                    if (c.MueveTambien)
+                    {
+                        await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                            Network.FightProtocol.BuildDisplacement(
+                                quienLanza.Id, comoViaja, c.Tambien.Id,
+                                c.CasillaDesdeDelOtro, c.CasillaHastaDelOtro)));
+                        Program.LogDebug($"[Combate] Y mueve a {c.Tambien.Id} de la casilla " +
+                                         $"{c.CasillaDesdeDelOtro} a la {c.CasillaHastaDelOtro}.");
+                    }
 
                     await DanoDeColisionAsync(stream, fight, quienLanza, c);
                     continue;
@@ -3968,6 +4085,18 @@ namespace Jondo.Unity.Server.Handlers
             // tenga y se sigue por el mismo camino que cualquier golpe —el anuncio, la muerte, el
             // botín, el fin del combate—, que es lo único que hay que compartir.
             if (fulmina) damage = target.CurrentHP;
+
+            // EL ESCUDO se come el golpe antes que la vida, y no lo para todo: lo que sobra sigue
+            // su camino. Va antes del recorte a la vida que queda, porque un golpe de doscientos
+            // contra un escudo de ciento cincuenta son cincuenta de vida, no doscientos.
+            if (!fulmina && target.PuntosDeEscudo > 0)
+            {
+                int antesDelEscudo = damage;
+                damage = target.PasarPorElEscudo(damage);
+                Program.LogDebug($"[Combate] El escudo de {target.Id} se come " +
+                                 $"{antesDelEscudo - damage} de {antesDelEscudo}; le quedan " +
+                                 $"{target.PuntosDeEscudo} de escudo.");
+            }
 
             // Lo que se ANUNCIA nunca puede pasar de la vida que le queda. Si a un pío de setenta
             // le entran doscientos, el golpe que ve el jugador es de setenta: por encima de eso no

@@ -83,15 +83,15 @@ namespace Jondo.Unity.Server.Network
                     // La entrada. Va casi vacía en las nueve capturas: sólo el f7.
                     cuerpo.Var(7, 0);
                 }
-                else if (sala.Fila == UltimaFila)
+                else if (sala.EsFuente)
                 {
-                    cuerpo.Var(5, 3).Var(6, sala.Fila).Var(7, 0);
+                    cuerpo.Var(5, TipoDeFuente).Var(6, sala.Fila).Var(7, 0);
                 }
                 else
                 {
                     cuerpo.Var(1, sala.Puntos)
                           .Var(3, sala.Clase)
-                          .Var(5, 1)
+                          .Var(5, TipoDeCombate)
                           .Var(6, sala.Fila)
                           .Var(7, sala.Senalada ? 1 : 0);
                 }
@@ -118,8 +118,21 @@ namespace Jondo.Unity.Server.Network
             return partida;
         }
 
-        /// <summary>La última fila, la que lleva una sola sala. Cinco filas en las nueve capturas.</summary>
-        private const int UltimaFila = 4;
+        /// <summary>
+        /// El tipo de sala: el f5. Censadas las 665 de las quince capturas, sólo hay dos.
+        /// </summary>
+        /// <remarks>
+        ///   filas 1, 2 y 3   tipo 1   en las 529, sin una excepción   pelea
+        ///   fila 4           tipo 3   en las 68, sin una excepción    Fuente Onírica
+        ///
+        /// El propio cliente lo dice al pasar el ratón por una del tipo 3: «Fuente onírica -
+        /// TIENDA - te permite intercambiar tus puntos de sueño por bonus».
+        ///
+        /// Sala de jefe no sale ninguna: la guía lo confirma —el «Fin del rêve» es la sala 26 y
+        /// nada más—, así que no está en ninguna franja intermedia y no hay nada que medir de él.
+        /// </remarks>
+        private const int TipoDeCombate = 1;
+        private const int TipoDeFuente = 3;
 
         /// <summary>
         /// El f2 de la cabecera, que no se ha sabido qué es.
@@ -191,6 +204,25 @@ namespace Jondo.Unity.Server.Network
             // desaparece —cero no se escribe— y más tarde vuelve como 2, que es el número que el
             // cliente pinta en su botón. El f19 es la Arena de Draconiros, con la que se reintenta
             // una pelea perdida. Los dos siguen sin gastarse ni ganarse; van fijos, y queda dicho.
+            // LOS POTENCIADORES ACUMULADOS, uno por f15. Es la lista que el cliente pinta en su
+            // ventanita, y sin ella no tiene nada que enseñar ahí.
+            //
+            // Medidos 196 en las capturas, con dos formas y ninguna más:
+            //
+            //   f15 { f1 { f4: el valor,       f11: el efecto }, f2: 1 }
+            //   f15 { f1 { f6 { f1: el valor}, f11: el efecto }, f2: 1 }
+            //
+            // Se acumulan los de las salas ya pisadas, que es lo que dice la guía: el bono se
+            // cobra AL ENTRAR en la sala, antes de pelear.
+            foreach (var bono in sueno.Ganados)
+            {
+                var dentro = Pb.New();
+                if (bono.Anidado) dentro.Msg(6, Pb.New().VarIfNotZero(1, bono.Valor));
+                else dentro.Var(4, bono.Valor);
+
+                izg.Msg(15, Pb.New().Msg(1, dentro.Var(11, bono.Efecto)).Var(2, 1));
+            }
+
             izg.VarIfNotZero(7, sueno.Tormentas)
                .Var(8, sueno.Puntos)
                .Str(13, Texto(sueno.Actual))

@@ -65,6 +65,38 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>El efecto 141: mata al objetivo, sin cálculo de por medio.</summary>
         public bool Fulmina { get; init; }
 
+        /// <summary>Los puntos de escudo que este efecto ha puesto. Cero cuando no pone ninguno.</summary>
+        public int Escudo { get; init; }
+
+        /// <summary>Vida que se va sin ser un golpe: el «-N% PdV».</summary>
+        public int VidaQueSeVa { get; init; }
+
+        /// <summary>Vida que el lanzador le pasa al objetivo.</summary>
+        public int VidaTransferida { get; init; }
+
+        /// <summary>Cuántos embrujos se ha llevado por delante un efecto que acorta duraciones.</summary>
+        public int EmbrujosCaidos { get; init; }
+
+        /// <summary>Que la invocación salga donde estaba el que acaba de morir, y no al lado.</summary>
+        public bool EnLaCasillaDelMuerto { get; init; }
+
+        /// <summary>Lo que este efecto ha dejado puesto en el suelo, si ha dejado algo.</summary>
+        public Jondo.Unity.World.Fights.Glifo Glifo { get; init; }
+
+        /// <summary>
+        /// El SEGUNDO desplazamiento, cuando el efecto mueve a dos. Menos uno cuando no.
+        /// </summary>
+        /// <remarks>
+        /// Lo pide el intercambio de posiciones, que es el único que mueve al lanzador y al
+        /// objetivo a la vez. Anunciar sólo uno de los dos deja al cliente con alguien pintado
+        /// donde ya no está.
+        /// </remarks>
+        public Fighter Tambien { get; init; }
+        public int CasillaDesdeDelOtro { get; init; } = -1;
+        public int CasillaHastaDelOtro { get; init; } = -1;
+        public bool MueveTambien => Tambien != null && CasillaHastaDelOtro >= 0
+                                    && CasillaHastaDelOtro != CasillaDesdeDelOtro;
+
         /// <summary>
         /// Cuántos puntos se lleva el que lanza, cuando el efecto es de ROBO. Los mismos que se
         /// le han quitado al objetivo, que van en <see cref="Cuanto"/> en negativo.
@@ -159,7 +191,9 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>¿Este efecto pega?</summary>
         public static bool EsDeDano(int efecto)
-            => (efecto >= DanoPrimero && efecto <= DanoUltimo) || PegaSegunLoErosionado(efecto);
+            => (efecto >= DanoPrimero && efecto <= DanoUltimo)
+               || efecto == DanoDelMejorElemento
+               || PegaSegunLoErosionado(efecto);
 
         /// <summary>
         /// Los golpes que da un hechizo: uno por cada efecto de daño que le toque al objetivo.
@@ -182,6 +216,15 @@ namespace Jondo.Unity.Server.Managers
                 // catálogo por el número de efecto.
                 int elemento = efecto.Element >= 0 ? efecto.Element
                                                    : DatabaseManager.EffectElement(efecto.EffectId);
+
+                // El «mejor elemento» no es un elemento: es una pregunta al lanzador. Se resuelve
+                // aquí, con los embrujos puestos, porque un hechizo que te suba la agilidad a
+                // mitad de combate puede cambiar cuál es tu mejor elemento, y eso es justamente
+                // para lo que se lanza.
+                if (efecto.EffectId == DanoDelMejorElemento || elemento == ElementoMejor)
+                {
+                    elemento = MejorElementoDe(quienLanza, combate.RoundNumber);
+                }
                 foreach (var sobre in AQuien(combate, quienLanza, objetivo, efecto, celdaApuntada))
                 {
                     if (sobre == null || !sobre.IsAlive) continue;
@@ -256,6 +299,259 @@ namespace Jondo.Unity.Server.Managers
             int porCasilla = nivelDelQueEmpuja / 2 + suEmpuje - laResistencia + BaseDelEmpuje;
             return Math.Max(0, casillasSinRecorrer * porCasilla / 4);
         }
+        /// <summary>«Teletransporta a la casilla objetivo». 425 hechizos lo llevan.</summary>
+        /// <remarks>
+        /// No es un empujón de muchas casillas: no recorre el camino, así que ni choca ni hace
+        /// daño de colisión, y no le importa que haya algo en medio. Sólo le importa la casilla
+        /// de destino, que tiene que estar libre y pisable.
+        /// </remarks>
+        /// <summary>«N% del nivel en escudo» (234 hechizos) y «N% de PdV en el escudo» (167).</summary>
+        /// <remarks>
+        /// El tanto por ciento va en el DADO, no en el valor: Caparazón lleva diceNum 150 y
+        /// Soldagüino 200 sobre el nivel; Bendición Maravillosa lleva 10 y Coraza de Dopeul 20
+        /// sobre la vida. El value va a cero en los seis que se han leído.
+        ///
+        /// El escudo no es vida y no se cura: por eso vive en su propio saco del luchador y no
+        /// en CurrentHP.
+        /// </remarks>
+        /// <summary>«Devuelve de N PA» (163 hechizos). El número va en el dado, la máscara es «C».</summary>
+        /// <remarks>
+        /// Lo llevan Doom y Matanza, que cuestan 1 PA y lo devuelven, así que se pueden encadenar.
+        /// No es un boost de PA con duración: es una devolución inmediata, y por eso no pasa por
+        /// el embrujo.
+        /// </remarks>
+        /// <summary>
+        /// Lo que se pone en el suelo: glifo de aura, glifo de inicio de turno, trampa y runa.
+        /// </summary>
+        /// <remarks>
+        /// 623 hechizos entre las cuatro, y las cuatro con la MISMA forma medida:
+        ///
+        ///   diceNum   el hechizo que lanza al dispararse
+        ///   diceSide  su grado
+        ///   value     el color en RGB —el Avispero lleva 16777215, blanco puro—
+        ///   duration  las rondas; el -1 quiere decir que no se cae sola
+        ///   zoneDescr la huella alrededor de la casilla apuntada
+        ///
+        /// Lo único que cambia es cuándo se disparan, así que van por un solo camino con cuatro
+        /// disparadores en vez de por cuatro caminos con el mismo cuerpo.
+        /// </remarks>
+        /// <summary>A qué apunta el hechizo hijo de un sublanzamiento.</summary>
+        private enum Apunta
+        {
+            /// <summary>Al candidato que la máscara acaba de elegir.</summary>
+            AlCandidato,
+
+            /// <summary>De vuelta al que lanzó el hechizo padre.</summary>
+            AlLanzadorPadre,
+
+            /// <summary>A la casilla que apuntó el padre, resuelta OTRA VEZ en ese momento.</summary>
+            ALaCasillaDelPadre,
+
+            /// <summary>Al más cercano de la zona.</summary>
+            AlMasCercano,
+        }
+
+        /// <summary>Una fila de la familia «haz que se lance otro hechizo».</summary>
+        private readonly struct Sublanzamiento
+        {
+            public Sublanzamiento(bool lanzaElCandidato, Apunta apunta, bool topePorValor,
+                                  bool yaLoHaceElCaminoViejo = false)
+            {
+                LanzaElCandidato = lanzaElCandidato;
+                Apunta = apunta;
+                TopePorValor = topePorValor;
+                YaLoHaceElCaminoViejo = yaLoHaceElCaminoViejo;
+            }
+
+            /// <summary>Si el que lanza el hijo es el candidato en vez del lanzador del padre.</summary>
+            public bool LanzaElCandidato { get; }
+
+            public Apunta Apunta { get; }
+
+            /// <summary>Si el campo value limita cuántos candidatos se cogen.</summary>
+            public bool TopePorValor { get; }
+
+            /// <summary>Los tres que ya resuelve el código de antes y que no se tocan hoy.</summary>
+            public bool YaLoHaceElCaminoViejo { get; }
+        }
+
+        /// <summary>
+        /// La familia entera de «haz que se lance otro hechizo», en una sola tabla.
+        /// </summary>
+        /// <remarks>
+        /// Son NUEVE efectos y no nueve mecánicas: la misma resolución con tres parámetros —quién
+        /// lanza el hijo, a qué apunta, y cuántos candidatos coge—. En todos, diceNum es el
+        /// hechizo hijo y diceSide su grado, y en todos el hijo es GRATIS: no cuesta PA.
+        ///
+        /// La tabla sale del censo de las 431 capturas del juego real, emparejando cada anuncio de
+        /// lanzamiento con el padre que lo produjo. Dos agentes independientes rehicieron el
+        /// corpus y sacaron los mismos totales —37.947 tramas jwe, 21.307 lanzamientos—, y estas
+        /// son las cuentas:
+        ///
+        ///   efecto   n      mismo lanzador   misma casilla   objetivo==lanzador
+        ///   792      6332   4447             3560            6269
+        ///   1160     3826   3783             1772             918
+        ///   2160      332    332               54              18
+        ///   2792       10      0                2              10
+        ///   2793      323     68               74             320
+        ///   2794      235    182              228              79
+        ///   2795        6      0                6               0
+        ///
+        /// Y el 1017 aparte, con 97 encadenamientos y CERO contraejemplos: el objetivo del hijo es
+        /// el lanzador del padre en 97 de 97, y el lanzador del hijo no lo es en 97 de 97.
+        ///
+        /// El control que lo cierra: con la MISMA máscara «h,P», el 792 no invierte ni una vez en
+        /// 106 y el 1017 invierte las 77. O sea que lo que decide no es la máscara, es el efecto.
+        /// Y en Jormun conviven un 1160 y un 1017 con la misma máscara en el mismo lanzamiento,
+        /// en tramas contiguas, con resultado opuesto.
+        ///
+        /// Lo que NO se ha medido y va dicho: que el value sea el tope de candidatos es la mejor
+        /// explicación de por qué 792 y 2792 conviven con la misma máscara y el mismo hechizo
+        /// hijo cambiando sólo ese campo —niveles 80667 y 35952—, pero las diez ejecuciones de
+        /// 2792 del corpus tuvieron siempre un solo candidato, así que no está demostrado.
+        /// </remarks>
+        private static readonly Dictionary<int, Sublanzamiento> Familia = new()
+        {
+            // Los tres que ya resolvía el motor. Están aquí para que la tabla sea completa y para
+            // poder compararlos, pero su código sigue siendo el de antes: reescribirlos esta
+            // noche, con el servidor en uso, sería cambiar lo que funciona por lo que aún no.
+            [EffectSupport.CastSpell]     = new(true,  Apunta.AlCandidato,        true,  true),
+            [EffectSupport.TriggerSpell]  = new(false, Apunta.AlCandidato,        false, true),
+            [NearestTargetExecuteSpell]  = new(false, Apunta.AlMasCercano,       false, true),
+
+            // Los cuatro que faltaban, y sus dos primos.
+            [1017] = new(true,  Apunta.AlLanzadorPadre,    false),
+            [2792] = new(true,  Apunta.AlCandidato,        true),
+            [2793] = new(true,  Apunta.AlCandidato,        true),
+            [2794] = new(true,  Apunta.ALaCasillaDelPadre, false),
+            [2795] = new(true,  Apunta.AlCandidato,        true),
+            [2960] = new(false, Apunta.ALaCasillaDelPadre, false),
+        };
+
+        /// <summary>¿Este efecto es de los que hacen lanzar otro hechizo?</summary>
+        public static bool EsDeLaFamiliaDeSublanzar(int efecto) => Familia.ContainsKey(efecto);
+
+        /// <summary>Quién lanza el hijo y a qué apunta, para poder comprobarlo desde fuera.</summary>
+        public static (bool LanzaElCandidato, string Apunta) ComoSublanza(int efecto)
+            => Familia.TryGetValue(efecto, out var fila)
+                ? (fila.LanzaElCandidato, fila.Apunta.ToString())
+                : (false, "");
+
+        /// <summary>
+        /// El 3793: un marcador, no un efecto. No hay nada que aplicar.
+        /// </summary>
+        /// <remarks>
+        /// 430 filas en 163 hechizos, sin texto, sin característica, sin dados y sin duración. El
+        /// servidor real lo registra como un embrujo más y lo anuncia cuando salta su disparador,
+        /// pero no arrastra a nadie: los efectos que van con él —el veneno, la cura, el PA
+        /// diferido— se registran por su cuenta, con su propio disparador y su propia máscara, y
+        /// se disparan solos. Coinciden en el tiempo porque comparten el disparador, no porque
+        /// éste los llame.
+        ///
+        /// O sea que tratarlo como una puerta condicional sería inventarse una mecánica. Va al
+        /// panel como cualquier otro efecto que no se sabe aplicar, que es lo que ya hace el
+        /// camino genérico, y aquí sólo queda dicho por qué está bien que se quede así.
+        /// </remarks>
+        private const int MarcadorDeGuion = 3793;
+
+        /// <summary>El 3792: el hermano inmediato del 3793. Tampoco hay nada que aplicar.</summary>
+        /// <remarks>
+        /// 165 filas en 48 hechizos, y son el mismo animal. Medido sobre las 164 filas que tienen
+        /// plantilla de hechizo, sin una sola excepción: el <c>value</c> es un identificador de
+        /// una entrada del <c>boundScriptUsageData</c> DEL PROPIO HECHIZO. Y el resto de la fila
+        /// está vacío en las 165: dado 0, lado 0, duración 0, retardo 0, y el disparador siempre
+        /// inmediato.
+        ///
+        /// O sea que no lleva ningún número que aplicar a nadie. Es el marcador de «aquí corre un
+        /// guion del hechizo», igual que el 3793, y la diferencia entre los dos es sólo que el
+        /// 3793 puede ir con disparador y éste no.
+        ///
+        /// Se declara aquí, y no se deja simplemente que caiga en el camino genérico, porque
+        /// entre los dos tocan 39 hechizos de clase: sin decirlo, esos 39 se cuentan para siempre
+        /// como «sin implementar» y alguien vuelve a mirarlos cada vez.
+        /// </remarks>
+        private const int MarcadorDeGuionInmediato = 3792;
+
+        /// <summary>¿Es uno de los dos marcadores de guion, que no hacen nada?</summary>
+        public static bool EsMarcadorDeGuion(int efecto)
+            => efecto == MarcadorDeGuion || efecto == MarcadorDeGuionInmediato;
+
+        private const int GlifoDeAura = 1091;
+        private const int GlifoDeInicioDeTurno = 401;
+        private const int Trampa = 400;
+        private const int Runa = 2022;
+
+        private const int DevuelvePA = 120;
+
+        /// <summary>«Duración de los efectos: -N» (167 hechizos). Le recorta rondas a los embrujos.</summary>
+        /// <remarks>
+        /// Grito Terrorífico lleva dado 4 y máscara «A»: le quita cuatro rondas a lo que el
+        /// enemigo tenga encima. Un embrujo al que no le quedan rondas se cae.
+        /// </remarks>
+        private const int AcortaLosEfectos = 1075;
+
+        /// <summary>«Mata al objetivo y reemplaza por la invocación» (59 hechizos).</summary>
+        /// <remarks>
+        /// La Siega del Sacrogrito. El dado lleva la plantilla del bicho que sale en su sitio y el
+        /// lado del dado su grado. Son las dos cosas a la vez y en ese orden: matar y luego sacar.
+        /// </remarks>
+        private const int MataYReemplaza = 405;
+
+        private const int EscudoPorNivel = 1020;
+        private const int EscudoPorVida = 1039;
+
+        /// <summary>«N de daños del mejor elemento» (20 hechizos de clase).</summary>
+        /// <remarks>
+        /// Llamilla, Bilbipo, Apetito de Cocobur. El dado es el daño y el elemento lo pone el
+        /// lanzador: el suyo más alto de los cuatro. El catálogo del cliente ya numera ese caso
+        /// —el 5 de Effects.ElementId es «mejor»—, así que aquí sólo hay que resolverlo mirando
+        /// las cuatro características y quedarse con la mayor.
+        /// </remarks>
+        private const int DanoDelMejorElemento = 2822;
+
+        /// <summary>El 5 de Effects.ElementId: «el mejor», que no es un elemento sino una pregunta.</summary>
+        private const int ElementoMejor = 5;
+
+        /// <summary>«-N% PdV» (9 hechizos). El dado es el TANTO POR CIENTO de la vida máxima.</summary>
+        private const int QuitaPorcentajeDeVida = 1048;
+
+        /// <summary>«Transfiere N% de su vida» (7 hechizos).</summary>
+        /// <remarks>
+        /// El lanzador da y el objetivo recibe. El dado es el tanto por ciento de la vida ACTUAL
+        /// del que la da, que es lo que hace que no puedas transferir lo que ya no tienes.
+        /// </remarks>
+        private const int TransfiereVida = 90;
+
+        private const int Teletransportar = 4;
+
+        /// <summary>
+        /// Los cuatro teletransportes simétricos: al otro lado de un pivote, a la misma distancia.
+        /// </summary>
+        /// <remarks>
+        /// 54 hechizos de clase entre los cuatro. Lo que cambia es el pivote, y nada más:
+        ///
+        ///   1104  «simétrica con respecto al objetivo»   pivote: el objetivo del efecto
+        ///   1105  «simétrica con respecto al lanzador»   pivote: quien lanza
+        ///   1106  «teletransportación simétrica»         pivote: la casilla apuntada
+        ///   1100  «teletransporta a la posición anterior»  no es simétrica: deshace el movimiento
+        ///
+        /// El reflejo se calcula en coordenadas del mapa, no sobre el número de casilla: la
+        /// retícula de Dofus va en diagonal y sumar al índice da un sitio sin relación con el
+        /// reflejo.
+        /// </remarks>
+        private const int SimetricoRespectoAlObjetivo = 1104;
+        private const int SimetricoRespectoAlLanzador = 1105;
+        private const int Simetrico = 1106;
+        private const int ALaPosicionAnterior = 1100;
+
+        /// <summary>«Intercambia las posiciones». 253 hechizos.</summary>
+        /// <remarks>
+        /// Dos que se cambian el sitio. Se mueven LOS DOS, así que hay que anunciar los dos
+        /// desplazamientos: con uno solo, el cliente deja a uno de ellos pintado donde estaba y
+        /// a partir de ahí ya no coincide con el servidor en nada.
+        /// </remarks>
+        private const int IntercambiarPosiciones = 8;
+
         private const int Tirar = EffectSupport.Pull;
 
         /// <summary>"Retrocede #1 casillas" y "Avanza #1 casillas": mueven al QUE LANZA.</summary>
@@ -288,16 +584,47 @@ namespace Jondo.Unity.Server.Managers
         /// Los efectos que colocan algo EN UNA CASILLA en vez de sobre alguien: una invocación,
         /// una trampa, un glifo. Su objetivo es el suelo, así que no se les busca dueño.
         ///
-        ///   181  "Invoca: #1"                    400  "Coloca una trampa"
+        ///   181, 1008, 1011  "Invoca: #1"     400  "Coloca una trampa"
         ///   401  "Coloca un glifo de inicio de turno"
-        ///   1091 "Coloca un glifo aura"
+        ///   1091 "Coloca un glifo aura"        2022 "Coloca una runa"
+        ///
+        /// El 1008 y el 1011 son invocaciones igual que el 181 y con la misma forma —el dado
+        /// lleva la plantilla del bicho y el lado su grado, comprobado: el 3987 es «Gladiador
+        /// aprendiz ocra» y el 3112 «Explobomba»—. Estaban fuera del conjunto y por eso los 22
+        /// hechizos que los llevan no invocaban nada, en silencio.
         /// </summary>
-        private static readonly HashSet<int> AlSuelo = new HashSet<int> { 181, 400, 401, 1091 };
+        private static readonly HashSet<int> AlSuelo =
+            new HashSet<int> { 181, 1008, 1011, 400, 401, 1091, 2022 };
+
+        /// <summary>Los tres efectos que sacan un bicho al tablero.</summary>
+        private static readonly HashSet<int> Invocaciones = new HashSet<int> { 181, 1008, 1011 };
 
         public static bool VaAlSuelo(int efecto) => AlSuelo.Contains(efecto);
 
         /// <summary>Fixed healing. The element's characteristic scales the roll; 49 is flat.</summary>
         private const int FixedHeal = EffectSupport.FireHeal;
+
+        /// <summary>
+        /// Las cinco curas fijas, una por elemento.
+        /// </summary>
+        /// <remarks>
+        /// 108 fuego, 2998 agua, 2999 aire, 3000 tierra, 3001 neutral. Las cuatro que faltaban
+        /// tocan 31 hechizos de clase.
+        ///
+        /// No ha hecho falta escribir nada nuevo para ellas: el cálculo de la cura ya estaba
+        /// escrito sin atarse al elemento —lee el effectElement del propio efecto y busca con él
+        /// la característica que la escala—, y quien lo escribió dejó dicho por qué en un
+        /// comentario: «clavar el 15 aquí es lo que hace que las otras cinco salgan mal el día
+        /// que se implementen». Lo único que ataba al fuego era que la constante era un número
+        /// suelto en vez de un conjunto.
+        /// </remarks>
+        private static readonly HashSet<int> CurasFijas = new()
+        {
+            FixedHeal, 2998, 2999, 3000, 3001,
+        };
+
+        /// <summary>¿Es una de las cinco curas fijas?</summary>
+        private static bool EsCuraFija(int efecto) => CurasFijas.Contains(efecto);
 
         private const int HealsCharacteristic = 49;
 
@@ -331,8 +658,38 @@ namespace Jondo.Unity.Server.Managers
             2 => 15,   // fuego, inteligencia
             3 => 13,   // agua, suerte
             4 => 14,   // aire, agilidad
-            _ => 10,   // neutral, y el mejor elemento de momento igual
+            _ => 10,   // neutral
         };
+
+        /// <summary>
+        /// El MEJOR elemento de un combatiente: aquel cuya característica lleva más alta.
+        /// </summary>
+        /// <remarks>
+        /// El catálogo del cliente numera este caso —el 5 de Effects.ElementId es «mejor»— y hay
+        /// además un efecto entero para él, el 2822 «N de daños del mejor elemento», que llevan
+        /// veinte hechizos de clase: Llamilla, Bilbipo, Apetito de Cocobur.
+        ///
+        /// Se mira la característica CON LOS EMBRUJOS PUESTOS, no la de la ficha: un hechizo que
+        /// te sube la agilidad puede cambiar cuál es tu mejor elemento a mitad de combate, y eso
+        /// es justamente para lo que se lanza.
+        ///
+        /// El empate se rompe por el orden tierra, fuego, agua, aire. No está medido cuál usa el
+        /// juego real; hace falta UN criterio estable para que dos lanzamientos iguales den lo
+        /// mismo, y éste es el orden en que el propio catálogo numera los elementos.
+        /// </remarks>
+        internal static int MejorElementoDe(Fighter quien, int ronda)
+        {
+            int mejor = 1, cuanto = int.MinValue;
+
+            foreach (int elemento in new[] { 1, 2, 3, 4 })
+            {
+                int car = CharacteristicOfElement(elemento);
+                int tiene = StatOf(quien, car) + quien.Buffs.De(car, ronda);
+                if (tiene > cuanto) { cuanto = tiene; mejor = elemento; }
+            }
+
+            return mejor;
+        }
 
         /// <summary>Effect 1159, received healing as a percentage multiplier.</summary>
         private const int ReceivedHealingPercent = 1159;
@@ -539,7 +896,7 @@ namespace Jondo.Unity.Server.Managers
 
                 // Fixed healing follows damage's roll semantics: one effect roll is shared by all
                 // recipients in the zone, then each recipient gets its own distance falloff.
-                int sharedHealRoll = efecto.EffectId == FixedHeal
+                int sharedHealRoll = EsCuraFija(efecto.EffectId)
                     ? (rollEffect != null ? rollEffect(efecto)
                                           : DelDado(efecto.DiceNum, efecto.DiceSide, efecto.Value))
                     : int.MinValue;
@@ -589,6 +946,89 @@ namespace Jondo.Unity.Server.Managers
                             // Keep damage attribution on the Cra while drawing the next spell
                             // from the previous victim's cell.
                             target));
+                    }
+                    continue;
+                }
+
+                // La familia de «haz que se lance otro hechizo», los que no resolvía el camino
+                // viejo. Un solo bloque para los seis, porque son la misma resolución con tres
+                // parámetros: quién lanza, a qué apunta y cuántos candidatos coge.
+                if (Familia.TryGetValue(efecto.EffectId, out var comoVa)
+                    && !comoVa.YaLoHaceElCaminoViejo)
+                {
+                    if (efecto.DiceNum <= 0) continue;
+                    if (depth >= HondoMaximo) continue;
+
+                    var candidatos = new List<Fighter>();
+                    foreach (var quien in AQuien(combat, caster, target, efecto, aimedCell,
+                                                 estadosAlEmpezar))
+                    {
+                        if (quien != null && quien.IsAlive) candidatos.Add(quien);
+                    }
+
+                    // El tope. Con value 0 o 999 no hay tope —así van el 792, el 1160 y el 2794,
+                    // que llegan hasta once hijos en las capturas—; con un número pequeño sí, y
+                    // se respeta: el 2160 saca uno en 251 de 251 y el 2793 con value 6 nunca pasa
+                    // de seis. Es la mejor explicación de por qué el 792 y el 2792 conviven con
+                    // la misma máscara cambiando sólo este campo, pero NO está demostrado: las
+                    // diez ejecuciones de 2792 del corpus tuvieron un solo candidato.
+                    if (comoVa.TopePorValor && efecto.Value > 0 && efecto.Value < 999
+                        && candidatos.Count > efecto.Value)
+                    {
+                        candidatos.RemoveRange(efecto.Value, candidatos.Count - efecto.Value);
+                    }
+
+                    if (comoVa.Apunta == Apunta.AlMasCercano && candidatos.Count > 1)
+                    {
+                        candidatos.Sort((a, b) =>
+                        {
+                            int da = aimedCell >= 0
+                                ? Jondo.Unity.World.Maps.MapGeometry.Distance(aimedCell, a.CellId) : 0;
+                            int db = aimedCell >= 0
+                                ? Jondo.Unity.World.Maps.MapGeometry.Distance(aimedCell, b.CellId) : 0;
+                            return da != db ? da.CompareTo(db) : a.Id.CompareTo(b.Id);
+                        });
+                        candidatos.RemoveRange(1, candidatos.Count - 1);
+                    }
+
+                    foreach (var candidato in candidatos)
+                    {
+                        // Quién lanza el hijo. En el 1017, el 2792 y sus primos es el CANDIDATO,
+                        // y eso no es cosmético: las máscaras del hijo se resuelven contra él.
+                        // Medido con la lanza del Forjalanza, cuyo hijo lleva un «mata al
+                        // objetivo» con máscara C y acaba matando a la propia lanza.
+                        var lanzaElHijo = comoVa.LanzaElCandidato ? candidato : caster;
+
+                        // Y a qué apunta.
+                        Fighter aQuien;
+                        int aQueCasilla;
+                        switch (comoVa.Apunta)
+                        {
+                            case Apunta.AlLanzadorPadre:
+                                aQuien = caster;
+                                aQueCasilla = caster.CellId;
+                                break;
+
+                            case Apunta.ALaCasillaDelPadre:
+                                // La casilla del padre, y el objetivo se vuelve a resolver AHORA:
+                                // hay hechizos que apuntan a casilla vacía y plantan ahí la
+                                // invocación que el hijo tiene que alcanzar. Congelar el objetivo
+                                // los dejaría sin hacer nada, en silencio.
+                                aQueCasilla = aimedCell >= 0 ? aimedCell : candidato.CellId;
+                                aQuien = EnLaCasilla(combat, aQueCasilla);
+                                break;
+
+                            default:
+                                aQuien = candidato;
+                                aQueCasilla = candidato.CellId;
+                                break;
+                        }
+
+                        fuera.AddRange(Resolver(combat, lanzaElHijo, efecto.DiceNum,
+                                                Math.Max(1, efecto.DiceSide),
+                                                aQuien, AlLanzar, round, depth + 1,
+                                                aQueCasilla, critico: false,
+                                                nearestChainBudget: nearestChainBudget));
                     }
                     continue;
                 }
@@ -749,6 +1189,17 @@ namespace Jondo.Unity.Server.Managers
         /// Si no se sabe a qué casilla se apuntó —las actitudes y los encadenados no apuntan a
         /// ninguna— se cae al objetivo de siempre, que es lo que se hacía antes de haber zonas.
         /// </summary>
+        /// <summary>Quién está pisando una casilla, o nadie.</summary>
+        private static Fighter EnLaCasilla(FightInstance combate, int casilla)
+        {
+            if (casilla < 0) return null;
+            foreach (var quien in Todos(combate))
+            {
+                if (quien != null && quien.IsAlive && quien.CellId == casilla) return quien;
+            }
+            return null;
+        }
+
         private static IEnumerable<Fighter> EnLaZona(FightInstance combate, Fighter quienLanza,
                                                      Fighter objetivo, SpellEffect efecto,
                                                      int celdaApuntada)
@@ -815,6 +1266,258 @@ namespace Jondo.Unity.Server.Managers
                 };
             }
 
+            if (efecto.EffectId == GlifoDeAura || efecto.EffectId == GlifoDeInicioDeTurno
+                || efecto.EffectId == Trampa || efecto.EffectId == Runa)
+            {
+                // Se pone UNA vez por lanzamiento, no una por cada uno al que pille la zona: la
+                // zona del efecto es la HUELLA del glifo, no su lista de víctimas.
+                if (sobre != quienLanza && celdaApuntada >= 0) return null;
+                if (celdaApuntada < 0) return null;
+                if (efecto.DiceNum <= 0) return null;
+
+                var huella = Jondo.Unity.World.Maps.Zone.Casillas(
+                    efecto.Forma, efecto.Tamano, quienLanza.CellId, celdaApuntada);
+                if (huella.Count == 0) huella = new List<int> { celdaApuntada };
+
+                var cuando = efecto.EffectId switch
+                {
+                    Trampa => Jondo.Unity.World.Fights.Disparo.AlPisar,
+                    GlifoDeInicioDeTurno => Jondo.Unity.World.Fights.Disparo.AlEmpezarElTurno,
+                    _ => Jondo.Unity.World.Fights.Disparo.AlPisarYAlEmpezar,
+                };
+
+                var puesto = combate.Poner(new Jondo.Unity.World.Fights.Glifo(
+                    quienLanza.Id, huella, efecto.DiceNum, Math.Max(1, efecto.DiceSide),
+                    efecto.Value, Caduca(efecto, ronda), efecto.TargetMask, cuando));
+
+                return new Outcome
+                {
+                    Sobre = quienLanza, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    Glifo = puesto,
+                };
+            }
+
+            if (efecto.EffectId == QuitaPorcentajeDeVida)
+            {
+                if (sobre == null || !sobre.IsAlive) return null;
+
+                int porciento = efecto.DiceNum != 0 ? efecto.DiceNum : efecto.Value;
+                if (porciento <= 0) return null;
+
+                // Sobre el TOPE, no sobre lo que le queda: si fuera sobre lo que le queda, un
+                // noventa por ciento nunca mataría a nadie por muchas veces que se lanzara.
+                int quita = Math.Max(1, sobre.MaxHP * porciento / 100);
+
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    Fulmina = false,
+                    VidaQueSeVa = quita,
+                };
+            }
+
+            if (efecto.EffectId == TransfiereVida)
+            {
+                if (sobre == null || !sobre.IsAlive || !quienLanza.IsAlive) return null;
+                if (sobre == quienLanza) return null;
+
+                int porciento = efecto.DiceNum != 0 ? efecto.DiceNum : efecto.Value;
+                if (porciento <= 0) return null;
+
+                // De la vida QUE LE QUEDA al que la da: no se puede regalar lo que ya no se
+                // tiene. Y nunca hasta matarse: se queda con uno.
+                int cuanto = Math.Min(quienLanza.CurrentHP - 1, quienLanza.CurrentHP * porciento / 100);
+                if (cuanto <= 0) return null;
+
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    VidaTransferida = cuanto,
+                };
+            }
+
+            if (efecto.EffectId == DevuelvePA)
+            {
+                int cuantos = efecto.DiceNum != 0 ? efecto.DiceNum : efecto.Value;
+                if (cuantos <= 0) return null;
+
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    Caracteristica = PuntosDeAccion, Cuanto = cuantos,
+                };
+            }
+
+            if (efecto.EffectId == AcortaLosEfectos)
+            {
+                int rondas = efecto.DiceNum != 0 ? efecto.DiceNum : efecto.Value;
+                if (rondas <= 0) return null;
+
+                int caidos = sobre.Buffs.Acortar(rondas, ronda);
+                if (caidos == 0) return null;
+
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    EmbrujosCaidos = caidos,
+                };
+            }
+
+            if (efecto.EffectId == MataYReemplaza)
+            {
+                if (!sobre.IsAlive) return null;
+                if (efecto.DiceNum <= 0) return null;
+
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    Fulmina = true,
+                    Invoca = efecto.DiceNum,
+                    EnLaCasillaDelMuerto = true,
+                };
+            }
+
+            if (efecto.EffectId == EscudoPorNivel || efecto.EffectId == EscudoPorVida)
+            {
+                int porciento = efecto.DiceNum != 0 ? efecto.DiceNum : efecto.Value;
+                if (porciento <= 0) return null;
+
+                // El 1020 va sobre el nivel DEL QUE LANZA y el 1039 sobre la vida DEL QUE LO
+                // RECIBE. Son dos bases distintas y confundirlas da escudos de otro orden: un
+                // 150% de nivel son 300 puntos a nivel 200, y un 150% de vida serían miles.
+                int base_ = efecto.EffectId == EscudoPorNivel ? quienLanza.Level : sobre.MaxHP;
+                int cuanto = base_ * porciento / 100;
+                if (cuanto <= 0) return null;
+
+                int caduca = Caduca(efecto, ronda);
+                sobre.Escudar(cuanto, caduca);
+
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    Escudo = cuanto,
+                };
+            }
+
+            if (efecto.EffectId == SimetricoRespectoAlObjetivo
+                || efecto.EffectId == SimetricoRespectoAlLanzador
+                || efecto.EffectId == Simetrico)
+            {
+                int pivote = efecto.EffectId switch
+                {
+                    SimetricoRespectoAlLanzador => quienLanza.CellId,
+                    SimetricoRespectoAlObjetivo => celdaApuntada >= 0 ? celdaApuntada : sobre.CellId,
+                    _ => celdaApuntada >= 0 ? celdaApuntada : quienLanza.CellId,
+                };
+
+                int alOtroLado = Jondo.Unity.World.Maps.MapGeometry.Reflejar(sobre.CellId, pivote);
+                if (alOtroLado < 0 || alOtroLado == sobre.CellId) return null;
+
+                // El suelo manda, igual que en el teletransporte normal: una casilla que no se
+                // puede pisar o que ya tiene a alguien encima deja el reflejo sin hacer.
+                var suelo = MapManager.GetFightWalkable(combate.ArenaMapId);
+                if (suelo != null && !suelo.Contains(alOtroLado)) return null;
+
+                foreach (var otro in Todos(combate))
+                {
+                    if (otro != null && otro.IsAlive && otro.CellId == alOtroLado) return null;
+                }
+
+                int veniaDe = sobre.CellId;
+                sobre.MoverA(alOtroLado);
+
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    CasillaDesde = veniaDe, CasillaHasta = alOtroLado,
+                };
+            }
+
+            if (efecto.EffectId == ALaPosicionAnterior)
+            {
+                // Deshacer el último movimiento. Sin memoria de dónde estaba no hay nada que
+                // deshacer, y devolver a cualquier sitio sería peor que no hacer nada.
+                int antes = sobre.CasillaAnterior;
+                if (antes < 0 || antes == sobre.CellId) return null;
+
+                var suelo = MapManager.GetFightWalkable(combate.ArenaMapId);
+                if (suelo != null && !suelo.Contains(antes)) return null;
+
+                foreach (var otro in Todos(combate))
+                {
+                    if (otro != null && otro.IsAlive && otro.CellId == antes) return null;
+                }
+
+                int veniaDe = sobre.CellId;
+                sobre.CellId = antes;
+
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    CasillaDesde = veniaDe, CasillaHasta = antes,
+                };
+            }
+
+            if (efecto.EffectId == Teletransportar)
+            {
+                if (celdaApuntada < 0) return null;
+                if (sobre.CellId == celdaApuntada) return null;
+
+                // El suelo manda. Una casilla que no se puede pisar, o que ya tiene a alguien
+                // encima, deja el teletransporte sin hacer: es preferible a mandar a nadie a un
+                // agujero, que es lo que pasaba con los empujones antes de mirar el suelo.
+                var pisables = MapManager.GetFightWalkable(combate.ArenaMapId);
+                if (pisables != null && !pisables.Contains(celdaApuntada)) return null;
+
+                foreach (var otro in Todos(combate))
+                {
+                    if (otro != null && otro.IsAlive && otro.CellId == celdaApuntada) return null;
+                }
+
+                int deDonde = sobre.CellId;
+                sobre.MoverA(celdaApuntada);
+
+                return new Outcome
+                {
+                    Sobre = sobre, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    CasillaDesde = deDonde, CasillaHasta = celdaApuntada,
+                };
+            }
+
+            if (efecto.EffectId == IntercambiarPosiciones)
+            {
+                if (sobre == quienLanza) return null;
+                if (sobre.CellId == quienLanza.CellId) return null;
+
+                // Aquí no se mira el suelo: las dos casillas ya las está pisando alguien, así que
+                // por definición se pueden pisar. Y tampoco se mira si están ocupadas, porque lo
+                // están las dos y justamente por eso el cambio es posible.
+                int delObjetivo = sobre.CellId;
+                int delLanzador = quienLanza.CellId;
+
+                sobre.MoverA(delLanzador);
+                quienLanza.MoverA(delObjetivo);
+
+                return new Outcome
+                {
+                    Sobre = sobre, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    CasillaDesde = delObjetivo, CasillaHasta = delLanzador,
+                    Tambien = quienLanza,
+                    CasillaDesdeDelOtro = delLanzador, CasillaHastaDelOtro = delObjetivo,
+                };
+            }
+
             if (efecto.EffectId == Empujar || efecto.EffectId == Tirar ||
                 efecto.EffectId == Retroceder || efecto.EffectId == Avanzar)
             {
@@ -863,7 +1566,7 @@ namespace Jondo.Unity.Server.Managers
                     celdaApuntada, quienLanza.CellId, desde, cuantas,
                     pisables: pisables, ocupadas: ocupadas);
 
-                sobre.CellId = empujon.ToCell;
+                sobre.MoverA(empujon.ToCell);
 
                 // EL DAÑO DE COLISIÓN, que no se hacía en absoluto.
                 //
@@ -930,7 +1633,7 @@ namespace Jondo.Unity.Server.Managers
                 };
             }
 
-            if (efecto.EffectId == Invocar)
+            if (Invocaciones.Contains(efecto.EffectId))
             {
                 // "Invoca: #1", con la plantilla del bicho en el dado. No lo saca al tablero el
                 // motor: hace falta repartir identificador, rehacer el orden de turnos y avisar
@@ -1116,7 +1819,7 @@ namespace Jondo.Unity.Server.Managers
             // Fixed healing uses one roll for the whole zone. Distance falloff changes only that
             // shared base; Intelligence, flat heals and the target's received-healing multiplier
             // are then applied independently. Power and damage bonuses never participate.
-            if (efecto.EffectId == FixedHeal)
+            if (EsCuraFija(efecto.EffectId))
             {
                 if (sobre == null || !sobre.IsAlive) return null;
 
@@ -1130,9 +1833,9 @@ namespace Jondo.Unity.Server.Managers
                     : 0;
                 baseHeal = ConLaCaidaDeLaZona(baseHeal, efecto, distance);
 
-                // La caracteristica del ELEMENTO del efecto. Hoy siempre es inteligencia porque
-                // la unica cura fija implementada es la de fuego, pero clavar el 15 aqui es lo que
-                // hace que las otras cinco salgan mal el dia que se implementen.
+                // La característica del ELEMENTO del efecto. Ya no es siempre inteligencia: con
+                // las cinco curas activas, el agua escala con suerte, el aire con agilidad y la
+                // tierra con fuerza. Por eso esto era una búsqueda y no un 15 clavado.
                 int elementOfHeal = efecto.Element >= 0
                     ? efecto.Element
                     : DatabaseManager.EffectElement(efecto.EffectId);

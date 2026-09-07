@@ -161,6 +161,34 @@ namespace Jondo.Unity.World.Fights
         /// Quita un estado y los embrujos que lo representaban en el panel. Devolverlos permite
         /// que la capa de red mande un <c>jya</c> por cada uno.
         /// </summary>
+        /// <summary>
+        /// Le recorta rondas a todos los embrujos y devuelve cuántos se han caído del todo.
+        /// </summary>
+        /// <remarks>
+        /// Es el efecto 1075, «Duración de los efectos: -N», que llevan 167 hechizos —el Grito
+        /// Terrorífico del Ouginak con cuatro rondas, por ejemplo—.
+        ///
+        /// Los que NO caducan por ronda se quedan como están: un embrujo permanente no se acorta,
+        /// porque no tiene nada que acortar, y restarle rondas a un cero lo dejaría caducado en la
+        /// ronda pasada y se caería entero.
+        /// </remarks>
+        public int Acortar(int rondas, int ahora)
+        {
+            if (rondas <= 0) return 0;
+
+            var caidos = new List<Buff>();
+            foreach (var embrujo in _puestos)
+            {
+                if (embrujo.CaducaEnRonda <= 0) continue;
+
+                embrujo.CaducaEnRonda -= rondas;
+                if (embrujo.CaducaEnRonda <= ahora) caidos.Add(embrujo);
+            }
+
+            foreach (var muerto in caidos) _puestos.Remove(muerto);
+            return caidos.Count;
+        }
+
         public List<Buff> QuitarEstadoConEmbrujos(int estado)
         {
             _estados.Remove(estado);

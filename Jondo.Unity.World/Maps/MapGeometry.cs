@@ -72,6 +72,31 @@ namespace Jondo.Unity.World.Maps
         public static int PointToCell(int x, int y)
             => CellByPoint.TryGetValue((x, y), out int c) ? c : -1;
 
+        /// <summary>
+        /// La casilla simétrica de otra respecto a un pivote: el otro lado, a la misma distancia.
+        /// </summary>
+        /// <remarks>
+        /// Lo piden los cuatro teletransportes simétricos del catálogo —1104 respecto al objetivo,
+        /// 1105 respecto al lanzador, 1106 y 1100—, que entre ellos tocan 54 hechizos de clase.
+        ///
+        /// Se hace en coordenadas del mapa y no sobre el número de casilla: la retícula de Dofus
+        /// va en diagonal, así que sumar o restar al índice de la casilla da un sitio que no tiene
+        /// nada que ver con el reflejo. Con (x, y) es una resta y ya.
+        ///
+        /// Devuelve -1 cuando el reflejo cae fuera del tablero, para que quien llame decida qué
+        /// hacer en vez de mandar a alguien a una casilla que no existe.
+        /// </remarks>
+        public static int Reflejar(int casilla, int pivote)
+        {
+            if (!IsValid(casilla) || !IsValid(pivote)) return -1;
+
+            var (cx, cy) = CellToPoint(casilla);
+            var (px, py) = CellToPoint(pivote);
+
+            int destino = PointToCell(2 * px - cx, 2 * py - cy);
+            return IsValid(destino) ? destino : -1;
+        }
+
         /// <summary>The four cells one step (1 MP) away. Never diagonal.</summary>
         public static IEnumerable<int> GetNeighbors(int cell)
             => IsValid(cell) ? Neighbors[cell] : Array.Empty<int>();

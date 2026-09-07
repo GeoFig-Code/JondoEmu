@@ -72,18 +72,18 @@ namespace Jondo.Unity.Tests.World
         }
 
         [Fact]
-        public void Un_sueno_tiene_salas_de_favor_a_partir_de_la_fila_dos()
+        public void La_tienda_esta_en_la_fuente_y_solo_alli()
         {
+            // Corregido tras medir: la tienda no va repartida por las filas de en medio. Las 529
+            // salas de las filas 1, 2 y 3 son TODAS de pelea, y la guía lo remata —los Favores no
+            // salen en el primer palier—. La única sala sin pelea es la Fuente del final.
             Interactives.Initialize();
             Dreams.OlvidarTodo();
             var s = Dreams.Crear(1, "Prueba", 200, 5, 100, 200);
 
-            var favores = s.Salas.Where(x => x.EsFavor).ToList();
-            Assert.NotEmpty(favores);
-            Assert.All(favores, x => Assert.True(x.Fila >= 2));
-
-            // Y en una sala de Favor no se pelea: no lleva grupo.
-            Assert.All(favores, x => Assert.Empty(x.Miembros));
+            var fuente = Assert.Single(s.Salas.Where(x => x.EsFuente));
+            Assert.Empty(fuente.Miembros);
+            Assert.Equal(s.Salas.Max(x => x.Fila), fuente.Fila);
         }
     }
 }
