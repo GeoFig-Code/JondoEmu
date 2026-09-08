@@ -1,0 +1,182 @@
+﻿using System.Collections.Generic;
+using System.Linq;
+using Jondo.Unity.World.Fights;
+using Jondo.Unity.World.Maps;
+
+namespace Jondo.Unity.Server.Managers
+{
+    /// <summary>One wall: the bombs that hold it up and the ground between them.</summary>
+    public sealed class BombWall
+    {
+        public BombWall(long owner, int template, IReadOnlyList<Fighter> bombs,
+                        IReadOnlyList<int> cells)
+        {
+            Owner = owner;
+            Template = template;
+            Bombs = bombs;
+            Cells = cells;
+        }
+
+        public long Owner { get; }
+        public int Template { get; }
+        public IReadOnlyList<Fighter> Bombs { get; }
+
+        /// <summary>The cells BETWEEN the bombs. The bombs' own cells are not part of it.</summary>
+        public IReadOnlyList<int> Cells { get; }
+
+        public bool Covers(int cell) => Cells.Contains(cell);
+
+        public override string ToString()
+            => $"muro de {Bombs.Count} bomba(s) {Template} de {Owner}, {Cells.Count} casilla(s)";
+    }
+
+    /// <summary>
+    /// The walls the Rogue's bombs raise between themselves.
+    /// </summary>
+    /// <remarks>
+    /// From the client's own class sheet: "Cuando hay al menos 2 bombas alineadas y espaciadas de
+    /// 2 a 6 casillas máximo, forman automáticamente un muro de bombas. Se trata de un glifo en el
+    /// suelo que no bloquea los desplazamientos ni las líneas de visión. Un muro puede estar
+    /// formado por tres bombas como mucho."
+    ///
+    /// Nothing places a wall and nothing removes one: it is a FUNCTION of where the bombs are, so
+    /// it is computed on demand and never stored. A bomb that dies takes its wall with it without
+    /// anybody having to remember to clean up, and one that is pushed into line raises a wall on
+    /// the spot -- which is what the sheet means by "automáticamente".
+    ///
+    /// Two things here are inference rather than measurement, and both are named as such:
+    ///
+    /// - THE BOMBS MUST BE OF THE SAME KIND. The sheet never says so outright, but it speaks of
+    ///   "muros de aire, es decir, formados por tornabombas" and the catalogue has one wall spell
+    ///   per element -- 13458 fire, 13461 air, 13465 water, 13501 earth -- with no spell for a
+    ///   mixed one. A wall of two different bombs would have no spell to cast.
+    /// - "ALIGNED" IS THE GAME'S OWN SENSE of the word: same row or same column of the isometric
+    ///   grid, which in (x, y) means sharing one coordinate. Diagonals do not count.
+    /// </remarks>
+    public static class BombWalls
+    {
+        /// <summary>The closest and furthest two bombs can stand and still hold a wall.</summary>
+        public const int MinGap = 2;
+        public const int MaxGap = 6;
+
+        /// <summary>"Un muro puede estar formado por tres bombas como mucho."</summary>
+        public const int MaxBombs = 3;
+
+        /// <summary>
+        /// Which spell each wall throws at whoever walks into it.
+        /// </summary>
+        /// <remarks>
+        /// STILL MEASURED, unlike the explosion table next door. The client's SpellBombData does
+        /// carry a <c>wallId</c> for every bomb -- 2 fire, 3 air, 4 water, 5 earth -- but the
+        /// table those ids point INTO is not in the dump, so there is nothing to read the spell
+        /// from. The four here come from the catalogue's own element groups: 13458 Muro de Fuego
+        /// is type 2320 with the fire explosion, 13461 is 2321 with the air one, 13465 is 2322,
+        /// 13501 is 2323, and the wallIds run 2, 3, 4, 5 in that same order.
+        /// </remarks>
+        public static readonly IReadOnlyDictionary<int, int> WallSpell = new Dictionary<int, int>
+        {
+            [3112] = 13458,   // Explobomba     -> Muro de Fuego
+            [3113] = 13461,   // Tornabomba     -> Muro de Aire
+            [3114] = 13465,   // Bomba de agua  -> Muro de Agua
+            [5161] = 13501,   // Sismobomba     -> Muro de Tierra
+        };
+
+        /// <summary>Every wall a fighter's bombs are holding up right now.</summary>
+        public static List<BombWall> Of(IEnumerable<Fighter> everybody, Fighter owner)
+        {
+            var walls = new List<BombWall>();
+            if (owner == null) return walls;
+
+            var bombs = everybody
+                .Where(f => f != null && f.IsAlive && f.EsInvocado && f.Invocador == owner.Id
+                            && WallSpell.ContainsKey(f.MonsterId))
+                .ToList();
+            if (bombs.Count < 2) return walls;
+
+            foreach (var byTemplate in bombs.GroupBy(f => f.MonsterId))
+            {
+                // Two passes, one per axis: bombs sharing an X stand in a column, bombs sharing
+                // a Y stand in a row.
+                foreach (bool alongY in new[] { true, false })
+                {
+                    var lines = byTemplate.GroupBy(f => alongY
+                        ? MapGeometry.CellToPoint(f.CellId).X
+                        : MapGeometry.CellToPoint(f.CellId).Y);
+
+                    foreach (var line in lines)
+                    {
+                        var inOrder = line
+                            .OrderBy(f => alongY
+                                ? MapGeometry.CellToPoint(f.CellId).Y
+                                : MapGeometry.CellToPoint(f.CellId).X)
+                            .ToList();
+                        if (inOrder.Count < 2) continue;
+
+                        walls.AddRange(Chains(owner.Id, byTemplate.Key, inOrder, alongY));
+                    }
+                }
+            }
+            return walls;
+        }
+
+        /// <summary>The wall covering a cell, if any of this fighter's walls does.</summary>
+        public static BombWall Covering(IEnumerable<Fighter> everybody, Fighter owner, int cell)
+            => Of(everybody, owner).FirstOrDefault(wall => wall.Covers(cell));
+
+        /// <summary>
+        /// Walks one line of bombs and cuts it into walls: consecutive ones join while the gap
+        /// stays inside the allowed range, and a wall closes as soon as it holds three.
+        /// </summary>
+        private static IEnumerable<BombWall> Chains(long owner, int template,
+                                                    IReadOnlyList<Fighter> inOrder, bool alongY)
+        {
+            var current = new List<Fighter> { inOrder[0] };
+
+            for (int i = 1; i < inOrder.Count; i++)
+            {
+                int gap = MapGeometry.Distance(current[^1].CellId, inOrder[i].CellId);
+                bool joins = gap >= MinGap && gap <= MaxGap;
+
+                if (joins) current.Add(inOrder[i]);
+
+                if (!joins || current.Count == MaxBombs)
+                {
+                    if (current.Count >= 2) yield return Build(owner, template, current, alongY);
+                    // A bomb can only hold one wall at a time, so the next chain starts fresh
+                    // from the one that closed it.
+                    current = new List<Fighter> { inOrder[i] };
+                }
+            }
+
+            if (current.Count >= 2) yield return Build(owner, template, current, alongY);
+        }
+
+        private static BombWall Build(long owner, int template, List<Fighter> bombs, bool alongY)
+        {
+            var cells = new List<int>();
+            for (int i = 1; i < bombs.Count; i++)
+            {
+                cells.AddRange(Between(bombs[i - 1].CellId, bombs[i].CellId, alongY));
+            }
+            return new BombWall(owner, template, bombs.ToList(), cells);
+        }
+
+        /// <summary>The cells strictly between two aligned ones.</summary>
+        private static IEnumerable<int> Between(int from, int to, bool alongY)
+        {
+            var (fx, fy) = MapGeometry.CellToPoint(from);
+            var (tx, ty) = MapGeometry.CellToPoint(to);
+
+            int steps = alongY ? ty - fy : tx - fx;
+            int step = steps > 0 ? 1 : -1;
+
+            for (int i = 1; i < System.Math.Abs(steps); i++)
+            {
+                int cell = alongY
+                    ? MapGeometry.PointToCell(fx, fy + i * step)
+                    : MapGeometry.PointToCell(fx + i * step, fy);
+                if (cell >= 0) yield return cell;
+            }
+        }
+    }
+}

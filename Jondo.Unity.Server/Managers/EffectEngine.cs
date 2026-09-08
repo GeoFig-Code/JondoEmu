@@ -1,4 +1,4 @@
-using Jondo.Unity.World.Combat;
+﻿using Jondo.Unity.World.Combat;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -599,7 +599,27 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Los tres efectos que sacan un bicho al tablero.</summary>
         private static readonly HashSet<int> Invocaciones = new HashSet<int> { 181, 1008, 1011 };
 
+        /// <summary>"Activa una bomba". 36 spells carry it, and none of them worked before.</summary>
+        /// <remarks>
+        /// It is what the Rogue's Detonador is made of, and Estopín, Detonación, the three
+        /// Explosión Tymadora, Tornado Tymador, Tormenta Tymadora, Polvo and Bombinmóvil. Without
+        /// it a bomb sat on the board until something killed it, and dying is not exploding: per
+        /// the client's own class sheet, "si se mata una bomba que no sea mediante un hechizo que
+        /// active la explosión, normalmente morirá sin ocasionar daños ni retiradas".
+        /// </remarks>
+        public const int ActivarBomba = 1009;
+
+
         public static bool VaAlSuelo(int efecto) => AlSuelo.Contains(efecto);
+
+        /// <summary>Whether this effect puts a summoned creature on the board.</summary>
+        /// <remarks>
+        /// The three ids read the same in the client -- "Invoca: #1", with the template in the
+        /// die -- and the caller almost always wants all three. Checking only 181, which is what
+        /// the cast preflight did, misses the Rogue's bombs and the Sadida's trees: those come
+        /// through 1008.
+        /// </remarks>
+        public static bool EsInvocacion(int efecto) => Invocaciones.Contains(efecto);
 
         /// <summary>Fixed healing. The element's characteristic scales the roll; 49 is flat.</summary>
         private const int FixedHeal = EffectSupport.FireHeal;
@@ -796,7 +816,8 @@ namespace Jondo.Unity.Server.Managers
                                                   string disparador, int ronda, int hondo = 0,
                                                   int celdaApuntada = -1, bool critico = false,
                                                   int nearestChainBudget = -1,
-                                                  Fighter animationCaster = null)
+                                                  Fighter animationCaster = null,
+                                                  HashSet<long> bombasYaEstalladas = null)
         {
             if (hondo > HondoMaximo) return new List<Outcome>();
             if (nearestChainBudget < 0)
@@ -805,7 +826,8 @@ namespace Jondo.Unity.Server.Managers
                                   EfectosDeLaTirada(hechizo, grado, critico), hondo,
                                   celdaApuntada, critical: critico,
                                   nearestChainBudget: nearestChainBudget,
-                                  animationCaster: animationCaster);
+                                  animationCaster: animationCaster,
+                                  bombasYaEstalladas: bombasYaEstalladas);
         }
 
         /// <summary>
@@ -826,9 +848,11 @@ namespace Jondo.Unity.Server.Managers
             string trigger, int round, IReadOnlyList<SpellEffect> effects, int depth = 0,
             int aimedCell = -1, Func<SpellEffect, int> rollEffect = null,
             bool critical = false, int nearestChainBudget = -1,
-            Fighter animationCaster = null)
+            Fighter animationCaster = null,
+            HashSet<long> bombasYaEstalladas = null)
         {
             var fuera = new List<Outcome>();
+            bombasYaEstalladas ??= new HashSet<long>();
             if (depth > HondoMaximo) return fuera;
             if (nearestChainBudget < 0)
                 nearestChainBudget = Todos(combat).Count(fighter => fighter != null && fighter.IsAlive);
@@ -908,6 +932,26 @@ namespace Jondo.Unity.Server.Managers
                 // Pero una baliza se invoca justamente donde NO hay nadie: no había candidato, la
                 // consecuencia no se creaba y no se pedía invocar nada. El paquete y el reenvío de
                 // la lista estaban bien; lo que no llegaba era la orden.
+                // Una bomba lanzada sobre casilla OCUPADA no se planta: estalla ahí mismo, y con
+                // su otro hechizo. Aquí y no en quien invoca porque la decisión es del efecto:
+                // según a dónde apunte, el mismo 1008 saca una bomba o no saca ninguna.
+                int alObjetivo = Bombs.OnTarget(efecto.DiceNum);
+                if (Invocaciones.Contains(efecto.EffectId) && alObjetivo != 0 && aimedCell >= 0)
+                {
+                    var quienEstaAhi = EnLaCasilla(combat, aimedCell);
+                    if (quienEstaAhi != null)
+                    {
+                        if (depth >= HondoMaximo) continue;
+                        fuera.AddRange(Resolver(combat, caster, alObjetivo,
+                                                Math.Max(1, efecto.DiceSide),
+                                                quienEstaAhi, AlLanzar, round, depth + 1,
+                                                aimedCell, critico: false,
+                                                nearestChainBudget: nearestChainBudget,
+                                                bombasYaEstalladas: bombasYaEstalladas));
+                        continue;
+                    }
+                }
+
                 if (VaAlSuelo(efecto.EffectId))
                 {
                     var puesta = Aplicar(combat, caster, caster, spell, grade, efecto,
@@ -946,6 +990,38 @@ namespace Jondo.Unity.Server.Managers
                             // Keep damage attribution on the Cra while drawing the next spell
                             // from the previous victim's cell.
                             target));
+                    }
+                    continue;
+                }
+
+                // «Activa una bomba»: la bomba apuntada lanza SU explosión, y la explosión trae
+                // dentro todo lo demás —el daño de su elemento en círculo de radio dos, el 141
+                // que la mata y otro 1009 que enciende a las bombas que pille dentro—.
+                if (efecto.EffectId == ActivarBomba)
+                {
+                    if (depth >= HondoMaximo) continue;
+
+                    foreach (var bomba in AQuien(combat, caster, target, efecto, aimedCell,
+                                                 estadosAlEmpezar))
+                    {
+                        if (bomba == null || !bomba.IsAlive) continue;
+                        int explosion = Bombs.Explosion(bomba.MonsterId);
+                        if (explosion == 0) continue;
+
+                        // UNA VEZ POR CADENA. Dos bombas dentro del radio de la otra se encienden
+                        // mutuamente, y sin esto se cobrarían el daño una vez por rebote hasta
+                        // agotar la profundidad.
+                        if (!bombasYaEstalladas.Add(bomba.Id)) continue;
+
+                        // La lanza ella, desde su casilla y en su propio grado. Medido en
+                        // «tymador-detonador»: la bomba -5, invocada en grado 3, lanza el 13455
+                        // en su nivel 41955, que es el grado 3.
+                        fuera.AddRange(Resolver(combat, bomba, explosion,
+                                                Math.Max(1, bomba.GradeIndex),
+                                                bomba, AlLanzar, round, depth + 1,
+                                                bomba.CellId, critico: false,
+                                                nearestChainBudget: nearestChainBudget,
+                                                bombasYaEstalladas: bombasYaEstalladas));
                     }
                     continue;
                 }
@@ -1028,7 +1104,8 @@ namespace Jondo.Unity.Server.Managers
                                                 Math.Max(1, efecto.DiceSide),
                                                 aQuien, AlLanzar, round, depth + 1,
                                                 aQueCasilla, critico: false,
-                                                nearestChainBudget: nearestChainBudget));
+                                                nearestChainBudget: nearestChainBudget,
+                                                bombasYaEstalladas: bombasYaEstalladas));
                     }
                     continue;
                 }
@@ -1058,7 +1135,8 @@ namespace Jondo.Unity.Server.Managers
                         fuera.AddRange(Resolver(combat, caster, hecho.HechizoEncadenado,
                                                 hecho.GradoEncadenado, sobre, AlLanzar, round,
                                                 depth + 1, aimedCell, critical,
-                                                nearestChainBudget));
+                                                nearestChainBudget,
+                                                bombasYaEstalladas: bombasYaEstalladas));
                     }
                 }
             }

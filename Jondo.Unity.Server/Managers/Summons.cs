@@ -52,6 +52,18 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>El hechizo que gobierna al bicho, y en qué grado.</summary>
         public int HechizoPropio { get; init; }
         public int GradoDelHechizoPropio { get; init; }
+
+        /// <summary>
+        /// How much of the caster's summon capacity this creature occupies, from the template's
+        /// own <c>summonCost</c>. Not every summon costs one: of the 5,134 templates in
+        /// world.db, 4,640 cost 1, <b>485 cost ZERO</b>, four cost 2 and five cost 3.
+        ///
+        /// The zero ones are why the Rogue could only place a single bomb. Explobomba (3112),
+        /// Tornabomba (3113) and Bomba de agua (3114) all read 0, so three of them fit next to a
+        /// real summon; the Osamodas' Gorditofu reads 2 and his Crujintesco 3, so one of those
+        /// fills a capacity of three on its own.
+        /// </summary>
+        public int SummonCost { get; init; } = 1;
     }
 
     public static class Summons
@@ -199,6 +211,12 @@ namespace Jondo.Unity.Server.Managers
                     ResistenciaAire = Entero(gr, "airResistance"),
                     HechizoPropio = hechizo,
                     GradoDelHechizoPropio = gradoDelHechizo,
+                    // Absent means one, not free: a template with no summonCost at all is an
+                    // ordinary summon. Every template in world.db carries the key, so this
+                    // default only guards against a future dump that drops it.
+                    SummonCost = doc.RootElement.TryGetProperty("summonCost", out _)
+                        ? Math.Max(0, Entero(doc.RootElement, "summonCost"))
+                        : 1,
                 };
             }
             catch (Exception ex)

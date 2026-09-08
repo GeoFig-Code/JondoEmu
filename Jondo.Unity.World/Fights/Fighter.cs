@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace Jondo.Unity.World.Fights
@@ -171,6 +171,18 @@ namespace Jondo.Unity.World.Fights
         /// a los daños y a los empujes, así que no tiene nada que hacer cuando le tocaría.
         /// </summary>
         public bool JuegaTurno { get; set; } = true;
+
+        /// <summary>
+        /// How much of its summoner's capacity this fighter takes up, copied from the template's
+        /// <c>summonCost</c> when it is summoned. Zero means it is free: the Rogue's bombs, the
+        /// Ocra's beacons and 483 other templates cost nothing at all, and a couple of the
+        /// Osamodas' big summons cost two or three on their own.
+        ///
+        /// Meaningless on anyone who was not summoned, and left at one there so a fighter that
+        /// somehow reaches the counter without a template still occupies a slot rather than
+        /// silently occupying none.
+        /// </summary>
+        public int SummonCost { get; set; } = 1;
 
         /// <summary>
         /// Lo que lleva puesto encima: embrujos, estados y las actitudes que le dan sus objetos.

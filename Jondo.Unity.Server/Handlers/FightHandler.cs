@@ -2299,6 +2299,9 @@ namespace Jondo.Unity.Server.Handlers
             await DispararLosGlifosAsync(stream, fight, fighter, alPisar: false);
             if (!fighter.IsAlive) return;
 
+            await DispararLosMurosAsync(stream, fight, fighter);
+            if (!fighter.IsAlive) return;
+
             await GivePointsBackAsync(stream, fight, fighter);
 
             // The sheets for expired buffs, and then the ones that give AP/MP back, can leave the
@@ -2317,6 +2320,9 @@ namespace Jondo.Unity.Server.Handlers
             // han pegado desde su turno anterior.
             await ActitudesAsync(stream, fight, fighter, Managers.EffectEngine.AlEmpezarElTurno);
             fighter.LeHanPegado = false;
+
+            // Y los dos combos que reparte el tymador entre sus bombas.
+            await CombosDelTurnoAsync(stream, fight, fighter);
 
             // El "ya puedes jugar" sólo va si el que juega es de los que maneja este cliente. En el
             // turno de un monstruo ese paso no existe.
@@ -2533,6 +2539,7 @@ namespace Jondo.Unity.Server.Handlers
             // Y lo que hubiera puesto en el suelo donde ha ido a parar. Va DESPUÉS de andar y de
             // los enganches: primero llega, y ya en su casilla nueva le salta lo que hubiera.
             await DispararLosGlifosAsync(stream, fight, walker, alPisar: true);
+            await DispararLosMurosAsync(stream, fight, walker);
         }
 
         /// <summary>
@@ -2586,6 +2593,60 @@ namespace Jondo.Unity.Server.Handlers
                 Program.LogDebug($"[Combate] Se llevan por delante {caidos.Count} glifo(s).");
             }
         }
+
+        /// <summary>
+        /// Los muros de bombas: lo que hay entre dos bombas alineadas del mismo tymador.
+        /// </summary>
+        /// <remarks>
+        /// Va por el mismo camino que los glifos y en los mismos dos momentos —al pisar y al
+        /// empezar el turno encima— porque es lo que la ficha de clase dice que es: «Se trata de
+        /// un glifo en el suelo que no bloquea los desplazamientos ni las líneas de visión. Una
+        /// entidad que se desplace en el muro o entre en él sufrirá daños, incluso si empieza su
+        /// turno en el interior».
+        ///
+        /// Pero NO es un <c>Glifo</c> guardado: un muro es una función de dónde están las bombas,
+        /// así que se calcula al vuelo. Una bomba que muere se lleva su muro sin que nadie tenga
+        /// que acordarse de borrarlo, y una que empujen hasta la línea lo levanta en el acto.
+        ///
+        /// Lo lanza la bomba con MÁS combo de las que sostienen el muro. Eso es inferencia: la
+        /// ficha dice que el muro se beneficia de la mitad del combo, pero no dice de cuál cuando
+        /// las bombas van a distinto nivel.
+        /// </remarks>
+        private static async Task DispararLosMurosAsync(NetworkStream stream, FightInstance fight,
+                                                        Fighter quien)
+        {
+            if (quien == null || !quien.IsAlive) return;
+
+            foreach (var dueno in TodosLosCombatientes(fight).ToList())
+            {
+                if (dueno == null || !dueno.IsAlive || dueno.IsMonster || dueno.EsInvocado) continue;
+
+                var muro = Managers.BombWalls.Covering(TodosLosCombatientes(fight), dueno,
+                                                       quien.CellId);
+                if (muro == null) continue;
+                if (!Managers.BombWalls.WallSpell.TryGetValue(muro.Template, out int hechizo))
+                    continue;
+
+                var lanza = muro.Bombs
+                    .OrderByDescending(b => Managers.Combo.LevelOf(b))
+                    .First();
+
+                Program.LogDebug($"[Muro] {quien.Id} está en el muro de {dueno.Id} " +
+                                 $"({muro.Bombs.Count} bomba(s) {muro.Template}); lo cobra la " +
+                                 $"bomba {lanza.Id} con el hechizo {hechizo}.");
+
+                await AplicarEfectosAsync(stream, fight, lanza, hechizo, MuroGrado, quien,
+                                          Managers.EffectEngine.AlLanzar,
+                                          celdaApuntada: quien.CellId);
+                if (!quien.IsAlive) return;
+            }
+        }
+
+        /// <summary>
+        /// El grado con el que pega un muro. Los cuatro hechizos de muro tienen tres, y no hay
+        /// captura que diga cuál usa el servidor real, así que va el más alto y queda dicho.
+        /// </summary>
+        private const int MuroGrado = 3;
 
         /// <summary>
         /// Lanzar un hechizo (jwh).
@@ -2839,11 +2900,21 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // Bombs answer to their own cap and to nothing else: they cost no capacity, so the
+            // check below would never stop them however many were already out.
+            if (EsBomba(plantilla) &&
+                ActiveBombCount(fight, quienInvoca) >= MaxBombsOnBoard)
+            {
+                Program.LogDebug($"[Fight] Fighter {quienInvoca.Id} already has {MaxBombsOnBoard} " +
+                                 $"bomb(s) on the board; template {plantilla} was not summoned.");
+                return;
+            }
+
             // Keep a defensive check for delayed or chained summon effects. Immediate casts have
             // already crossed the preflight in CastAsync, before paying AP.
             int limit = SummonLimitFor(quienInvoca, fight.RoundNumber);
-            int active = ActiveSummonCount(fight, quienInvoca);
-            if (limit > 0 && active >= limit)
+            int active = UsedSummonCapacity(fight, quienInvoca);
+            if (limit > 0 && receta.SummonCost > 0 && active + receta.SummonCost > limit)
             {
                 // Solo a quien invoca, y solo si es el jugador. Aqui se llega tambien desde el
                 // turno del monstruo y desde una invocacion lanzando su propio hechizo, y por esos
@@ -2876,6 +2947,7 @@ namespace Jondo.Unity.Server.Handlers
                 MonsterId = plantilla,
                 GradeIndex = grado,
                 Level = receta.Nivel,
+                SummonCost = receta.SummonCost,
                 Look = receta.Look,
                 HechizoPropio = receta.HechizoPropio,
                 MaxAP = receta.PuntosDeAccion,
@@ -2926,7 +2998,58 @@ namespace Jondo.Unity.Server.Handlers
                                           receta.GradoDelHechizoPropio,
                                           invocado, Managers.EffectEngine.AlLanzar, celda);
             }
+
+            // Y si es una bomba, nace en Combo I. Uno, no dos: medido en «tymador-explobomba
+            // resiliente», donde las tres bombas reciben UN combo la ronda en que salen y DOS
+            // cada ronda posterior.
+            if (EsBomba(plantilla))
+            {
+                await AplicarEfectosAsync(stream, fight, invocado, Managers.Combo.LadderSpell, 1,
+                                          invocado, Managers.EffectEngine.AlLanzar, celda);
+                Program.LogDebug($"[Combo] La bomba {invocado.Id} nace en el nivel " +
+                                 $"{Managers.Combo.LevelOf(invocado)}.");
+            }
         }
+
+        /// <summary>
+        /// Los dos combos que el tymador le da a cada una de sus bombas al empezar su turno.
+        /// </summary>
+        /// <remarks>
+        /// De la ficha de clase del cliente: «Al principio de cada turno, el tymador dará 2 combos
+        /// a todas sus bombas presentes en el terreno». Y medido: ocho rondas, tres bombas, dos
+        /// combos cada una cada ronda, salvo la ronda en que nace, que recibe uno solo.
+        ///
+        /// Las que nazcan DESPUÉS de este momento se quedan con el suyo de nacimiento, que es
+        /// justo lo que se ve en la captura y sale gratis por hacerlo al empezar el turno.
+        /// </remarks>
+        private static async Task CombosDelTurnoAsync(NetworkStream stream, FightInstance fight,
+                                                      Fighter dueno)
+        {
+            if (dueno == null || dueno.IsMonster) return;
+
+            var suyas = new List<Fighter>();
+            foreach (var f in TodosLosCombatientes(fight))
+            {
+                if (f.EsInvocado && f.IsAlive && f.Invocador == dueno.Id &&
+                    EsBomba(f.MonsterId)) suyas.Add(f);
+            }
+            if (suyas.Count == 0) return;
+
+            foreach (var bomba in suyas)
+            {
+                for (int vez = 0; vez < CombosPorTurno; vez++)
+                {
+                    await AplicarEfectosAsync(stream, fight, bomba, Managers.Combo.LadderSpell, 1,
+                                              bomba, Managers.EffectEngine.AlLanzar, bomba.CellId);
+                }
+                Program.LogDebug($"[Combo] La bomba {bomba.Id} sube al nivel " +
+                                 $"{Managers.Combo.LevelOf(bomba)} " +
+                                 $"({Managers.Combo.PercentOf(bomba)}% de daños).");
+            }
+        }
+
+        /// <summary>Lo que sube el combo de cada bomba al empezar el turno de su tymador.</summary>
+        internal const int CombosPorTurno = 2;
 
         /// <summary>
         /// Las esperas de uno, para el jxc. Se nombran TODAS las que alguna vez han estado
@@ -3115,12 +3238,29 @@ namespace Jondo.Unity.Server.Handlers
         private static async Task ReenviarLaListaAsync(NetworkStream stream, FightInstance fight)
         {
             var todos = new List<long>();
-            foreach (var f in fight.Azul) if (f.IsAlive) todos.Add(f.Id);
-            foreach (var f in fight.Rojo) if (f.IsAlive) todos.Add(f.Id);
+            foreach (var f in fight.Azul) if (EntraEnElCarrusel(f)) todos.Add(f.Id);
+            foreach (var f in fight.Rojo) if (EntraEnElCarrusel(f)) todos.Add(f.Id);
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzu,
                 Network.FightProtocol.BuildTeams(todos)));
         }
+
+        /// <summary>
+        /// Whether this fighter belongs in the jzu list, which is the carousel.
+        ///
+        /// A SUMMON THAT NEVER PLAYS IS NOT IN IT. The carousel is indexed against jzu -- the f7
+        /// of jzc is a position inside that list -- so listing something that never gets a turn
+        /// leaves a portrait in the strip that nothing ever highlights. That is what put a bomb
+        /// in the Rogue's carousel.
+        ///
+        /// Measured over the class captures: 52 summoned templates, 219 summons. Whether a summon
+        /// appears in any jzu matches whether it ever receives a jzc, with no counterexample in
+        /// either direction -- seven templates are listed without having played, all of them in
+        /// fights that ended first, and NOT ONE plays without being listed. The three Rogue bombs
+        /// are 66 summons, zero jzu, zero turns; the Ocra's Tactical Beacon 6 and 0; his Survival
+        /// Beacon, which does heal itself every turn, 3 and 3.
+        /// </summary>
+        internal static bool EntraEnElCarrusel(Fighter f) => f.IsAlive && (!f.EsInvocado || f.JuegaTurno);
 
         /// <summary>Characteristic 26, displayed as summon capacity by the client.</summary>
         private const int CaracteristicaDeInvocaciones = 26;
@@ -3161,16 +3301,66 @@ namespace Jondo.Unity.Server.Handlers
             return Math.Max(0, innate + equipmentOrTemplate + buffs);
         }
 
-        /// <summary>Counts this fighter's living summons currently present on the board.</summary>
-        internal static int ActiveSummonCount(FightInstance fight, Fighter owner)
+        /// <summary>
+        /// How much of this fighter's summon capacity is currently taken up.
+        ///
+        /// It ADDS UP the cost of each living summon instead of counting bodies, because a summon
+        /// does not always cost one. The number is <c>MonsterTemplates.summonCost</c> and in
+        /// world.db it is 1 for 4,640 templates, <b>0 for 485</b>, 2 for four and 3 for five.
+        ///
+        /// Counting bodies is what let a Rogue place a single bomb and no more: his three bombs
+        /// cost zero each, so all three fit alongside a real summon, and the client says so —
+        /// measured over the 22 Rogue captures, 62 bombs summoned and the board holds three at
+        /// once in seven of them, never four.
+        /// </summary>
+        internal static int UsedSummonCapacity(FightInstance fight, Fighter owner)
         {
-            int active = 0;
+            int used = 0;
             foreach (var f in TodosLosCombatientes(fight))
             {
-                if (f.EsInvocado && f.IsAlive && f.Invocador == owner.Id) active++;
+                if (f.EsInvocado && f.IsAlive && f.Invocador == owner.Id) used += f.SummonCost;
             }
-            return active;
+            return used;
         }
+
+        /// <summary>The bomb templates, as the Rogue's own spells name them.</summary>
+        /// <remarks>
+        /// Not a list somebody wrote: it is the target mask of every bomb spell in world.db.
+        /// Explobomba, Bombas de agua, Sismobomba and Detonador all carry
+        /// <c>a,P,F3112,F3113,F3114,F5161</c>, which is the game saying "these four are bombs".
+        /// Tymobot (3120) shares their race 220 and is NOT here, and that is the point of taking
+        /// the list from the masks rather than from the race: it plays turns like any summon.
+        /// </remarks>
+        internal static bool EsBomba(int plantilla) => Managers.Bombs.Is(plantilla);
+
+        /// <summary>How many bombs this fighter already has on the board.</summary>
+        internal static int ActiveBombCount(FightInstance fight, Fighter owner)
+        {
+            int bombs = 0;
+            foreach (var f in TodosLosCombatientes(fight))
+            {
+                if (f.EsInvocado && f.IsAlive && f.Invocador == owner.Id &&
+                    EsBomba(f.MonsterId)) bombs++;
+            }
+            return bombs;
+        }
+
+        /// <summary>
+        /// The Rogue's bombs cap at three on the board at once.
+        /// </summary>
+        /// <remarks>
+        /// MEASURED, not assumed: across the 22 Tymador captures the Rogue summons 62 bombs and
+        /// the peak on the board is three, reached in seven separate fights and never exceeded.
+        /// The number is not in world.db anywhere -- there is no bomb characteristic and the
+        /// spells' MaxStack is zero -- so it lives here with its evidence rather than being
+        /// derived from a field that does not exist.
+        ///
+        /// What the real server does with the FOURTH cast is NOT this: instead of refusing it, it
+        /// detonates on the spot for the spell's area damage, the same as casting a bomb onto an
+        /// occupied cell. That needs effect 1009 "Activa una bomba", which this engine does not
+        /// implement yet, so for now the cast is refused before it costs anything.
+        /// </remarks>
+        internal const int MaxBombsOnBoard = 3;
 
         /// <summary>
         /// Pays a cast only after an immediate summon has passed its capacity check. Keeping the
@@ -3196,18 +3386,40 @@ namespace Jondo.Unity.Server.Handlers
             int cost,
             Func<byte[], Task> sendAsync)
         {
-            bool summonsImmediately = effects.Any(effect =>
-                effect.EffectId == Jondo.Unity.World.Combat.EffectSupport.Summon &&
-                effect.DiceNum > 0 &&
-                effect.Disparadores().Any(trigger =>
-                    string.Equals(trigger, Managers.EffectEngine.AlLanzar,
-                                  StringComparison.OrdinalIgnoreCase)));
+            // What this cast is about to put on the board, and what it will cost in capacity.
+            // A summon that costs nothing -- every bomb, every beacon -- is not what this check
+            // is for and must not be refused by it.
+            int incoming = 0;
+            bool bombIncoming = false;
+            foreach (var effect in effects)
+            {
+                if (!Managers.EffectEngine.EsInvocacion(effect.EffectId)) continue;
+                if (effect.DiceNum <= 0) continue;
+                if (!effect.Disparadores().Any(trigger =>
+                        string.Equals(trigger, Managers.EffectEngine.AlLanzar,
+                                      StringComparison.OrdinalIgnoreCase))) continue;
 
-            if (summonsImmediately)
+                if (EsBomba(effect.DiceNum)) bombIncoming = true;
+                var receta = Managers.Summons.De(effect.DiceNum, 1);
+                incoming += receta?.SummonCost ?? 1;
+            }
+
+            // A fourth bomb is refused HERE and not later, so it does not cost the AP of a cast
+            // that puts nothing on the board. This is not what the real server does -- there the
+            // fourth detonates on the spot -- and it stays a refusal only until effect 1009
+            // "Activa una bomba" exists. Silence that also eats 2 AP would be worse than either.
+            if (bombIncoming && ActiveBombCount(fight, caster) >= MaxBombsOnBoard)
+            {
+                Program.LogDebug($"[Fight] Fighter {caster.Id} is at {MaxBombsOnBoard} bombs; " +
+                                 "the cast is refused before paying, pending effect 1009.");
+                return false;
+            }
+
+            if (incoming > 0)
             {
                 int limit = SummonLimitFor(caster, fight.RoundNumber);
-                int active = ActiveSummonCount(fight, caster);
-                if (limit > 0 && active >= limit)
+                int active = UsedSummonCapacity(fight, caster);
+                if (limit > 0 && active + incoming > limit)
                 {
                     // Sin filtrar por quien es: aqui solo se llega desde CastAsync, que es el
                     // lanzamiento del jugador. El filtro hace falta en InvocarAsync, que si se
@@ -4066,6 +4278,25 @@ namespace Jondo.Unity.Server.Handlers
                 damage = Math.Max(0, (int)Math.Round(damage * finalInfligido / 100.0));
                 Program.LogDebug($"[Combate] {caster.Id} pega con el daño final al " +
                                  $"{finalInfligido}%: {antes} se queda en {damage}.");
+            }
+
+            // EL COMBO. Va con los multiplicadores del que pega y no con los del que recibe,
+            // porque es suyo: cada combo hace que la bomba estalle más fuerte, del 0% en Combo I
+            // al 360% en Combo XV. Se lee del estado que lleva puesto y no de los embrujos, que
+            // se acumulan uno por peldaño y darían 120% donde toca 60%.
+            int combo = Managers.Combo.PercentOf(caster);
+
+            // «Los muros se benefician de la mitad del combo», dice la ficha, así que el mismo
+            // combo vale la mitad cuando lo que pega es un muro y no una explosión.
+            if (combo != 0 && Managers.BombWalls.WallSpell.Values.Contains(spell)) combo /= 2;
+
+            if (combo != 0)
+            {
+                int antesDelCombo = damage;
+                damage = Math.Max(0, (int)Math.Round(damage * (100 + combo) / 100.0));
+                Program.LogDebug($"[Combo] {caster.Id} está en el nivel " +
+                                 $"{Managers.Combo.LevelOf(caster)}, +{combo}%: " +
+                                 $"{antesDelCombo} pasa a {damage}.");
             }
 
             // Los MULTIPLICADORES de quien lo recibe: "daños sufridos x110%" es el efecto 1163, el

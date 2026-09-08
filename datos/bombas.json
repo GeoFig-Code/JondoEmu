@@ -1,0 +1,72 @@
+{
+  "3103": {
+    "alObjetivo": 2762,
+    "cadena": 2759,
+    "coeficienteDeCombo": 100,
+    "explosion": 2758,
+    "muro": 1
+  },
+  "3112": {
+    "alObjetivo": 13456,
+    "cadena": 13457,
+    "coeficienteDeCombo": 0,
+    "explosion": 13455,
+    "muro": 2
+  },
+  "3113": {
+    "alObjetivo": 13459,
+    "cadena": 13460,
+    "coeficienteDeCombo": 0,
+    "explosion": 13467,
+    "muro": 3
+  },
+  "3114": {
+    "alObjetivo": 13463,
+    "cadena": 13464,
+    "coeficienteDeCombo": 0,
+    "explosion": 13462,
+    "muro": 4
+  },
+  "5161": {
+    "alObjetivo": 13503,
+    "cadena": 13502,
+    "coeficienteDeCombo": 0,
+    "explosion": 13504,
+    "muro": 5
+  },
+  "6719": {
+    "alObjetivo": 19952,
+    "cadena": 19950,
+    "coeficienteDeCombo": 0,
+    "explosion": 19953,
+    "muro": 10
+  },
+  "6720": {
+    "alObjetivo": 19951,
+    "cadena": 19949,
+    "coeficienteDeCombo": 0,
+    "explosion": 19948,
+    "muro": 11
+  },
+  "6721": {
+    "alObjetivo": 19947,
+    "cadena": 19946,
+    "coeficienteDeCombo": 0,
+    "explosion": 19945,
+    "muro": 9
+  },
+  "6737": {
+    "alObjetivo": 20137,
+    "cadena": 20137,
+    "coeficienteDeCombo": 0,
+    "explosion": 20157,
+    "muro": 12
+  },
+  "8337": {
+    "alObjetivo": 32267,
+    "cadena": 32267,
+    "coeficienteDeCombo": 0,
+    "explosion": 32267,
+    "muro": 13
+  }
+}

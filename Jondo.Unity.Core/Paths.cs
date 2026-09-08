@@ -382,6 +382,12 @@ namespace Jondo.Unity.Launcher
         // Cuántas rondas vive cada invocación. Lo que no esté medido no lleva cuenta atrás.
         public static string SummonDurationsJson => Resolve("invocaciones_duracion.json");
 
+        /// <summary>
+        /// Lo que hace cada bomba: su explosión, lo que lanza al objetivo y su cadena. Sale del
+        /// cliente con tools/extract_bomb_spells.py, de la clase SpellBombData.
+        /// </summary>
+        public static string BombsJson => Resolve("bombas.json");
+
         // The three blocks of the world entry, taken from the 3.6.10.10 capture with
         // extraer_world.py. They are separate files because the real server does not push them in
         // one go: it sends a block, waits for the client to confirm, and only then carries on.
