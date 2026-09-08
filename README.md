@@ -1,8 +1,10 @@
 High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** written in C# (**.NET 10**), with decoupled modular projects, a SQLite data layer, a combat engine driven entirely by client data — PvM, duels and Koliseo — a cross-platform launcher and a world editor.
 
-> ⚠️ **Runs against Dofus 3 clients 3.6.10.11 and 3.6.10.10.** Ankama renames every protobuf
-> message to three random letters on some patches; there is a toolchain here for surviving that —
-> see [Surviving the next patch](#-surviving-the-next-patch).
+> ⚠️ **Runs against Dofus 3 clients 3.6.10.11 and 3.6.10.10.** The live game is already on
+> 3.6.11.12, so the official launcher will not hand you a client that works here —
+> [Step 2](#step-2--get-the-361011-client) has a download. Ankama renames every protobuf message to
+> three random letters on some patches; there is a toolchain here for surviving that — see
+> [Surviving the next patch](#-surviving-the-next-patch).
 
 ---
 
@@ -14,7 +16,7 @@ High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** writte
 
 &nbsp;
 
-> **New here?** [Quick Start](#-quick-start) puts you in the game in three steps ·
+> **New here?** [Quick Start](#-quick-start) puts you in the game in four steps ·
 > [What you get](#-what-you-get) is what lands on disk
 
 &nbsp;
@@ -41,7 +43,21 @@ High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** writte
 
 Download it from [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/10.0). The *Desktop Runtime* is the one you want.
 
-### Step 2 — Point the Dofus client at the emulator
+### Step 2 — Get the 3.6.10.11 client
+
+**You can no longer just use your installed Dofus.** The live game is on 3.6.11.12 and Ankama's
+launcher only ever gives you the current version, which this emulator does not speak.
+
+**⬇️ [Dofus 3.6.10.11 — download](https://www.swisstransfer.com/dl/01a082ed-3e6a-70b9-987b-7f2551484389)**
+
+It is the stock Ankama client, untouched — Step 3 is what makes it talk to the emulator. Unpack it
+as a **`Cliente 3.6.10.11`** folder beside the emulator folder, which is where the launcher looks
+first; anywhere else is fine too if you point **Settings** at your `Dofus.exe`.
+
+If you still have a 3.6.10.11 or 3.6.10.10 install from before the patch, that one works — just
+keep the official launcher from updating it.
+
+### Step 3 — Point the Dofus client at the emulator
 
 The official client talks to Ankama's servers and checks their SSL certificates. **JondoFix**, a MelonLoader mod, redirects it to your machine instead. It comes already built in this repository.
 
@@ -57,7 +73,7 @@ Two things worth knowing afterwards:
 
 What JondoFix does: intercepts sockets, Named Pipes and DNS queries and sends them to `localhost` (ports `8888`, `5555`, `15881`, `6337`); stops HTTPS requests from failing against the local self-signed certificate; and injects the environment variables the client expects (`ZAAP_PORT`, `ZAAP_HASH`, and so on).
 
-### Step 3 — Run it
+### Step 4 — Run it
 
 Double-click **`Jondo Emulator Launcher.exe`**. That is the only thing you start by hand: it launches **`Jondo Server.exe`** itself, in its own window with the log and the counters.
 
