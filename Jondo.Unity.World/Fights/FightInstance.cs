@@ -522,6 +522,25 @@ namespace Jondo.Unity.World.Fights
         /// </remarks>
         public List<Glifo> Glifos { get; } = new List<Glifo>();
 
+        /// <summary>
+        /// Who a bomb wall has already caught during the turn in progress.
+        /// </summary>
+        /// <remarks>
+        /// The wall only catches a DISPLACED fighter once a turn, and this is the list that
+        /// remembers it. From the class sheet: "Si esta entidad ya ha sufrido los efectos del muro
+        /// durante su turno y vuelven a mandarla a el, su desplazamiento no se detendra ni sufrira
+        /// los danos. No obstante, caminar en el muro no se ve afectado por este limite."
+        ///
+        /// MEASURED, and it is what tells the two apart. Of the eight displacements in the
+        /// captures that land on a wall cell, five are on fighters that are not the Rogue bombs;
+        /// four of those five set the wall off, and the one that does not -- frame 8281, -1 pulled
+        /// from 231 to 216 -- is the only one whose fighter had ALREADY been caught in that same
+        /// turn, at frame 8250. Nothing else separates it from the other four.
+        ///
+        /// Cleared at every turn start, whoever the turn belongs to.
+        /// </remarks>
+        public HashSet<long> WallHitThisTurn { get; } = new HashSet<long>();
+
         private int _siguienteGlifo;
 
         /// <summary>Pone algo en el suelo y le da su identificador.</summary>

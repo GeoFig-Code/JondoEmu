@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace Jondo.Unity.World.Maps
@@ -224,6 +224,18 @@ namespace Jondo.Unity.World.Maps
 
             /// <summary>Otro combatiente. El único caso en el que el daño va a dos.</summary>
             Fighter,
+
+            /// <summary>
+            /// A bomb wall. It ENTERS the cell and stops there, and there is no collision damage:
+            /// the wall has its own.
+            /// </summary>
+            /// <remarks>
+            /// From the class sheet: "Desplazar una entidad a un muro detendra su desplazamiento y
+            /// le infligira danos." The entering-and-stopping part is measured: in
+            /// "explobomba-tornabomba-...-explotandolas" frame 8282 pulls -3 from 274 to 260, a
+            /// wall cell, and frame 8283 is the wall going off on it AT 260.
+            /// </remarks>
+            Wall,
         }
 
         /// <summary>Cómo acabó un empujón.</summary>
@@ -257,7 +269,8 @@ namespace Jondo.Unity.World.Maps
         /// capturas del Ocra.
         /// </summary>
         public static PushResult Push(int centro, int deQuienLanza, int aQuien, int casillas,
-                                      HashSet<int> pisables, HashSet<int> ocupadas)
+                                      HashSet<int> pisables, HashSet<int> ocupadas,
+                                      HashSet<int> paran = null)
         {
             var quieto = new PushResult { ToCell = aQuien, BlockedCells = 0,
                                           Stop = PushStop.None, BlockerCell = -1 };
@@ -291,8 +304,34 @@ namespace Jondo.Unity.World.Maps
                     freno = PushStop.Fighter; paredEn = siguiente; break;
                 }
 
+                // UN TIRON NO SE PASA DE LARGO. Atraer camina hacia el centro, y sin esto lo
+                // cruzaba y salia por el otro lado: la Imantacion del tymador tira de sus bombas
+                // seis casillas, asi que una bomba a dos del punto acababa cuatro casillas mas
+                // alla, en la direccion contraria. Y como el hechizo tira DOS veces -- una en su
+                // propio efecto 6 y otra en el 18652 que encadena --, la segunda la traia de
+                // vuelta: en el registro se ve el baile, la bomba -5 de la 272 a la 185 y de la
+                // 185 otra vez a la 272.
+                //
+                // Lo que se para es en cuanto pisaria el centro, que es donde para un tiron en
+                // el juego: pegado a quien tira.
+                if (casillas < 0 && siguiente == centro)
+                {
+                    freno = PushStop.Fighter; paredEn = siguiente; break;
+                }
+
                 donde = siguiente;
                 dadas++;
+
+                // AND A BOMB WALL STOPS IT DEAD, but only after stepping onto it. Unlike every
+                // other stop above, this one happens AFTER the cell is taken: the sheet says
+                // "desplazar una entidad a un muro detendra su desplazamiento", into it, not
+                // short of it, and the capture shows exactly that -- pulled from 274 to 260 and
+                // caught at 260.
+                if (paran != null && paran.Contains(siguiente))
+                {
+                    freno = PushStop.Wall;
+                    break;
+                }
             }
 
             return new PushResult

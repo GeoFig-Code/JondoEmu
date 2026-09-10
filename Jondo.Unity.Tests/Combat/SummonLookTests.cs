@@ -1,4 +1,4 @@
-using Jondo.Unity.Server.Managers;
+﻿using Jondo.Unity.Server.Managers;
 using Xunit;
 
 namespace Jondo.Unity.Tests.Combat
@@ -53,6 +53,26 @@ namespace Jondo.Unity.Tests.Combat
         public void Lo_que_no_es_un_reenvio_se_deja_en_paz(string cadena)
         {
             Assert.False(Summons.EsReenvio(cadena, out _));
+        }
+    
+        [Fact]
+        public void La_referencia_pelada_de_una_bomba_es_su_aspecto_y_no_otra_plantilla()
+        {
+            // Las cuatro bombas del tymador llevan una referencia pelada, y lo que va en el
+            // paquete es el numero de dentro. Tres de ellas -- 1561, 1562, 1563 -- no son
+            // plantillas de nada; la cuarta, la Sismobomba, lleva «{2865}», y la 2865 SI es una
+            // plantilla: el Ventozador. Seguir el rastro la pintaba como un Ventozador.
+            foreach (var (cadena, numero) in new[]
+                     {
+                         ("{1562}", 1562),   // Explobomba
+                         ("{1563}", 1563),   // Tornabomba
+                         ("{1561}", 1561),   // Bomba de agua
+                         ("{2865}", 2865),   // Sismobomba
+                     })
+            {
+                Assert.True(Summons.EsReenvio(cadena, out int hacia));
+                Assert.Equal(numero, hacia);
+            }
         }
     }
 }

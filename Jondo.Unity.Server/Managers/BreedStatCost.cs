@@ -29,11 +29,56 @@ namespace Jondo.Unity.Server.Managers
         private static readonly Dictionary<int, Dictionary<string, List<(int From, int Price)>>> _table =
             new Dictionary<int, Dictionary<string, List<(int, int)>>>();
 
-        public static bool IsLoaded => _table.Count > 0;
+        /// <summary>
+        /// Whether the tables are read in and safe to use. Volatile because the fast path in
+        /// <see cref="Ensure"/> reads it outside the lock, and raised LAST.
+        /// </summary>
+        private static volatile bool _loaded;
+        private static readonly object _lock = new object();
 
-        public static void Initialize()
+        /// <summary>
+        /// Whether there are cost tables to work with. Reads them in first, so this answers "is
+        /// there price data" and not "has somebody remembered to call Initialize".
+        /// </summary>
+        /// <remarks>
+        /// It has to load: CommandHandler asks this before charging for a characteristic point,
+        /// and falls back to its own count when the answer is no. A false here because nothing
+        /// had been read in yet would quietly charge the player a different price from the one
+        /// the window just quoted them.
+        /// </remarks>
+        public static bool IsLoaded { get { Ensure(); return _table.Count > 0; } }
+
+        /// <summary>
+        /// Reads the file, once per run. Kept as a separate call so the server pays for it at
+        /// boot, with its log line, rather than on the first point somebody spends.
+        /// </summary>
+        /// <remarks>
+        /// Calling it again does nothing, on purpose: breed_stats.json comes out of the client
+        /// and does not change while the server is up.
+        /// </remarks>
+        public static void Initialize() => Ensure();
+
+        private static void Ensure()
         {
-            _table.Clear();
+            if (_loaded) return;
+            lock (_lock)
+            {
+                if (_loaded) return;
+                try
+                {
+                    Load();
+                }
+                finally
+                {
+                    // In a finally so a missing file counts as tried, rather than going back to
+                    // the disk on every point spent from here on.
+                    _loaded = true;
+                }
+            }
+        }
+
+        private static void Load()
+        {
             string path = Paths.BreedStatsJson;
 
             if (!File.Exists(path))
@@ -83,6 +128,7 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static int PriceOf(int breed, string characteristic, int current)
         {
+            Ensure();
             if (!_table.TryGetValue(breed, out var characteristics)) return 1;
             if (!characteristics.TryGetValue(characteristic, out var bands)) return 1;
 

@@ -25,14 +25,45 @@ namespace Jondo.Unity.Server.Managers
         private static readonly List<long> _titles = new List<long>();
         private static readonly List<long> _ornaments = new List<long>();
 
-        public static IReadOnlyList<long> All => _titles;
-        public static IReadOnlyList<long> AllOrnaments => _ornaments;
+        /// <summary>
+        /// Whether the lists are read in and safe to use. Volatile because the fast path in
+        /// <see cref="Ensure"/> reads it outside the lock, and raised LAST.
+        /// </summary>
+        private static volatile bool _loaded;
+        private static readonly object _lock = new object();
 
-        public static void Initialize()
+        public static IReadOnlyList<long> All { get { Ensure(); return _titles; } }
+        public static IReadOnlyList<long> AllOrnaments { get { Ensure(); return _ornaments; } }
+
+        /// <summary>
+        /// Reads the file, once per run. Kept as a separate call so the server pays for it at
+        /// boot, with its log line, rather than on the first title somebody puts on.
+        /// </summary>
+        /// <remarks>
+        /// Calling it again does nothing, on purpose: titles_ornaments.json comes out of the
+        /// client and does not change while the server is up.
+        /// </remarks>
+        public static void Initialize() => Ensure();
+
+        private static void Ensure()
         {
-            _titles.Clear();
-            _ornaments.Clear();
+            if (_loaded) return;
+            lock (_lock)
+            {
+                if (_loaded) return;
+                try
+                {
+                    Load();
+                }
+                finally
+                {
+                    _loaded = true;   // in a finally so a missing file counts as tried
+                }
+            }
+        }
 
+        private static void Load()
+        {
             string path = Paths.TitlesOrnamentsJson;
             if (!File.Exists(path))
             {
@@ -64,7 +95,18 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        public static bool HasTitle(int id) => id == Wardrobe.None || _titles.Contains(id);
-        public static bool HasOrnament(int id) => id == Wardrobe.None || _ornaments.Contains(id);
+        public static bool HasTitle(int id)
+        {
+            if (id == Wardrobe.None) return true;
+            Ensure();
+            return _titles.Contains(id);
+        }
+
+        public static bool HasOrnament(int id)
+        {
+            if (id == Wardrobe.None) return true;
+            Ensure();
+            return _ornaments.Contains(id);
+        }
     }
 }

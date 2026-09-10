@@ -50,17 +50,37 @@ namespace Jondo.Unity.Server.Managers
 
         private static readonly Dictionary<int, Dictionary<int, BreedLook>> _byBreed
             = new Dictionary<int, Dictionary<int, BreedLook>>();
-        private static bool _loaded;
+        /// <summary>
+        /// Whether the table is filled in and safe to read. Volatile, and raised LAST: see
+        /// <see cref="EnsureLoaded"/>.
+        /// </summary>
+        private static volatile bool _loaded;
         private static readonly object _lock = new object();
 
         /// <summary>Lazy loading: the first query reads the file.</summary>
+        /// <remarks>
+        /// THE FLAG GOES UP AFTER THE LOAD, NEVER BEFORE. It used to be raised on entry, and the
+        /// lock-free fast path right above then waved every other thread straight through while
+        /// this one was still parsing the json: they read a dictionary that was still empty, Get
+        /// answered null, and the character came out with no look at all.
+        ///
+        /// That window is not theoretical. With sixteen threads asking at the same instant --
+        /// which is what the test suite does, running its classes in parallel -- fourteen of them
+        /// got nothing, every single run.
+        ///
+        /// And nothing is drawn and nothing is logged when it happens, which is exactly why it
+        /// looked like a flaky test instead of a race: the same call answers correctly a moment
+        /// later, once the load has finished.
+        ///
+        /// Volatile because the flag is read outside the lock, so it has to be the write that
+        /// publishes the dictionary rather than one a reader may see out of order.
+        /// </remarks>
         private static void EnsureLoaded()
         {
             if (_loaded) return;
             lock (_lock)
             {
                 if (_loaded) return;
-                _loaded = true;
                 try
                 {
                     string path = Paths.BreedLooksJson;
@@ -88,6 +108,13 @@ namespace Jondo.Unity.Server.Managers
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[Looks] Error loading the breed looks: {ex.Message}");
+                }
+                finally
+                {
+                    // In a finally so that a missing file or a broken json still counts as tried:
+                    // the early return above would otherwise leave the flag down and we would go
+                    // back to the disk, and log the same complaint, for every look built after.
+                    _loaded = true;
                 }
             }
         }

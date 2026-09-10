@@ -18,21 +18,27 @@ namespace Jondo.Unity.Server.Managers
     public static class EquipmentSkins
     {
         private static readonly Dictionary<int, int> _skins = new Dictionary<int, int>();
-        private static bool _loaded;
+        /// <summary>
+        /// Whether the table is filled in and safe to read. Volatile because the fast path in
+        /// <see cref="EnsureLoaded"/> reads it outside the lock.
+        /// </summary>
+        private static volatile bool _loaded;
         private static readonly object _lock = new object();
 
-        public static int Count => _skins.Count;
+        public static int Count { get { EnsureLoaded(); return _skins.Count; } }
 
-        public static void Initialize()
-        {
-            lock (_lock)
-            {
-                _skins.Clear();
-                Load();
-                _loaded = true;
-                Console.WriteLine($"[Equipo] {_skins.Count} objetos reales con su piel.");
-            }
-        }
+        /// <summary>
+        /// Reads the file, once per run. Kept as a separate call so the server can pay for it at
+        /// boot, with its log line, rather than on whoever builds the first look.
+        /// </summary>
+        /// <remarks>
+        /// CALLING IT AGAIN DOES NOTHING, ON PURPOSE. It used to clear the table and read the file
+        /// afresh, and while it did that -- holding a lock no reader takes -- everybody building a
+        /// look saw an empty table, or worse, one being written under them. equipment_skins.json is
+        /// a measurement that does not change while the server is up, so there was nothing to
+        /// reload.
+        /// </remarks>
+        public static void Initialize() => EnsureLoaded();
 
         private static void EnsureLoaded()
         {
@@ -40,8 +46,17 @@ namespace Jondo.Unity.Server.Managers
             lock (_lock)
             {
                 if (_loaded) return;
-                Load();
-                _loaded = true;
+                try
+                {
+                    Load();
+                    Console.WriteLine($"[Equipo] {_skins.Count} objetos reales con su piel.");
+                }
+                finally
+                {
+                    // Raised last, so the fast path above never lets a reader onto a half-filled
+                    // table; and in a finally so a missing file counts as tried.
+                    _loaded = true;
+                }
             }
         }
 

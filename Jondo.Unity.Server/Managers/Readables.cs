@@ -43,11 +43,40 @@ namespace Jondo.Unity.Server.Managers
         private static readonly Dictionary<(long Map, int Element), Readable> _porElemento
             = new Dictionary<(long, int), Readable>();
 
-        public static int Count => _porElemento.Count;
+        /// <summary>
+        /// Whether the signs are read in and safe to use. Volatile because the fast path in
+        /// <see cref="Ensure"/> reads it outside the lock, and raised LAST.
+        /// </summary>
+        private static volatile bool _loaded;
+        private static readonly object _lock = new object();
 
-        public static void Load()
+        public static int Count { get { Ensure(); return _porElemento.Count; } }
+
+        /// <summary>
+        /// Reads the file, once per run. Kept as a separate call so the server pays for it at
+        /// boot, with its log line, and not on the first sign somebody reads.
+        /// </summary>
+        public static void Load() => Ensure();
+
+        private static void Ensure()
         {
-            _porElemento.Clear();
+            if (_loaded) return;
+            lock (_lock)
+            {
+                if (_loaded) return;
+                try
+                {
+                    Read();
+                }
+                finally
+                {
+                    _loaded = true;   // in a finally so a missing file counts as tried
+                }
+            }
+        }
+
+        private static void Read()
+        {
             string path = Paths.ContentFile(File);
 
             if (!System.IO.File.Exists(path))

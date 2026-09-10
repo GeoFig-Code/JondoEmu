@@ -28,11 +28,46 @@ namespace Jondo.Unity.Server.Managers
 
         private static readonly Dictionary<int, Effect> _byId = new Dictionary<int, Effect>();
 
-        public static int Count => _byId.Count;
+        /// <summary>
+        /// Whether the table is read in and safe to use. Volatile because the fast path in
+        /// <see cref="Ensure"/> reads it outside the lock, and raised LAST.
+        /// </summary>
+        private static volatile bool _loaded;
+        private static readonly object _lock = new object();
 
-        public static void Initialize()
+        public static int Count { get { Ensure(); return _byId.Count; } }
+
+        /// <summary>
+        /// Reads the effects, once per run. Kept as a separate call so the server pays for the
+        /// query at boot, with its log line, and not on the first item somebody equips.
+        /// </summary>
+        /// <remarks>
+        /// Calling it again does nothing, on purpose: the Effects table is client data sitting in
+        /// world.db and nothing writes to it while the server is up.
+        /// </remarks>
+        public static void Initialize() => Ensure();
+
+        private static void Ensure()
         {
-            _byId.Clear();
+            if (_loaded) return;
+            lock (_lock)
+            {
+                if (_loaded) return;
+                try
+                {
+                    Load();
+                }
+                finally
+                {
+                    // In a finally so a database that would not open counts as tried: otherwise
+                    // every effect looked up from here on would try to open it again.
+                    _loaded = true;
+                }
+            }
+        }
+
+        private static void Load()
+        {
             try
             {
                 using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
@@ -58,6 +93,10 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        public static bool TryGet(int effectId, out Effect effect) => _byId.TryGetValue(effectId, out effect);
+        public static bool TryGet(int effectId, out Effect effect)
+        {
+            Ensure();
+            return _byId.TryGetValue(effectId, out effect);
+        }
     }
 }

@@ -19,13 +19,44 @@ namespace Jondo.Unity.Server.Managers
     /// </remarks>
     public static class NpcDialogues
     {
-        private static ContentStore<NpcDialogueKey, NpcDialogue> _dialogues
+        /// <summary>
+        /// Volatile because it is swapped wholesale in <see cref="Load"/> while other threads
+        /// are reading it: the assignment itself is atomic, but without this a reader could see
+        /// the new reference before the store behind it is finished being built.
+        /// </summary>
+        private static volatile ContentStore<NpcDialogueKey, NpcDialogue> _dialogues
             = new ContentStore<NpcDialogueKey, NpcDialogue>();
 
-        /// <summary>Cuántas conversaciones hay escritas.</summary>
-        public static int Count => _dialogues.Count;
+        private static volatile bool _loaded;
+        private static readonly object _lock = new object();
 
-        public static void Load()
+        /// <summary>Cuántas conversaciones hay escritas.</summary>
+        public static int Count { get { Ensure(); return _dialogues.Count; } }
+
+        /// <summary>
+        /// Reads the authored dialogues, once per run. Kept as a separate call so the server pays
+        /// for it at boot, with its log line, and not on the first NPC somebody talks to.
+        /// </summary>
+        public static void Load() => Ensure();
+
+        private static void Ensure()
+        {
+            if (_loaded) return;
+            lock (_lock)
+            {
+                if (_loaded) return;
+                try
+                {
+                    Read();
+                }
+                finally
+                {
+                    _loaded = true;   // in a finally so a missing file counts as tried
+                }
+            }
+        }
+
+        private static void Read()
         {
             try
             {
@@ -47,6 +78,9 @@ namespace Jondo.Unity.Server.Managers
         /// ninguna.
         /// </summary>
         public static NpcDialogue? For(int npcId, long mapId)
-            => NpcDialogueContent.For(_dialogues, npcId, mapId);
+        {
+            Ensure();
+            return NpcDialogueContent.For(_dialogues, npcId, mapId);
+        }
     }
 }

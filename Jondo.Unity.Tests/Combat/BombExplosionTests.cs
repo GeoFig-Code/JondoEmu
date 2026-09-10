@@ -215,6 +215,93 @@ namespace Jondo.Unity.Tests.Combat
         }
 
         [Fact]
+        public void Detonating_one_bomb_of_a_wall_sets_off_the_whole_chain()
+        {
+            // Cuatro bombas en fila, cada una a tres casillas de la anterior. Un muro coge tres
+            // como mucho, asi que hay dos muros y la tercera bomba esta en los dos: la cadena
+            // tiene que cruzar por ella y llegar a la cuarta.
+            var fight = new FightInstance(1, 1);
+            var tymador = Vivo(10, team: 0, cell: 20);
+            fight.AddPlayer(tymador);
+
+            var (x, y) = MapGeometry.CellToPoint(200);
+            var bombas = new List<Fighter>();
+            for (int i = 0; i < 4; i++)
+            {
+                int celda = MapGeometry.PointToCell(x, y + i * 3);
+                Assert.True(celda >= 0);
+                var b = Bomba(-2 - i, tymador, celda);
+                bombas.Add(b);
+                fight.AddPlayer(b);
+            }
+
+            var salida = EffectEngine.Resolver(fight, tymador, Detonador, 3, bombas[0],
+                                               EffectEngine.AlLanzar, fight.RoundNumber,
+                                               celdaApuntada: bombas[0].CellId);
+
+            // Las cuatro se han matado, y cada una UNA sola vez.
+            foreach (var bomba in bombas)
+            {
+                Assert.Equal(1, salida.Count(o => o.Fulmina && o.Sobre == bomba));
+            }
+        }
+
+        [Fact]
+        public void A_bomb_next_door_goes_off_even_without_a_wall()
+        {
+            // Dos pegadas NO hacen muro -- hace falta dejar dos casillas -- pero el circulo de
+            // radio dos de la explosion se la lleva igual.
+            var fight = new FightInstance(1, 1);
+            var tymador = Vivo(10, team: 0, cell: 20);
+            fight.AddPlayer(tymador);
+
+            var (x, y) = MapGeometry.CellToPoint(200);
+            var primera = Bomba(-2, tymador, MapGeometry.PointToCell(x, y));
+            var pegada = Bomba(-3, tymador, MapGeometry.PointToCell(x, y + 1));
+            fight.AddPlayer(primera);
+            fight.AddPlayer(pegada);
+
+            Assert.Empty(BombWalls.Of(new[] { tymador, primera, pegada }, tymador));
+
+            var salida = EffectEngine.Resolver(fight, tymador, Detonador, 3, primera,
+                                               EffectEngine.AlLanzar, fight.RoundNumber,
+                                               celdaApuntada: primera.CellId);
+
+            Assert.Equal(1, salida.Count(o => o.Fulmina && o.Sobre == primera));
+            Assert.Equal(1, salida.Count(o => o.Fulmina && o.Sobre == pegada));
+        }
+
+        [Fact]
+        public void The_blast_radius_comes_from_the_spell_and_is_two()
+        {
+            foreach (int template in DelTymador)
+            {
+                Assert.Equal(2, EffectEngine.RadioDeLaExplosion(Bombs.Explosion(template), 3));
+            }
+        }
+
+        [Fact]
+        public void A_bomb_out_of_line_stays_where_it_is()
+        {
+            var fight = new FightInstance(1, 1);
+            var tymador = Vivo(10, team: 0, cell: 20);
+            fight.AddPlayer(tymador);
+
+            var (x, y) = MapGeometry.CellToPoint(200);
+            var enLinea = Bomba(-2, tymador, MapGeometry.PointToCell(x, y + 3));
+            var suelta = Bomba(-3, tymador, MapGeometry.PointToCell(x + 5, y + 9));
+            fight.AddPlayer(enLinea);
+            fight.AddPlayer(suelta);
+
+            var salida = EffectEngine.Resolver(fight, tymador, Detonador, 3, enLinea,
+                                               EffectEngine.AlLanzar, fight.RoundNumber,
+                                               celdaApuntada: enLinea.CellId);
+
+            Assert.Contains(salida, o => o.Fulmina && o.Sobre == enLinea);
+            Assert.DoesNotContain(salida, o => o.Fulmina && o.Sobre == suelta);
+        }
+
+        [Fact]
         public void Nothing_happens_when_the_target_is_not_a_bomb()
         {
             var fight = new FightInstance(1, 1);

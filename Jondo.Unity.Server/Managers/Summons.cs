@@ -256,9 +256,34 @@ namespace Jondo.Unity.Server.Managers
             //
             // Medido en «ocra-baliza de supervivencia»: su jwe manda «f3{f2=3, f3=8152}», o sea
             // que hay que pararse en la 8152 y es su cadena la que vale.
+            // Y AQUI SE PARA, sin seguir el rastro. Lo que va en el paquete de invocacion es EL
+            // NUMERO DE DENTRO DE LAS LLAVES, no el aspecto al que apunte: medido en la captura
+            // de la Baliza de Supervivencia, cuya plantilla 8348 lleva «{8152}» y cuyo jwe manda
+            // f3{f2=8152}. El cliente resuelve el resto.
+            //
+            // Seguirlo era lo que convertia a la Sismobomba en un fantasma. Su plantilla 5161
+            // lleva «{2865}», y da la casualidad de que 2865 ES otra plantilla -- el Ventozador --
+            // asi que el rastro acababa en su aspecto y el cliente pintaba un Ventozador. Las
+            // otras tres bombas se salvaban de milagro: sus numeros -- 1561, 1562, 1563 -- no son
+            // plantillas de nada, la busqueda no encontraba fila y se quedaba con el numero.
             if (EsReenvio(look, out int otra) && otra != plantilla)
             {
-                return LookDe(conexion, otra, vueltas + 1);
+                // DOS COSAS DISTINTAS QUE SE RESOLVIAN CON EL MISMO NUMERO, y ahi estaba el fallo.
+                //
+                // La CADENA de aspecto sigue el rastro hasta el final, porque quien la dibuja
+                // -- el lanzador, el estudio -- necesita huesos, pieles y colores de verdad. Eso
+                // es lo que usa la forma bestial del ouginak.
+                //
+                // Pero lo que va en el PAQUETE de invocacion es el numero de dentro de las
+                // llaves, sin seguirlo: medido en la Baliza de Supervivencia, cuya plantilla 8348
+                // lleva «{8152}» y cuyo jwe manda f3{f2=8152}.
+                //
+                // Seguirlo tambien para el paquete convertia a la Sismobomba en un fantasma: su
+                // «{2865}» apunta a otra plantilla de verdad -- el Ventozador -- y el cliente
+                // acababa pintando un Ventozador. Las otras tres bombas se salvaban de milagro,
+                // porque sus numeros -- 1561, 1562, 1563 -- no son plantillas de nada.
+                var (cadena, _) = LookDe(conexion, otra, vueltas + 1);
+                return (cadena, otra);
             }
             return (look, plantilla);
         }

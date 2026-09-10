@@ -109,43 +109,72 @@ namespace Jondo.Unity.Server.Managers
         private static readonly List<int> _ornaments = new List<int>();
         private static readonly Dictionary<int, int> _appearanceBones = new Dictionary<int, int>();
 
-        public static int Count => _catalogue.Count;
-        public static int KnownLooks => _skins.Count + _mounts.Count + _pets.Count + _variants.Count;
-        public static IEnumerable<KeyValuePair<int, Piece>> All => _catalogue;
-        /// <summary>Los títulos y ornamentos que el servidor real aceptó en las capturas.</summary>
-        public static IReadOnlyList<int> MeasuredTitles => _titles;
-        public static IReadOnlyList<int> MeasuredOrnaments => _ornaments;
+        /// <summary>
+        /// Whether the tables are filled in and safe to read. Volatile, and raised LAST: see
+        /// <see cref="Ensure"/>.
+        /// </summary>
+        private static volatile bool _loaded;
+        private static readonly object _lock = new object();
 
-        public static void Initialize()
+        public static int Count { get { Ensure(); return _catalogue.Count; } }
+        public static int KnownLooks
         {
-            _catalogue.Clear();
-            _skins.Clear();
-            _variants.Clear();
-            _mounts.Clear();
-            _pets.Clear();
-            _auras.Clear();
-            _slots.Clear();
-            _slotsByVariant.Clear();
-            _titles.Clear();
-            _ornaments.Clear();
-            _appearanceBones.Clear();
+            get { Ensure(); return _skins.Count + _mounts.Count + _pets.Count + _variants.Count; }
+        }
+        public static IEnumerable<KeyValuePair<int, Piece>> All { get { Ensure(); return _catalogue; } }
+        /// <summary>Los títulos y ornamentos que el servidor real aceptó en las capturas.</summary>
+        public static IReadOnlyList<int> MeasuredTitles { get { Ensure(); return _titles; } }
+        public static IReadOnlyList<int> MeasuredOrnaments { get { Ensure(); return _ornaments; } }
 
-            LoadCatalogue();
-            LoadLooks();
+        /// <summary>
+        /// Reads the two files, once per run. Kept as a separate call so the server can pay for it
+        /// at boot, with its log line, instead of on whoever happens to equip something first.
+        /// </summary>
+        /// <remarks>
+        /// CALLING IT AGAIN DOES NOTHING, ON PURPOSE. It used to clear all eleven tables and refill
+        /// them, with no lock of any kind, and two callers at once tore the dictionaries apart --
+        /// "Operations that change non-concurrent collections must have exclusive access", thrown
+        /// from inside Initialize itself. Everyone reading a look at that moment saw the same
+        /// wreckage, which is how one racy loader failed tests that had nothing to do with it.
+        ///
+        /// Reloading was never the point anyway: cosmetics.json and cosmetic_skins.json are
+        /// measurements that do not change while the server is up, and there was nothing to gain
+        /// from reading them twice.
+        /// </remarks>
+        public static void Initialize() => Ensure();
 
-            int resueltas = 0;
-            foreach (var gid in _catalogue.Keys)
+        private static void Ensure()
+        {
+            if (_loaded) return;
+            lock (_lock)
             {
-                if (_skins.ContainsKey(gid) || _variants.ContainsKey(gid) || _pets.ContainsKey(gid)
-                    || _mounts.ContainsKey(gid) || _slots.ContainsKey(gid)
-                    || _slotsByVariant.ContainsKey(gid)) resueltas++;
+                if (_loaded) return;
+                try
+                {
+                    LoadCatalogue();
+                    LoadLooks();
+
+                    int resueltas = 0;
+                    foreach (var gid in _catalogue.Keys)
+                    {
+                        if (_skins.ContainsKey(gid) || _variants.ContainsKey(gid) || _pets.ContainsKey(gid)
+                            || _mounts.ContainsKey(gid) || _slots.ContainsKey(gid)
+                            || _slotsByVariant.ContainsKey(gid)) resueltas++;
+                    }
+
+                    Console.WriteLine($"[Apariencias] {_catalogue.Count} prendas en el catálogo, " +
+                                      $"{resueltas} medidas ({100 * resueltas / Math.Max(1, _catalogue.Count)}%), " +
+                                      $"{_auras.Count} auras.");
+
+                    CheckMeasuredAgainstOffered();
+                }
+                finally
+                {
+                    // Raised last, so that the fast path above never waves a reader through onto
+                    // half-built tables; and in a finally so a missing file counts as tried.
+                    _loaded = true;
+                }
             }
-
-            Console.WriteLine($"[Apariencias] {_catalogue.Count} prendas en el catálogo, " +
-                              $"{resueltas} medidas ({100 * resueltas / Math.Max(1, _catalogue.Count)}%), " +
-                              $"{_auras.Count} auras.");
-
-            CheckMeasuredAgainstOffered();
         }
 
         /// <summary>
@@ -354,8 +383,15 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        public static bool Exists(int gid) => _catalogue.ContainsKey(gid);
-        public static Piece? Of(int gid) => _catalogue.TryGetValue(gid, out var p) ? p : null;
+        // Every reader goes through Ensure first. Before, a caller that had not thought to call
+        // Initialize got empty tables and a character with nothing on -- silently, which is why
+        // the launcher shot tests had to remember to initialize by hand.
+        public static bool Exists(int gid) { Ensure(); return _catalogue.ContainsKey(gid); }
+        public static Piece? Of(int gid)
+        {
+            Ensure();
+            return _catalogue.TryGetValue(gid, out var p) ? p : null;
+        }
 
         /// <summary>
         /// El hueco que le toca a una prenda. Es lo que el servidor devuelve en el lwz.
@@ -366,6 +402,7 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static int SlotOf(int gid, int variant = 0)
         {
+            Ensure();
             if (_slotsByVariant.TryGetValue(gid, out var porVariante))
             {
                 if (porVariante.TryGetValue(variant, out int medido)) return medido;
@@ -387,6 +424,7 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static IReadOnlyList<int> SkinsOf(int gid, int variant)
         {
+            Ensure();
             if (_variants.TryGetValue(gid, out var tabla))
             {
                 if (tabla.TryGetValue(variant, out var deVariante)) return deVariante;
@@ -401,16 +439,31 @@ namespace Jondo.Unity.Server.Managers
         /// Las dos van al hueco 5 y las dos sustituyen a la montura; la diferencia es que la de
         /// apariencia trae además su propia piel.
         /// </summary>
-        public static PieceLook? MountLookOf(int gid) => _mounts.TryGetValue(gid, out var m) ? m : null;
+        public static PieceLook? MountLookOf(int gid)
+        {
+            Ensure();
+            return _mounts.TryGetValue(gid, out var m) ? m : null;
+        }
 
         /// <summary>La subentidad de una mascota de apariencia, o null.</summary>
-        public static PieceLook? PetOf(int gid) => _pets.TryGetValue(gid, out var p) ? p : null;
+        public static PieceLook? PetOf(int gid)
+        {
+            Ensure();
+            return _pets.TryGetValue(gid, out var p) ? p : null;
+        }
 
         /// <summary>Los huesos de un aura, o cero.</summary>
-        public static int AuraBones(int auraId) => _auras.TryGetValue(auraId, out int b) ? b : 0;
+        public static int AuraBones(int auraId)
+        {
+            Ensure();
+            return _auras.TryGetValue(auraId, out int b) ? b : 0;
+        }
 
         /// <summary>Los huesos de una apariencia de tipo 5, o cero si no es compatible.</summary>
         public static int AppearanceBones(int appearanceId)
-            => _appearanceBones.TryGetValue(appearanceId, out int bones) ? bones : 0;
+        {
+            Ensure();
+            return _appearanceBones.TryGetValue(appearanceId, out int bones) ? bones : 0;
+        }
     }
 }

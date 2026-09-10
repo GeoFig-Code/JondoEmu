@@ -609,6 +609,25 @@ namespace Jondo.Unity.Server.Managers
         /// </remarks>
         public const int ActivarBomba = 1009;
 
+        /// <summary>
+        /// Como de lejos llega una explosion, leido de su propio hechizo.
+        /// </summary>
+        /// <remarks>
+        /// No es un dos escrito a mano: el efecto 99 de la Explosion Tymadora lleva
+        /// <c>zoneDescr{shape: 67, param1: 2}</c>, que es un circulo de radio dos, y las cuatro
+        /// explosiones traen el suyo. Si algun dia Ankama lo cambia, cambia solo.
+        /// </remarks>
+        internal static int RadioDeLaExplosion(int hechizo, int grado)
+        {
+            int radio = 0;
+            foreach (var efecto in SpellEffects.De(hechizo, grado))
+            {
+                if (efecto.Forma != Jondo.Unity.World.Maps.Zone.Circulo) continue;
+                if (efecto.Tamano > radio) radio = efecto.Tamano;
+            }
+            return radio;
+        }
+
 
         public static bool VaAlSuelo(int efecto) => AlSuelo.Contains(efecto);
 
@@ -1001,9 +1020,22 @@ namespace Jondo.Unity.Server.Managers
                 {
                     if (depth >= HondoMaximo) continue;
 
-                    foreach (var bomba in AQuien(combat, caster, target, efecto, aimedCell,
-                                                 estadosAlEmpezar))
+                    // EL MURO PROPAGA. Encender una bomba enciende a las que estan unidas a ella
+                    // por un muro, y a las de aquellas, y asi hasta donde llegue la cadena: «Si
+                    // una bomba esta unida a otras por un muro y explota, hara explotar tambien a
+                    // las otras bombas del muro», dice la ficha de clase. Por eso es una cola y no
+                    // un bucle: cada bomba que estalla mete dentro a sus companeras de muro.
+                    var cola = new Queue<Fighter>();
+                    foreach (var apuntada in AQuien(combat, caster, target, efecto, aimedCell,
+                                                    estadosAlEmpezar))
                     {
+                        if (apuntada != null && apuntada.IsAlive) cola.Enqueue(apuntada);
+                    }
+
+                    var enElCombate = Todos(combat).ToList();
+                    while (cola.Count > 0)
+                    {
+                        var bomba = cola.Dequeue();
                         if (bomba == null || !bomba.IsAlive) continue;
                         int explosion = Bombs.Explosion(bomba.MonsterId);
                         if (explosion == 0) continue;
@@ -1022,6 +1054,30 @@ namespace Jondo.Unity.Server.Managers
                                                 bomba.CellId, critico: false,
                                                 nearestChainBudget: nearestChainBudget,
                                                 bombasYaEstalladas: bombasYaEstalladas));
+
+                        foreach (var companera in BombWalls.LasDelMismoMuro(enElCombate, bomba))
+                        {
+                            cola.Enqueue(companera);
+                        }
+
+                        // Y LAS QUE PILLE LA EXPLOSION, muro o no muro: «Cuando explota una
+                        // bomba, si hay otras bombas del lanzador en la zona de explosion, estas
+                        // explotaran tambien». Dos bombas pegadas NO hacen muro -- hace falta
+                        // dejar dos casillas -- pero un circulo de radio dos se lleva por delante
+                        // a la de al lado igualmente.
+                        int radio = RadioDeLaExplosion(explosion, Math.Max(1, bomba.GradeIndex));
+                        if (radio > 0)
+                        {
+                            foreach (var cerca in enElCombate)
+                            {
+                                if (cerca == null || !cerca.IsAlive || cerca == bomba) continue;
+                                if (cerca.Invocador != bomba.Invocador) continue;
+                                if (!Bombs.Is(cerca.MonsterId)) continue;
+                                if (Jondo.Unity.World.Maps.MapGeometry.Distance(
+                                        bomba.CellId, cerca.CellId) > radio) continue;
+                                cola.Enqueue(cerca);
+                            }
+                        }
                     }
                     continue;
                 }
@@ -1640,9 +1696,14 @@ namespace Jondo.Unity.Server.Managers
                 // la única frontera que quedaba era el borde de la retícula de 560 celdas, que es
                 // mucho mayor que el suelo de un mapa.
                 var pisables = MapManager.GetFightWalkable(combate.ArenaMapId);
+                // AND A BOMB WALL STOPS IT. "Desplazar una entidad a un muro detendra su
+                // desplazamiento y le infligira danos", says the class sheet; it steps onto the
+                // wall cell and goes no further. Which walls count for THIS fighter is the whole
+                // rule -- Kabum, its own bombs, once a turn -- and that lives in BombWalls.
                 var empujon = Jondo.Unity.World.Maps.Zone.Push(
                     celdaApuntada, quienLanza.CellId, desde, cuantas,
-                    pisables: pisables, ocupadas: ocupadas);
+                    pisables: pisables, ocupadas: ocupadas,
+                    paran: BombWalls.StoppingCells(combate, sobre));
 
                 sobre.MoverA(empujon.ToCell);
 
@@ -1670,7 +1731,12 @@ namespace Jondo.Unity.Server.Managers
                 int colision = 0, aLaPared = 0;
                 Fighter pared = null;
 
-                bool empujaConDano = efecto.EffectId == Empujar && cuantas > 0;
+                // And a wall is NOT a crash. It stops the displacement, but the damage it deals
+                // is its own -- applied by the glyph, over in the handler -- not the damage of
+                // slamming into something: the class sheet mentions no collision damage at all
+                // for pushing somebody into a wall.
+                bool empujaConDano = efecto.EffectId == Empujar && cuantas > 0
+                                     && empujon.Stop != Jondo.Unity.World.Maps.Zone.PushStop.Wall;
                 if (empujaConDano && empujon.BlockedCells > 0)
                 {
                     int deEmpuje = quienLanza.PushDamage + quienLanza.Buffs.De(DanoDeEmpuje, ronda);
@@ -1747,10 +1813,72 @@ namespace Jondo.Unity.Server.Managers
             {
                 int estado = efecto.Value != 0 ? efecto.Value : efecto.DiceNum;
                 if (estado == 0) return null;
+                var barridos = new List<Buff>();
+
+                // EL COMBO NO ES UN ESTADO CUALQUIERA, y tratarlo como tal rompia tres cosas a la
+                // vez. Es una escalera de peldanos excluyentes que solo puede llevar una bomba,
+                // asi que aqui se le imponen sus tres reglas antes de tocar nada:
+                //
+                //   1. SOLO A UNA BOMBA. Polvora y Mosquete encadenan el hechizo del combo con
+                //      mascaras que este motor no sabe estrechar -- "P", "h" --, y sin saber a
+                //      quien apuntar caia en el lanzador: el tymador acababa con Combo IV en su
+                //      propio panel y la bomba sin subir.
+                //   2. UN PELDANO Y NO DOS. La escalera del hechizo vuelve a poner el primero en
+                //      cada vuelta -- su mascara excluye del 2485 en adelante pero no el 2484 --
+                //      y se lo anunciabamos al cliente antes de quitarlo, asi que la bomba se
+                //      veia siempre en Combo I por mucho que el servidor la subiera.
+                //   3. NADA POR ENCIMA DEL QUINCE. "El combo aumenta de 1 a 15 maximo", dice la
+                //      ficha de clase. La escalera del hechizo tiene dieciocho peldanos y las
+                //      bombas llegaban al 18; los tres de arriba pagan lo mismo que el quince,
+                //      asi que subir mas no daba nada y el cliente no sabe pintarlos.
+                if (Combo.EsPeldano(estado))
+                {
+                    if (efecto.EffectId == PonerEstado)
+                    {
+                        if (!Bombs.Is(sobre.MonsterId)) return null;
+
+                        int ahora = Combo.LevelOf(sobre);
+                        int sube = Combo.NivelDelPeldano(estado);
+
+                        // BAJAR NO, REPETIR SI. El servidor real vuelve a poner el peldano en el
+                        // que ya esta antes de subirlo -- medido en «tymador-explobomba
+                        // resiliente», donde los frames 248 y 249 mandan 2484 y 2485 seguidos, sin
+                        // nada en medio -- y al refusarselo nuestro flujo dejaba de parecerse al
+                        // suyo justo en el sitio que el cliente usa para pintar el numero romano.
+                        // Refusar de verdad hace falta en dos casos y solo en dos: bajar de
+                        // peldano, y pasar del quince.
+                        if (sube < ahora) return null;
+                        if (sube > ahora && ahora >= Combo.Tope) return null;
+
+                        // Y LOS VIEJOS SE ANUNCIAN. Quitarlos en silencio era lo que dejaba a la
+                        // bomba en Combo I para siempre: el servidor la subia -- se ve en el
+                        // registro, «-5 esta en el nivel 13, +280%» -- pero el cliente seguia con
+                        // el peldano 1 puesto porque nadie le habia dicho que se lo quitara, y es
+                        // el que pintaba.
+                        foreach (int viejo in Combo.Ladder())
+                        {
+                            if (viejo == estado) continue;
+                            barridos.AddRange(sobre.Buffs.QuitarEstadoConEmbrujos(viejo));
+                        }
+                    }
+                    // SI NO SE HA SUBIDO, TAMPOCO SE BARRE. Cada peldano de la escalera lleva
+                    // detras un 951 que quita el anterior, y con el tope puesto pasaba esto: al
+                    // llegar al quince se rechazaba el 950 del dieciseis pero su 951 seguia
+                    // quitando el quince, la bomba se quedaba sin combo y volvia a empezar por
+                    // abajo. Se veia clavado en la prueba: veinticinco lanzamientos y la bomba
+                    // en el nivel 9, que es quince arriba, cero, y nueve otra vez.
+                    else if (Combo.LevelOf(sobre) == Combo.NivelDelPeldano(estado))
+                    {
+                        return null;
+                    }
+                }
+
                 if (efecto.EffectId == PonerEstado) sobre.Buffs.PonerEstado(estado);
-                IReadOnlyList<Buff> quitados = efecto.EffectId == QuitarEstado
-                    ? sobre.Buffs.QuitarEstadoConEmbrujos(estado)
-                    : Array.Empty<Buff>();
+                if (efecto.EffectId == QuitarEstado)
+                {
+                    barridos.AddRange(sobre.Buffs.QuitarEstadoConEmbrujos(estado));
+                }
+                IReadOnlyList<Buff> quitados = barridos;
 
                 return new Outcome
                 {
@@ -1770,6 +1898,23 @@ namespace Jondo.Unity.Server.Managers
                             Disparador = AlLanzar,
                             CaducaEnRonda = Caduca(efecto, ronda),
                             EmpiezaEnRonda = Empieza(efecto, ronda),
+
+                            // THE RUNG STACKS, and not on a whim: it is what stops a BUFF
+                            // NUMBER FROM BEING REUSED. Without it, setting again the rung the
+                            // bomb already holds fell into the "this one was already here" branch
+                            // of Buffs.Poner, which hands back the same object with the same
+                            // number, so the client got buff 1 with state 2484 twice and its
+                            // removal once. The real server never reuses a number, not once: in
+                            // "tymador-explobomba resiliente" the same bomb carries 2484 as buff
+                            // 19 and again as buff 23, and takes BOTH off -- frames 260 and 261 --
+                            // before stepping it up. Here the opposite happened, and that is why
+                            // the bomb sat on Combo I: the client paints the STATE NAME -- text
+                            // 1026062 is "Combo I", 1026067 is "Combo II" -- and one of the two
+                            // 2484s nobody had withdrawn stayed on it.
+                            //
+                            // Stacking leaves no two rungs alive: the sweep above calls
+                            // QuitarEstadoConEmbrujos, which takes away EVERY copy of the state.
+                            Apila = Combo.EsPeldano(estado),
                         }, combate.SiguienteEmbrujo)
                         : null,
                     BuffsQuitados = quitados,

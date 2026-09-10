@@ -108,12 +108,49 @@ namespace Jondo.Unity.Server.Managers
 
         private static readonly Dictionary<(int Type, int Id), string> _texts = new();
 
-        public static int Count => _texts.Count;
+        /// <summary>
+        /// Whether the table is filled in and safe to read. Volatile because the fast path in
+        /// <see cref="Ensure"/> reads it outside the lock, and raised LAST so a reader never
+        /// lands on a half-filled dictionary.
+        /// </summary>
+        private static volatile bool _loaded;
+        private static readonly object _lock = new object();
 
-        public static void Initialize()
+        public static int Count { get { Ensure(); return _texts.Count; } }
+
+        /// <summary>
+        /// Reads the file, once per run. Kept as a separate call so the server pays for it at
+        /// boot, with its log line, rather than on whoever first writes to the chat.
+        /// </summary>
+        /// <remarks>
+        /// CALLING IT AGAIN DOES NOTHING, ON PURPOSE. It used to clear the table and re-read the
+        /// file with no lock, and anyone reading during that window was told a message that
+        /// exists does not -- measured, on every read that overlapped. Nothing here changes while
+        /// the server is up: the json is extracted from the client once.
+        /// </remarks>
+        public static void Initialize() => Ensure();
+
+        private static void Ensure()
         {
-            _texts.Clear();
+            if (_loaded) return;
+            lock (_lock)
+            {
+                if (_loaded) return;
+                try
+                {
+                    Load();
+                }
+                finally
+                {
+                    // In a finally so a missing file counts as tried, and we do not go back to
+                    // the disk for every line the server writes to the chat.
+                    _loaded = true;
+                }
+            }
+        }
 
+        private static void Load()
+        {
             string path = Paths.Resolve("mensajes_3.6.10.10.json");
             if (!File.Exists(path))
             {
@@ -152,9 +189,16 @@ namespace Jondo.Unity.Server.Managers
         /// registro del servidor diga qué se acaba de enviar en vez de un par de números sueltos.
         /// </summary>
         public static string Text(int type, int id)
-            => _texts.TryGetValue((type, id), out string? text) ? text : $"({type}, {id})";
+        {
+            Ensure();
+            return _texts.TryGetValue((type, id), out string? text) ? text : $"({type}, {id})";
+        }
 
         /// <summary>¿Existe ese mensaje en el cliente? Mandar uno que no existe no enseña nada.</summary>
-        public static bool Exists(int type, int id) => _texts.ContainsKey((type, id));
+        public static bool Exists(int type, int id)
+        {
+            Ensure();
+            return _texts.ContainsKey((type, id));
+        }
     }
 }

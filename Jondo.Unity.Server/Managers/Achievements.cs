@@ -31,7 +31,12 @@ namespace Jondo.Unity.Server.Managers
     /// </remarks>
     public static class Achievements
     {
-        private static AchievementCatalogue? _book;
+        /// <summary>
+        /// Volatile, and assigned only once the catalogue is fully built: readers take no lock,
+        /// so this assignment is what publishes it to them.
+        /// </summary>
+        private static volatile AchievementCatalogue? _book;
+        private static readonly object _loadLock = new object();
 
         /// <summary>Ankama's catalogue. Null until <see cref="Load"/> has run.</summary>
         public static AchievementCatalogue? Book => _book;
@@ -45,17 +50,27 @@ namespace Jondo.Unity.Server.Managers
         public static void Load()
         {
             if (_book != null) return;
-
-            _book = new AchievementCatalogue(null, Console.WriteLine);
-            if (!_book.Ready)
+            lock (_loadLock)
             {
-                Console.WriteLine("[Logros] No hay catálogo. No se conseguirá ninguno.");
-                return;
-            }
+                if (_book != null) return;
 
-            Console.WriteLine($"[Logros] {_book.Count:N0} logros, {_book.ObjectiveCount:N0} objetivos, " +
-                              $"{_book.RewardCount:N0} recompensas, {_book.FromQuestsCount:N0} " +
-                              "que se ganan acabando misiones.");
+                // The catalogue is finished the moment the constructor returns -- unlike Quests,
+                // nothing else is indexed off it afterwards -- so publishing it here is already
+                // publishing something complete. The volatile write is what makes that visible to
+                // readers, who take no lock.
+                var book = new AchievementCatalogue(null, Console.WriteLine);
+                _book = book;
+
+                if (!book.Ready)
+                {
+                    Console.WriteLine("[Logros] No hay catálogo. No se conseguirá ninguno.");
+                    return;
+                }
+
+                Console.WriteLine($"[Logros] {book.Count:N0} logros, {book.ObjectiveCount:N0} objetivos, " +
+                                  $"{book.RewardCount:N0} recompensas, {book.FromQuestsCount:N0} " +
+                                  "que se ganan acabando misiones.");
+            }
         }
 
         /// <summary>

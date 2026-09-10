@@ -60,7 +60,11 @@ namespace Jondo.Unity.Server.Managers
         private static readonly List<Arena> _arenas = new List<Arena>();
         private static readonly object _lock = new object();
         private static readonly Random _azar = new Random();
-        private static bool _loaded;
+        /// <summary>
+        /// Whether the list is filled in and safe to read. Volatile, and raised LAST: see
+        /// <see cref="EnsureLoadedLocked"/>.
+        /// </summary>
+        private static volatile bool _loaded;
 
         public static int Count
         {
@@ -76,14 +80,20 @@ namespace Jondo.Unity.Server.Managers
             return n;
         }
 
+        /// <summary>
+        /// Reads the arenas, once per run. Kept as a separate call so the server pays for it at
+        /// boot, with its log line, rather than on the first fight looking for an arena.
+        /// </summary>
+        /// <remarks>
+        /// Calling it again does nothing, on purpose. It used to clear the list, drop the flag and
+        /// rebuild -- and readers walk _arenas without the lock, so anyone counting arenas during
+        /// that window counted the wrong number, or walked a list being added to.
+        /// </remarks>
         public static void Initialize()
         {
-            lock (_lock)
-            {
-                _arenas.Clear();
-                _loaded = false;
-                EnsureLoadedLocked();
-            }
+            bool first = !_loaded;
+            EnsureLoaded();
+            if (!first) return;
 
             Console.WriteLine($"[Koliseo] {_arenas.Count} arenas: {CountFor(1)} para uno contra uno, " +
                               $"{CountFor(2)} para dos contra dos, {CountFor(3)} para tres contra tres.");
@@ -95,16 +105,22 @@ namespace Jondo.Unity.Server.Managers
             lock (_lock) EnsureLoadedLocked();
         }
 
+        /// <remarks>
+        /// The flag goes up after the load and not before, for the same reason as in
+        /// <see cref="BreedLookTable"/>: raised on entry, the lock-free fast path in
+        /// <see cref="EnsureLoaded"/> lets other threads walk the list while this one is still
+        /// adding to it, and an arena that is there does not get counted.
+        /// </remarks>
         private static void EnsureLoadedLocked()
         {
             if (_loaded) return;
-            _loaded = true;
 
             string path = Paths.KoliseoMapsJson;
             if (!File.Exists(path))
             {
                 Console.WriteLine($"[Koliseo] Falta {Path.GetFileName(path)}: los combates irán al " +
                                   "arena de siempre.");
+                _loaded = true;
                 return;
             }
 
@@ -132,6 +148,12 @@ namespace Jondo.Unity.Server.Managers
             catch (Exception ex)
             {
                 Console.WriteLine($"[Koliseo] No se pudo leer {Path.GetFileName(path)}: {ex.Message}");
+            }
+            finally
+            {
+                // In a finally so a broken file still counts as tried, and we do not go back to
+                // the disk for every fight looking for an arena.
+                _loaded = true;
             }
         }
 

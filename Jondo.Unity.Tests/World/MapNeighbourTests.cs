@@ -17,6 +17,12 @@ namespace Jondo.Unity.Tests.World
     /// The real neighbours are laid out around Incarnam's (1,-2), which is where Anta Brok stands
     /// and the map every quest here starts from.
     /// </remarks>
+    /// <remarks>
+    /// In the MapManager collection because Lay() below REPLACES MapManager.ScrollActions, and
+    /// MonsterVetoTests rebuilds that same static state from the real world.db. Out of the
+    /// collection these two ran in parallel and each undid the other.
+    /// </remarks>
+    [Collection("MapManager")]
     public class MapNeighbourTests
     {
         private const long Centre = 154010883;

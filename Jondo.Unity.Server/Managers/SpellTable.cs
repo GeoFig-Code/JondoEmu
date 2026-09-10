@@ -54,16 +54,42 @@ namespace Jondo.Unity.Server.Managers
 
         private static readonly Dictionary<int, Pair> _pairsById = new Dictionary<int, Pair>();
 
-        public static bool IsLoaded => _pairsByBreed.Count > 0;
-        public static int PairCount => _pairsById.Count;
+        /// <summary>
+        /// Whether the tables are read in and safe to use. Volatile because the fast path in
+        /// <see cref="Ensure"/> reads it outside the lock, and raised LAST so a reader never
+        /// catches the four collections part-built.
+        /// </summary>
+        private static volatile bool _loaded;
+        private static readonly object _lock = new object();
 
-        public static void Initialize()
+        public static bool IsLoaded { get { Ensure(); return _pairsByBreed.Count > 0; } }
+        public static int PairCount { get { Ensure(); return _pairsById.Count; } }
+
+        /// <summary>
+        /// Reads the spell tables, once per run. Kept as a separate call so the server pays for
+        /// it at boot, with its log line, and not on the first spell list somebody opens.
+        /// </summary>
+        public static void Initialize() => Ensure();
+
+        private static void Ensure()
         {
-            _pairsByBreed.Clear();
-            _common.Clear();
-            _grades.Clear();
-            _pairsById.Clear();
+            if (_loaded) return;
+            lock (_lock)
+            {
+                if (_loaded) return;
+                try
+                {
+                    Load();
+                }
+                finally
+                {
+                    _loaded = true;   // in a finally so a missing file counts as tried
+                }
+            }
+        }
 
+        private static void Load()
+        {
             LoadGrades();
             LoadPairs();
 
@@ -223,6 +249,7 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static List<KnownSpell> KnownFor(int breed, int level, IReadOnlyDictionary<int, int>? chosen = null)
         {
+            Ensure();
             var known = new List<KnownSpell>();
 
             _pairsByBreed.TryGetValue(breed, out var own);
@@ -257,6 +284,7 @@ namespace Jondo.Unity.Server.Managers
 
         private static int HighestGrade(int spellId, int level)
         {
+            Ensure();
             if (!_grades.TryGetValue(spellId, out var grades)) return 0;
 
             int best = 0;
@@ -270,6 +298,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>La pareja a la que pertenece un hechizo, o null si no es de ninguna.</summary>
         public static Pair? PairOf(int spellId)
         {
+            Ensure();
             foreach (var pair in _pairsById.Values)
             {
                 if (pair.Holds(spellId)) return pair;

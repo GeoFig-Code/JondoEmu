@@ -26,7 +26,13 @@ namespace Jondo.Unity.Server.Managers
     /// </remarks>
     public static class Quests
     {
-        private static QuestCatalogue? _book;
+        /// <summary>
+        /// Volatile, and assigned only once <see cref="QuestCatalogue"/> is fully built: readers
+        /// take no lock, so this assignment is what publishes the catalogue to them. Without it a
+        /// reader could hold a non-null Book whose innards were still being filled in.
+        /// </summary>
+        private static volatile QuestCatalogue? _book;
+        private static readonly object _loadLock = new object();
 
         /// <summary>Line of dialogue to the steps it hands over.</summary>
         /// <remarks>
@@ -52,21 +58,40 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>
         /// Reads the catalogue. Once, at startup: it is 3 MB of JSON and it never changes.
         /// </summary>
+        /// <remarks>
+        /// THE CATALOGUE IS PUBLISHED LAST, once its two side tables are built. It used to be
+        /// assigned the moment it was constructed, several lines before HandedOverBy and GivenBy
+        /// were filled from it, so anybody who checked Ready in that window got a catalogue whose
+        /// indexes were still empty -- an NPC that hands over a quest step would have had nothing
+        /// to hand over, and said nothing about it.
+        /// </remarks>
         public static void Load()
         {
             if (_book != null) return;
-
-            // No ClientText: the server has no use for translated quest names, and handing it one
-            // would make it read a 339,342-entry language file it would never look at.
-            _book = new QuestCatalogue(null, Console.WriteLine);
-            if (!_book.Ready)
+            lock (_loadLock)
             {
-                Console.WriteLine("[Misiones] No hay catálogo. Nadie podrá coger una misión.");
-                return;
-            }
+                if (_book != null) return;
 
+                // No ClientText: the server has no use for translated quest names, and handing it
+                // one would make it read a 339,342-entry language file it would never look at.
+                var book = new QuestCatalogue(null, Console.WriteLine);
+                if (!book.Ready)
+                {
+                    Console.WriteLine("[Misiones] No hay catálogo. Nadie podrá coger una misión.");
+                    _book = book;   // published anyway: Ready stays false and Load does not retry
+                    return;
+                }
+
+                Build(book);
+                _book = book;
+            }
+        }
+
+        /// <summary>Fills the indexes that hang off the catalogue, before it is published.</summary>
+        private static void Build(QuestCatalogue book)
+        {
             HandedOverBy.Clear();
-            foreach (var quest in _book.All())
+            foreach (var quest in book.All())
             {
                 foreach (var step in quest.Steps)
                 {
@@ -82,7 +107,7 @@ namespace Jondo.Unity.Server.Managers
             }
 
             GivenBy.Clear();
-            foreach (var quest in _book.All())
+            foreach (var quest in book.All())
             {
                 foreach (var giver in quest.Givers)
                 {
@@ -100,7 +125,7 @@ namespace Jondo.Unity.Server.Managers
                 Jondo.Unity.Launcher.Paths.ContentFile(QuestBindingContent.AuthoredFile),
                 Console.WriteLine);
 
-            Console.WriteLine($"[Misiones] {_book.QuestCount:N0} misiones, {_book.StepCount:N0} pasos, " +
+            Console.WriteLine($"[Misiones] {book.QuestCount:N0} misiones, {book.StepCount:N0} pasos, " +
                               $"{HandedOverBy.Count:N0} frases que reparten una, " +
                               $"{GivenBy.Count:N0} NPCs que las dan.");
 

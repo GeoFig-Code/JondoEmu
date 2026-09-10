@@ -19,8 +19,11 @@ namespace Jondo.Unity.Tests.World
     /// </remarks>
     public class DungeonDoorTests
     {
-        public DungeonDoorTests() => InfoMessages.Initialize();
-
+        /// <summary>
+        /// Whether the machine running this has the message file. Reading Count is enough to
+        /// load it: the table reads itself in on the first question asked of it, so there is no
+        /// Initialize to remember here any more.
+        /// </summary>
         private static bool Loaded => InfoMessages.Count > 0;
 
         [Fact]

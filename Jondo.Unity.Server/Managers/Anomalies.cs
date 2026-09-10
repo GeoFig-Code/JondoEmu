@@ -66,20 +66,64 @@ namespace Jondo.Unity.Server.Managers
         private static readonly List<Anomaly> _all = new();
         private static readonly Dictionary<int, Anomaly> _bySubArea = new();
 
+        /// <summary>
+        /// Whether the list is read in and safe to use. Volatile because the fast path in
+        /// <see cref="Ensure"/> reads it outside the lock, and raised LAST so a reader never
+        /// sees the tables half filled.
+        /// </summary>
+        private static volatile bool _loaded;
+        private static readonly object _lock = new object();
+
+        private static int _duration = 120;
+        private static long _arrivalMap;
+
         /// <summary>Cuántos minutos vive una anomalía. Del f4.f3 del hjj.</summary>
-        public static int Duration { get; private set; } = 120;
+        public static int Duration { get { Ensure(); return _duration; } }
 
         /// <summary>Dónde deja el servidor al viajar a una. Medido de la única captura que lo hace.</summary>
-        public static long ArrivalMap { get; private set; }
+        /// <remarks>
+        /// EVERY reader here goes through Ensure, this one above all: ZaapTravelHandler asks for
+        /// the arrival map BEFORE it asks for the list, and bails out when GetMapInfo cannot find
+        /// it. Answering zero because nothing had been read in yet would make the whole anomaly
+        /// tab vanish, and it would not log a thing on the way out.
+        /// </remarks>
+        public static long ArrivalMap { get { Ensure(); return _arrivalMap; } }
 
-        public static int Count => _all.Count;
-        public static IReadOnlyList<Anomaly> All => _all;
+        public static int Count { get { Ensure(); return _all.Count; } }
+        public static IReadOnlyList<Anomaly> All { get { Ensure(); return _all; } }
 
-        public static void Initialize()
+        /// <summary>
+        /// Reads the list, once per run. Kept as a separate call so the server pays for it at
+        /// boot, with its log line, instead of on whoever first opens the travel window.
+        /// </summary>
+        /// <remarks>
+        /// Calling it again does nothing, on purpose: the json is a measurement that does not
+        /// change while the server is up, and clearing the tables to re-read it was what let a
+        /// reader catch them empty.
+        /// </remarks>
+        public static void Initialize() => Ensure();
+
+        private static void Ensure()
         {
-            _all.Clear();
-            _bySubArea.Clear();
+            if (_loaded) return;
+            lock (_lock)
+            {
+                if (_loaded) return;
+                try
+                {
+                    Load();
+                }
+                finally
+                {
+                    // In a finally so a missing file counts as tried: the early returns below
+                    // would otherwise send every travel request back to the disk.
+                    _loaded = true;
+                }
+            }
+        }
 
+        private static void Load()
+        {
             string path = Paths.Resolve("anomalias_3.6.10.10.json");
             if (!File.Exists(path))
             {
@@ -94,9 +138,9 @@ namespace Jondo.Unity.Server.Managers
                 var root = doc.RootElement;
 
                 if (root.TryGetProperty("duracion", out var duration) && duration.GetInt32() > 0)
-                    Duration = duration.GetInt32();
+                    _duration = duration.GetInt32();
                 if (root.TryGetProperty("mapaDestino", out var arrival))
-                    ArrivalMap = arrival.GetInt64();
+                    _arrivalMap = arrival.GetInt64();
 
                 if (root.TryGetProperty("anomalias", out var list))
                 {
@@ -123,7 +167,7 @@ namespace Jondo.Unity.Server.Managers
             // Si no hay mapa de destino no se ofrece ninguna: una anomalía que no lleva a ningún
             // sitio es una entrada en la lista que al clicarla no hace nada, y eso es peor que no
             // enseñarla.
-            if (ArrivalMap == 0 && _all.Count > 0)
+            if (_arrivalMap == 0 && _all.Count > 0)
             {
                 Console.WriteLine("[Anomalías] La lista no dice a qué mapa se viaja; no se ofrecen.");
                 _all.Clear();
@@ -131,12 +175,15 @@ namespace Jondo.Unity.Server.Managers
                 return;
             }
 
-            Console.WriteLine($"[Anomalías] {_all.Count} activas, {Duration} minutos cada una, " +
-                              $"se entra por el mapa {ArrivalMap}.");
+            Console.WriteLine($"[Anomalías] {_all.Count} activas, {_duration} minutos cada una, " +
+                              $"se entra por el mapa {_arrivalMap}.");
         }
 
         public static bool TryGet(int subAreaId, out Anomaly anomaly)
-            => _bySubArea.TryGetValue(subAreaId, out anomaly);
+        {
+            Ensure();
+            return _bySubArea.TryGetValue(subAreaId, out anomaly);
+        }
 
         /// <summary>
         /// Los minutos que le quedan a una anomalía.

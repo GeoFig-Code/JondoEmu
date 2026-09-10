@@ -791,6 +791,108 @@ namespace Jondo.Unity.Server.Network
             return jwe.Var(14, kind).Build();
         }
 
+        /// <summary>
+        /// Lo que se planta en el suelo (el f32 de un jwe con f14 = 401).
+        ///
+        ///   f1 { f1 { f1 { f2: el color en RGB, f3: la casilla }
+        ///             f4: el numero del glifo    f5: el tamano de la huella
+        ///             f6: el grado del hechizo   f9: el hechizo que lanza
+        ///             f10: la casilla otra vez   f11: 1
+        ///             f12: de quien es } }
+        /// </summary>
+        /// <remarks>
+        /// Medido en las capturas del tymador: los hechizos de muro salen 143 veces y las 143 van
+        /// dentro de un jwe f14 = 401, UNA POR CASILLA. Dos seguidas del muro de fuego:
+        ///
+        /// <code>
+        ///   f3=53721497699 f14=401 f32{f1{f1{f2=16711680 f3=260} f4=1 f5=2 f6=3
+        ///                                 f9=13458 f10=260 f11=1 f12=53721497699}}
+        ///   ... la siguiente igual con f3=274, f4=2 y f10=274
+        /// </code>
+        ///
+        /// El color 16711680 es 0xFF0000, rojo puro, y el f6 vale 3, que es el grado con el que
+        /// pega el muro -- lo unico de todo esto que ya se habia supuesto bien.
+        /// </remarks>
+        public static byte[] BuildGlyph(long owner, int glyphId, int cell, int spell, int grade,
+                                        int size, int colour)
+            => BuildAction(owner, PlacedGlyph,
+                Pb.New().Msg(1, Pb.New()
+                    .Msg(1, Pb.New().Var(2, colour).Var(3, cell))
+                    .Var(4, glyphId)
+                    .Var(5, size)
+                    .Var(6, grade)
+                    .Var(9, spell)
+                    .Var(10, cell)
+                    .Var(11, 1)
+                    .Var(12, owner)),
+                detailField: 32);
+
+        /// <summary>
+        /// Y como se quita (el f22 de un jwe con f14 = 310): sólo el número del glifo.
+        /// </summary>
+        /// <remarks>
+        /// Medido en la misma captura que el 401, y es tan corto como parece: quince bytes con el
+        /// dueño en el f3 y <c>f22{f1 = 1}</c>, y el siguiente igual con el 2. Los números son los
+        /// mismos que repartieron los 401 al ponerlos.
+        ///
+        /// Sin esto el muro se quedaba pintado para siempre: el servidor lo quitaba de su lista
+        /// -- se ve en el registro, «se cae el glifo 4» -- y al cliente no se lo decía nadie.
+        /// </remarks>
+        public static byte[] BuildGlyphGone(long owner, int glyphId)
+            => BuildAction(owner, RemovedGlyph, Pb.New().Var(1, glyphId), detailField: 22);
+
+        public const int RemovedGlyph = 310;
+
+        /// <summary>
+        /// And how one GOES OFF (a jwe with f14 = 306 or 307):
+        ///
+        ///   f3: whose glyph it is
+        ///   f9 { f1: the cell, f2: who it caught, f4: the glyph number }
+        ///
+        /// 306 is walking into it and 307 is starting the turn on top of it. Same payload in both:
+        /// 411 messages across the class captures and all 411 carry exactly f1, f2 and f4.
+        /// </summary>
+        /// <remarks>
+        /// THIS IS WHAT WAS MISSING for the bomb wall to be seen hitting, and it was not the
+        /// damage: the damage already went out. The real server does NOT announce the cast of a
+        /// glyph spell -- the four wall spells appear 143 times in the Rogue captures and all 143
+        /// sit inside an f14 = 401, not one inside an f14 = 300. What it sends is this, and the
+        /// blow right behind it:
+        ///
+        /// <code>
+        ///   jzc  f1=-1 f2=290 f7=1 f8=14           the turn of -1 begins
+        ///   jto  f1=-1 f2=2                        opens the sequence, IN THE VICTIM NAME
+        ///   jwe  f3=53721497699 f14=307 f9{f1=274 f2=-1 f4=6}
+        ///   jwe  f3=53721497699 f14=99  f40{f2=-1 f3=44 f4=2 f5=4}
+        ///   jwi  f1=3 f2=-1 f3=2                   and closes it
+        /// </code>
+        ///
+        /// Counted: 292 of the 307 and 119 of the 306 across the class captures. The 307 follows a
+        /// jzc in 199 of the 292, and the 306 follows a jwe f14 = 129 -- the movement points of
+        /// walking -- or the 401s that have just raised a wall under somebody feet.
+        ///
+        /// 308 and 309 also show up in the captures and are NOT this: they carry no f9 and appear
+        /// in the Eniripsa words. Left alone.
+        /// </remarks>
+        public static byte[] BuildGlyphTriggered(long owner, int glyphId, int cell, long victim,
+                                                 bool walkedIn)
+            => BuildAction(owner, walkedIn ? EnteredGlyph : StartedTurnOnGlyph,
+                Pb.New().Var(1, cell).Var(2, victim).Var(4, glyphId),
+                detailField: 9);
+
+        public const int EnteredGlyph = 306;
+        public const int StartedTurnOnGlyph = 307;
+
+        /// <summary>
+        /// The sequence the real server puts a turn-start glyph trigger in: a jto with f2 = 2,
+        /// opened in the name of whoever is standing on it, not of the glyph owner.
+        /// </summary>
+        public const int GlyphSequence = 2;
+
+        /// <summary>El rojo puro con el que sale el muro de bombas.</summary>
+        public const int GlyphRed = 16711680;
+
+        public const int PlacedGlyph = 401;
         public const int Walked = 129;
         public const int Cast = 300;
         public const int WeaponCast = 303;
@@ -830,6 +932,75 @@ namespace Jondo.Unity.Server.Network
             });
             return parsed.ToByteArray();
         }
+
+        /// <summary>
+        /// The same look with a different SCALE (the packed repeated f5 of the look root).
+        /// </summary>
+        /// <remarks>
+        /// This is how a bomb grows. Measured on the look change of a bomb climbing its combo:
+        /// the whole message is <c>f26 { f1 = -5, f3 { f2 = 3, f3 = 1562, f5 = 69 } }</c> and the
+        /// only thing that ever moves between one rung and the next is that last byte -- 0x69 is
+        /// 105, then 110, 125, 130... The field is length-delimited holding one varint, which is
+        /// how protobuf packs a <c>repeated int32</c> of one element.
+        /// </remarks>
+        public static byte[] WithScale(byte[] look, int scale)
+        {
+            if (look == null || look.Length == 0 || scale <= 0) return look ?? Array.Empty<byte>();
+
+            var packed = Pb.New().Var(1, scale).Build();
+            // Pb writes a tag; the packed payload is the varint alone, so drop the tag byte.
+            packed = packed[1..];
+
+            var parsed = ProtoMessage.Parse(look);
+            var field = parsed.Fields.Find(f => f.FieldNumber == 5 && f.WireType == 2);
+            if (field != null) field.BytesValue = packed;
+            else parsed.Fields.Add(new ProtoField
+            {
+                FieldNumber = 5,
+                WireType = 2,
+                BytesValue = packed,
+            });
+            return parsed.ToByteArray();
+        }
+
+        /// <summary>
+        /// A bomb announcing that it cast a combo spell on itself (a jwe with f14 = 300).
+        /// </summary>
+        /// <remarks>
+        /// Nothing about the combo showed up on screen, and this was why. The server climbed the
+        /// ladder and told the client about the state -- our jxm is byte for byte the real one --
+        /// but never announced the CAST, and the client redraws the bomb off the cast, not off the
+        /// buff. Measured in "tymador-explobomba resiliente", frames 262 and 264, one rung apart:
+        ///
+        /// <code>
+        ///   18 fbffffffffffffffff01           f3  = -5, the bomb
+        ///   3a 2e                             f7
+        ///      10 fbffffffffffffffff01        f2  = -5, itself
+        ///      22 0b 20 fbffffffffffffffff01  f4 { f4 = -5 }
+        ///      22 07 20 e380b490c801          f4 { f4 = the Rogue }
+        ///      30 d801                        f6  = 216, its cell
+        ///      3a 08 10 91a001 18 d3a603      f7 { f2 = 20497, f3 = 54099 }
+        ///   70 ac02                           f14 = 300
+        /// </code>
+        ///
+        /// TWO f4 and no f8, which is why this does not go through <see cref="CastAt"/>: that one
+        /// writes a single f4 and closes with f8 = 1, and the bytes would not match. The pair of
+        /// f4 is the bomb and its summoner, both of them.
+        ///
+        /// One of these goes out per combo granted, naming 20497; and when the rung actually
+        /// moves, a second one right behind naming the grade of 20500 that pays for it.
+        /// </remarks>
+        public static byte[] BuildComboCast(long bomb, long owner, int cell, int spell, int levelId)
+            => Pb.New()
+                .Var(3, bomb)
+                .Msg(7, Pb.New()
+                    .Var(2, bomb)
+                    .Msg(4, Pb.New().Var(4, bomb))
+                    .Msg(4, Pb.New().Var(4, owner))
+                    .Var(6, cell)
+                    .Msg(7, Pb.New().Var(2, spell).Var(3, levelId)))
+                .Var(14, Cast)
+                .Build();
 
         /// <summary>Los puntos gastados, en negativo, como los manda el servidor real.</summary>
         public static Pb Spent(long fighterId, int amount)

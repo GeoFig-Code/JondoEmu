@@ -18,6 +18,13 @@ namespace Jondo.Unity.Tests.Combat
     /// beside you, and they could read you. The fight packets never could -- those go to the fight's
     /// own participant list and never through the map -- which is why this went unnoticed.
     /// </remarks>
+    /// <remarks>
+    /// In the MapManager collection because ResolveArenaMapId ENUMERATES MapManager.Maps and
+    /// WalkableCells, and MonsterVetoTests rebuilds both out of the 240 MB world.db. Enumerating
+    /// a dictionary somebody else is refilling is not a stale read, it throws -- and the load is
+    /// slow enough to make that a wide window rather than a freak one.
+    /// </remarks>
+    [Collection("MapManager")]
     public class ArenaSharingTests
     {
         [Fact]

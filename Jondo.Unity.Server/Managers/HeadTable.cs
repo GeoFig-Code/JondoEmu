@@ -32,16 +32,27 @@ namespace Jondo.Unity.Server.Managers
 
         private static readonly Dictionary<int, Head> _heads = new Dictionary<int, Head>();
         private static readonly Dictionary<string, int> _defaults = new Dictionary<string, int>();
-        private static bool _loaded;
+        /// <summary>
+        /// Whether the tables are filled in and safe to read. Volatile, and raised LAST: see
+        /// <see cref="Ensure"/>.
+        /// </summary>
+        private static volatile bool _loaded;
         private static readonly object _lock = new object();
 
+        /// <summary>Lazy loading: the first query reads the file.</summary>
+        /// <remarks>
+        /// The flag goes up after the load and not before, for the same reason as in
+        /// <see cref="BreedLookTable"/>: raised on entry, the lock-free fast path above lets
+        /// other threads read the dictionary while this one is still filling it, and a head that
+        /// is there answers zero. A character built in that window comes out with no face, and
+        /// says nothing about it.
+        /// </remarks>
         private static void Ensure()
         {
             if (_loaded) return;
             lock (_lock)
             {
                 if (_loaded) return;
-                _loaded = true;
                 try
                 {
                     string path = Paths.HeadsJson;
@@ -84,6 +95,12 @@ namespace Jondo.Unity.Server.Managers
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[Heads] Error loading the heads: {ex.Message}");
+                }
+                finally
+                {
+                    // In a finally so a missing file still counts as tried: the early return
+                    // above would otherwise send us back to the disk on every head asked for.
+                    _loaded = true;
                 }
             }
         }

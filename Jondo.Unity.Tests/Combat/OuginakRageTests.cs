@@ -144,8 +144,7 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void Bestial_appearance_resolves_to_the_captured_skeleton()
         {
-            Cosmetics.Initialize();
-
+            // The catalogue loads itself on the first question asked of it.
             Assert.Equal(9025, Cosmetics.AppearanceBones(BestialAppearance));
         }
     }

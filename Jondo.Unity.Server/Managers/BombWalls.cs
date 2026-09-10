@@ -81,6 +81,65 @@ namespace Jondo.Unity.Server.Managers
             [5161] = 13501,   // Sismobomba     -> Muro de Tierra
         };
 
+        /// <summary>Whether this glyph on the ground is one of the four bomb walls.</summary>
+        public static bool IsWall(Glifo glyph)
+            => glyph != null && WallSpell.Values.Contains(glyph.Hechizo);
+
+        /// <summary>The state that shields from explosions and from walls.</summary>
+        /// <remarks>
+        /// Not written by hand: it is the value of effect 950 in the two spells that apply it,
+        /// 13450 "Kabum" -- the very one the class sheet uses as that paragraph icon -- and 13489
+        /// "Impostura", both under the mask "a,f3112,f3113,f3114,f5161": allies yes, bombs no.
+        /// </remarks>
+        public const int KabumState = 92;
+
+        /// <summary>
+        /// Whether a wall goes off under this fighter.
+        /// </summary>
+        /// <remarks>
+        /// Three rules, and all three are measured or written down:
+        ///
+        /// - KABUM SPARES. "Los hechizos Kabum e Impostura permiten aplicar el estado Kabum al
+        ///   lanzador y a sus aliados, que los protege de los danos de las explosiones y de los
+        ///   muros." Which is also what says the wall hits its OWN Rogue without it: the sheet
+        ///   calls the victim "una entidad", not an enemy.
+        /// - ITS OWN BOMBS ARE NEVER CAUGHT. Three of the eight displacements onto a wall cell in
+        ///   the captures are bombs of the Rogue holding the wall up -- frames 10552 and 10645 of
+        ///   "explobomba-tornabomba-...-explotandolas" and 337 of "tymador-cruce" -- and none of
+        ///   the three sets it off. Which is the only way Imantacion can work at all: it drags the
+        ///   bombs along the very line they are holding.
+        /// - ONCE A TURN, BUT ONLY WHEN PUSHED. See <see cref="FightInstance.WallHitThisTurn"/>.
+        ///   Walking is exempt: "caminar en el muro no se ve afectado por este limite".
+        /// </remarks>
+        public static bool Catches(FightInstance fight, Glifo wall, Fighter who,
+                                   bool byDisplacement)
+        {
+            if (wall == null || who == null) return false;
+            if (who.Buffs.Estados.Contains(KabumState)) return false;
+            if (who.EsInvocado && who.Invocador == wall.Dueno && Bombs.Is(who.MonsterId))
+                return false;
+            if (byDisplacement && fight != null && fight.WallHitThisTurn.Contains(who.Id))
+                return false;
+            return true;
+        }
+
+        /// <summary>
+        /// The cells that stop a displacement dead: whatever wall would catch this fighter.
+        /// </summary>
+        public static HashSet<int> StoppingCells(FightInstance fight, Fighter who)
+        {
+            var cells = new HashSet<int>();
+            if (fight == null || who == null) return cells;
+
+            foreach (var glyph in fight.Glifos)
+            {
+                if (!IsWall(glyph)) continue;
+                if (!Catches(fight, glyph, who, byDisplacement: true)) continue;
+                foreach (int cell in glyph.Casillas) cells.Add(cell);
+            }
+            return cells;
+        }
+
         /// <summary>Every wall a fighter's bombs are holding up right now.</summary>
         public static List<BombWall> Of(IEnumerable<Fighter> everybody, Fighter owner)
         {
@@ -122,6 +181,34 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The wall covering a cell, if any of this fighter's walls does.</summary>
         public static BombWall Covering(IEnumerable<Fighter> everybody, Fighter owner, int cell)
             => Of(everybody, owner).FirstOrDefault(wall => wall.Covers(cell));
+
+        /// <summary>
+        /// The other bombs this one shares a wall with. Its own summoner's, and nobody else's.
+        /// </summary>
+        /// <remarks>
+        /// One hop, not the whole web: whoever calls this is walking a chain and will ask again
+        /// for each bomb it reaches, so the transitive closure falls out of the walk. And it comes
+        /// out right even when four bombs stand in a row, because a wall holds three at most and
+        /// the third one belongs to BOTH walls -- so the chain crosses at the joint.
+        ///
+        /// From the class sheet: "Si una bomba está unida a otras por un muro y explota, hará
+        /// explotar también a las otras bombas del muro."
+        /// </remarks>
+        public static IEnumerable<Fighter> LasDelMismoMuro(IEnumerable<Fighter> everybody,
+                                                           Fighter bomba)
+        {
+            if (bomba == null) return Enumerable.Empty<Fighter>();
+
+            var todos = everybody as IReadOnlyCollection<Fighter> ?? everybody.ToList();
+            var dueno = todos.FirstOrDefault(f => f != null && f.Id == bomba.Invocador);
+            if (dueno == null) return Enumerable.Empty<Fighter>();
+
+            return Of(todos, dueno)
+                .Where(wall => wall.Bombs.Contains(bomba))
+                .SelectMany(wall => wall.Bombs)
+                .Where(other => other != bomba)
+                .Distinct();
+        }
 
         /// <summary>
         /// Walks one line of bombs and cuts it into walls: consecutive ones join while the gap

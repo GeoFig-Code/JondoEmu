@@ -1840,17 +1840,9 @@ namespace Jondo.Unity.Server.Handlers
             Program.LogDebug("[Combate] El jugador se declara listo (kaq).");
             bool allReady = fight.SetFighterReady(GameState.CharacterId);
 
-            // La pareja lqg + lqt, los dos vacíos, justo cuando están todos listos.
-            //
-            // Esto es lo que le dice al cliente que deje de regenerar vida. La regeneración la
-            // lleva ÉL: el servidor no suma vida por su cuenta en ningún sitio. Al entrar al
-            // mundo se le enciende —el lqg va en la ráfaga de entrada, que replicamos— y como
-            // nadie se la apagaba, seguía tictaqueando dentro del combate: el jugador recibía un
-            // golpe y veía cómo la barra se le rellenaba sola de uno en uno.
-            //
-            // Van aquí y no dentro de StartFightAsync porque en la captura del combate real caen
-            // ANTES del kah del listo. Se mandan una sola vez por combate, que es como salen allí:
-            // una vez en 2.937 mensajes.
+            // The lqg + lqt pair, both empty, right when everybody is ready: that is where the
+            // real fight capture puts them, before the kah of the ready. What they are FOR is
+            // another matter -- see ApagarLaRegeneracionAsync, which no longer claims to know.
             if (allReady) await ApagarLaRegeneracionAsync(fight);
 
             // Enterado, que es lo único que contesta el servidor real al listo.
@@ -1897,16 +1889,20 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Le dice al cliente que deje de regenerar vida: la pareja lqg + lqt, los dos vacíos.
+        /// The lqg + lqt pair, both empty, once per fight.
         /// </summary>
         /// <remarks>
-        /// La regeneración la lleva ÉL; el servidor no suma vida por su cuenta en ningún sitio. Al
-        /// entrar al mundo se le enciende con el lqg de la ráfaga de entrada, y si nadie se la
-        /// apaga sigue tictaqueando dentro del combate: el jugador recibe un golpe y ve cómo la
-        /// barra se le rellena sola de uno en uno.
+        /// WHAT THIS PAIR IS FOR IS NOT KNOWN, and what used to be written here -- "it tells the
+        /// client to stop regenerating life" -- does not survive a count. Across the 400 captures
+        /// there are 203 lqg, every one of them followed by its lqt, and only THREE sit anywhere
+        /// near the messages that open a fight (kah, kai, kaq). The rest turn up after ordinary
+        /// combat sequences, around look changes (lxc, lwz) and in the world-entry burst. A switch
+        /// thrown once when a fight begins would not be distributed like that.
         ///
-        /// Una vez por combate, que es como sale en la captura —una vez en 2.937 mensajes— y a
-        /// TODOS, no sólo a quien pulsó listo el último.
+        /// The one thing the old note got right is that the server never adds life by itself: the
+        /// client does its own regenerating. Whether anything on the wire stops it is still open.
+        /// Sending the pair here is measured to be harmless and is left alone, but nobody should
+        /// reach for it expecting it to be the regeneration switch.
         /// </remarks>
         private static async Task ApagarLaRegeneracionAsync(FightInstance fight)
         {
@@ -2293,14 +2289,34 @@ namespace Jondo.Unity.Server.Handlers
 
             fighter.StartTurn();
 
+            // And the wall can stop anybody again: the once-only limit is PER TURN, and in the
+            // capture it is seen resetting at every jzc.
+            fight.WallHitThisTurn.Clear();
+
             // Lo que hubiera puesto en el suelo bajo sus pies. Va antes de devolverle los puntos
             // porque un glifo que quita PA o PM tiene que morder sobre los del turno que empieza,
             // no sobre los del anterior.
+            // Without firing the newborn ones: whoever is starting the turn eats them anyway on
+            // the line below, and with the 307 that belongs to them instead of the 306.
+            await ReconciliarLosMurosAsync(stream, fight, fireOnBirth: false);
             await DispararLosGlifosAsync(stream, fight, fighter, alPisar: false);
-            if (!fighter.IsAlive) return;
 
-            await DispararLosMurosAsync(stream, fight, fighter);
-            if (!fighter.IsAlive) return;
+            // AND IF IT KILLED HIM, THE TURN STILL HAS TO MOVE ON. This returned bare, and a
+            // bare return from here leaves the fight dead in the water: nobody starts the clock,
+            // nobody sends "your turn", and for a monster MonsterTurnAsync never runs either, so
+            // there is nothing left that could ever end the turn. Measured in the log --
+            // "-2 empieza el turno en el glifo 12 [...] 78 de dano [...] -2 se queda sin vida" and
+            // then not one more line for a minute, until the player gave up and quit.
+            //
+            // Same trap as the beacon two hundred lines below: the way out of a turn is
+            // PassTurnAsync, and it has to be taken explicitly.
+            if (!fighter.IsAlive)
+            {
+                Program.LogDebug($"[Combate] {fighter.Id} se muere al empezar su turno; " +
+                                 $"se pasa el turno.");
+                if (!await CheckFightOverAsync(stream, fight)) await PassTurnAsync(stream);
+                return;
+            }
 
             await GivePointsBackAsync(stream, fight, fighter);
 
@@ -2538,8 +2554,22 @@ namespace Jondo.Unity.Server.Handlers
 
             // Y lo que hubiera puesto en el suelo donde ha ido a parar. Va DESPUÉS de andar y de
             // los enganches: primero llega, y ya en su casilla nueva le salta lo que hubiera.
-            await DispararLosGlifosAsync(stream, fight, walker, alPisar: true);
-            await DispararLosMurosAsync(stream, fight, walker);
+            //
+            // The wall goes on its own because it charges PER CELL, not per move: the whole path
+            // is walked again and every cell of it that belongs to a wall is charged.
+            await WalkThroughTheWallsAsync(stream, fight, walker, camino);
+            if (!walker.IsAlive)
+            {
+                // Walking into your own wall can now kill you, so this is a real way for a fight
+                // to end, and it was ending nowhere: the check only ran after a cast, after a
+                // monster turn and on quitting.
+                await CheckFightOverAsync(stream, fight);
+                return;
+            }
+
+            await ReconciliarLosMurosAsync(stream, fight);
+            await DispararLosGlifosAsync(stream, fight, walker, alPisar: true, skipWalls: true);
+            if (!walker.IsAlive) await CheckFightOverAsync(stream, fight);
         }
 
         /// <summary>
@@ -2556,7 +2586,9 @@ namespace Jondo.Unity.Server.Handlers
         /// dejarlo encima de otro.
         /// </remarks>
         private static async Task DispararLosGlifosAsync(NetworkStream stream, FightInstance fight,
-                                                         Fighter quien, bool alPisar)
+                                                         Fighter quien, bool alPisar,
+                                                         bool byDisplacement = false,
+                                                         bool skipWalls = false)
         {
             if (quien == null || !quien.IsAlive || fight.Glifos.Count == 0) return;
 
@@ -2565,32 +2597,140 @@ namespace Jondo.Unity.Server.Handlers
 
             foreach (var glifo in saltan)
             {
-                // El suyo no le salta. Es lo que impide que un Feca se queme con su propio glifo
-                // al pasar por encima, y lo que hace que poner uno debajo del enemigo tenga
-                // sentido en vez de ser un suicidio.
-                if (glifo.Dueno == quien.Id) continue;
+                // The walls have already charged cell by cell along the path, which is how they
+                // charge. Firing them again here would charge the last cell twice.
+                if (skipWalls && Managers.BombWalls.IsWall(glifo)) continue;
+                if (!GlyphCatches(fight, glifo, quien, byDisplacement)) continue;
 
-                var dueno = fight.Buscar(glifo.Dueno) ?? quien;
-
-                Program.LogDebug($"[Combate] {quien.Id} {(alPisar ? "pisa" : "empieza el turno en")} " +
-                                 $"el glifo {glifo.Id} de {glifo.Dueno}: lanza el hechizo " +
-                                 $"{glifo.Hechizo} grado {glifo.Grado}.");
-
-                // Por el mismo camino que cualquier otro lanzamiento. Lo que hace un glifo no
-                // es una categoría aparte: es un hechizo, con su dueño y su grado, y meterlo por
-                // aquí le da gratis los daños, las resistencias, los embrujos y los anuncios.
-                await AplicarEfectosAsync(stream, fight, dueno, glifo.Hechizo, glifo.Grado,
-                                          quien, Managers.EffectEngine.AlLanzar,
-                                          celdaApuntada: quien.CellId);
-
-                if (glifo.SeGastaAlDispararse) glifo.Gastado = true;
+                await FireOneGlyphAsync(stream, fight, glifo, quien, alPisar);
                 if (!quien.IsAlive) break;
             }
 
             var caidos = fight.BarrerLosGlifos();
+            foreach (var caido in caidos)
+            {
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                    Network.FightProtocol.BuildGlyphGone(caido.Dueno, caido.Id)));
+            }
             if (caidos.Count > 0)
             {
                 Program.LogDebug($"[Combate] Se llevan por delante {caidos.Count} glifo(s).");
+            }
+        }
+
+        /// <summary>
+        /// Whether this glyph goes off under this fighter.
+        /// </summary>
+        /// <remarks>
+        /// The general rule is that your own does not catch you: it is what keeps a Feca from
+        /// burning himself on his own glyph walking over it, and what makes dropping one under an
+        /// enemy worth doing instead of being suicide.
+        ///
+        /// A BOMB WALL DOES NOT WORK LIKE THAT. Whose it is means nothing there -- the class sheet
+        /// calls the victim "una entidad", and Kabum exists precisely to shield "al lanzador y a
+        /// sus aliados" from it -- so the wall keeps its own three rules, which live next to the
+        /// walls themselves in <see cref="Managers.BombWalls.Catches"/>.
+        /// </remarks>
+        public static bool GlyphCatches(FightInstance fight, Jondo.Unity.World.Fights.Glifo glifo,
+                                        Fighter quien, bool byDisplacement)
+        {
+            if (Managers.BombWalls.IsWall(glifo))
+                return Managers.BombWalls.Catches(fight, glifo, quien, byDisplacement);
+
+            return glifo.Dueno != quien.Id;
+        }
+
+        /// <summary>
+        /// Fires ONE glyph on ONE fighter: tells the client, hits, and applies the rest.
+        /// </summary>
+        /// <remarks>
+        /// Down the same road as any other cast, AND THERE ARE TWO OF THEM. Only
+        /// AplicarEfectosAsync used to be called here, and that half does not hit: the damage of a
+        /// root cast is applied by HurtAsync, and the effect engine does not even produce an
+        /// outcome for it -- measured on the Muro de Fuego, six damage-99 effects and ZERO
+        /// outcomes. So a glyph that should hurt did nothing at all, neither the bomb wall nor a
+        /// trap nor the Feca glyph.
+        ///
+        /// AND LET IT SHOW, which is not announcing the cast: the real server does not announce
+        /// it. The four wall spells appear 143 times in the Rogue captures and all 143 sit inside
+        /// a jwe f14 = 401; not one inside an f14 = 300. What it sends is "this fighter was caught
+        /// by that glyph" -- 306 on entering, 307 on starting the turn on it -- and the blow right
+        /// behind, both inside a sequence opened IN THE NAME OF WHOEVER STEPPED ON IT. Without
+        /// that notice the client got the damage on its own and drew none of it.
+        /// </remarks>
+        private static async Task FireOneGlyphAsync(NetworkStream stream, FightInstance fight,
+                                                    Jondo.Unity.World.Fights.Glifo glifo,
+                                                    Fighter quien, bool alPisar, int celda = -1)
+        {
+            var dueno = fight.Buscar(glifo.Dueno) ?? quien;
+            if (celda < 0) celda = quien.CellId;
+
+            // What the sheet calls "haber sufrido los efectos del muro durante su turno": it is
+            // written down here, and only a displacement ever reads it.
+            if (Managers.BombWalls.IsWall(glifo)) fight.WallHitThisTurn.Add(quien.Id);
+
+            Program.LogDebug($"[Combate] {quien.Id} {(alPisar ? "pisa" : "empieza el turno en")} " +
+                             $"el glifo {glifo.Id} de {glifo.Dueno}: lanza el hechizo " +
+                             $"{glifo.Hechizo} grado {glifo.Grado}.");
+
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
+                Network.FightProtocol.BuildSequenceStart(quien.Id,
+                                                         Network.FightProtocol.GlyphSequence)));
+
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                Network.FightProtocol.BuildGlyphTriggered(dueno.Id, glifo.Id, celda,
+                                                          quien.Id, walkedIn: alPisar)));
+
+            await HurtAsync(stream, fight, dueno, glifo.Hechizo, glifo.Grado, quien,
+                            celdaApuntada: celda);
+
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
+                Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), quien.Id,
+                                                       Network.FightProtocol.GlyphSequence)));
+            if (!quien.IsAlive) return;
+
+            await AplicarEfectosAsync(stream, fight, dueno, glifo.Hechizo, glifo.Grado,
+                                      quien, Managers.EffectEngine.AlLanzar,
+                                      celdaApuntada: celda);
+
+            if (glifo.SeGastaAlDispararse) glifo.Gastado = true;
+        }
+
+        /// <summary>
+        /// One hit per MP spent inside a wall, cell by cell along the path just walked.
+        /// </summary>
+        /// <remarks>
+        /// The class sheet is explicit, and it is the one limit walking does not share with being
+        /// pushed: "No obstante, caminar en el muro no se ve afectado por este limite de una vez
+        /// por turno, por lo que esto inflige danos POR CADA PM que esta entidad consuma en el
+        /// muro." Walking three cells of a wall is three hits, not one.
+        ///
+        /// The rule is Ankama own text; THE SHAPE IS INFERENCE and worth saying so. In the class
+        /// captures nobody ever walks through a bomb wall -- every one of the 246 wall triggers is
+        /// either a 307 at turn start or a 306 from the wall being raised or from a displacement --
+        /// so there is no measurement of what a multi-cell walk looks like on the wire. What goes
+        /// out here is one 306 plus its blow per crossed cell, each naming the cell it crossed,
+        /// which is the same shape as the single one that IS measured.
+        /// </remarks>
+        private static async Task WalkThroughTheWallsAsync(NetworkStream stream, FightInstance fight,
+                                                           Fighter walker, IReadOnlyList<int> camino)
+        {
+            if (walker == null || camino == null || camino.Count < 2) return;
+
+            for (int paso = 1; paso < camino.Count; paso++)
+            {
+                if (!walker.IsAlive) return;
+
+                foreach (var muro in fight.Glifos
+                             .Where(g => Managers.BombWalls.IsWall(g) && g.Cubre(camino[paso]))
+                             .ToList())
+                {
+                    if (!GlyphCatches(fight, muro, walker, byDisplacement: false)) continue;
+
+                    await FireOneGlyphAsync(stream, fight, muro, walker, alPisar: true,
+                                            celda: camino[paso]);
+                    if (!walker.IsAlive) return;
+                }
             }
         }
 
@@ -2612,33 +2752,83 @@ namespace Jondo.Unity.Server.Handlers
         /// ficha dice que el muro se beneficia de la mitad del combo, pero no dice de cuál cuando
         /// las bombas van a distinto nivel.
         /// </remarks>
-        private static async Task DispararLosMurosAsync(NetworkStream stream, FightInstance fight,
-                                                        Fighter quien)
+        private static async Task ReconciliarLosMurosAsync(NetworkStream stream, FightInstance fight,
+                                                           bool fireOnBirth = true)
         {
-            if (quien == null || !quien.IsAlive) return;
-
+            var justBorn = new List<Jondo.Unity.World.Fights.Glifo>();
+            // Lo que TENDRÍA que haber en el suelo ahora mismo, casilla a casilla.
+            var toca = new Dictionary<int, (Fighter Dueno, int Hechizo)>();
             foreach (var dueno in TodosLosCombatientes(fight).ToList())
             {
                 if (dueno == null || !dueno.IsAlive || dueno.IsMonster || dueno.EsInvocado) continue;
 
-                var muro = Managers.BombWalls.Covering(TodosLosCombatientes(fight), dueno,
-                                                       quien.CellId);
-                if (muro == null) continue;
-                if (!Managers.BombWalls.WallSpell.TryGetValue(muro.Template, out int hechizo))
-                    continue;
+                foreach (var muro in Managers.BombWalls.Of(TodosLosCombatientes(fight), dueno))
+                {
+                    if (!Managers.BombWalls.WallSpell.TryGetValue(muro.Template, out int hechizo))
+                        continue;
+                    foreach (int casilla in muro.Cells) toca[casilla] = (dueno, hechizo);
+                }
+            }
 
-                var lanza = muro.Bombs
-                    .OrderByDescending(b => Managers.Combo.LevelOf(b))
-                    .First();
+            // Lo que hay puesto de muros. Se reconocen por su hechizo: ningún glifo de otra cosa
+            // lanza uno de los cuatro.
+            var puestos = fight.Glifos
+                .Where(g => Managers.BombWalls.WallSpell.Values.Contains(g.Hechizo))
+                .ToList();
 
-                Program.LogDebug($"[Muro] {quien.Id} está en el muro de {dueno.Id} " +
-                                 $"({muro.Bombs.Count} bomba(s) {muro.Template}); lo cobra la " +
-                                 $"bomba {lanza.Id} con el hechizo {hechizo}.");
+            foreach (var sobra in puestos.Where(g => !g.Casillas.Any(toca.ContainsKey)).ToList())
+            {
+                fight.Glifos.Remove(sobra);
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                    Network.FightProtocol.BuildGlyphGone(sobra.Dueno, sobra.Id)));
+                Program.LogDebug($"[Muro] Se cae el glifo {sobra.Id} de {sobra.Dueno}.");
+            }
 
-                await AplicarEfectosAsync(stream, fight, lanza, hechizo, MuroGrado, quien,
-                                          Managers.EffectEngine.AlLanzar,
-                                          celdaApuntada: quien.CellId);
-                if (!quien.IsAlive) return;
+            var yaCubiertas = puestos.Where(g => fight.Glifos.Contains(g))
+                                     .SelectMany(g => g.Casillas)
+                                     .ToHashSet();
+
+            foreach (var (casilla, quien) in toca)
+            {
+                if (yaCubiertas.Contains(casilla)) continue;
+
+                var glifo = fight.Poner(new Jondo.Unity.World.Fights.Glifo(
+                    quien.Dueno.Id, new[] { casilla }, quien.Hechizo, MuroGrado,
+                    Network.FightProtocol.GlyphRed, caducaEnRonda: 0, mascara: "",
+                    cuando: Jondo.Unity.World.Fights.Disparo.AlPisarYAlEmpezar));
+
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                    Network.FightProtocol.BuildGlyph(quien.Dueno.Id, glifo.Id, casilla,
+                                                     quien.Hechizo, MuroGrado, size: 2,
+                                                     colour: Network.FightProtocol.GlyphRed)));
+
+                Program.LogDebug($"[Muro] Glifo {glifo.Id} de {quien.Dueno.Id} en la casilla " +
+                                 $"{casilla} con el hechizo {quien.Hechizo}.");
+                justBorn.Add(glifo);
+            }
+
+            // AND WHOEVER WAS ALREADY STANDING THERE GETS HIT ON THE SPOT. "Una entidad que se
+            // desplace en el muro O ENTRE EN EL sufrira danos", says the sheet, and having a wall
+            // raised under your feet is entering it without moving. Measured in "glifo de bombas
+            // sismobomba": frames 105 to 109 lay the five cells of the wall down and frame 110 is
+            // a jwe f14 = 306 on -4, who was standing on one; 112 is its death. Same at 438-445.
+            //
+            // Nothing happened here: the wall got painted and sat waiting for somebody to walk.
+            // That was the only one of the four cases that worked.
+            if (!fireOnBirth) return;
+
+            foreach (var born in justBorn)
+            {
+                if (!fight.Glifos.Contains(born)) continue;
+
+                foreach (var standing in TodosLosCombatientes(fight).ToList())
+                {
+                    if (standing == null || !standing.IsAlive) continue;
+                    if (!born.Cubre(standing.CellId)) continue;
+                    if (!GlyphCatches(fight, born, standing, byDisplacement: false)) continue;
+
+                    await FireOneGlyphAsync(stream, fight, born, standing, alPisar: true);
+                }
             }
         }
 
@@ -2949,6 +3139,16 @@ namespace Jondo.Unity.Server.Handlers
                 Level = receta.Nivel,
                 SummonCost = receta.SummonCost,
                 Look = receta.Look,
+
+                // AND THE BONE, which nothing was filling in. A summon carried its look STRING
+                // and no bone number, so every packet built out of MonsterLook came out as
+                // f3 { f2 = 3 } with nothing to draw -- which is exactly what a bomb growing
+                // looked like on the wire: "1a06 1003 2a02be01", the scale on its own and no
+                // f3 in sight. The real one is "1a08 1003 189a0c 2a0169": bone 1562, scale 105.
+                //
+                // The number is the one already resolved for the summon packet: what the look
+                // string names between its braces, not what that number points at.
+                LookBoneId = receta.PlantillaDelAspecto,
                 HechizoPropio = receta.HechizoPropio,
                 MaxAP = receta.PuntosDeAccion,
                 CurrentAP = receta.PuntosDeAccion,
@@ -3004,11 +3204,13 @@ namespace Jondo.Unity.Server.Handlers
             // cada ronda posterior.
             if (EsBomba(plantilla))
             {
-                await AplicarEfectosAsync(stream, fight, invocado, Managers.Combo.LadderSpell, 1,
-                                          invocado, Managers.EffectEngine.AlLanzar, celda);
+                await UnComboAsync(stream, fight, quienInvoca, invocado);
                 Program.LogDebug($"[Combo] La bomba {invocado.Id} nace en el nivel " +
                                  $"{Managers.Combo.LevelOf(invocado)}.");
             }
+
+            // Y si con ella se ha levantado un muro, que se vea.
+            await ReconciliarLosMurosAsync(stream, fight);
         }
 
         /// <summary>
@@ -3039,13 +3241,76 @@ namespace Jondo.Unity.Server.Handlers
             {
                 for (int vez = 0; vez < CombosPorTurno; vez++)
                 {
-                    await AplicarEfectosAsync(stream, fight, bomba, Managers.Combo.LadderSpell, 1,
-                                              bomba, Managers.EffectEngine.AlLanzar, bomba.CellId);
+                    await UnComboAsync(stream, fight, dueno, bomba);
                 }
                 Program.LogDebug($"[Combo] La bomba {bomba.Id} sube al nivel " +
                                  $"{Managers.Combo.LevelOf(bomba)} " +
                                  $"({Managers.Combo.PercentOf(bomba)}% de daños).");
             }
+        }
+
+        /// <summary>
+        /// One combo on one bomb: the cast, the rung, and the bomb growing.
+        /// </summary>
+        /// <remarks>
+        /// The ladder alone was never enough. The server climbed it right -- the log says so, and
+        /// our jxm for the rung is byte for byte the real one -- but on screen the bomb stayed on
+        /// Combo I and stayed the same size, because the two things the client actually redraws
+        /// off were missing:
+        ///
+        ///   1. THE BOMB CASTING ON ITSELF. Measured in "tymador-explobomba resiliente": one
+        ///      jwe f14 = 300 naming 20497 per combo granted (frames 108, 247, 262, 423, 441...),
+        ///      and, when the rung moves, a second one naming the grade of 20500 that pays for it
+        ///      (250, 264, 425, 443...).
+        ///   2. THE LOOK. A jwe f14 = 149 with a bigger scale, at the tail of the step (259, 283,
+        ///      439, 462...). See <see cref="Managers.Combo.SizeOf"/> for where the number comes
+        ///      from -- it is derived from the 1060 buffs, not a table.
+        /// </remarks>
+        private static async Task UnComboAsync(NetworkStream stream, FightInstance fight,
+                                               Fighter dueno, Fighter bomba)
+        {
+            int antes = Managers.Combo.LevelOf(bomba);
+            int tamanoAntes = Managers.Combo.SizeOf(bomba, fight.RoundNumber);
+
+            var escalera = LimitesDeGrado(Managers.Combo.LadderSpell, 1);
+            if (escalera.LevelId > 0)
+            {
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                    Network.FightProtocol.BuildComboCast(bomba.Id, dueno.Id, bomba.CellId,
+                                                         Managers.Combo.LadderSpell,
+                                                         escalera.LevelId)));
+            }
+
+            await AplicarEfectosAsync(stream, fight, bomba, Managers.Combo.LadderSpell, 1,
+                                      bomba, Managers.EffectEngine.AlLanzar, bomba.CellId);
+
+            int ahora = Managers.Combo.LevelOf(bomba);
+            if (ahora <= antes) return;
+
+            int grado = Managers.Combo.GradeOf(ahora);
+            if (grado > 0)
+            {
+                var bono = LimitesDeGrado(Managers.Combo.BonusSpell, grado);
+                if (bono.LevelId > 0)
+                {
+                    await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                        Network.FightProtocol.BuildComboCast(bomba.Id, dueno.Id, bomba.CellId,
+                                                             Managers.Combo.BonusSpell,
+                                                             bono.LevelId)));
+                }
+            }
+
+            int tamano = Managers.Combo.SizeOf(bomba, fight.RoundNumber);
+            if (tamano == tamanoAntes) return;
+
+            byte[] aspecto = Network.FightProtocol.WithScale(NormalFightLook(bomba), tamano);
+            if (aspecto.Length == 0) return;
+
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                Network.FightProtocol.BuildLookChanged(bomba.Id, aspecto)));
+
+            Program.LogDebug($"[Combo] La bomba {bomba.Id} crece al {tamano}% " +
+                             $"en el nivel {ahora}.");
         }
 
         /// <summary>Lo que sube el combo de cada bomba al empezar el turno de su tymador.</summary>
@@ -3591,6 +3856,11 @@ namespace Jondo.Unity.Server.Handlers
             var fichas = new HashSet<(long Quien, int Caracteristica)>();
             var vidasCambiadas = new Dictionary<long, Fighter>();
 
+            // lo pisa, y entonces el orden deja de tener sentido.
+            // ya en su sitio. No dentro del recorrido: un glifo puede volver a mover a quien
+            // A quien ha movido este lanzamiento, para pisarle el suelo cuando esten todos
+            var movidos = new List<Fighter>();
+
             foreach (var c in consecuencias)
             {
                 // El 141: mata, y por el mismo camino que un golpe, para que se anuncie igual,
@@ -3775,6 +4045,11 @@ namespace Jondo.Unity.Server.Handlers
                     Program.LogDebug($"[Combate] El hechizo {hechizo} mueve a {c.Sobre.Id} " +
                                      $"de la casilla {c.CasillaDesde} a la {c.CasillaHasta}.");
 
+                    // A QUIEN LO MUEVEN TAMBIÉN PISA. El suelo sólo saltaba andando, así que
+                    // meter a alguien en un muro de un empujón o de un tirón no le hacía nada
+                    // -- ni el muro, ni una trampa, ni un glifo del feca.
+                    movidos.Add(c.Sobre);
+
                     // Y el segundo, si el efecto movía a dos. Es el intercambio de posiciones:
                     // sin este anuncio el cliente deja al lanzador pintado donde estaba, y a
                     // partir de ahí su tablero y el nuestro ya no coinciden en nada.
@@ -3863,6 +4138,21 @@ namespace Jondo.Unity.Server.Handlers
                                      ? $", {c.Buff.Sobre} {c.Buff.Cuanto:+#;-#;0} del hechizo {c.Buff.HechizoAfectado}"
                                      : "") +
                                  $", hasta la ronda {c.Buff.CaducaEnRonda}.");
+            }
+
+            // Y ahora si, el suelo de quien haya acabado en otra casilla. A QUIEN LO EMPUJAN
+            // TAMBIEN PISA: el suelo solo saltaba andando, asi que meter a alguien en un muro de
+            // un empujon o de un tiron no le hacia nada -- ni el muro, ni una trampa, ni un glifo
+            // del feca.
+            if (movidos.Count > 0)
+            {
+                await ReconciliarLosMurosAsync(stream, fight);
+                foreach (var movido in movidos)
+                {
+                    if (movido == null || !movido.IsAlive) continue;
+                    await DispararLosGlifosAsync(stream, fight, movido, alPisar: true,
+                                                 byDisplacement: true);
+                }
             }
 
             foreach (var cambiado in vidasCambiadas.Values)
@@ -4422,6 +4712,11 @@ namespace Jondo.Unity.Server.Handlers
 
                 await CaenSusInvocadosAsync(stream, fight, target);
                 await ReenviarLaListaAsync(stream, fight);
+
+                // Y si el que ha caído era una bomba, el muro que sostenía se cae con ella. Sin
+                // esto las casillas rojas se quedaban pintadas hasta el siguiente turno, que es
+                // lo que se veía después de un Detonador: bombas muertas y muro entero.
+                await ReconciliarLosMurosAsync(stream, fight);
             }
         }
 
@@ -4580,6 +4875,32 @@ namespace Jondo.Unity.Server.Handlers
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                         Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), monster.Id,
                                                                Network.FightProtocol.WalkSequence)));
+
+                    // Y lo que hubiera en el suelo donde ha ido a parar. Esto NO estaba: el
+                    // monstruo cambiaba de casilla y se anunciaba, y ahí se acababa. Ni los muros
+                    // de bombas ni las trampas ni los glifos del feca le saltaban nunca a nadie
+                    // que no fuera un jugador.
+                    // AND IF THE GROUND KILLED IT, THE TURN STILL HAS TO END. These two were
+                    // bare returns, and a bare return out of a monster turn hangs the fight the
+                    // same way the one in ConfirmAsync did -- and worse, because when the monster
+                    // was the LAST one alive nothing got round to checking that the fight was
+                    // over either. Measured in the log: "-2 pisa el glifo 3 [...] 170 de dano
+                    // [...] -2 se queda sin vida" at 00:12:30.960, and not one packet after it.
+                    await WalkThroughTheWallsAsync(stream, fight, monster, walked);
+                    if (!monster.IsAlive)
+                    {
+                        await EndMonsterTurnAsync(stream, fight);
+                        return;
+                    }
+
+                    await ReconciliarLosMurosAsync(stream, fight);
+                    await DispararLosGlifosAsync(stream, fight, monster, alPisar: true,
+                                                 skipWalls: true);
+                    if (!monster.IsAlive)
+                    {
+                        await EndMonsterTurnAsync(stream, fight);
+                        return;
+                    }
                     best = CellDistance(monster.CellId, prey.CellId);
                 }
             }
@@ -4670,9 +4991,21 @@ namespace Jondo.Unity.Server.Handlers
                 }
             }
 
-            if (await CheckFightOverAsync(stream, fight)) return;
+            await EndMonsterTurnAsync(stream, fight);
+        }
 
-            // Y cede el turno solo, que el monstruo no tiene quien pulse por él.
+        /// <summary>
+        /// The one way out of a monster turn: see whether the fight ended, and if it did not,
+        /// hand the turn on. A monster has nobody to press the button for it.
+        /// </summary>
+        /// <remarks>
+        /// Worth a name of its own because it has now been forgotten twice in the same file, and
+        /// forgetting it does not throw or log: the fight simply stops, with the clock not
+        /// running and no way out but quitting.
+        /// </remarks>
+        private static async Task EndMonsterTurnAsync(NetworkStream stream, FightInstance fight)
+        {
+            if (await CheckFightOverAsync(stream, fight)) return;
             await PassTurnAsync(stream);
         }
 

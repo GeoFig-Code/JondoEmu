@@ -44,10 +44,9 @@ namespace Jondo.Unity.Tests.Combat
         [InlineData(200)]
         public void La_experiencia_cae_donde_la_medida(int nivel)
         {
-            // La tabla se lee de un fichero y el servidor la carga al arrancar; aquí no hay
-            // arranque. Sin esto la banda sale cero y la prueba mide el vacío.
-            ExperienceTable.Initialize();
-
+            // La tabla se lee sola la primera vez que se le pregunta, así que aquí ya no hay que
+            // arrancarla: antes hacía falta, y arrancarla desde aquí se la vaciaba por debajo a
+            // FightResultsTests, que la lee a través de FightProtocol y corre en paralelo.
             long suelo = ExperienceTable.LevelFloor(nivel);
             long banda = ExperienceTable.NextLevelFloor(nivel) - suelo;
             Assert.True(banda > 0, $"el nivel {nivel} no tiene banda");

@@ -108,11 +108,9 @@ namespace Jondo.Unity.Tests.Launcher
         [AvaloniaFact]
         public void Una_foto_del_retrato_de_cada_personaje()
         {
-            // Los cosméticos NO se cargan solos: el servidor los carga al arrancar y aquí no hay
-            // arranque. Sin esto las prendas de apariencia no meten piel y el retrato sale con lo
-            // de debajo, que es justo lo que hay que poder mirar.
-            Jondo.Unity.Server.Managers.Cosmetics.Initialize();
-            Jondo.Unity.Server.Managers.EquipmentSkins.Initialize();
+            // Los cosméticos y las pieles del equipo se cargan solos la primera vez que se
+            // preguntan, así que aquí ya no hay que arrancarlos a mano: sin eso las prendas de
+            // apariencia no metían piel y el retrato salía con lo de debajo.
 
             // La MISMA cadena que manda el servidor al lanzador, sacada de los personajes que hay
             // de verdad en la base: con su cabeza, su equipo y sus cosméticos. Es la única forma
@@ -177,8 +175,6 @@ namespace Jondo.Unity.Tests.Launcher
             // «AnimStatique_<dir>» a secas, así que NpcSprites cae por su escalera de reserva y se
             // queda con la primera animación del array, que es de dirección 5 o 6 en 18 de las 19
             // razas. Esto no arregla nada: deja las cinco sobre la mesa.
-            Jondo.Unity.Server.Managers.Cosmetics.Initialize();
-            Jondo.Unity.Server.Managers.EquipmentSkins.Initialize();
 
             var personajes = new System.Collections.Generic.List<
                 Jondo.Unity.Server.DatabaseManager.DbCharacter>();

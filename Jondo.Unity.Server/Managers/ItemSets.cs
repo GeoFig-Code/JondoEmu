@@ -34,14 +34,44 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>item template -> which sets it belongs to.</summary>
         private static readonly Dictionary<int, List<Set>> _byItem = new Dictionary<int, List<Set>>();
 
-        public static int Count => _sets.Count;
+        /// <summary>
+        /// Whether the sets are read in and safe to use. Volatile because the fast path in
+        /// <see cref="Ensure"/> reads it outside the lock, and raised LAST.
+        /// </summary>
+        private static volatile bool _loaded;
+        private static readonly object _lock = new object();
 
-        public static void Initialize()
+        public static int Count { get { Ensure(); return _sets.Count; } }
+
+        /// <summary>
+        /// Reads the file, once per run. Kept as a separate call so the server pays for it at
+        /// boot, with its log line, rather than on the first sheet somebody opens.
+        /// </summary>
+        /// <remarks>
+        /// Calling it again does nothing, on purpose: item_sets.json comes out of the client and
+        /// does not change while the server is up.
+        /// </remarks>
+        public static void Initialize() => Ensure();
+
+        private static void Ensure()
         {
-            _sets.Clear();
-            _byItem.Clear();
-            _byId.Clear();
+            if (_loaded) return;
+            lock (_lock)
+            {
+                if (_loaded) return;
+                try
+                {
+                    Load();
+                }
+                finally
+                {
+                    _loaded = true;   // in a finally so a missing file counts as tried
+                }
+            }
+        }
 
+        private static void Load()
+        {
             string path = Paths.ItemSetsJson;
             if (!File.Exists(path))
             {
@@ -114,6 +144,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Returns a copy of the templates in a set, for the administration command.</summary>
         public static bool TryGetItems(int setId, out IReadOnlyList<int> items)
         {
+            Ensure();
             if (_byId.TryGetValue(setId, out var set))
             {
                 items = set.Items.ToArray();
@@ -131,6 +162,7 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static List<(int Effect, long Value)> BonusesFor(IEnumerable<int> wornTemplates)
         {
+            Ensure();
             var result = new List<(int, long)>();
             if (_sets.Count == 0) return result;
 

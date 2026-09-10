@@ -199,7 +199,8 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         private static void CheckFightResults(List<string> failures, long fighter)
         {
-            if (!ExperienceTable.IsLoaded) ExperienceTable.Initialize();
+            // IsLoaded reads the table in if nobody has yet, so what is left to check here is the
+            // one thing it cannot fix: the file not being there at all.
             if (!ExperienceTable.IsLoaded)
             {
                 failures.Add("jyg: no se puede comprobar, falta la tabla de experiencia " +
