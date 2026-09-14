@@ -764,13 +764,21 @@ public static class Op
     public const string Jol = "jol";
 
     /// <summary>
-    /// Va vacío y en pareja con <see cref="Lqt"/>, una sola vez por combate y justo antes del kai.
-    /// Medido en «combate contra 4 poutchs nivel 25»: en 2.937 mensajes salen una vez, ahí.
-    /// Aparece además en la ráfaga de entrada al mundo.
+    /// La sonda periódica del servidor: va vacío, en pareja con <see cref="Lqt"/>, y el cliente
+    /// contesta en el acto con lqc {f1 = cuántas lleva contestadas} y lqf {f2 = milisegundos}.
     /// </summary>
+    /// <remarks>
+    /// Se leyó como «una vez por combate, justo antes del kai» porque en «combate contra 4
+    /// poutchs nivel 25» cayó ahí. Medido en las 24 capturas que traen dos o más: el intervalo
+    /// entre pares es 240 segundos clavados (52→293, 118→358, 226→466→706, 50→290→530→770,
+    /// 240→480→720→960...), el f1 del lqc sube de uno en uno con cada par y el f2 del lqf
+    /// vale 38-40 en la mayoría y 100-190 en las capturas de conexión lenta. Cae donde caiga
+    /// el reloj: en medio de un turno, tras un emote, en la colocación. No tiene nada que ver
+    /// con el combate ni con la regeneración de vida, que son ktz y kuq.
+    /// </remarks>
     public const string Lqg = "lqg";
 
-    /// <summary>El compañero del <see cref="Lqg"/>. También vacío, y sólo en el inicio de combate.</summary>
+    /// <summary>El compañero del <see cref="Lqg"/>: también vacío, siempre detrás, cada 240 segundos.</summary>
     public const string Lqt = "lqt";
 
     /// <summary>
@@ -1160,6 +1168,36 @@ public static class Op
     /// <summary>Sin identificar. 1 uso en el emulador.</summary>
     public const string Kuf = "kuf";
 
+    /// <summary>
+    /// Se acabó la regeneración de vida: f1 la vida que tiene, f2 los medios segundos que llevaba
+    /// regenerando, f4 la vida máxima. Va al entrar en combate, entre el lqu y el lva de la carga
+    /// del mapa táctico, y es lo que para el contador del cliente: sin él la barra del combate
+    /// sigue subiendo de uno en uno como en el mapa.
+    /// </summary>
+    /// <remarks>
+    /// 97 mensajes en 69 ficheros, 88 detrás de «kub jru lqu» y 83 delante de «lva kmk». En
+    /// el desafío del 9 de agosto, {f1=5211 f2=151 f4=5307} con el ino de al lado diciendo vida
+    /// 5211 de 5307: f1 y f4 son la vida y el tope. El f2 no es vida ganada —la vida no sube 151—:
+    /// entre el ktz del final del combate anterior (23:23:34) y este kuq (23:24:50) pasan 76
+    /// segundos, 152 tics de medio segundo, y f2 vale 151. Es lo que llevaba el contador, con el
+    /// ritmo 5 del ktz (5 décimas por punto). Inferencia con dos muestras de tiempo; la forma
+    /// es medida.
+    /// </remarks>
+    public const string Kuq = "kuq";
+
+    /// <summary>
+    /// Empieza la regeneración de vida: f1 es el ritmo, en décimas de segundo por punto de vida.
+    /// Va justo detrás de cada «kml kmp» de vuelta al rol: al entrar al mundo y al salir de un
+    /// combate.
+    /// </summary>
+    /// <remarks>
+    /// 143 mensajes en 105 ficheros, todos detrás de «kml kmp» y 135 con f1=5. Los ocho con
+    /// f1=1 son la feria del Trool y una entrada al mundo con raid de gremio: un ritmo rápido
+    /// que no se sabe de qué depende y no se manda. El 5 cuadra con el kuq: 151 tics en 76
+    /// segundos.
+    /// </remarks>
+    public const string Ktz = "ktz";
+
     /// <summary>Gastar puntos de caracteristica; el valor es el total pagado, no un incremento, lo que hace el mensaje idempotente, y un total que no cabe se rechaza entero. Campos: 1 inteligencia, 2 suerte, 3 vitalidad, 4 sabiduria, 5 agilidad, 6 fuerza. Lleva id de peticion real (7 peticiones).</summary>
     public const string Kum = "kum";
 
@@ -1359,7 +1397,12 @@ public static class Op
     /// <summary>Rama de 3.6.4.3: envia lpe. No aparece en ninguna de las 242 capturas.</summary>
     public const string Lpj = "lpj";
 
-    /// <summary>Bloque 1 digerido: el servidor real espera esto antes de enviar el bloque 2.</summary>
+    /// <summary>
+    /// La respuesta del cliente a la sonda <see cref="Lqg"/>+<see cref="Lqt"/>: f1 es cuántas
+    /// sondas lleva contestadas en la sesión (1, 2, 3... una por par, cada 240 segundos). En la
+    /// entrada al mundo el primer par cae en el bloque 1, y por eso el servidor real parecía
+    /// esperar «el bloque 1 digerido» antes de mandar el 2: espera esta contestación.
+    /// </summary>
     public const string Lqc = "lqc";
 
     /// <summary>Va entre lqu y hjk en cada cambio de mapa capturado; su unico campo vale 197 al entrar al mundo, 24 al cambiar de mapa y 470 tras un reinicio de caracteristicas, y no hay lectura que aguante. Deliberadamente no se envia. 213 mensajes, 53 ficheros.</summary>

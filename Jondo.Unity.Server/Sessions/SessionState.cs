@@ -39,6 +39,13 @@ namespace Jondo.Unity.Server
         /// <summary>The character's ACCUMULATED experience, not the current level's.</summary>
         public long Experience { get; set; }
 
+        /// <summary>
+        /// When the client's life regeneration counter was last started (the ktz), so that the
+        /// kuq that stops it at fight entry can say how many ticks it ran. Default when it never
+        /// was.
+        /// </summary>
+        public DateTime RegenerationStartedUtc { get; set; }
+
         // Combat State
         public bool IsInFight { get; set; }
 

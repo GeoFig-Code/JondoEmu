@@ -318,6 +318,18 @@ namespace Jondo.Unity.World.Fights
         public const int CaracteristicaDeErosion = 75;
 
         /// <summary>
+        /// The erosion everybody starts with, as a percentage of every hit taken off the maximum.
+        /// </summary>
+        /// <remarks>
+        /// Ten for players and monsters alike. Measured on the Ocra capture, whose sheet carries a
+        /// 75 worth 10, and on the damage blocks themselves: 977 of the 986 in the captures carry
+        /// an f5, and a hit of 413 on a monster carries 41. The sheet we send to the client
+        /// already said ten; the server side said zero, so nobody ever eroded and no hit ever
+        /// carried its f5.
+        /// </remarks>
+        public const int ErosionBase = 10;
+
+        /// <summary>
         /// Erosiona por un golpe y devuelve cuánto tope se ha perdido.
         ///
         /// <paramref name="porciento"/> es la erosión de quien recibe, que sale de su

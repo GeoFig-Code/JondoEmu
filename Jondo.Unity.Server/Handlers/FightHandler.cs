@@ -157,6 +157,7 @@ namespace Jondo.Unity.Server.Handlers
                     XpReward = dbStats?.GradeXp ?? 0
                 };
                 monsterFighter.CurrentHP = monsterFighter.MaxHP;
+                monsterFighter.Otras[Fighter.CaracteristicaDeErosion] = Fighter.ErosionBase;
                 monsterFighter.CurrentAP = monsterFighter.MaxAP;
                 monsterFighter.CurrentMP = monsterFighter.MaxMP;
 
@@ -315,6 +316,38 @@ namespace Jondo.Unity.Server.Handlers
 
             suyo.IsInFight = false;
             suyo.FightId = 0;
+            BackToRoleplayMap();
+
+            // SÓLO el combate de este jugador. Aquí había un _activeFights.Clear(), que se llevaba
+            // por delante los combates de todos los demás: al acabar uno el suyo, al resto se le
+            // evaporaba la pelea a media pantalla.
+            long quien = suyo.CharacterId;
+            foreach (var par in _activeFights)
+            {
+                bool esSuyo = par.Value.EquipoDe(quien) >= 0;
+                if (esSuyo) _activeFights.TryRemove(par.Key, out _);
+            }
+
+            Program.LogDebug("[Combate] Fuera del combate; el personaje vuelve al mapa de superficie.");
+        }
+
+        /// <summary>
+        /// Puts the character back on the map he left to fight, and saves him there. Nothing
+        /// happens when he did not leave one.
+        /// </summary>
+        /// <remarks>
+        /// Split out of <see cref="LeaveFight"/> because the socket teardown needs this half and
+        /// not the other: a client closed in the middle of a fight -- killed, crashed, the cable
+        /// -- was saved ON THE ARENA, since only the kqq of "back to the character list" went
+        /// through LeaveFight. The next login then loaded the tactical map with the fight's music
+        /// and the roleplay monsters spawned on it, and a zaap was the only way out. The fight
+        /// itself is left alone here: in a challenge the other player is still in it.
+        /// </remarks>
+        public static void BackToRoleplayMap()
+        {
+            var suyo = Network.SessionContext.State;
+            if (suyo.RoleplayMapId == 0) return;
+
             suyo.MapId = suyo.RoleplayMapId;
             // Y siempre sobre una casilla que EXISTA en el mapa al que vuelve, igual que hacen
             // los otros cuatro teletransportes de este emulador -el zaap, la puerta, el .teleport
@@ -331,18 +364,6 @@ namespace Jondo.Unity.Server.Handlers
 
             suyo.RoleplayMapId = 0;
             suyo.RoleplayCellId = 0;
-
-            // SÓLO el combate de este jugador. Aquí había un _activeFights.Clear(), que se llevaba
-            // por delante los combates de todos los demás: al acabar uno el suyo, al resto se le
-            // evaporaba la pelea a media pantalla.
-            long quien = suyo.CharacterId;
-            foreach (var par in _activeFights)
-            {
-                bool esSuyo = par.Value.EquipoDe(quien) >= 0;
-                if (esSuyo) _activeFights.TryRemove(par.Key, out _);
-            }
-
-            Program.LogDebug("[Combate] Fuera del combate; el personaje vuelve al mapa de superficie.");
         }
 
         /// <summary>
@@ -734,11 +755,30 @@ namespace Jondo.Unity.Server.Handlers
 
             await WriteFrameAsync(stream, ConnectionProtocol.BuildLoadMap(fight.MapId));
             await WriteFrameAsync(stream, ConnectionProtocol.BuildMapClock());
+
+            // Regeneration ends. The real server puts the kuq right here, between the lqu and
+            // the lva of the tactical map, 83 times out of 97, and it is what stops the counter
+            // the world entry started: without it this client kept adding one point every half
+            // second to its own bar all through the fight, which no 97 could hold down for
+            // long. Life is the fighter's, or the sheet's when the fight has not built him yet.
+            await WriteFrameAsync(stream, ConnectionProtocol.BuildRegenerationEnded(
+                LifeAtFightEntry(fight),
+                ConnectionProtocol.RegenerationTicksSince(Network.SessionContext.State.RegenerationStartedUtc,
+                                                          DateTime.UtcNow),
+                MaxLifeAtFightEntry(fight)));
+
             await WriteFrameAsync(stream, ConnectionProtocol.BuildMapDiscovered(fight.MapId));
 
             Program.LogDebug($"[Combate] Combate #{fight.FightId} en el mapa {fight.MapId}. " +
                              "Esperando a que el cliente pida los actores.");
         }
+
+        /// <summary>The life the kuq reports for whoever is entering: his fighter's, else full.</summary>
+        private static int LifeAtFightEntry(FightInstance fight)
+            => fight.Buscar(GameState.CharacterId)?.CurrentHP ?? StatsHandler.GetPlayerMaxHp();
+
+        private static int MaxLifeAtFightEntry(FightInstance fight)
+            => fight.Buscar(GameState.CharacterId)?.MaxHP ?? StatsHandler.GetPlayerMaxHp();
 
         public static async Task SendPreparationAsync(NetworkStream stream, FightInstance fight)
         {
@@ -875,12 +915,8 @@ namespace Jondo.Unity.Server.Handlers
                     Network.FightProtocol.BuildFightOption(option, fight.FightId)));
             }
 
-            var everyone = new List<long>();
-            foreach (var fighter in fight.Azul) everyone.Add(fighter.Id);
-            foreach (var fighter in fight.Rojo) everyone.Add(fighter.Id);
-
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jzu,
-                Network.FightProtocol.BuildTeams(everyone)));
+                Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
 
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jwq,
                 Network.FightProtocol.BuildPlacementDone()));
@@ -1144,7 +1180,11 @@ namespace Jondo.Unity.Server.Handlers
             Poner(49, 0);                         // flat heals
             Poner(26, 0);                         // invocaciones
             Poner(50, 0);                         // reenvío
-            Poner(75, 0);                         // erosión
+            // TEN, NOT ZERO. The sheet sent to the client already said (75, base 10) -- see
+            // FullSheetOf -- while the server kept its own copy at zero: the client showed 10%
+            // erosion and the server never eroded anybody, and every damage block on a player
+            // went out without its f5. The one byte that told our hits apart from the real ones.
+            Poner(75, Fighter.ErosionBase);       // erosión
             Poner(101, 0);                        // % de resistencia a los daños
             Poner(102, 0);
             Poner(95, 0); Poner(96, 0); Poner(97, 0);
@@ -1242,7 +1282,7 @@ namespace Jondo.Unity.Server.Handlers
                 (25, 0, fighter.Power),
                 (CaracteristicaDeInvocaciones, summonCharacteristic.Base,
                  summonCharacteristic.Gear),
-                (50, 0, fighter.Otra(50)), (75, 10, fighter.Otra(75)),
+                (50, 0, fighter.Otra(50)), (75, Fighter.ErosionBase, fighter.Otra(75) - Fighter.ErosionBase),
                 // Aquí iba la 84, el daño de empuje. El servidor real NO LA MANDA: su ficha
                 // tiene 53 entradas y la 84 no está en ninguna, mientras que la 85 —la
                 // resistencia al empuje— sí. Y la metíamos justo en la posición 33, que es donde
@@ -1840,10 +1880,8 @@ namespace Jondo.Unity.Server.Handlers
             Program.LogDebug("[Combate] El jugador se declara listo (kaq).");
             bool allReady = fight.SetFighterReady(GameState.CharacterId);
 
-            // The lqg + lqt pair, both empty, right when everybody is ready: that is where the
-            // real fight capture puts them, before the kah of the ready. What they are FOR is
-            // another matter -- see ApagarLaRegeneracionAsync, which no longer claims to know.
-            if (allReady) await ApagarLaRegeneracionAsync(fight);
+            // No lqg + lqt here any more. See ApagarLaRegeneracionAsync for what that pair
+            // turned out to be and why sending it at fight start was the regeneration itself.
 
             // Enterado, que es lo único que contesta el servidor real al listo.
             //
@@ -1876,9 +1914,6 @@ namespace Jondo.Unity.Server.Handlers
             fight.StartFight();
             fight.CancelPlacementTimer();
 
-            // Y si nadie llegó a pulsar «listo» —el combate ha arrancado porque se acabó el
-            // tiempo de colocación— aquí es donde toca apagar la regeneración.
-            await ApagarLaRegeneracionAsync(fight);
 
             // Y la racha entera a cada uno desde su propio contexto. Se manda completa y por
             // separado, en vez de repartir «esto a todos y esto al que sea», porque el orden que
@@ -1889,29 +1924,29 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// The lqg + lqt pair, both empty, once per fight.
+        /// The lqg + lqt pair. NOT SENT ANY MORE, and kept only so that nobody puts it back.
         /// </summary>
         /// <remarks>
-        /// WHAT THIS PAIR IS FOR IS NOT KNOWN, and what used to be written here -- "it tells the
-        /// client to stop regenerating life" -- does not survive a count. Across the 400 captures
-        /// there are 203 lqg, every one of them followed by its lqt, and only THREE sit anywhere
-        /// near the messages that open a fight (kah, kai, kaq). The rest turn up after ordinary
-        /// combat sequences, around look changes (lxc, lwz) and in the world-entry burst. A switch
-        /// thrown once when a fight begins would not be distributed like that.
+        /// This used to go out at every fight start as "the switch that stops the client from
+        /// regenerating life". Measured across the 400 captures it is the opposite of a fight
+        /// switch: 203 lqg, every one followed by its lqt, and only THREE anywhere near the
+        /// messages that open a fight. Where they actually cluster is behind look changes -- lxc,
+        /// lwz, the emotes -- and behind world events; once, mid-fight, behind the turn start of
+        /// a summon. That is the footprint of a regeneration being RE-EVALUATED: an empty "regen
+        /// ends" followed by an empty "regen begins at the default rate", which is what a server
+        /// does when you sit down or stand up.
         ///
-        /// The one thing the old note got right is that the server never adds life by itself: the
-        /// client does its own regenerating. Whether anything on the wire stops it is still open.
-        /// Sending the pair here is measured to be harmless and is left alone, but nobody should
-        /// reach for it expecting it to be the regeneration switch.
+        /// So sending the pair at fight start was starting the roleplay regeneration inside the
+        /// fight. And that was the whole self-life mystery: the damage DID land on the client's
+        /// own bar -- the erosion off the maximum proved it was reading the hit -- and then the
+        /// bar climbed back one point at a time towards the WORLD maximum, which is why it read
+        /// "2400/2386", above a maximum the erosion had already lowered. The real server sends
+        /// nothing at fight start; its client stops regenerating on its own.
+        ///
+        /// What the pair means is still an inference; that it does not belong at fight start is
+        /// measured.
         /// </remarks>
-        private static async Task ApagarLaRegeneracionAsync(FightInstance fight)
-        {
-            if (fight.RegeneracionApagada) return;
-            fight.RegeneracionApagada = true;
-
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Lqg));
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Lqt));
-        }
+        private static Task ApagarLaRegeneracionAsync(FightInstance fight) => Task.CompletedTask;
 
         /// <summary>La racha de arranque, tal y como la ve UNA de las personas del combate.</summary>
         private static async Task ArrancarParaUnoAsync(NetworkStream stream, FightInstance fight)
@@ -1995,9 +2030,18 @@ namespace Jondo.Unity.Server.Handlers
             // anunciaba entero como monstruo, con identidad de monstruo e id cero: eso es lo que
             // convertía a la persona de enfrente en una interrogación en cuanto arrancaba el
             // combate, después de haberse visto bien durante la colocación.
+            // In PLAY ORDER, the same order as the jzu: the real fight-start jxb lists the first
+            // player first, and the client indexes its carousel against that.
             var everyone = new List<Network.Pb>();
+            var listados = new HashSet<long>();
+            foreach (var fighter in fight.TurnOrder)
+            {
+                if (fighter == null || !listados.Add(fighter.Id)) continue;
+                everyone.Add(BloqueDe(fight, fighter));
+            }
             foreach (var fighter in TodosLosCombatientes(fight))
             {
+                if (fighter == null || !listados.Add(fighter.Id)) continue;
                 everyone.Add(BloqueDe(fight, fighter));
             }
 
@@ -2324,7 +2368,7 @@ namespace Jondo.Unity.Server.Handlers
             // client holding an old characteristic 97 -- and the server has given no life back at
             // all. Closing the handover with the authoritative value keeps the bar pinned to
             // CurrentHP.
-            await RefrescarLaVidaAsync(stream, fight, fighter);
+            await RefrescarLaVidaAsync(stream, fight, fighter, fighter);
 
             // De donde sale y con cuantos PM: es lo que hace falta para juzgar al acabar los retos
             // de posicion y el de gastar exactamente un PM. Va DESPUES de devolver los puntos.
@@ -2404,7 +2448,7 @@ namespace Jondo.Unity.Server.Handlers
                     {
                         await ChallengeWatcher.HealedAsync(stream, fight, caster, result.Target);
                     }
-                    await RefrescarLaVidaAsync(stream, fight, result.Target);
+                    await RefrescarLaVidaAsync(stream, fight, result.Target, caster);
                 }
 
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jya,
@@ -3160,6 +3204,7 @@ namespace Jondo.Unity.Server.Handlers
                 WaterResPct = receta.ResistenciaAgua,
                 AirResPct = receta.ResistenciaAire,
             };
+            invocado.Otras[Fighter.CaracteristicaDeErosion] = Fighter.ErosionBase;
             invocado.MaxHP = Managers.Summons.VidaDelInvocado(receta.Vida, quienInvoca.Level,
                                                               receta.VidaFija);
             invocado.CurrentHP = invocado.MaxHP;
@@ -3237,6 +3282,21 @@ namespace Jondo.Unity.Server.Handlers
             }
             if (suyas.Count == 0) return;
 
+            // INSIDE ONE SEQUENCE, IN THE ROGUE NAME, FOR ALL THE BOMBS AT ONCE. This was the
+            // last thing standing between a combo that climbed on the server and one that showed
+            // on screen: every frame of it went out at depth zero, outside any jto, and the
+            // 3.6.10.10 client only applies what reaches it inside an open sequence -- the same
+            // rule that once fixed the expiring buffs a hundred lines up.
+            //
+            // Measured in "tymador-explobomba resiliente" with the sequence stack tracked frame by
+            // frame: a jto {author = Rogue, kind = 3} opens at #710 and stays open while the
+            // combos of -5 (#719-734), then -6 (#738-747), then -5 again (#757) all go by at depth
+            // one -- the casts, the rung, the 1027/1060, the jya, the look, the 514, all of it.
+            // The bombs own sheets nest a short jto/jwi of their own inside it, at depth two.
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
+                Network.FightProtocol.BuildSequenceStart(dueno.Id,
+                                                         Network.FightProtocol.ActionSequence)));
+
             foreach (var bomba in suyas)
             {
                 for (int vez = 0; vez < CombosPorTurno; vez++)
@@ -3247,6 +3307,10 @@ namespace Jondo.Unity.Server.Handlers
                                  $"{Managers.Combo.LevelOf(bomba)} " +
                                  $"({Managers.Combo.PercentOf(bomba)}% de daños).");
             }
+
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
+                Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), dueno.Id,
+                                                       Network.FightProtocol.ActionSequence)));
         }
 
         /// <summary>
@@ -3502,12 +3566,35 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static async Task ReenviarLaListaAsync(NetworkStream stream, FightInstance fight)
         {
-            var todos = new List<long>();
-            foreach (var f in fight.Azul) if (EntraEnElCarrusel(f)) todos.Add(f.Id);
-            foreach (var f in fight.Rojo) if (EntraEnElCarrusel(f)) todos.Add(f.Id);
-
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzu,
-                Network.FightProtocol.BuildTeams(todos)));
+                Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
+        }
+
+        /// <summary>
+        /// The jzu list IN PLAY ORDER, which is what the carousel is.
+        /// </summary>
+        /// <remarks>
+        /// It went out as blue team then red team, and the turn order is by initiative, so in
+        /// a duel where the red player was faster the list said "the Rogue, then the Ocra" while
+        /// the first jzc named the Ocra with no f7 -- slot zero. The carousel is indexed against
+        /// this list, so it lit the Rogue up while the Ocra was playing.
+        ///
+        /// Measured in both challenge captures: the jzu of the placement phase already lists the
+        /// first player first (293213045026 then 302677754146, and the first jzc is for
+        /// 293213045026), and the fight-start jxb keeps the same order.
+        /// </remarks>
+        private static List<long> CarouselOrder(FightInstance fight)
+        {
+            var ids = new List<long>();
+            foreach (var f in fight.TurnOrder)
+            {
+                if (EntraEnElCarrusel(f) && !ids.Contains(f.Id)) ids.Add(f.Id);
+            }
+            // Anybody alive that the turn order has not caught up with yet goes at the end, so
+            // that a list is never shorter than the fight.
+            foreach (var f in fight.Azul) if (EntraEnElCarrusel(f) && !ids.Contains(f.Id)) ids.Add(f.Id);
+            foreach (var f in fight.Rojo) if (EntraEnElCarrusel(f) && !ids.Contains(f.Id)) ids.Add(f.Id);
+            return ids;
         }
 
         /// <summary>
@@ -3768,20 +3855,41 @@ namespace Jondo.Unity.Server.Handlers
         /// Va envuelta en su jto/jwi, como cualquier ficha suelta.
         /// </summary>
         private static async Task RefrescarLaVidaAsync(NetworkStream stream, FightInstance fight,
-                                                       Fighter quien)
+                                                       Fighter quien, Fighter porQuien)
         {
-            if (quien.Id != GameState.CharacterId) return;
+            // Only a player carries the sheet; monsters and summons never get a 97.
+            if (quien == null || quien.IsMonster || quien.EsInvocado) return;
 
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
-                Network.FightProtocol.BuildSequenceStart(quien.Id,
-                                                         Network.FightProtocol.SheetSequence)));
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jxw,
-                Network.FightProtocol.BuildLifeSheet(quien.Id,
-                                                     quien.CurrentHP - quien.MaxHP,
-                                                     quien.VidaErosionada)));
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
-                Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), quien.Id,
-                                                       Network.FightProtocol.SheetSequence)));
+            // AFTER EVERY CHANGE OF LIFE, WHOEVER CAUSED IT. This was gated to "only when he did
+            // it to himself" for one night, on the strength of the real captures -- sixteen hits
+            // and two 97 in a whole challenge -- and the night proved that THIS client does not
+            // move its own bar without it: no regeneration, no 97, and a Rogue at 2400 of 2390
+            // after 110 of damage, his own tooltip reading 100%. How the real client keeps its
+            // own life with two 97 a fight is not measured; what moves this one is. The 24-08
+            // note had it right: "sin esto le pegaban toda la pelea y su barra seguia llena".
+            //
+            // TO HIS OWN CLIENT, whoever is acting. The old guard compared against the character
+            // of the CONNECTION being served, so in a duel the one being hit never got his sheet.
+            // The measured rule stays: each client receives its own 97 and nobody else's.
+            //
+            // The parameter is kept for the log and for the day the real rule is understood.
+            _ = porQuien;
+
+            await ACadaUnoAsync(fight, async sesion =>
+            {
+                if (sesion.State.CharacterId != quien.Id) return;
+
+                await WriteFrameAsync(sesion.Stream, ConnectionProtocol.Push(Op.Jto,
+                    Network.FightProtocol.BuildSequenceStart(quien.Id,
+                                                             Network.FightProtocol.SheetSequence)));
+                await WriteFrameAsync(sesion.Stream, ConnectionProtocol.Push(Op.Jxw,
+                    Network.FightProtocol.BuildLifeSheet(quien.Id,
+                                                         quien.CurrentHP - (quien.MaxHP + quien.VidaErosionada),
+                                                         0)));
+                await WriteFrameAsync(sesion.Stream, ConnectionProtocol.Push(Op.Jwi,
+                    Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), quien.Id,
+                                                           Network.FightProtocol.SheetSequence)));
+            });
         }
 
         private static async Task AnunciarPuntosAsync(FightInstance fight, Fighter quienLanza,
@@ -3898,7 +4006,7 @@ namespace Jondo.Unity.Server.Handlers
                     Program.LogDebug($"[Combate] A {c.Sobre.Id} se le van {c.VidaQueSeVa} de vida " +
                                      $"({leQuedaba} -> {c.Sobre.CurrentHP}) por el efecto " +
                                      $"{c.Efecto.EffectId}.");
-                    await RefrescarLaVidaAsync(stream, fight, c.Sobre);
+                    await RefrescarLaVidaAsync(stream, fight, c.Sobre, quienLanza);
                     continue;
                 }
 
@@ -3912,8 +4020,8 @@ namespace Jondo.Unity.Server.Handlers
                     Program.LogDebug($"[Combate] {daLaVida.Id} le pasa {c.VidaTransferida} de vida " +
                                      $"a {c.Sobre.Id}.");
 
-                    await RefrescarLaVidaAsync(stream, fight, daLaVida);
-                    await RefrescarLaVidaAsync(stream, fight, c.Sobre);
+                    await RefrescarLaVidaAsync(stream, fight, daLaVida, quienLanza);
+                    await RefrescarLaVidaAsync(stream, fight, c.Sobre, quienLanza);
                     continue;
                 }
 
@@ -3947,7 +4055,7 @@ namespace Jondo.Unity.Server.Handlers
                         c.DamageElement, c.Sobre, TirarElDado(c.Efecto), c.DamageDistance,
                         c.CriticalDamage, c.DamageSpellBonus);
                     if (c.Sobre.IsAlive && c.Sobre.CurrentHP != lifeBefore)
-                        await RefrescarLaVidaAsync(stream, fight, c.Sobre);
+                        await RefrescarLaVidaAsync(stream, fight, c.Sobre, quienLanza);
                     continue;
                 }
 
@@ -4156,7 +4264,7 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             foreach (var cambiado in vidasCambiadas.Values)
-                await RefrescarLaVidaAsync(stream, fight, cambiado);
+                await RefrescarLaVidaAsync(stream, fight, cambiado, quienLanza);
 
             foreach (var (quien, caracteristica) in fichas)
             {
@@ -4260,7 +4368,8 @@ namespace Jondo.Unity.Server.Handlers
         {
             foreach (var quien in fight.Azul)
             {
-                foreach (int actitud in quien.Buffs.Actitudes)
+                // Over a COPY: see ActitudesAsync.
+                foreach (int actitud in quien.Buffs.Actitudes.ToList())
                 {
                     const int grado = Managers.EffectEngine.GradoDelEnganche;
                     var (_, nivelId, _) = Managers.SpellEffects.GradoDe(actitud, quien.Level);
@@ -4303,7 +4412,11 @@ namespace Jondo.Unity.Server.Handlers
         private static async Task ActitudesAsync(NetworkStream stream, FightInstance fight,
                                                  Fighter quien, string disparador)
         {
-            foreach (int actitud in quien.Buffs.Actitudes)
+            // Over a COPY: an attitude can disarm itself while it resolves -- the Silver Dofus
+            // does, through its own 406 -- and removing from the list being walked threw
+            // "Collection was modified" straight out of the connection handler, which is
+            // what dropped the Ocra client mid-fight the first time the Dofus fired right.
+            foreach (int actitud in quien.Buffs.Actitudes.ToList())
             {
                 // El enganche de una actitud está SIEMPRE en su grado uno, no en el más alto que el
                 // personaje tenga abierto. Los tres grados del Amarillo Ocre son de nivel mínimo 1,
@@ -4393,7 +4506,7 @@ namespace Jondo.Unity.Server.Handlers
             foreach (var estado in vidasAntes.Values)
             {
                 if (estado.Fighter.CurrentHP != estado.Vida)
-                    await RefrescarLaVidaAsync(stream, fight, estado.Fighter);
+                    await RefrescarLaVidaAsync(stream, fight, estado.Fighter, caster);
             }
         }
 
@@ -4474,6 +4587,23 @@ namespace Jondo.Unity.Server.Handlers
             return fuera;
         }
 
+        /// <summary>
+        /// Whose characteristics a hit scales with: the summoner for a bomb, the caster for
+        /// everybody else.
+        /// </summary>
+        /// <remarks>
+        /// Identity stays with the caster -- the bomb is still who is announced as hitting, whose
+        /// combo is read, whose spell buffs apply. Only the NUMBERS come from the Rogue: element,
+        /// power, flat and critical damage, and the final-damage modifier. That is the standard
+        /// rule for bombs and it is what the captures show, see <see cref="UnGolpeAsync"/>.
+        /// </remarks>
+        private static Fighter StatSourceOf(FightInstance fight, Fighter caster)
+        {
+            if (caster != null && caster.EsInvocado && EsBomba(caster.MonsterId))
+                return fight.Buscar(caster.Invocador) ?? caster;
+            return caster;
+        }
+
         private static async Task UnGolpeAsync(NetworkStream stream, FightInstance fight,
                                                Fighter caster, int spell,
                                                Managers.SpellEffect efecto, int elemento,
@@ -4491,6 +4621,16 @@ namespace Jondo.Unity.Server.Handlers
                 4 => Jondo.Unity.World.Fights.ElementType.Air,
                 _ => Jondo.Unity.World.Fights.ElementType.Neutral,
             };
+
+            // WHOSE NUMBERS THE HIT SCALES WITH. For anybody but a bomb, its own. A bomb has no
+            // characteristics of its own -- no intelligence, no power, no flat damage -- so its
+            // explosion came out as the bare die: "14 pasa a 45" in the log for an Explobomba at
+            // Combo XI, while a wall of the very same dice, cast in the Rogue name, hit for 171.
+            //
+            // Measured in "tymador-bomba de agua y sismobomba resiliente": an explosion at Combo V
+            // hits -1, -2 and -4 for 102, 91 and 91, on the same scale as the walls of that fight
+            // (28 to 86). Explosions and walls scale alike, and walls scale with the Rogue.
+            var fuente = StatSourceOf(fight, caster);
 
             // Lo que ha salido del dado, tirado una vez para todo el lanzamiento.
             int baseDamage = sacadoDelDado;
@@ -4521,8 +4661,8 @@ namespace Jondo.Unity.Server.Handlers
             // Los daños fijos van al FINAL, sin multiplicar por la característica ni por la
             // potencia: los generales de la característica 16 más los del elemento con el que se
             // pega (88 a 92), y si el golpe sale crítico, además los daños críticos (86).
-            int flat = ConBonos(caster, DanoFijoCaracteristica, caster.FlatDamage, fight.RoundNumber)
-                     + (critical ? ConBonos(caster, DanoCriticoCaracteristica, caster.CriticalDamage, fight.RoundNumber) : 0);
+            int flat = ConBonos(fuente, DanoFijoCaracteristica, fuente.FlatDamage, fight.RoundNumber)
+                     + (critical ? ConBonos(fuente, DanoCriticoCaracteristica, fuente.CriticalDamage, fight.RoundNumber) : 0);
 
             // Y la caída de la zona: el que está en el centro se lleva el golpe entero y a cada
             // casilla de distancia se le quita el tanto por ciento que diga el hechizo. Se aplica
@@ -4543,16 +4683,16 @@ namespace Jondo.Unity.Server.Handlers
             // hechizo no hacía pegar más. El total de una característica es lo de base, más los
             // pergaminos y el equipo —que ya venían en el Fighter—, más lo que pongan los hechizos
             // mientras dure el combate.
-            int elementoDelPersonaje = ConBonos(caster, CaracteristicaDelElemento(element),
-                                                caster.GetStatForElement(element), fight.RoundNumber);
-            int potencia = ConBonos(caster, PotenciaCaracteristica, caster.Power, fight.RoundNumber);
+            int elementoDelPersonaje = ConBonos(fuente, CaracteristicaDelElemento(element),
+                                                fuente.GetStatForElement(element), fight.RoundNumber);
+            int potencia = ConBonos(fuente, PotenciaCaracteristica, fuente.Power, fight.RoundNumber);
 
             int damage = Jondo.Unity.World.Fights.DamageCalculator.CalculateDamage(
                 baseDamage: baseDamage,
                 element: element,
                 statValue: elementoDelPersonaje,
                 power: potencia,
-                flatElementDamage: caster.GetFlatDamageForElement(element),
+                flatElementDamage: fuente.GetFlatDamageForElement(element),
                 flatDamage: flat,
                 targetResPct: target.GetResPctForElement(element),
                 targetFlatRes: 0);
@@ -4560,7 +4700,7 @@ namespace Jondo.Unity.Server.Handlers
             // La forme bestiale pose +20 sur la caractéristique 107, dont la base vaut 100.
             // C'est un multiplicateur final : il s'applique après caractéristiques/résistances et
             // avant les multiplicateurs de dégâts subis de la cible.
-            int finalInfligido = 100 + caster.Buffs.De(DanoFinalInfligidoCaracteristica,
+            int finalInfligido = 100 + fuente.Buffs.De(DanoFinalInfligidoCaracteristica,
                                                        fight.RoundNumber);
             if (finalInfligido != 100)
             {
@@ -4576,9 +4716,24 @@ namespace Jondo.Unity.Server.Handlers
             // se acumulan uno por peldaño y darían 120% donde toca 60%.
             int combo = Managers.Combo.PercentOf(caster);
 
-            // «Los muros se benefician de la mitad del combo», dice la ficha, así que el mismo
-            // combo vale la mitad cuando lo que pega es un muro y no una explosión.
-            if (combo != 0 && Managers.BombWalls.WallSpell.Values.Contains(spell)) combo /= 2;
+            // A WALL IS CAST IN THE ROGUE NAME, AND THE ROGUE CARRIES NO COMBO. So this read zero
+            // for every wall, and a Combo X wall hit for the same 160-170 as a Combo I one. The
+            // combo of a wall is the combo of the bombs holding it up -- "los muros se benefician
+            // de la mitad del combo", says the sheet -- and which bomb when they differ it does
+            // not say: the highest is the inference already written down where the walls are
+            // raised, and it stays an inference here.
+            if (Managers.BombWalls.WallSpell.Values.Contains(spell))
+            {
+                combo = 0;
+                var muro = Managers.BombWalls.Covering(TodosLosCombatientes(fight), caster,
+                                                       target.CellId);
+                if (muro != null)
+                {
+                    foreach (var bomba in muro.Bombs)
+                        combo = Math.Max(combo, Managers.Combo.PercentOf(bomba));
+                }
+                combo /= 2;
+            }
 
             if (combo != 0)
             {
@@ -4771,7 +4926,7 @@ namespace Jondo.Unity.Server.Handlers
 
             if (aplicado > 0 && quienEmpuja.TeamId != quien.TeamId) quien.LeHanPegado = true;
 
-            await RefrescarLaVidaAsync(stream, fight, quien);
+            await RefrescarLaVidaAsync(stream, fight, quien, quienEmpuja);
 
             Program.LogDebug($"[Combate] {quien.Id} se estampa al ser empujado: {aplicado} de daño " +
                              $"(calculado {dano}, erosión {erosionado}); le quedan {quien.CurrentHP}.");
@@ -5687,6 +5842,13 @@ namespace Jondo.Unity.Server.Handlers
 
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kml));
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kmp));
+
+            // Regeneration begins again, right behind the roleplay context: "kml kmp ktz" in all
+            // 143 captures of it. The world entry replays the captured one; here it is built.
+            await WriteFrameAsync(stream, ConnectionProtocol.BuildRegenerationStarted(
+                ConnectionProtocol.RegenerationRate));
+            Network.SessionContext.State.RegenerationStartedUtc = DateTime.UtcNow;
+
             await WriteFrameAsync(stream, ConnectionProtocol.BuildLoadMap(back));
             await WriteFrameAsync(stream, ConnectionProtocol.BuildMapClock());
 

@@ -724,6 +724,52 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         public static byte[] BuildActorsComplete() => Push(Op.Lva);
 
+        // ─── World: life regeneration ────────────────────────────────────────
+
+        /// <summary>
+        /// The regeneration rate the real server hands out on every return to roleplay, in
+        /// tenths of a second per life point: 135 of the 143 ktz in the captures carry it.
+        /// </summary>
+        /// <remarks>
+        /// The other eight carry 1 -- the Trool fair and one world entry with a guild raid -- and
+        /// what makes a rate fast is not measured, so nothing here decides it.
+        /// </remarks>
+        public const int RegenerationRate = 5;
+
+        /// <summary>One regeneration tick, in milliseconds: the rate is in tenths of a second.</summary>
+        public const int RegenerationTickMs = RegenerationRate * 100;
+
+        /// <summary>
+        /// Life regeneration begins (ktz): f1 the rate. Right behind every "kml kmp" back to
+        /// roleplay -- the world entry replays the captured one, and the fight end builds this.
+        /// </summary>
+        public static byte[] BuildRegenerationStarted(int rate)
+            => Push(Op.Ktz, Pb.New().Var(1, rate).Build());
+
+        /// <summary>
+        /// Life regeneration ends (kuq): f1 the life, f2 the ticks the counter had run, f4 the
+        /// maximum. Between the lqu and the lva of the tactical map load, at every fight entry.
+        /// </summary>
+        /// <remarks>
+        /// This is what stops the client's own counter. Without it the counter started at the
+        /// world entry keeps adding one point every tick THROUGH the fight, to the local player's
+        /// bar only, which is what "the Ocra recovers life tick by tick" was: the roleplay
+        /// regeneration drawn over a fight. Measured against the two challenge captures of the
+        /// 9th of August: 08db2810970120bb29 is {5211, 151, 5307}.
+        /// </remarks>
+        public static byte[] BuildRegenerationEnded(int life, int ticks, int maxLife)
+            => Push(Op.Kuq, Pb.New().Var(1, life).VarIfNotZero(2, ticks).Var(4, maxLife).Build());
+
+        /// <summary>
+        /// How many ticks a counter started at <paramref name="startedUtc"/> has run by
+        /// <paramref name="nowUtc"/>: the f2 of the kuq. Zero when it was never started.
+        /// </summary>
+        public static int RegenerationTicksSince(DateTime startedUtc, DateTime nowUtc)
+        {
+            if (startedUtc == default || nowUtc <= startedUtc) return 0;
+            return (int)Math.Min(int.MaxValue, (long)(nowUtc - startedUtc).TotalMilliseconds / RegenerationTickMs);
+        }
+
         // ─── World: actors on the map ───────────────────────────────────────────
 
         /// <summary>

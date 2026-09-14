@@ -125,7 +125,14 @@ namespace Jondo.Unity.Server.Network
                         {
                             try
                             {
-                                using (SessionContext.Push(sesion)) DatabaseManager.SaveCurrentCharacter();
+                                using (SessionContext.Push(sesion))
+                                {
+                                    // Off the arena first. A client closed in the middle of a
+                                    // fight was being saved on the tactical map, and came back
+                                    // to it on the next login, fight music and all.
+                                    FightHandler.BackToRoleplayMap();
+                                    DatabaseManager.SaveCurrentCharacter();
+                                }
                                 Console.WriteLine($"[Game Node] {sesion.State.CharacterName} saved on the " +
                                                   $"way out: map {sesion.State.MapId}, cell {sesion.State.CellId}.");
                             }

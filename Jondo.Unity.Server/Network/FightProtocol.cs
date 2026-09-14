@@ -326,11 +326,19 @@ namespace Jondo.Unity.Server.Network
         ///
         /// Lleva dos números:
         ///
-        ///   f2 = vida actual menos vida máxima     (sube con las curas, baja con los golpes)
-        ///   f8 = menos la vida erosionada          (sólo baja, y las curas no la tocan)
+        ///   f2 = vida actual menos vida máxima ORIGINAL   (sube con las curas, baja con los golpes)
+        ///   f8 = no es la erosión
         ///
         /// Comprobado contra una captura entera: −104 tras recibir 104, −5 tras curarse 99,
         /// +128 tras curarse otros 133. La cuenta cuadra al punto las tres veces.
+        ///
+        /// Y con el desafío completo: f2 = −1567 con 1567 de daño acumulado y el tope ya
+        /// erosionado en 159, o sea que el tope de la resta es el de SALIDA, no el de ahora. El
+        /// f8 que aquí se leía como erosión vale −1122 en ese mismo mensaje y −3324 en el
+        /// siguiente, con 236 de erosión: no es eso. En la mazmorra de los jalatós sale en las
+        /// ocho 97 con valores entre −114 y −338 y el f2 llega a ser POSITIVO (+220) tras una
+        /// racha de curas. Es el hueco de embrujo del molde general y no se manda hasta saber
+        /// qué va dentro.
         ///
         /// El emulador la mandaba una vez, vacía, al empezar el combate, y no la volvía a tocar:
         /// por eso al jugador le pegaban toda la pelea y su barra seguía llena.

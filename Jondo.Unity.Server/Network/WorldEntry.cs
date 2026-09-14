@@ -813,6 +813,11 @@ namespace Jondo.Unity.Server.Network
                 sent++;
             }
 
+            // The block carries the captured ktz -- regeneration begins, rate 5 -- right behind
+            // its kml kmp, so the client's counter starts here. The kuq at fight entry reports
+            // how long it ran, and that is counted from this moment.
+            SessionContext.State.RegenerationStartedUtc = DateTime.UtcNow;
+
             // The characteristics go out again here. The real server sends its kub twice, once
             // with the character and once with the map, and it is this second one the client
             // keeps: sending it only in the first block left the sheet empty.

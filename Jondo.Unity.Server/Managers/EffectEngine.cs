@@ -1220,6 +1220,8 @@ namespace Jondo.Unity.Server.Managers
             var pideEstado = new List<int>();
             var pideNoEstado = new List<int>();
             var requiredMonsterTemplates = new List<int>();
+            var lifeBelow = new List<int>();       // V<n>: life strictly under n% of the maximum
+            var lifeNotBelow = new List<int>();    // v<n>: life at n% or above
 
             foreach (var trozo in mascara.Split(','))
             {
@@ -1255,6 +1257,22 @@ namespace Jondo.Unity.Server.Managers
                 if (t.Length > 1 && (t[0] == 'e' || t[0] == 'E') && int.TryParse(t.Substring(1), out int estado))
                 {
                     if (t[0] == 'E') pideEstado.Add(estado); else pideNoEstado.Add(estado);
+                    continue;
+                }
+
+                // LIFE THRESHOLDS. 1,100 uses across the catalogue and, until now, silently
+                // ignored -- and an ignored condition is a condition met. That is how the Silver
+                // Dofus healed the Ocra to full at the start of EVERY turn: its trigger is
+                // "C,V20", the sheet says "cuando el portador tiene menos de un 20% de vida",
+                // and the engine never looked.
+                //
+                // The letter follows the same case rule as F/f and E/e, measured on Ataque Mortal
+                // ("danos mayores en objetivos con menos del 50%"): the big die, 54-60, carries
+                // V50 and the small one, 43-48, carries v50. So V<n> is life UNDER n percent and
+                // v<n> is the complement.
+                if (t.Length > 1 && (t[0] == 'V' || t[0] == 'v') && int.TryParse(t.Substring(1), out int pct))
+                {
+                    if (t[0] == 'V') lifeBelow.Add(pct); else lifeNotBelow.Add(pct);
                 }
             }
 
@@ -1313,6 +1331,8 @@ namespace Jondo.Unity.Server.Managers
                 }
                 foreach (int estado in pideEstado) if (!susEstados.Contains(estado)) vale = false;
                 foreach (int estado in pideNoEstado) if (susEstados.Contains(estado)) vale = false;
+                foreach (int pct in lifeBelow) if (!LifeUnder(quien, pct)) vale = false;
+                foreach (int pct in lifeNotBelow) if (LifeUnder(quien, pct)) vale = false;
                 if (vale) yield return quien;
             }
         }
@@ -1323,6 +1343,17 @@ namespace Jondo.Unity.Server.Managers
         /// Si no se sabe a qué casilla se apuntó —las actitudes y los encadenados no apuntan a
         /// ninguna— se cae al objetivo de siempre, que es lo que se hacía antes de haber zonas.
         /// </summary>
+        /// <summary>Whether a fighter is under a percentage of his maximum life.</summary>
+        /// <remarks>
+        /// Strictly under, in integers, without dividing: a bomb of 945 at 189 is exactly 20% and
+        /// is NOT under 20. The maximum is the one of right now, erosion already taken off.
+        /// </remarks>
+        public static bool LifeUnder(Fighter who, int percent)
+        {
+            if (who == null || who.MaxHP <= 0) return false;
+            return (long)who.CurrentHP * 100 < (long)who.MaxHP * percent;
+        }
+
         /// <summary>Quién está pisando una casilla, o nadie.</summary>
         private static Fighter EnLaCasilla(FightInstance combate, int casilla)
         {
@@ -1925,6 +1956,18 @@ namespace Jondo.Unity.Server.Managers
             {
                 int hechizoQuitado = efecto.Value != 0 ? efecto.Value : efecto.DiceNum;
                 if (hechizoQuitado <= 0) return null;
+
+                // AND IF THAT SPELL IS ONE OF THE TARGET OWN PASSIVES, IT IS DISARMED. This is how
+                // "1 vez por combate" is written in the data: the Silver Dofus (18672) fires its
+                // grade 2 under "C,V20", and that grade carries a 406 on 18672 itself -- take my
+                // own effects away, so I never fire again. Buffs alone were being removed and the
+                // attitude stayed armed, ready to heal 30% at every turn start spent under 20%.
+                if (sobre.Buffs.Actitudes.Remove(hechizoQuitado))
+                {
+                    Program.LogDebug($"[Combate] {sobre.Id} se queda sin la actitud {hechizoQuitado}: " +
+                                     $"el efecto 406 del hechizo {hechizo} la desarma.");
+                }
+
                 return new Outcome
                 {
                     Sobre = sobre,
