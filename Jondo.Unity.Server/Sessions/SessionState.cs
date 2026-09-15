@@ -50,6 +50,12 @@ namespace Jondo.Unity.Server
         public bool IsInFight { get; set; }
 
         /// <summary>
+        /// This session came back into a fight that was already running, and the client has
+        /// not asked for the board yet. Cleared by the burst that answers that request.
+        /// </summary>
+        public bool FightRejoinPending { get; set; }
+
+        /// <summary>
         /// De dónde salió este jugador al entrar en combate, para devolverlo ahí al acabar.
         ///
         /// Eran dos estáticos del manejador de combate, uno para todo el servidor: el segundo que

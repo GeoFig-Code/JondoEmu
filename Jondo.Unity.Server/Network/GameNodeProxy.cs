@@ -202,12 +202,19 @@ namespace Jondo.Unity.Server.Network
                     if (HandleTicketPresentation(payload, ref sessionAccountId, ref sessionServerId))
                     {
                         var characters = DatabaseManager.GetCharactersByAccountId(sessionAccountId, sessionServerId);
-                        foreach (byte[] frame in ConnectionProtocol.BuildWelcomeBurst(characters))
+
+                        // One of them still in a fight: the burst stops short of the list, and
+                        // the list goes out with the kvd behind it when the client asks (kvc).
+                        // Sending the list inside the burst and the kvd after it -- behind the
+                        // jtg -- put the client on the character screen anyway.
+                        bool backIntoAFight = characters.Any(c => FightHandler.FightToRejoin(c.Id) != null);
+                        foreach (byte[] frame in ConnectionProtocol.BuildWelcomeBurst(characters, withList: !backIntoAFight))
                         {
                             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, frame);
                         }
                         Console.WriteLine($"[Game Node] Burst sent to account {sessionAccountId}: " +
-                                          $"{characters.Count} character(s) on server {sessionServerId}.");
+                                          $"{characters.Count} character(s) on server {sessionServerId}" +
+                                          (backIntoAFight ? ", one of them still in a fight." : "."));
                     }
                     else
                     {
@@ -231,7 +238,21 @@ namespace Jondo.Unity.Server.Network
                         ConnectionProtocol.Push(Op.Kqr, BuildKqrPayload(sessionAccountId)));
                     // Si se sale estando en un combate, hay que devolverlo al mapa de superficie:
                     // el de arena es de instancia y quedarse ahí es quedarse encerrado.
-                    FightHandler.LeaveFight();
+                    //
+                    // But the fight itself stays, the same as when the socket simply dies: the
+                    // character is still in it, the next character list carries the kvd, and he
+                    // can come back. LeaveFight -- which throws the whole fight away -- is only
+                    // for a fight he could not go back to anyway.
+                    if (FightHandler.FightToRejoin(SessionContext.State.CharacterId) != null)
+                    {
+                        FightHandler.BackToRoleplayMap();
+                        SessionContext.State.IsInFight = false;
+                        SessionContext.State.FightId = 0;
+                    }
+                    else
+                    {
+                        FightHandler.LeaveFight();
+                    }
                     if (SessionContext.Current.IsInWorld)
                     {
                         await SessionRegistry.BroadcastToMapAsync(
@@ -331,43 +352,66 @@ namespace Jondo.Unity.Server.Network
                         return;
                     }
 
-                    // Block 1 of the world entry, replayed from the 3.6.10.10 capture with the
-                    // identity rebuilt from the database. The real server stops here and waits
-                    // for the client to confirm with lqc before sending anything else.
-                    var chosen = DatabaseManager.GetCharacterById(GameState.CharacterId);
-                    if (chosen == null)
+                    // Picking a character that is still in a fight the ordinary way -- not the
+                    // kwb of "go on then" -- is turning the fight down: he gives it up, the
+                    // others get his surrender, and he enters the world where he left it.
+                    var turnedDown = FightHandler.FightToRejoin(GameState.CharacterId);
+                    if (turnedDown != null)
+                    {
+                        await FightHandler.AbandonFromOutsideAsync(turnedDown, GameState.CharacterId);
+                    }
+
+                    // A fresh entry into the world: the map block is owed again.
+                    hasSentMapBlock = false;
+                    if (!await EnterWorldAsync(stream)) return;
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kvc)))
+                {
+                    // The client asks for the list. On an ordinary login it already has it; when
+                    // a character is still in a fight this is where it goes, with the empty kvd
+                    // behind it: "do not stop here". The client answers kwb, handled below.
+                    var characters = DatabaseManager.GetCharactersByAccountId(sessionAccountId, sessionServerId);
+                    var stillFighting = characters.FirstOrDefault(c => FightHandler.FightToRejoin(c.Id) != null);
+                    if (stillFighting != null)
+                    {
+                        await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                            ConnectionProtocol.Push(Op.Kvi, ConnectionProtocol.BuildCharactersList(characters)));
+                        await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                            ConnectionProtocol.Push(Op.Kvd));
+                        Console.WriteLine($"[Game Node] {stillFighting.Name} is still in a fight: kvi and kvd sent.");
+                    }
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kwb)))
+                {
+                    // "Go on then": the answer to the kvd. The character is the one of this
+                    // account still in a fight; the message itself names nobody.
+                    long back = 0;
+                    Jondo.Unity.World.Fights.FightInstance? fightToRejoin = null;
+                    foreach (var candidate in DatabaseManager.GetCharactersByAccountId(sessionAccountId, sessionServerId))
+                    {
+                        fightToRejoin = FightHandler.FightToRejoin(candidate.Id);
+                        if (fightToRejoin != null) { back = candidate.Id; break; }
+                    }
+                    if (fightToRejoin == null
+                        || !CharacterSelectionHandler.SelectCharacter(back, sessionAccountId))
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"[Game Node] Character {GameState.CharacterId} is not in the database.");
+                        Console.WriteLine("[Game Node] kwb without a fight to go back to. Closing the session.");
                         Console.ResetColor();
                         return;
                     }
 
-                    // A fresh entry into the world: the map block is owed again, and the
-                    // inventory is read from the database for this character.
                     hasSentMapBlock = false;
-                    Managers.Equipment.LoadFrom(chosen.Id);
-                    Managers.SpellChoices.LoadFrom(chosen.Id);
-                    Managers.Quests.LoadFrom(chosen.Id);
-                    Managers.Achievements.LoadFrom(chosen.Id);
-                    SessionContext.State.ElementsUsed =
-                        DatabaseManager.LoadElementsUsed(chosen.Id);
-
-                    SessionContext.Current.EnterWorld();
-                    await SessionRegistry.BroadcastToMapAsync(
-                        SessionContext.State.MapId,
-                        ConnectionProtocol.Push(Op.Jsn, ConnectionProtocol.BuildActorRefreshed(
-                            chosen, SessionContext.State.CellId, SessionContext.State.Orientation,
-                            SessionContext.Current.AccountId)),
-                        SessionContext.Current.Id);
-
-                    await WorldEntry.SendAfterCharacterAsync(stream, chosen);
-
-                    // Block 2 goes out straight after. In the capture the client asks for it with
-                    // lqc, and it does send that lqc here too, only later: it comes once the client
-                    // has digested block 1, by which time ours has already sent block 2. Waiting
-                    // for it would leave the client without the catalogues for no reason.
-                    await WorldEntry.SendAfterConfirmAsync(stream, chosen);
+                    FightHandler.RejoinState(fightToRejoin);
+                    if (!await EnterWorldAsync(stream)) return;
+                }
+                else if ((payloadStr.Contains(Op.Uri(Op.Ijm)) || payloadStr.Contains(Op.Uri(Op.Kmv)))
+                         && FightHandler.PendingResume() != null)
+                {
+                    // Back into a fight already running: the board as it is now, once, and the
+                    // client picks the fight up from there. The placement case is not this: it
+                    // goes through the preparation below, from scratch, as the capture does.
+                    await FightHandler.ResumeForOneAsync(stream, FightHandler.PendingResume()!);
                 }
                 else if ((payloadStr.Contains("type.ankama.com/jrh")
                           || payloadStr.Contains(Op.Uri(Op.Kmv)))
@@ -1080,6 +1124,54 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
+        /// What follows a selection, whoever made it: the character's things are read from the
+        /// database, the session enters the world, and blocks 1 and 2 go out. False when the
+        /// character is not in the database, which closes the session.
+        /// </summary>
+        private static async Task<bool> EnterWorldAsync(NetworkStream stream)
+        {
+            // Block 1 of the world entry, replayed from the 3.6.10.10 capture with the identity
+            // rebuilt from the database. The real server stops here and waits for the client to
+            // confirm with lqc before sending anything else.
+            var chosen = DatabaseManager.GetCharacterById(GameState.CharacterId);
+            if (chosen == null)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"[Game Node] Character {GameState.CharacterId} is not in the database.");
+                Console.ResetColor();
+                return false;
+            }
+
+            Managers.Equipment.LoadFrom(chosen.Id);
+            Managers.SpellChoices.LoadFrom(chosen.Id);
+            Managers.Quests.LoadFrom(chosen.Id);
+            Managers.Achievements.LoadFrom(chosen.Id);
+            SessionContext.State.ElementsUsed = DatabaseManager.LoadElementsUsed(chosen.Id);
+
+            SessionContext.Current.EnterWorld();
+
+            // Somebody going back into a fight is not on a roleplay map for anybody to see.
+            if (!GameState.IsInFight)
+            {
+                await SessionRegistry.BroadcastToMapAsync(
+                    SessionContext.State.MapId,
+                    ConnectionProtocol.Push(Op.Jsn, ConnectionProtocol.BuildActorRefreshed(
+                        chosen, SessionContext.State.CellId, SessionContext.State.Orientation,
+                        SessionContext.Current.AccountId)),
+                    SessionContext.Current.Id);
+            }
+
+            await WorldEntry.SendAfterCharacterAsync(stream, chosen);
+
+            // Block 2 goes out straight after. In the capture the client asks for it with lqc,
+            // and it does send that lqc here too, only later: it comes once the client has
+            // digested block 1, by which time ours has already sent block 2. Waiting for it
+            // would leave the client without the catalogues for no reason.
+            await WorldEntry.SendAfterConfirmAsync(stream, chosen);
+            return true;
+        }
+
+        /// <summary>
         /// Manda el bloque del mapa, una sola vez por entrada al mundo.
         ///
         /// El bloque lleva un jru, y jru quiere decir "carga este mapa": mandarlo dos veces hace
@@ -1097,7 +1189,8 @@ namespace Jondo.Unity.Server.Network
             // vez, es lo primero que hay que mirar para saber si se han cruzado.
             Console.WriteLine($"[Game Node] Sending the map block ({reason}): " +
                               $"{GameState.CharacterName} en el mapa {GameState.MapId}.");
-            await WorldEntry.SendMapAsync(stream, character, GameState.MapId);
+            await WorldEntry.SendMapAsync(stream, character, GameState.MapId,
+                                          GameState.IsInFight ? FightHandler.FightOf(GameState.CharacterId) : null);
 
             // Y lo que uno tiene de adorno, que el servidor real manda una sola vez, aquí: los
             // títulos y ornamentos disponibles, y cuál lleva puesto.

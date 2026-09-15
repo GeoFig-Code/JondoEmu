@@ -108,6 +108,19 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildPlacementDone() => Array.Empty<byte>();
 
         /// <summary>
+        /// The same jwq when a fight is already running: every live buff of everybody, each
+        /// entry being exactly the payload its jxm carried. Measured in the reconnection
+        /// capture, where the jwq of the burst is 1,449 bytes of jxm bodies where the one of a
+        /// fresh fight is empty.
+        /// </summary>
+        public static byte[] BuildBuffSync(IEnumerable<byte[]> buffs)
+        {
+            var jwq = Pb.New();
+            foreach (byte[] buff in buffs) jwq.Bytes(1, buff);
+            return jwq.Build();
+        }
+
+        /// <summary>
         /// En qué mapa se pelea (jrk).
         ///
         ///   f2: 10      f3: vacío      f4: el mapa
@@ -206,6 +219,14 @@ namespace Jondo.Unity.Server.Network
         /// </remarks>
         public static byte[] BuildDuelSummary()
             => Pb.New().Var(2, 1).Var(3, 1).Var(4, 1).Build();
+
+        /// <summary>
+        /// The kaa of a fight already running, for whoever comes back into it: f1 = 1 and no
+        /// countdown. "0801180120013004" in both resumes of the reconnection capture; a duel's
+        /// would carry no f6, which is not measured.
+        /// </summary>
+        public static byte[] BuildFightInProgressSummary(int kind)
+            => Pb.New().Var(1, 1).Var(3, 1).Var(4, 1).VarIfNotZero(6, kind).Build();
 
         public static byte[] BuildFightSummary(int kind, int placementDeciseconds)
             => Pb.New()
@@ -523,6 +544,20 @@ namespace Jondo.Unity.Server.Network
                 .Var(1, fighterId)
                 .Var(2, deciseconds)
                 .VarIfNotZero(7, index)
+                .VarIfNotZero(8, round)
+                .Build();
+
+        /// <summary>
+        /// The same jzc for somebody who comes back in the middle of the turn: f6 is what is
+        /// left of it, in tenths. One sample, and it adds up to the tenth: in the reconnection
+        /// capture the turn of 350 had started 21.8 seconds before the burst and f6 says 132.
+        /// That frame carries no f7, so neither does this one.
+        /// </summary>
+        public static byte[] BuildTurnResumed(long fighterId, int deciseconds, int remaining, int round)
+            => Pb.New()
+                .Var(1, fighterId)
+                .Var(2, deciseconds)
+                .VarIfNotZero(6, remaining)
                 .VarIfNotZero(8, round)
                 .Build();
 
@@ -1333,9 +1368,14 @@ namespace Jondo.Unity.Server.Network
         /// La ficha va con el molde de los monstruos, <c>f2 { f2: valor }</c>, que es el que ya
         /// arma <see cref="SheetEntry"/> con <c>isMonster</c>.
         /// </summary>
+        /// <param name="efecto">
+        /// The effect that summoned it, which is the f14: 181 for an ordinary summon, 1008 for
+        /// a bomb, 1011 for one the owner plays. Every summon went out as 181 until now.
+        /// </param>
         public static byte[] BuildSummon(long quienInvoca, long quienEs, int celda, int orientacion,
                                          int plantillaDelAspecto, int plantillaDelBicho, int grado,
-                                         IEnumerable<(int Characteristic, long Base, long Gear)> ficha)
+                                         IEnumerable<(int Characteristic, long Base, long Gear)> ficha,
+                                         int efecto = Invoca)
         {
             var stats = Pb.New()
                 .Var(1, quienInvoca)
@@ -1360,7 +1400,7 @@ namespace Jondo.Unity.Server.Network
             return Pb.New()
                 .Msg(1, Pb.New().Msg(1, Pb.New().Msg(1, cuerpo)))
                 .Var(3, quienInvoca)
-                .Var(14, Invoca)
+                .Var(14, efecto)
                 .Build();
         }
 
@@ -1387,6 +1427,139 @@ namespace Jondo.Unity.Server.Network
                 .Var(3, author)
                 .Var(14, efecto)
                 .Msg(38, Pb.New().Var(1, desde).Var(2, quien).Var(3, hasta))
+                .Build();
+
+        /// <summary>
+        /// A teleport (jwe 4): f3 who does it, f35 { f1: where, f2: who lands }. Every one of the
+        /// 581 teleports in the captures travels like this and not as a 5 with from and to,
+        /// which is what we sent for them until now.
+        /// </summary>
+        public static byte[] BuildTeleport(long author, long quien, int hasta)
+            => Pb.New()
+                .Var(3, author)
+                .Var(14, Jondo.Unity.World.Combat.EffectSupport.Teleport)
+                .Msg(35, Pb.New().Var(1, hasta).Var(2, quien))
+                .Build();
+
+        /// <summary>
+        /// Two fighters swap places (jwe 8): f2 { f1: the caster's old cell, f2: the other, f3:
+        /// the other's old cell }, f3 the caster. One frame for the two of them: Jugarreta from
+        /// 260 onto the bomb at 341 is "121108840210f5…0118d502 18… 7008".
+        /// </summary>
+        public static byte[] BuildSwap(long author, int deDondeElAutor, long otro, int deDondeElOtro)
+            => Pb.New()
+                .Msg(2, Pb.New().Var(1, deDondeElAutor).Var(2, otro).Var(3, deDondeElOtro))
+                .Var(3, author)
+                .Var(14, Jondo.Unity.World.Combat.EffectSupport.SwapPositions)
+                .Build();
+
+        /// <summary>The visibility switch (jwe 150): f34 { f1: state, f4: who }. 1 as the illusions appear, 2 as they go.</summary>
+        public static byte[] BuildVisibility(long author, long quien, int state)
+            => Pb.New()
+                .Var(3, author)
+                .Var(14, Jondo.Unity.World.Combat.EffectSupport.Visibility)
+                .Msg(34, Pb.New().Var(1, state).Var(4, quien))
+                .Build();
+
+        public const int Hidden = 1;
+        public const int Visible = 2;
+
+        /// <summary>
+        /// An illusion appears (jwe 1097): a fighter block of the copy, with its cell, a sheet of
+        /// its own in the monster mould (f2 {f2 = value}), a pointer to the original at the cell he LEFT, and the original's look.
+        /// </summary>
+        /// <remarks>
+        /// The block is the jxg's, with the copy's id in f3 and, inside the fighter, no id and no
+        /// identity: only the sheet (f2) and the f7 "again" whose disposition is the ORIGINAL's --
+        /// 230, facing 3 -- and whose f3 is the original's id. Measured on the three copies of
+        /// the capture, byte for byte.
+        /// </remarks>
+        public static byte[] BuildIllusion(long author, long illusionId, int cell, int orientation,
+                                           int originalCell, int originalOrientation,
+                                           IEnumerable<(int Characteristic, long Base, long Gear)> sheet,
+                                           byte[] look)
+        {
+            var stats = Pb.New().Var(3, SheetKind);
+            foreach (var (characteristic, baseValue, gear) in sheet)
+            {
+                stats.Msg(5, SheetEntry(characteristic, baseValue, gear, isMonster: true));
+            }
+            var original = Pb.New()
+                .Var(3, 1)
+                .Msg(4, Pb.New()
+                    .Msg(1, Pb.New().Var(1, originalCell).VarIfNotZero(2, originalOrientation).Var(4, 0))
+                    .Var(3, author));
+            var fighter = Pb.New().Msg(2, stats).Msg(7, original);
+            var block = Pb.New()
+                .Msg(1, Pb.New().Var(1, cell).VarIfNotZero(2, orientation).Var(4, 0))
+                .Msg(2, Pb.New().Msg(2, fighter).Bytes(3, look))
+                .Var(3, illusionId);
+            return Pb.New()
+                .Msg(1, Pb.New().Msg(2, Pb.New().Msg(2, block)))
+                .Var(3, author)
+                .Var(14, Jondo.Unity.World.Combat.EffectSupport.Illusions)
+                .Build();
+        }
+
+        /// <summary>An illusion goes (jwe 1029): f3 its owner, f10 { f1: which }.</summary>
+        public static byte[] BuildIllusionGone(long author, long illusionId)
+            => Pb.New()
+                .Var(3, author)
+                .Msg(10, Pb.New().Var(1, illusionId))
+                .Var(14, Jondo.Unity.World.Combat.EffectSupport.IllusionGone)
+                .Build();
+
+        /// <summary>
+        /// The sheet of an illusion, as the three of the capture carry it: 5 AP, 4 MP, the life
+        /// of the level, a hundred in the five elements and in the multipliers, zero elsewhere.
+        /// Not the original's numbers -- his are 7 AP and 3 MP -- so it is what the client
+        /// draws for a copy, and the copy never uses it.
+        /// </summary>
+        public static IEnumerable<(int Characteristic, long Base, long Gear)> IllusionSheet(int level)
+        {
+            int[] order = { 1, 23, 37, 33, 35, 36, 34, 58, 54, 56, 57, 55, 85, 87, 101, 27, 28, 93, 79, 78, 0,
+                            10, 11, 13, 14, 15, 16, 18, 19, 25, 26, 50, 75, 88, 89, 90, 91, 92, 95, 96, 97, 102,
+                            107, 150, 120, 121, 122, 123, 124, 125, 141, 142, 143 };
+            foreach (int c in order)
+            {
+                long value = c switch
+                {
+                    1 => 5,
+                    23 => 4,
+                    0 => 50 + 5 * Math.Max(1, level),
+                    10 or 11 or 13 or 14 or 15 => 100,
+                    19 or 26 => 1,
+                    107 or 150 or 120 or 121 or 122 or 123 or 124 or 125 or 141 or 142 or 143 => 100,
+                    27 or 28 or 79 or 78 or 75 => 10,
+                    93 => 3,
+                    _ => 0,
+                };
+                yield return (c, value, 0);
+            }
+        }
+
+        /// <summary>The sequence the illusions go in at the owner's turn start: jto 6 in the capture.</summary>
+        public const int TurnStartSequence = 6;
+
+        /// <summary>
+        /// Somebody is picked up (jwe 50): f3 who carries, f18 { f1: the cell he was on, f3: who }.
+        /// Byte for byte the Pinzas of the Tymobot capture: "18f0ff…01 7032 92010e 089102 18f3ff…01".
+        /// </summary>
+        public static byte[] BuildCarry(long author, int desde, long quien)
+            => Pb.New()
+                .Var(3, author)
+                .Var(14, Jondo.Unity.World.Combat.EffectSupport.Carry)
+                .Msg(18, Pb.New().Var(1, desde).Var(3, quien))
+                .Build();
+
+        /// <summary>
+        /// Somebody is thrown (jwe 51): f3 who throws, f27 { f1: who, f2: where he lands }.
+        /// </summary>
+        public static byte[] BuildThrow(long author, long quien, int hasta)
+            => Pb.New()
+                .Var(3, author)
+                .Var(14, Jondo.Unity.World.Combat.EffectSupport.Throw)
+                .Msg(27, Pb.New().Var(1, quien).Var(2, hasta))
                 .Build();
 
         /// <summary>
@@ -1763,6 +1936,31 @@ namespace Jondo.Unity.Server.Network
         /// Si lleva la entrada del cuerpo a cuerpo. La llevan las barras de los JUGADORES, las 27
         /// de las capturas; las de los invocados, que traen una o dos entradas, no.
         /// </param>
+        /// <summary>
+        /// The spell bar of a summon, for the player who controls it (jyy): f3 the summon, f4
+        /// the owner, one f6 per spell with its grade and origin 6, one f7 per slot, no melee.
+        /// Measured on the Tymobot and on the Osamodas' animals: "f3=-12 f4=owner f6{f1=3
+        /// f3=13451 f4=6} ... f7{f6{f2=13451}} f7{f2=1 f6{f2=13452}} ...".
+        /// </summary>
+        public static byte[] BuildSummonSpellBar(long summonId, long ownerId,
+                                                 IEnumerable<(int Spell, int Grade)> spells)
+        {
+            var jyy = Pb.New().Var(3, summonId).Var(4, ownerId);
+            var lista = new List<(int Spell, int Grade)>(spells);
+            foreach (var (spell, grade) in lista)
+            {
+                jyy.Msg(6, Pb.New().VarIfNotZero(1, grade).Var(3, spell).Var(4, OrigenDeInvocado));
+            }
+            for (int slot = 0; slot < lista.Count; slot++)
+            {
+                jyy.Msg(7, Pb.New().VarIfNotZero(2, slot).Msg(6, Pb.New().Var(2, lista[slot].Spell)));
+            }
+            return jyy.Build();
+        }
+
+        /// <summary>The origin of a summon's spell in its jyy: 6 in all 24 summon bars of the captures.</summary>
+        private const int OrigenDeInvocado = 6;
+
         public static byte[] BuildSpellBar(long fighterId, IEnumerable<(int Spell, int Grade)> spells,
                                            IEnumerable<(int Slot, int Spell)> bar, bool conArma = true)
         {

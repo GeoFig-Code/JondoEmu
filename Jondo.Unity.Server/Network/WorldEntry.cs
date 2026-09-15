@@ -786,7 +786,15 @@ namespace Jondo.Unity.Server.Network
         /// Block 3, the map. jru carries the map id in field 2, and it is replaced with the one
         /// the character is standing on: otherwise everyone would land on the map of the capture.
         /// </summary>
-        public static async Task<int> SendMapAsync(NetworkStream stream, DatabaseManager.DbCharacter character, long mapId)
+        /// <param name="fightToRejoin">
+        /// Set when the character is going straight back into a fight. The block then takes the
+        /// shape of the two reconnection captures: the kmp says "fight" (f1 = 1), the jru is the
+        /// arena, and behind the lqu go "{0} acaba de volver a conectarse al combate" and the
+        /// lva; the ktz and the iom of a roleplay entry are not sent. Everything else is the
+        /// same block.
+        /// </param>
+        public static async Task<int> SendMapAsync(NetworkStream stream, DatabaseManager.DbCharacter character, long mapId,
+                                                   Jondo.Unity.World.Fights.FightInstance? fightToRejoin = null)
         {
             var identity = IdentityFor(character);
             int sent = 0;
@@ -809,14 +817,33 @@ namespace Jondo.Unity.Server.Network
                     toSend = ConnectionProtocol.Push(Op.Jru, Pb.New().Var(2, mapId).Build());
                 }
 
+                if (fightToRejoin != null)
+                {
+                    if (ConnectionProtocol.ReadPayload(frame, Op.Ktz) != null
+                        || ConnectionProtocol.ReadPayload(frame, Op.Iom) != null) continue;
+                    if (ConnectionProtocol.ReadPayload(frame, Op.Kmp) != null)
+                    {
+                        toSend = ConnectionProtocol.Push(Op.Kmp, FightProtocol.BuildFightMapComing());
+                    }
+                }
+
                 await EnviarAsync(stream, toSend);
                 sent++;
+
+                if (fightToRejoin != null && ConnectionProtocol.ReadPayload(frame, Op.Lqu) != null)
+                {
+                    await EnviarAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                        ConnectionProtocol.BuildBackInTheFight(character.Name)));
+                    await EnviarAsync(stream, ConnectionProtocol.BuildActorsComplete());
+                    sent += 2;
+                }
             }
 
             // The block carries the captured ktz -- regeneration begins, rate 5 -- right behind
             // its kml kmp, so the client's counter starts here. The kuq at fight entry reports
-            // how long it ran, and that is counted from this moment.
-            SessionContext.State.RegenerationStartedUtc = DateTime.UtcNow;
+            // how long it ran, and that is counted from this moment. Not when going back into a
+            // fight: that block carries no ktz.
+            if (fightToRejoin == null) SessionContext.State.RegenerationStartedUtc = DateTime.UtcNow;
 
             // The characteristics go out again here. The real server sends its kub twice, once
             // with the character and once with the map, and it is this second one the client

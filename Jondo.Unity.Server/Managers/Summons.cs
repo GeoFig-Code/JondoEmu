@@ -54,6 +54,24 @@ namespace Jondo.Unity.Server.Managers
         public int GradoDelHechizoPropio { get; init; }
 
         /// <summary>
+        /// Whether it gets a turn of its own. Bit 6 of the template's <c>m_flags</c>, read
+        /// against every case the captures settle: the Tymobot, the Bomba Ambulante, the
+        /// Megabomba and the Baliza de Supervivencia carry it and play; the four bombs and the
+        /// Baliza Táctica do not carry it and never appear in the carousel. Every ordinary
+        /// monster carries it; what does not is the scenery -- trees, totems, pillars, the
+        /// Dofus Ébano, the Bambú.
+        /// </summary>
+        public bool Juega { get; init; } = true;
+
+        /// <summary>
+        /// The spells it casts, with the grade its own grade opens: the template's <c>spells</c>
+        /// against its <c>spellGrades</c> ("1,1;2,2;3,3;3,4;3,5" is spell grade 1 at monster
+        /// grade 1, 2 at 2, 3 from 3 on). They go to whoever controls it as a jyy of its own:
+        /// the Tymobot at grade 3 gets 13451 g3, 13452 g3, 30938 g1 and 13453 g3 in the capture.
+        /// </summary>
+        public IReadOnlyList<(int Spell, int Grade)> Hechizos { get; init; } = Array.Empty<(int, int)>();
+
+        /// <summary>
         /// How much of the caster's summon capacity this creature occupies, from the template's
         /// own <c>summonCost</c>. Not every summon costs one: of the 5,134 templates in
         /// world.db, 4,640 cost 1, <b>485 cost ZERO</b>, four cost 2 and five cost 3.
@@ -191,6 +209,9 @@ namespace Jondo.Unity.Server.Managers
                 int nivelDelHechizo = Entero(gr, "startingSpellId");
                 var (hechizo, gradoDelHechizo) = HechizoDe(conexion, nivelDelHechizo);
 
+                bool juega = (Entero(doc.RootElement, "m_flags") & CanPlayFlag) != 0;
+                var hechizos = HechizosDe(doc.RootElement, grado);
+
                 return new Summon
                 {
                     Plantilla = plantilla,
@@ -211,6 +232,8 @@ namespace Jondo.Unity.Server.Managers
                     ResistenciaAire = Entero(gr, "airResistance"),
                     HechizoPropio = hechizo,
                     GradoDelHechizoPropio = gradoDelHechizo,
+                    Juega = juega,
+                    Hechizos = hechizos,
                     // Absent means one, not free: a template with no summonCost at all is an
                     // ordinary summon. Every template in world.db carries the key, so this
                     // default only guards against a future dump that drops it.
@@ -225,6 +248,49 @@ namespace Jondo.Unity.Server.Managers
                                  $"grado {grado}: {ex.Message}");
                 return null;
             }
+        }
+
+        /// <summary>Bit 6 of a template's m_flags: it plays a turn. See <see cref="Summon.Juega"/>.</summary>
+        public const int CanPlayFlag = 64;
+
+        /// <summary>
+        /// The template's spells at the grade this summon's grade opens. "spells" is the list of
+        /// spell ids and "spellGrades" one string per spell, "s,g;s,g;..." pairs of spell grade
+        /// and monster grade. A spell with no usable pair is cast at grade 1.
+        /// </summary>
+        private static IReadOnlyList<(int Spell, int Grade)> HechizosDe(JsonElement raiz, int grado)
+        {
+            var salida = new List<(int, int)>();
+            if (!raiz.TryGetProperty("spells", out var hechizos) ||
+                !hechizos.TryGetProperty("Array", out var lista)) return salida;
+
+            var grados = new List<string>();
+            if (raiz.TryGetProperty("spellGrades", out var g) && g.TryGetProperty("Array", out var gl))
+            {
+                foreach (var x in gl.EnumerateArray()) grados.Add(x.GetString() ?? "");
+            }
+
+            int i = 0;
+            foreach (var h in lista.EnumerateArray())
+            {
+                if (!h.TryGetInt32(out int hechizo)) { i++; continue; }
+                int gradoDelHechizo = 1;
+                if (i < grados.Count)
+                {
+                    foreach (string par in grados[i].Split(';'))
+                    {
+                        var partes = par.Split(',');
+                        if (partes.Length == 2 && int.TryParse(partes[0], out int sg) &&
+                            int.TryParse(partes[1], out int mg) && mg == grado)
+                        {
+                            gradoDelHechizo = Math.Max(1, sg);
+                        }
+                    }
+                }
+                salida.Add((hechizo, gradoDelHechizo));
+                i++;
+            }
+            return salida;
         }
 
         /// <summary>

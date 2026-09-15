@@ -78,6 +78,39 @@ namespace Jondo.Unity.World.Fights
             }
         }
 
+        /// <summary>
+        /// Whether the turn at hand has been announced (jzc) or is still waiting for a client to
+        /// confirm it (jxh sent, jwz not back). A fight whose only human closed the game parks
+        /// here, and somebody reconnecting needs to know which of the two he is walking into.
+        /// </summary>
+        public bool TurnAwaitingConfirmation
+        {
+            get { lock (_candadoDelTurno) return _turnoAtendido != (RoundNumber, CurrentTurnIndex); }
+        }
+
+        /// <summary>
+        /// The last turn that went out as a jzc: who, at what index and round, for how long, and
+        /// when. It is what a reconnecting client is told first, so that his carousel and his
+        /// clock line up with everybody else's. Measured in the reconnection capture: the burst
+        /// carries the jzc of the turn IN PROGRESS with f6 = what is left of it, 132 tenths where
+        /// 21.8 seconds of a 350 turn had gone by.
+        /// </summary>
+        public AnnouncedTurn LastAnnouncedTurn { get; set; }
+
+        public readonly record struct AnnouncedTurn(long FighterId, int Index, int Round,
+                                                    int Deciseconds, DateTime StartedUtc)
+        {
+            public bool Announced => FighterId != 0;
+
+            /// <summary>What is left of it, in tenths of a second; never below zero.</summary>
+            public int RemainingDeciseconds(DateTime nowUtc)
+            {
+                if (!Announced) return 0;
+                long gone = (long)(nowUtc - StartedUtc).TotalMilliseconds / 100;
+                return (int)Math.Max(0, Deciseconds - gone);
+            }
+        }
+
         /// <summary>Si a este ya se le mandó la preparación.</summary>
         public bool HasPrepared(long fighterId)
         {
@@ -409,6 +442,20 @@ namespace Jondo.Unity.World.Fights
         private static bool SeDeshace(Fighter f, int ronda)
             => f.EsInvocado && f.IsAlive && f.MuereEnRonda >= 0 && ronda >= f.MuereEnRonda;
 
+        /// <summary>
+        /// Takes a fighter off the board for good -- an illusion that is gone. Not a death: no
+        /// list keeps him, the carousel never had him, and the turn order is rebuilt around
+        /// whoever is playing.
+        /// </summary>
+        public void Quitar(Fighter fighter)
+        {
+            if (fighter == null) return;
+            fighter.CurrentHP = 0;
+            Azul.Remove(fighter);
+            Rojo.Remove(fighter);
+            RebuildTurnOrderKeepingCurrent();
+        }
+
         public void UpdateTurnOrder()
         {
             TurnOrder = BuildAlternatingTurnOrder();
@@ -476,6 +523,16 @@ namespace Jondo.Unity.World.Fights
         /// Un monstruo no pulsa nada, así que para contar sólo cuentan las personas; si en un
         /// bando no hay ninguna —el caso de siempre contra monstruos— ese bando está listo.
         /// </remarks>
+        /// <summary>
+        /// Takes the ready flag back. The real server does it for whoever reconnects during the
+        /// placement: the capture shows him pressing ready again before the fight starts.
+        /// </summary>
+        public void ForgetReady(long fighterId)
+        {
+            var f = Buscar(fighterId);
+            if (f != null) f.IsReady = false;
+        }
+
         public bool SetFighterReady(long fighterId)
         {
             var f = Buscar(fighterId);
@@ -540,6 +597,13 @@ namespace Jondo.Unity.World.Fights
         /// Cleared at every turn start, whoever the turn belongs to.
         /// </remarks>
         public HashSet<long> WallHitThisTurn { get; } = new HashSet<long>();
+
+        /// <summary>
+        /// An effect of the cast in progress asked for the caster's turn to end (1031, "Hace
+        /// pasar de turno"). Raised by the effect loop, consumed by the cast once its sequence
+        /// has closed.
+        /// </summary>
+        public bool EndTurnRequested { get; set; }
 
         private int _siguienteGlifo;
 

@@ -211,6 +211,7 @@ namespace Jondo.Unity.Server.Handlers
             suyo.FightId = fight.FightId;
             suyo.RoleplayMapId = fight.RoleplayMapId;
             suyo.RoleplayCellId = casillaDeRol;
+            fight.DeDondeVenian[suyo.CharacterId] = (fight.RoleplayMapId, casillaDeRol);
 
             // Sin guardar el personaje: el mapa de combate es un mapa de instancia y dejarlo escrito
             // en la ficha lo devolvería ahí al volver a entrar, a un sitio del que no se sale.
@@ -533,6 +534,7 @@ namespace Jondo.Unity.Server.Handlers
                     suyo.FightId = fight.FightId;
                     suyo.RoleplayMapId = mapaDeRol;
                     suyo.RoleplayCellId = casillaDeRol;
+                    fight.DeDondeVenian[suyo.CharacterId] = (mapaDeRol, casillaDeRol);
 
                     GameState.IsInFight = true;
                     GameState.CurrentFightMobId = 0;
@@ -1064,6 +1066,10 @@ namespace Jondo.Unity.Server.Handlers
             if (caracteristica == ActionPointsCharacteristic) return (ficha.CurrentAP, 0, 0);
             if (caracteristica == MovementPointsCharacteristic) return (ficha.CurrentMP, 0, 0);
 
+            // The shield is the points the fighter holds, in the base hole: "f5{f1=96 f2{f2=350}}"
+            // in the Patada capture, and 700 after the second Patada.
+            if (caracteristica == Managers.EffectEngine.ShieldCharacteristic) return (ficha.PuntosDeEscudo, 0, 0);
+
             // AQUÍ ESTABA EL AGUJERO DE LA PREVISUALIZACIÓN.
             //
             // Esto era una lista escrita A MANO —primero dos casos, luego trece— en paralelo a la
@@ -1134,6 +1140,7 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>Los mismos números que usa datos/characteristics.json.</summary>
         private const int ActionPointsCharacteristic = 1;
+        private const int VitalityCharacteristicId = 11;
         private const int MovementPointsCharacteristic = 23;
 
         /// <summary>El alcance a secas, la que suma a TODOS los hechizos.</summary>
@@ -1803,16 +1810,365 @@ namespace Jondo.Unity.Server.Handlers
         /// combate, que es lo correcto y antes tampoco pasaba.
         /// </summary>
         private static FightInstance? GetCurrentFight()
+            => FightOf(Network.SessionContext.State.CharacterId);
+
+        /// <summary>
+        /// The session of the player who plays this fighter, when it is a summon of his and he
+        /// is connected; null for a player himself, for a monster, and for a summon whose owner
+        /// is a monster or is away. The away case is what makes a summon fall back to passing
+        /// its turn on its own.
+        /// </summary>
+        private static GameSession? Dueno(FightInstance fight, Fighter fighter)
         {
-            long quien = Network.SessionContext.State.CharacterId;
-            if (quien == 0) return null;
+            if (fighter == null || !fighter.EsInvocado) return null;
+            var owner = fight.Buscar(fighter.Invocador);
+            if (owner == null || owner.IsMonster) return null;
+            return SessionRegistry.FindByCharacter(owner.Id);
+        }
+
+        /// <summary>The cast limits of whoever is casting: a summon's own grade, a player's by level.</summary>
+        private static LimitesDelHechizo LimitesDelQueLanza(Fighter caster, int spell)
+        {
+            if (caster.EsInvocado)
+            {
+                foreach (var (suyo, grado) in caster.HechizosDeInvocado)
+                {
+                    if (suyo == spell) return LimitesDeGrado(spell, grado);
+                }
+            }
+            return LimitesDe(spell, caster.Level);
+        }
+
+        /// <summary>The fight this character is in, or null. Anybody may ask, not only his session.</summary>
+        public static FightInstance? FightOf(long characterId)
+        {
+            if (characterId == 0) return null;
 
             foreach (var combate in _activeFights.Values)
             {
-                foreach (var f in combate.Azul) if (f.Id == quien) return combate;
-                foreach (var f in combate.Rojo) if (f.Id == quien) return combate;
+                foreach (var f in combate.Azul) if (f.Id == characterId) return combate;
+                foreach (var f in combate.Rojo) if (f.Id == characterId) return combate;
             }
             return null;
+        }
+
+        // ─── Coming back into a fight ───────────────────────────────────────────
+        //
+        // A client closed in the middle of a fight -- the game killed, the cable, a crash -- leaves
+        // its fighter in the fight and the fight running (NetworkMessage drops what is written to
+        // the dead socket). The real server offers the way back at the next login, and these are
+        // the pieces, measured in the two reconnection captures:
+        //
+        //   kvi  kvd   the character list and an EMPTY kvd behind it: "do not stop here"
+        //   kwb        the client's answer, also empty: "go on then"
+        //   kva ...    the world entry as always, blocks 1 and 2 untouched
+        //   kml kmp(1) jru(arena) lqu lqn(184 name) lva hms itg lru      block 3, fight flavour
+        //   ijm kmv    the client asks for the board, as at any fight entry
+        //   ...        during the placement: the preparation again, from scratch
+        //              during the fight: ResumeForOneAsync below
+        //
+        // What is NOT measured is a way of saying no: the "decir que no" of the second capture
+        // leaves no trace on the wire and the fight simply continues, so there is none here.
+
+        /// <summary>
+        /// The fight a character of this account would be put straight back into: running, not
+        /// over, and the character still alive in it. Null when the login is an ordinary one.
+        /// </summary>
+        public static FightInstance? FightToRejoin(long characterId)
+        {
+            var fight = FightOf(characterId);
+            if (fight == null || fight.State == Jondo.Unity.World.Fights.FightState.Ended) return null;
+            var mine = fight.Buscar(characterId);
+            return mine != null && mine.IsAlive ? fight : null;
+        }
+
+        /// <summary>
+        /// Puts the freshly selected session into its fight: the map is the arena, and the place
+        /// he left is what the database just loaded, since the teardown saved him there.
+        /// </summary>
+        public static void RejoinState(FightInstance fight)
+        {
+            var suyo = Network.SessionContext.State;
+
+            // Where he came from is the FIGHT's memory, not the database's: whatever saved the
+            // character while he was fighting saved him on the arena, and the first rejoin sent
+            // him back to the arena at the end of the fight, monsters spawning around him.
+            if (fight.DeDondeVenian.TryGetValue(suyo.CharacterId, out var origen))
+            {
+                suyo.RoleplayMapId = origen.Mapa;
+                suyo.RoleplayCellId = origen.Casilla;
+            }
+            else
+            {
+                suyo.RoleplayMapId = fight.RoleplayMapId;
+                suyo.RoleplayCellId = suyo.MapId == fight.RoleplayMapId ? suyo.CellId : 0;
+            }
+            suyo.MapId = fight.MapId;
+            suyo.IsInFight = true;
+            suyo.FightId = fight.FightId;
+            suyo.CurrentFightMobId = fight.DefenderLeaderId;
+            suyo.FightRejoinPending = true;
+
+            // During the placement the preparation goes out again from scratch, and so does the
+            // ready button: the capture shows him pressing it a second time.
+            if (fight.State == Jondo.Unity.World.Fights.FightState.Placement)
+            {
+                fight.ForgetPreparation(suyo.CharacterId);
+                fight.ForgetReady(suyo.CharacterId);
+            }
+
+            Program.LogDebug($"[Combate] {suyo.CharacterName} vuelve al combate #{fight.FightId} " +
+                             $"({fight.State}), mapa {fight.MapId}.");
+        }
+
+        /// <summary>
+        /// A player turns a fight down from the character screen: his fighter falls, whoever is
+        /// still in the fight sees him fall the way a surrender is seen, and his session is put
+        /// back where he left the map. A fight with nobody left to watch it is dropped.
+        /// </summary>
+        /// <remarks>
+        /// Not measured on the wire -- the second reconnection capture's "decir que no" leaves
+        /// no trace and the fight simply goes on -- so this is the surrender sequence of
+        /// AbandonAsync sent to the OTHERS, from outside the fight. Nothing is written to the
+        /// one leaving: he is at the character screen.
+        /// </remarks>
+        public static async Task AbandonFromOutsideAsync(FightInstance fight, long characterId)
+        {
+            var suyo = Network.SessionContext.State;
+            if (fight.DeDondeVenian.TryGetValue(characterId, out var origen))
+            {
+                suyo.MapId = origen.Mapa;
+                suyo.CellId = origen.Casilla;
+            }
+            else if (suyo.MapId == fight.MapId && fight.RoleplayMapId != fight.MapId)
+            {
+                suyo.MapId = fight.RoleplayMapId;
+                suyo.CellId = MapManager.GetNearestWalkableCell(fight.RoleplayMapId, TeleportHandler.MapCentre);
+            }
+            suyo.IsInFight = false;
+            suyo.FightId = 0;
+            suyo.RoleplayMapId = 0;
+            suyo.RoleplayCellId = 0;
+            DatabaseManager.SaveCurrentCharacter();
+
+            var quitter = fight.Buscar(characterId);
+            if (quitter == null) return;
+
+            var others = Publico(fight).Where(sesion => sesion.State.CharacterId != characterId).ToList();
+            if (fight.State == Jondo.Unity.World.Fights.FightState.Ongoing && quitter.IsAlive)
+            {
+                if (fight.CurrentFighter == quitter) PararElReloj(fight);
+                var author = (fight.CurrentFighter ?? quitter).Id;
+                quitter.CurrentHP = 0;
+                foreach (var otro in others)
+                {
+                    await otro.SendAsync(ConnectionProtocol.Push(Op.Jto,
+                        Network.FightProtocol.BuildSequenceStart(author, Network.FightProtocol.SurrenderSequence)));
+                    await otro.SendAsync(ConnectionProtocol.Push(Op.Jwe,
+                        Network.FightProtocol.BuildDeath(quitter.Id, quitter.Id)));
+                    await otro.SendAsync(ConnectionProtocol.Push(Op.Jzu,
+                        Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
+                    await otro.SendAsync(ConnectionProtocol.Push(Op.Jwi,
+                        Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), author,
+                                                               Network.FightProtocol.SurrenderSequence)));
+                }
+            }
+            else
+            {
+                quitter.CurrentHP = 0;
+            }
+
+            Program.LogDebug($"[Combate] {characterId} renuncia al combate #{fight.FightId} desde " +
+                             $"la pantalla de personajes; quedan {others.Count} persona(s) dentro.");
+
+            if (others.Count == 0)
+            {
+                fight.CancelTurnTimer();
+                fight.CancelPlacementTimer();
+                _activeFights.TryRemove(fight.FightId, out _);
+                return;
+            }
+
+            // The others' fight goes on, or ends if he was the last of his side.
+            var primero = others[0];
+            using (SessionContext.Push(primero))
+            {
+                await CheckFightOverAsync(primero.Stream, fight);
+            }
+        }
+
+        /// <summary>
+        /// The running fight this session still owes the board of, once its client has asked for
+        /// it with ijm/kmv. Null for a placement (that goes through PendingPreparation) and for
+        /// everybody else.
+        /// </summary>
+        public static FightInstance? PendingResume()
+        {
+            var suyo = Network.SessionContext.State;
+            if (!suyo.FightRejoinPending) return null;
+            var fight = GetCurrentFight();
+            if (fight == null || fight.State != Jondo.Unity.World.Fights.FightState.Ongoing) return null;
+            return fight;
+        }
+
+        /// <summary>
+        /// The board of a fight already running, for somebody who just came back into it.
+        /// </summary>
+        /// <remarks>
+        /// The order is the one of the capture at 30.8 s, frame for frame:
+        ///
+        ///   ijq kam kaa jxg(each) jyy kmk(everybody) [jxu] jxb jzc [kwu] jxz kau jzu jwq jrk
+        ///
+        /// with the jzc carrying what is left of the turn in progress (f6), the jwq carrying
+        /// every live buff, and the kmk everybody where they stand NOW. The jxu -- the receiver's
+        /// own trigger counts and buffs, resent -- is not built: its buffs travel in the jwq
+        /// anyway, and the trigger counts (jtn) are not kept per fighter here.
+        ///
+        /// Then one of two things, which is where the two reconnections of the second capture
+        /// differ:
+        ///
+        ///   the turn is in progress (30.8 s)    nothing more; the client gets no jxh and sends no
+        ///                                       jwz, its clock just runs down
+        ///   a turn is waiting to be confirmed   jxh, so that the client answers jwz and the turn
+        ///   (61.1 s)                            opens through ConfirmAsync as any other
+        ///
+        /// A fight whose only player was away parks in the second state, because nobody was
+        /// there to confirm; a challenge is in the first, because the other player kept it going.
+        /// </remarks>
+        public static async Task ResumeForOneAsync(NetworkStream stream, FightInstance fight)
+        {
+            long me = GameState.CharacterId;
+            Network.SessionContext.State.FightRejoinPending = false;
+
+            await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ijq,
+                Network.FightProtocol.BuildMapReady()));
+
+            var monsters = fight.Reglas.EnfrenteHayMonstruos
+                ? fight.Rojo.ConvertAll(f => (long)f.MonsterId)
+                : new List<long>();
+            await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kam,
+                Network.FightProtocol.BuildFightAnnounced(
+                    fight.Reglas.TipoDelKam, fight.DefenderLeaderId, monsters, fight.FightId, me)));
+            // The kaa of a fight in progress: f1 = 1 and no countdown. Without the flag the
+            // client came back into the placement phase -- the READY button where the pass
+            // button goes -- and pressing it started the fight over. Measured: "0801180120013004"
+            // in both resumes of the capture against "1801200128bc033004" in its placement.
+            await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kaa,
+                Network.FightProtocol.BuildFightInProgressSummary(
+                    fight.Reglas.KaaConCuentaAtras ? fight.Reglas.TipoDelKam : 0)));
+
+            // Everybody, where he stands now. The dead are listed too: the capture's jxg of a
+            // fight in progress carry every fighter, and the jxb behind them says who is alive.
+            foreach (var fighter in TodosLosCombatientes(fight))
+            {
+                await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jxg,
+                    fighter.IsMonster
+                        ? Network.FightProtocol.BuildFighter(
+                              fighter.CellId, FacingOf(fight, fighter), fighter.Id,
+                              PlacementSheetOf(fighter), MonsterLook(fighter),
+                              Network.FightProtocol.MonsterIdentity(fighter.GradeIndex + 1,
+                                                                    fighter.MonsterId, fighter.Level),
+                              isMonster: true)
+                        : BuildPlayerAppearance(fight, fighter)));
+            }
+
+            var character = DatabaseManager.GetCharacterById(me);
+            var spellLayout = Managers.FightSpellLayout.Current(character?.Breed ?? 0,
+                                                                 GameState.CharacterLevel,
+                                                                 SessionContext.Current.AccountId);
+            await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jyy,
+                Network.FightProtocol.BuildSpellBar(me, spellLayout.Spells, spellLayout.Bar)));
+
+            var spots = new List<(int Cell, int Orientation, long Fighter)>();
+            foreach (var fighter in TodosLosCombatientes(fight))
+            {
+                if (fighter.IsAlive) spots.Add((fighter.CellId, FacingOf(fight, fighter), fighter.Id));
+            }
+            await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kmk,
+                Network.FightProtocol.BuildFightersPlaced(spots)));
+
+            var everyone = new List<Network.Pb>();
+            var listados = new HashSet<long>();
+            foreach (var fighter in fight.TurnOrder)
+            {
+                if (fighter == null || !listados.Add(fighter.Id)) continue;
+                everyone.Add(BloqueDe(fight, fighter));
+            }
+            foreach (var fighter in TodosLosCombatientes(fight))
+            {
+                if (fighter == null || !listados.Add(fighter.Id)) continue;
+                everyone.Add(BloqueDe(fight, fighter));
+            }
+            await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jxb,
+                Network.FightProtocol.BuildAllFighters(everyone)));
+
+            // The turn the fight is on. The last one announced, with what is left of it; and if
+            // none was announced yet -- the fight had just started when he left -- the one that
+            // is about to be.
+            var announced = fight.LastAnnouncedTurn;
+            if (announced.Announced)
+            {
+                await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jzc,
+                    Network.FightProtocol.BuildTurnResumed(announced.FighterId, announced.Deciseconds,
+                                                           announced.RemainingDeciseconds(DateTime.UtcNow),
+                                                           announced.Round)));
+            }
+
+            if (fight.Reglas.HayRetos) await ChallengeHandler.SendFinalListAsync(stream, fight);
+
+            await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jxz,
+                Network.FightProtocol.BuildRound(fight.RoundNumber)));
+            await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kau,
+                Network.FightProtocol.BuildFightOption(0, fight.FightId)));
+            await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jzu,
+                Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
+            await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jwq,
+                Network.FightProtocol.BuildBuffSync(LiveBuffFrames(fight))));
+            await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jrk,
+                Network.FightProtocol.BuildFightMap(fight.MapId)));
+
+            // His own cooldowns, which the fight-start burst would have given him.
+            var yoMismo = fight.Buscar(me);
+            await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jxc,
+                Network.FightProtocol.BuildCooldowns(me, RecargasDe(yoMismo))));
+
+            if (fight.TurnAwaitingConfirmation)
+            {
+                var next = fight.CurrentFighter;
+                if (next != null)
+                {
+                    await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jxh,
+                        Network.FightProtocol.BuildConfirmTurn(next.Id)));
+                }
+            }
+
+            Program.LogDebug($"[Combate] {GameState.CharacterName} tiene otra vez el tablero del " +
+                             $"combate #{fight.FightId}: ronda {fight.RoundNumber}, " +
+                             $"turno de {fight.CurrentFighter?.Id}" +
+                             (fight.TurnAwaitingConfirmation ? ", esperando su jwz." : "."));
+        }
+
+        /// <summary>
+        /// Every live buff in the fight as the payload its jxm carried, rebuilt from what the
+        /// buff kept. Dice and dispellability are not kept, so those two fields stay out; the
+        /// client draws the panel from the rest.
+        /// </summary>
+        private static IEnumerable<byte[]> LiveBuffFrames(FightInstance fight)
+        {
+            foreach (var quien in TodosLosCombatientes(fight))
+            {
+                if (quien == null || !quien.IsAlive) continue;
+                foreach (var buff in quien.Buffs.Puestos)
+                {
+                    if (!buff.Vivo(fight.RoundNumber)) continue;
+                    var (categoria, boost) = DatabaseManager.EffectFamily(buff.EffectId);
+                    yield return Network.FightProtocol.BuildBuff(
+                        quien.Id, buff.Quien, buff.Numero, buff.EffectId, buff.EffectUid,
+                        buff.Cuanto, 0, 0, buff.HechizoOrigen, buff.Disparador, buff.CaducaEnRonda,
+                        0, Network.FightProtocol.FamiliaDelEmbrujo(buff.EffectId, categoria, boost),
+                        buff.NivelOrigen);
+                }
+            }
         }
 
         private static async Task HandlePlacementCellChangeRequest(NetworkStream stream, byte[] payload)
@@ -1876,6 +2232,11 @@ namespace Jondo.Unity.Server.Handlers
         {
             var fight = GetCurrentFight();
             if (fight == null) return;
+            if (fight.State != Jondo.Unity.World.Fights.FightState.Placement)
+            {
+                Program.LogDebug("[Combate] Un listo (kaq) con el combate ya en marcha; se ignora.");
+                return;
+            }
 
             Program.LogDebug("[Combate] El jugador se declara listo (kaq).");
             bool allReady = fight.SetFighterReady(GameState.CharacterId);
@@ -2128,8 +2489,9 @@ namespace Jondo.Unity.Server.Handlers
         {
             PararElReloj(fight);
 
-            // Al monstruo no se le pone reloj: juega solo y cede el turno él mismo.
-            if (quien.IsMonster || decimas <= 0) return;
+            // Al monstruo no se le pone reloj: juega solo y cede el turno él mismo. A summon a
+            // player is playing gets one, like the player: 150 tenths in the captures.
+            if ((quien.IsMonster && Dueno(fight, quien) == null) || decimas <= 0) return;
 
             var reloj = new System.Threading.CancellationTokenSource();
             fight.TurnTimerCts = reloj;
@@ -2196,6 +2558,8 @@ namespace Jondo.Unity.Server.Handlers
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzc,
                 Network.FightProtocol.BuildTurnStart(fighter.Id, duration,
                                                      fight.CurrentTurnIndex, fight.RoundNumber)));
+            fight.LastAnnouncedTurn = new FightInstance.AnnouncedTurn(
+                fighter.Id, fight.CurrentTurnIndex, fight.RoundNumber, duration, DateTime.UtcNow);
 
             // Los invocados a los que se les ha acabado el tiempo se deshacen aquí, al principio
             // del turno, que es cuando lo hace el servidor real: en la captura la baliza sale en
@@ -2295,6 +2659,28 @@ namespace Jondo.Unity.Server.Handlers
                             quien.Buffs.AparienciaEn(fight.RoundNumber));
                     }
 
+                    // A vitality percentage moved the maximum when it went on; it moves back.
+                    if (caido.EffectId == Jondo.Unity.World.Combat.EffectSupport.VitalityFlatMalus
+                        && caido.Caracteristica == VitalityCharacteristicId)
+                    {
+                        quien.MaxHP = Math.Max(1, quien.MaxHP - caido.Cuanto);
+                        if (quien.CurrentHP > quien.MaxHP) quien.CurrentHP = quien.MaxHP;
+                    }
+
+                    // A shield row gone means the points are gone: the fighter drops them by the
+                    // round, and the sheet says so.
+                    if (caido.EffectId == Managers.EffectEngine.ShieldPanelEffect)
+                    {
+                        quien.CaducarElEscudo(fight.RoundNumber);
+                        await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
+                            Network.FightProtocol.BuildSequenceStart(quien.Id, Network.FightProtocol.SheetSequence)));
+                        await FichaATodosAsync(fight, quien.Id,
+                            Refresco(quien, Managers.EffectEngine.ShieldCharacteristic, fight.RoundNumber));
+                        await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
+                            Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), quien.Id,
+                                                                   Network.FightProtocol.SheetSequence)));
+                    }
+
                     // Y AQUÍ ESTABA EL AGUJERO: se borraba la fila del panel y no se devolvía la
                     // característica.
                     //
@@ -2376,6 +2762,10 @@ namespace Jondo.Unity.Server.Handlers
             await ChallengeWatcher.EnemyTurnStartedAsync(stream, fight, fighter);
             await ChallengeWatcher.AllyTurnStartedAsync(stream, fight, fighter);
 
+            // His copies, if any, go before anything else of his turn: jto 6, the switch back
+            // to visible, one 1029 each, jwi -- right behind the jzc in the capture.
+            await DesvanecerLasIlusionesAsync(stream, fight, fighter);
+
             // Y ahora las actitudes de "principio de turno": aquí es donde el Dofus Ocre mira si le
             // han pegado desde su turno anterior.
             await ActitudesAsync(stream, fight, fighter, Managers.EffectEngine.AlEmpezarElTurno);
@@ -2386,9 +2776,19 @@ namespace Jondo.Unity.Server.Handlers
 
             // El "ya puedes jugar" sólo va si el que juega es de los que maneja este cliente. En el
             // turno de un monstruo ese paso no existe.
+            //
+            // A summon's turn is its owner's to play: the jyj goes to his socket and to nobody
+            // else. Measured on the Osamodas capture, where every jzc of an animal is followed
+            // by a jyj and then by the owner's jrw and jwh.
+            var owner = Dueno(fight, fighter);
             if (!fighter.IsMonster)
             {
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jyj,
+                    Network.FightProtocol.BuildYourTurn()));
+            }
+            else if (owner != null)
+            {
+                await owner.SendAsync(ConnectionProtocol.Push(Op.Jyj,
                     Network.FightProtocol.BuildYourTurn()));
             }
 
@@ -2405,6 +2805,11 @@ namespace Jondo.Unity.Server.Handlers
             if (fighter.IsMonster && !fighter.EsInvocado)
             {
                 await MonsterTurnAsync(stream, fight, fighter);
+            }
+            else if (fighter.EsInvocado && owner != null)
+            {
+                // Played by its owner, from his client: the clock is running and his jrw, jwh
+                // and jxy come in as for himself. Nothing to do here until they do.
             }
             else if (fighter.EsInvocado)
             {
@@ -2524,7 +2929,7 @@ namespace Jondo.Unity.Server.Handlers
             if (fight == null || fight.State != Jondo.Unity.World.Fights.FightState.Ongoing) return;
 
             var walker = fight.CurrentFighter;
-            if (walker == null || walker.IsMonster || walker.Id != GameState.CharacterId) return;
+            if (walker == null || !walker.ControlledBy(GameState.CharacterId)) return;
 
             var (_, corners, facing) = Network.FightProtocol.ReadMove(payload);
             if (corners.Count < 2) return;
@@ -2565,6 +2970,7 @@ namespace Jondo.Unity.Server.Handlers
             // lo que necesita el efecto 1100 para deshacer el movimiento.
             walker.MoverA(camino[camino.Count - 1]);
             destination = walker.CellId;
+            CarriedFollows(fight, walker);
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                 Network.FightProtocol.BuildSequenceStart(walker.Id,
@@ -2909,7 +3315,7 @@ namespace Jondo.Unity.Server.Handlers
             if (fight == null || fight.State != Jondo.Unity.World.Fights.FightState.Ongoing) return;
 
             var caster = fight.CurrentFighter;
-            if (caster == null || caster.IsMonster || caster.Id != GameState.CharacterId) return;
+            if (caster == null || !caster.ControlledBy(GameState.CharacterId)) return;
 
             var (cell, spell) = Network.FightProtocol.ReadCast(payload);
 
@@ -2938,7 +3344,9 @@ namespace Jondo.Unity.Server.Handlers
             }
             if (cell == 0) return;
 
-            var limites = LimitesDe(spell, caster.Level);
+            // A summon casts at the grade its template opens, which the level lookup cannot
+            // give: monster spells have no player level and would all resolve to the top grade.
+            var limites = LimitesDelQueLanza(caster, spell);
             int cost = limites.Cost, spellLevel = limites.LevelId, grade = limites.Grade;
 
             // EL ALCANCE, que no se comprobaba en ninguna parte del camino vivo: se podía lanzar
@@ -2989,6 +3397,20 @@ namespace Jondo.Unity.Server.Handlers
             if (cost > caster.CurrentAP) return;
 
             var victim = VictimAt(fight, caster, cell);
+
+            // What the cell has to be. Imantación wants somebody on it ("ocupada"), Tymadura
+            // wants it empty ("libre"); cast on the wrong kind of cell, the client would not
+            // even have offered it, and the server must not do the work either.
+            if (limites.NeedTakenCell && victim == null)
+            {
+                Program.LogDebug($"[Combate] El hechizo {spell} quiere una casilla ocupada y la {cell} está vacía.");
+                return;
+            }
+            if (limites.NeedFreeCell && victim != null)
+            {
+                Program.LogDebug($"[Combate] El hechizo {spell} quiere una casilla libre y en la {cell} está {victim.Id}.");
+                return;
+            }
             long aQuien = victim?.Id ?? 0;
 
             // Lo que impide relanzarlo. Nada de esto existía: se podía repetir cualquier hechizo
@@ -3109,7 +3531,15 @@ namespace Jondo.Unity.Server.Handlers
             Program.LogDebug($"[Combate] Lanza el hechizo {spell} (grado {spellLevel}) a la casilla " +
                              $"{cell} por {cost} PA; le quedan {caster.CurrentAP}.");
 
-            await CheckFightOverAsync(stream, fight, cierre);
+            if (await CheckFightOverAsync(stream, fight, cierre)) return;
+
+            // "Hace pasar de turno" (1031): the turn ends right behind the cast, as the jyt of
+            // the Tymadura capture does, with the illusions already placed.
+            if (fight.EndTurnRequested)
+            {
+                fight.EndTurnRequested = false;
+                await PassTurnAsync(stream);
+            }
         }
 
         /// <summary>
@@ -3125,7 +3555,8 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static async Task InvocarAsync(NetworkStream stream, FightInstance fight,
                                                Fighter quienInvoca, int plantilla, int grado,
-                                               int celdaApuntada)
+                                               int celdaApuntada,
+                                               int efectoQueInvoca = Network.FightProtocol.Invoca)
         {
             var receta = Managers.Summons.De(plantilla, grado);
             if (receta == null)
@@ -3216,19 +3647,42 @@ namespace Jondo.Unity.Server.Handlers
             // Supervivencia lo tiene —se cura sola— y la Táctica no, que sólo reacciona a lo que
             // le pase alrededor; por eso en las capturas la primera juega y la segunda no aparece
             // ni una vez en el carrusel.
-            invocado.JuegaTurno = TieneAlgoQueHacerAlEmpezar(receta.HechizoPropio,
-                                                             receta.GradoDelHechizoPropio);
+            // Whether it plays is the template's flag, not a guess from its spell: see
+            // Summon.Juega. The old reading -- "only if its spell has something to do at turn
+            // start" -- happened to fit the two beacons and nothing else: a Tymobot has nothing
+            // to do at turn start and plays, controlled by its owner.
+            invocado.JuegaTurno = receta.Juega;
+            invocado.HechizosDeInvocado = receta.Hechizos;
 
             fight.Invocar(invocado, quienInvoca);
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildSummon(
                     quienInvoca.Id, invocado.Id, celda, FacingOf(fight, invocado),
-                    receta.PlantillaDelAspecto, plantilla, grado, FullSheetOf(invocado))));
+                    receta.PlantillaDelAspecto, plantilla, grado, FullSheetOf(invocado),
+                    efectoQueInvoca)));
 
             // Y detrás, la lista de combatientes otra vez: es lo que da de alta al invocado en el
             // cliente y lo mete en el carrusel.
             await ReenviarLaListaAsync(stream, fight);
+
+            // And its spells to whoever plays it: an empty jxc and a jyy of its own, in the
+            // owner's socket only. Measured on the Tymobot and on the Osamodas' animals: the
+            // jyy carries the summon in f3 and the owner in f4, the spells at their grades,
+            // and no melee entry. Without it the owner's client has nothing to cast with when
+            // the summon's turn comes.
+            if (invocado.JuegaTurno && receta.Hechizos.Count > 0)
+            {
+                await ACadaUnoAsync(fight, async sesion =>
+                {
+                    if (sesion.State.CharacterId != quienInvoca.Id) return;
+                    await WriteFrameAsync(sesion.Stream, ConnectionProtocol.Push(Op.Jxc,
+                        Network.FightProtocol.BuildCooldowns(invocado.Id, RecargasDe(invocado))));
+                    await WriteFrameAsync(sesion.Stream, ConnectionProtocol.Push(Op.Jyy,
+                        Network.FightProtocol.BuildSummonSpellBar(invocado.Id, quienInvoca.Id,
+                                                                  receta.Hechizos)));
+                });
+            }
 
             Program.LogDebug($"[Combate] {quienInvoca.Id} invoca la plantilla {plantilla} grado " +
                              $"{grado} como {invocado.Id} en la casilla {celda} con " +
@@ -3364,17 +3818,9 @@ namespace Jondo.Unity.Server.Handlers
                 }
             }
 
-            int tamano = Managers.Combo.SizeOf(bomba, fight.RoundNumber);
-            if (tamano == tamanoAntes) return;
-
-            byte[] aspecto = Network.FightProtocol.WithScale(NormalFightLook(bomba), tamano);
-            if (aspecto.Length == 0) return;
-
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
-                Network.FightProtocol.BuildLookChanged(bomba.Id, aspecto)));
-
-            Program.LogDebug($"[Combo] La bomba {bomba.Id} crece al {tamano}% " +
-                             $"en el nivel {ahora}.");
+            // The look goes out from AplicarEfectosAsync itself now, for every cast that moves
+            // a bomb's size, this one included.
+            _ = tamanoAntes;
         }
 
         /// <summary>Lo que sube el combo de cada bomba al empezar el turno de su tymador.</summary>
@@ -3913,9 +4359,75 @@ namespace Jondo.Unity.Server.Handlers
         {
             foreach (var uno in TodosLosCombatientes(fight))
             {
-                if (uno.CellId == cell && uno.IsAlive) return uno;
+                if (uno.CellId == cell && uno.IsAlive && !uno.EstaCargado) return uno;
             }
             return null;
+        }
+
+        /// <summary>The moves that travel as a jwe 4: the plain teleport and the symmetric ones.</summary>
+        private static bool EsTeletransporte(int efecto)
+            => efecto is Jondo.Unity.World.Combat.EffectSupport.Teleport or 1099 or 1100 or 1104 or 1105 or 1106;
+
+        /// <summary>
+        /// The copies of a fighter go: the switch back to visible and one 1029 per copy, in a
+        /// sequence of their own (jto 6 in the capture), and off the board. At his turn start
+        /// all of them, when he is hit all of them, when one is hit that one (see
+        /// IllusionHitAsync).
+        /// </summary>
+        private static async Task DesvanecerLasIlusionesAsync(NetworkStream stream, FightInstance fight,
+                                                               Fighter dueno)
+        {
+            if (dueno == null || dueno.Ilusiones.Count == 0) return;
+
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
+                Network.FightProtocol.BuildSequenceStart(dueno.Id, Network.FightProtocol.TurnStartSequence)));
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                Network.FightProtocol.BuildVisibility(dueno.Id, dueno.Id, Network.FightProtocol.Visible)));
+            foreach (long id in dueno.Ilusiones.ToList())
+            {
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                    Network.FightProtocol.BuildIllusionGone(dueno.Id, id)));
+                fight.Quitar(fight.Buscar(id));
+            }
+            dueno.Ilusiones.Clear();
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
+                Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), dueno.Id,
+                                                       Network.FightProtocol.TurnStartSequence)));
+            Program.LogDebug($"[Combate] Se desvanecen las ilusiones de {dueno.Id}.");
+        }
+
+        /// <summary>
+        /// A copy takes a hit: it goes, and nothing else happens to it. The class sheet: "al
+        /// primer golpe de daño"; a poison or anything that is not damage leaves it be, which
+        /// is what <paramref name="fromTurnTrigger"/> tells apart.
+        /// </summary>
+        private static async Task IllusionHitAsync(NetworkStream stream, FightInstance fight, Fighter copia)
+        {
+            var dueno = fight.Buscar(copia.Invocador);
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                Network.FightProtocol.BuildIllusionGone(copia.Invocador, copia.Id)));
+            fight.Quitar(copia);
+            dueno?.Ilusiones.Remove(copia.Id);
+            Program.LogDebug($"[Combate] La ilusión {copia.Id} se desvanece al recibir un golpe.");
+        }
+
+        /// <summary>
+        /// Whoever this fighter carries goes where he goes; whoever he carried is set down where
+        /// he fell. Called after every step and every death.
+        /// </summary>
+        private static void CarriedFollows(FightInstance fight, Fighter carrier)
+        {
+            if (carrier == null || carrier.Carrying == 0) return;
+            var carried = fight.Buscar(carrier.Carrying);
+            if (carried == null) { carrier.Carrying = 0; return; }
+            carried.CellId = carrier.CellId;
+            if (!carrier.IsAlive)
+            {
+                carried.CarriedBy = 0;
+                carrier.Carrying = 0;
+                carrier.Buffs.QuitarEstado(Jondo.Unity.World.Combat.EffectSupport.CarryingState);
+                carried.Buffs.QuitarEstado(Jondo.Unity.World.Combat.EffectSupport.CarriedState);
+            }
         }
 
         /// <summary>
@@ -3928,12 +4440,29 @@ namespace Jondo.Unity.Server.Handlers
         /// Los puntos de acción y de movimiento se tocan además EN EL ACTO, porque un "+1 PA" o un
         /// "-2 PA" no es un adorno del panel: cambia lo que te queda para jugar ese turno.
         /// </summary>
+        /// <param name="antesDeAnunciar">
+        /// Called once, right before the first frame of this application goes out, and not at
+        /// all when there is nothing to apply. The attitudes use it to open their sequence
+        /// lazily.
+        /// </param>
         private static async Task AplicarEfectosAsync(NetworkStream stream, FightInstance fight,
                                                       Fighter quienLanza, int hechizo, int grado,
                                                       Fighter objetivo, string disparador,
-                                                      int celdaApuntada = -1, bool critico = false)
+                                                      int celdaApuntada = -1, bool critico = false,
+                                                      Func<Task> antesDeAnunciar = null)
         {
             if (hechizo == 0) return;
+
+            // The size of every bomb before anything happens, so that a combo granted from
+            // inside a spell -- Mosquete, Kabúm, Último Aliento, a Detonador -- redraws the bomb
+            // the way the turn-start combo does. The look is the one thing the client does not
+            // work out from the 1060 buff on its own.
+            var tamanosAntes = new Dictionary<long, int>();
+            foreach (var bomba in TodosLosCombatientes(fight))
+            {
+                if (bomba != null && bomba.IsAlive && EsBomba(bomba.MonsterId))
+                    tamanosAntes[bomba.Id] = Managers.Combo.SizeOf(bomba, fight.RoundNumber);
+            }
 
             List<Managers.Outcome> consecuencias;
             try
@@ -3951,6 +4480,7 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
             if (consecuencias.Count == 0) return;
+            if (antesDeAnunciar != null) await antesDeAnunciar();
 
             // Si el hechizo tiene algo pendiente para más adelante —efectos con un disparador que
             // no es "al lanzar"— se deja apuntado sobre quien lo lleva, para poder dispararlo
@@ -3991,7 +4521,8 @@ namespace Jondo.Unity.Server.Handlers
                     if (c.Invoca != 0)
                     {
                         await InvocarAsync(stream, fight, quienLanza, c.Invoca, grado,
-                                           c.EnLaCasillaDelMuerto ? dondeEstaba : celdaApuntada);
+                                           c.EnLaCasillaDelMuerto ? dondeEstaba : celdaApuntada,
+                                           c.Efecto.EffectId);
                     }
                     continue;
                 }
@@ -4053,7 +4584,8 @@ namespace Jondo.Unity.Server.Handlers
                     await UnGolpeAsync(
                         stream, fight, c.Caster ?? quienLanza, c.HechizoOrigen, c.Efecto,
                         c.DamageElement, c.Sobre, TirarElDado(c.Efecto), c.DamageDistance,
-                        c.CriticalDamage, c.DamageSpellBonus);
+                        c.CriticalDamage, c.DamageSpellBonus,
+                        fromTurnTrigger: disparador != Managers.EffectEngine.AlLanzar);
                     if (c.Sobre.IsAlive && c.Sobre.CurrentHP != lifeBefore)
                         await RefrescarLaVidaAsync(stream, fight, c.Sobre, quienLanza);
                     continue;
@@ -4097,6 +4629,11 @@ namespace Jondo.Unity.Server.Handlers
                     fichas.Add((c.Sobre.Id, c.Caracteristica));
                 }
 
+                // The shield's sheet entry, and the caster's turn end when the effect asks for
+                // it (Tymadura's 1031), once everything of this cast has gone out.
+                if (c.Escudo > 0) fichas.Add((c.Sobre.Id, Managers.EffectEngine.ShieldCharacteristic));
+                if (c.AcabaElTurno) fight.EndTurnRequested = true;
+
                 // Y si era un ROBO, lo que se le ha quitado a uno se le da al otro.
                 if (c.LeDaAlLanzador > 0 && quienLanza != c.Sobre)
                 {
@@ -4131,20 +4668,86 @@ namespace Jondo.Unity.Server.Handlers
                 // Los que sacan un bicho al tablero.
                 if (c.Invoca != 0)
                 {
-                    await InvocarAsync(stream, fight, quienLanza, c.Invoca, grado, celdaApuntada);
+                    await InvocarAsync(stream, fight, quienLanza, c.Invoca, grado, celdaApuntada,
+                                       c.Efecto.EffectId);
                     continue;
                 }
 
                 // Los que mueven a alguien de sitio: se anuncia adónde ha ido a parar.
+                if (c.Ilusiones != null)
+                {
+                    // In the capture's order: the switch to hidden, the teleport, one block per
+                    // copy. The copy's f7 points at the original on the cell he LEFT.
+                    await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                        Network.FightProtocol.BuildVisibility(quienLanza.Id, quienLanza.Id,
+                                                              Network.FightProtocol.Hidden)));
+                    await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                        Network.FightProtocol.BuildTeleport(quienLanza.Id, quienLanza.Id, c.CasillaHasta)));
+                    byte[] look = NormalFightLook(quienLanza);
+                    foreach (var copia in c.Ilusiones)
+                    {
+                        await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                            Network.FightProtocol.BuildIllusion(
+                                quienLanza.Id, copia.Id, copia.CellId, FacingOf(fight, copia),
+                                c.CasillaDesde, FacingOf(fight, quienLanza),
+                                Network.FightProtocol.IllusionSheet(quienLanza.Level), look)));
+                    }
+                    Program.LogDebug($"[Combate] {quienLanza.Id} salta de {c.CasillaDesde} a " +
+                                     $"{c.CasillaHasta} y deja {c.Ilusiones.Count} ilusiones.");
+                    movidos.Add(quienLanza);
+                    continue;
+                }
+
+                if (c.Carga)
+                {
+                    await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                        Network.FightProtocol.BuildCarry(quienLanza.Id, c.CasillaDesde, c.Sobre.Id)));
+                    Program.LogDebug($"[Combate] {quienLanza.Id} carga con {c.Sobre.Id} desde la casilla {c.CasillaDesde}.");
+                    continue;
+                }
+                if (c.Lanza)
+                {
+                    await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                        Network.FightProtocol.BuildThrow(quienLanza.Id, c.Sobre.Id, c.CasillaHasta)));
+                    Program.LogDebug($"[Combate] {quienLanza.Id} lanza a {c.Sobre.Id} a la casilla {c.CasillaHasta}.");
+                    movidos.Add(c.Sobre);
+                    continue;
+                }
+
+                if (c.Mueve && c.MueveTambien && c.Efecto.EffectId == Jondo.Unity.World.Combat.EffectSupport.SwapPositions)
+                {
+                    // A swap is ONE frame for the two: jwe 8 with the caster's old cell, the
+                    // other and his old cell. Measured on Jugarreta and Impostura; two slides
+                    // was what we sent.
+                    await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                        Network.FightProtocol.BuildSwap(quienLanza.Id, c.CasillaDesdeDelOtro,
+                                                        c.Sobre.Id, c.CasillaDesde)));
+                    Program.LogDebug($"[Combate] {quienLanza.Id} y {c.Sobre.Id} intercambian " +
+                                     $"{c.CasillaDesdeDelOtro} y {c.CasillaDesde}.");
+                    movidos.Add(c.Sobre);
+                    movidos.Add(c.Tambien);
+                    continue;
+                }
+
+                if (c.Mueve && EsTeletransporte(c.Efecto.EffectId))
+                {
+                    // A teleport is a jwe 4 with where and who, in the 581 of the captures; a
+                    // slide with from and to is what we sent for it.
+                    await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                        Network.FightProtocol.BuildTeleport(quienLanza.Id, c.Sobre.Id, c.CasillaHasta)));
+                    Program.LogDebug($"[Combate] El hechizo {hechizo} teletransporta a {c.Sobre.Id} " +
+                                     $"de la casilla {c.CasillaDesde} a la {c.CasillaHasta}.");
+                    movidos.Add(c.Sobre);
+                    continue;
+                }
+
                 if (c.Mueve)
                 {
-                    // Por el cable, un desplazamiento viaja SIEMPRE como el 5 —alejarse— o el 6
-                    // —acercarse—, aunque el efecto que lo provoque sea otro. Medido en Tiro de
-                    // Repliegue, cuyo efecto es el 1041 ("Retrocede") y cuyo paquete lleva f14 = 5.
-                    int comoViaja = Jondo.Unity.World.Maps.Zone.SeAleja(
-                        c.CasillaDesde, c.CasillaHasta, celdaApuntada, quienLanza.CellId)
-                        ? Network.FightProtocol.Alejarse
-                        : Network.FightProtocol.Acercarse;
+                    // Por el cable, un desplazamiento viaja SIEMPRE como el 5, whatever moved
+                    // it and whichever way it went. It used to pick 6 for a move towards the
+                    // caster; measured over the 400 captures, 553 displacements travel as 5 and
+                    // not one as 6 -- Imantación's pull and the Tymobot's Aspirador included.
+                    int comoViaja = Network.FightProtocol.Alejarse;
 
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                         Network.FightProtocol.BuildDisplacement(
@@ -4252,6 +4855,8 @@ namespace Jondo.Unity.Server.Handlers
             // TAMBIEN PISA: el suelo solo saltaba andando, asi que meter a alguien en un muro de
             // un empujon o de un tiron no le hacia nada -- ni el muro, ni una trampa, ni un glifo
             // del feca.
+            foreach (var movido in movidos) CarriedFollows(fight, movido);
+
             if (movidos.Count > 0)
             {
                 await ReconciliarLosMurosAsync(stream, fight);
@@ -4281,6 +4886,31 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             await AnunciarElAlcanceAsync(stream, fight, consecuencias);
+
+            await RedibujarLasBombasAsync(fight, tamanosAntes);
+        }
+
+        /// <summary>
+        /// The jwe 149 with the new scale for every bomb whose combo size moved during a cast.
+        /// Measured in "tymador-explobomba resiliente": one at the tail of every step that
+        /// changes the rung. See <see cref="Managers.Combo.SizeOf"/> for the number.
+        /// </summary>
+        private static async Task RedibujarLasBombasAsync(FightInstance fight, Dictionary<long, int> tamanosAntes)
+        {
+            foreach (var bomba in TodosLosCombatientes(fight))
+            {
+                if (bomba == null || !bomba.IsAlive || !EsBomba(bomba.MonsterId)) continue;
+                int tamano = Managers.Combo.SizeOf(bomba, fight.RoundNumber);
+                if (tamanosAntes.TryGetValue(bomba.Id, out int antes) && antes == tamano) continue;
+                if (!tamanosAntes.ContainsKey(bomba.Id) && tamano == Managers.Combo.BaseSize) continue;
+
+                byte[] aspecto = Network.FightProtocol.WithScale(NormalFightLook(bomba), tamano);
+                if (aspecto.Length == 0) continue;
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                    Network.FightProtocol.BuildLookChanged(bomba.Id, aspecto)));
+                Program.LogDebug($"[Combo] La bomba {bomba.Id} crece al {tamano}% " +
+                                 $"en el nivel {Managers.Combo.LevelOf(bomba)}.");
+            }
         }
 
         /// <summary>
@@ -4412,6 +5042,24 @@ namespace Jondo.Unity.Server.Handlers
         private static async Task ActitudesAsync(NetworkStream stream, FightInstance fight,
                                                  Fighter quien, string disparador)
         {
+            if (quien == null) return;
+
+            // Whatever the attitudes announce goes inside ONE sequence of the bearer's, the
+            // ordinary action one, opened the first time something is about to go out and
+            // closed at the end; nothing is written when nothing comes out of them. The
+            // client only applies what arrives inside an open jto, and the real server wraps a
+            // turn trigger's casts exactly so: "jto{-12,3} jwe 300 ... jwe 103 ... jwi" at the
+            // Tymobot's turn end -- which is where its death went out bare, and stayed on the
+            // client's board -- and "jto{-12,3} jwe 300 jxm jwi" at its turn start.
+            bool abierta = false;
+            Func<Task> abrir = async () =>
+            {
+                if (abierta) return;
+                abierta = true;
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
+                    Network.FightProtocol.BuildSequenceStart(quien.Id, Network.FightProtocol.ActionSequence)));
+            };
+
             // Over a COPY: an attitude can disarm itself while it resolves -- the Silver Dofus
             // does, through its own 406 -- and removing from the list being walked threw
             // "Collection was modified" straight out of the connection handler, which is
@@ -4424,7 +5072,8 @@ namespace Jondo.Unity.Server.Handlers
                 // acción— y allí no hay ningún disparador de principio de turno, con lo que la
                 // actitud no hacía nada. Los grados de dentro los dice el propio enganche.
                 const int grado = Managers.EffectEngine.GradoDelEnganche;
-                await AplicarEfectosAsync(stream, fight, quien, actitud, grado, quien, disparador);
+                await AplicarEfectosAsync(stream, fight, quien, actitud, grado, quien, disparador,
+                                          antesDeAnunciar: abrir);
 
                 // Y los grados que la actitud encadena, por su cuenta. Hace falta porque un grado
                 // encadenado puede traer efectos con SU propio disparador: el grado 3 del Amarillo
@@ -4437,8 +5086,15 @@ namespace Jondo.Unity.Server.Handlers
                     if (efecto.DiceNum <= 0) continue;
                     await AplicarEfectosAsync(stream, fight, quien, efecto.DiceNum,
                                               efecto.DiceSide > 0 ? efecto.DiceSide : 1,
-                                              quien, disparador);
+                                              quien, disparador, antesDeAnunciar: abrir);
                 }
+            }
+
+            if (abierta)
+            {
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
+                    Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), quien.Id,
+                                                           Network.FightProtocol.ActionSequence)));
             }
         }
 
@@ -4609,8 +5265,20 @@ namespace Jondo.Unity.Server.Handlers
                                                Managers.SpellEffect efecto, int elemento,
                                                Fighter target, int sacadoDelDado, int lejosDelCentro,
                                                bool critical, int? capturedSpellBonus = null,
-                                               bool fulmina = false)
+                                               bool fulmina = false, bool fromTurnTrigger = false)
         {
+            // A copy goes at the first point of damage and takes none; a poison, which arrives
+            // on a turn trigger, does not count. And the original's copies all go when HE is
+            // hit -- and he takes the damage as anybody.
+            if (target.EsIlusion)
+            {
+                if (!fromTurnTrigger) await IllusionHitAsync(stream, fight, target);
+                return;
+            }
+            if (target.Ilusiones.Count > 0 && !fromTurnTrigger)
+            {
+                await DesvanecerLasIlusionesAsync(stream, fight, target);
+            }
 
             // El elemento lo dice el catálogo: 0 neutral, 1 tierra, 2 fuego, 3 agua, 4 aire.
             var element = elemento switch
@@ -4858,6 +5526,10 @@ namespace Jondo.Unity.Server.Handlers
                     Network.FightProtocol.BuildDeath(caster.Id, target.Id)));
                 Program.LogDebug($"[Combate] {target.Id} se queda sin vida.");
 
+                // What its attitudes do when it dies: a bomb under Polvo explodes.
+                CarriedFollows(fight, target);
+                await ActitudesAsync(stream, fight, target, Managers.EffectEngine.AlMorir);
+
                 // Orden de niveles, remate con arma y caida junto a un obstaculo: los tres se
                 // juzgan aqui. El arma es el hechizo cero, que es como viaja el cuerpo a cuerpo.
                 await ChallengeWatcher.DiedAsync(stream, fight, target,
@@ -4941,6 +5613,8 @@ namespace Jondo.Unity.Server.Handlers
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildDeath(quienEmpuja.Id, quien.Id)));
             Program.LogDebug($"[Combate] {quien.Id} se queda sin vida por el golpe del empujón.");
+            CarriedFollows(fight, quien);
+            await ActitudesAsync(stream, fight, quien, Managers.EffectEngine.AlMorir);
 
             await ChallengeWatcher.DiedAsync(stream, fight, quien, false, quienEmpuja);
             await ChallengeWatcher.AllyDiedAsync(stream, fight, quien);
@@ -5893,7 +6567,8 @@ namespace Jondo.Unity.Server.Handlers
         public readonly record struct LimitesDelHechizo(
             int Cost, int LevelId, int Grade,
             int PorTurno, int PorObjetivo, int Intervalo, int EsperaInicial,
-            int CriticoPropio, int AlcanceMinimo = 0, int AlcanceMaximo = 0);
+            int CriticoPropio, int AlcanceMinimo = 0, int AlcanceMaximo = 0,
+            bool NeedFreeCell = false, bool NeedTakenCell = false);
 
         /// <summary>
         /// Los límites de lanzamiento, que salen de las mismas columnas de SpellLevels de las que
@@ -5924,7 +6599,7 @@ namespace Jondo.Unity.Server.Handlers
                 command.CommandText =
                     "SELECT APCost, Id, Grade, MaxCastPerTurn, MaxCastPerTarget, " +
                     "MinCastInterval, InitialCooldown, CriticalHitProbability, " +
-                    "MinRange, MaxRange FROM SpellLevels " +
+                    "MinRange, MaxRange, NeedFreeCell, NeedTakenCell FROM SpellLevels " +
                     "WHERE SpellId = $id AND MinPlayerLevel <= $lvl ORDER BY Grade DESC LIMIT 1;";
                 command.Parameters.AddWithValue("$id", spellId);
                 command.Parameters.AddWithValue("$lvl", nivel);
@@ -5940,7 +6615,9 @@ namespace Jondo.Unity.Server.Handlers
                         reader.IsDBNull(6) ? 0 : (int)reader.GetInt64(6),
                         reader.IsDBNull(7) ? 0 : (int)reader.GetInt64(7),
                         reader.IsDBNull(8) ? 0 : (int)reader.GetInt64(8),
-                        reader.IsDBNull(9) ? 0 : (int)reader.GetInt64(9));
+                        reader.IsDBNull(9) ? 0 : (int)reader.GetInt64(9),
+                        !reader.IsDBNull(10) && reader.GetInt64(10) != 0,
+                        !reader.IsDBNull(11) && reader.GetInt64(11) != 0);
                 }
             }
             catch (Exception ex)
@@ -5974,7 +6651,7 @@ namespace Jondo.Unity.Server.Handlers
                 command.CommandText =
                     "SELECT APCost, Id, Grade, MaxCastPerTurn, MaxCastPerTarget, " +
                     "MinCastInterval, InitialCooldown, CriticalHitProbability, " +
-                    "MinRange, MaxRange FROM SpellLevels " +
+                    "MinRange, MaxRange, NeedFreeCell, NeedTakenCell FROM SpellLevels " +
                     "WHERE SpellId = $id AND Grade = $grade LIMIT 1;";
                 command.Parameters.AddWithValue("$id", spellId);
                 command.Parameters.AddWithValue("$grade", exactGrade);
@@ -5990,7 +6667,9 @@ namespace Jondo.Unity.Server.Handlers
                         reader.IsDBNull(6) ? 0 : (int)reader.GetInt64(6),
                         reader.IsDBNull(7) ? 0 : (int)reader.GetInt64(7),
                         reader.IsDBNull(8) ? 0 : (int)reader.GetInt64(8),
-                        reader.IsDBNull(9) ? 0 : (int)reader.GetInt64(9));
+                        reader.IsDBNull(9) ? 0 : (int)reader.GetInt64(9),
+                        !reader.IsDBNull(10) && reader.GetInt64(10) != 0,
+                        !reader.IsDBNull(11) && reader.GetInt64(11) != 0);
                 }
             }
             catch (Exception ex)
@@ -6034,15 +6713,20 @@ namespace Jondo.Unity.Server.Handlers
             var ending = fight.CurrentFighter;
             if (ending == null) return;
 
+            // El final de turno es del COMBATE, no de quien lo pulsa: las cuatro tramas que vienen
+            // hablan del combatiente que acaba y las tienen que ver los dos.
+            //
+            // FIRST the jyt, THEN what the attitudes do at turn end. It was the other way round,
+            // and the Tymobot's own death -- its passive's 141 on the TE trigger -- went out
+            // before the turn had ended and outside any sequence, and the client left it standing
+            // on the board. Measured: "jyt -12" first, then "jto{-12,3} jwe 300 … jwe 103 … jwi".
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jyt,
+                Network.FightProtocol.BuildTurnEnd(ending.Id)));
+
             // Lo que las actitudes tengan que hacer al acabar el turno. Aquí es donde el Amarillo
             // Ocre se quita el estado de "me han pegado", para que el turno siguiente vuelva a
             // mirarlo limpio.
             await ActitudesAsync(stream, fight, ending, Managers.EffectEngine.AlAcabarElTurno);
-
-            // El final de turno es del COMBATE, no de quien lo pulsa: las cuatro tramas que vienen
-            // hablan del combatiente que acaba y las tienen que ver los dos.
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jyt,
-                Network.FightProtocol.BuildTurnEnd(ending.Id)));
 
             // Las esperas bajan una ronda AL ACABAR el turno de su dueño, y el jxc de cierre ya
             // las lleva bajadas: medido en la captura de Agudeza Absoluta, lanzada en la ronda 8
@@ -6186,7 +6870,7 @@ namespace Jondo.Unity.Server.Handlers
             var fight = GetCurrentFight();
             if (fight == null) return;
             var current = fight.CurrentFighter;
-            if (current == null || current.Id != GameState.CharacterId) return;
+            if (current == null || !current.ControlledBy(GameState.CharacterId)) return;
 
             // AVISO: esto NO es por donde se anda en combate, aunque lo parezca por el nombre.
             //

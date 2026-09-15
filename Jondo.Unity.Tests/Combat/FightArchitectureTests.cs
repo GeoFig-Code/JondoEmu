@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -108,8 +108,8 @@ namespace Jondo.Unity.Tests.Combat
         /// socket. Cualquier otro que lo haga se está saltando la regla del destinatario.
         /// </summary>
         /// <remarks>
-        /// Los cinco primeros son las ráfagas por cliente: la entrada al combate, la preparación,
-        /// el arranque, el final y el reenvío del mapa. Los <c>Send…</c> son trozos de esas mismas
+        /// Los seis primeros son las ráfagas por cliente: la entrada al combate, la preparación,
+        /// el arranque, la vuelta a un combate en marcha, el final y el reenvío del mapa. Los <c>Send…</c> son trozos de esas mismas
         /// ráfagas. Los dos últimos son casos sueltos con su motivo:
         ///
         ///   AttackAsync                   su jsq es el permiso de cambio de mapa de quien ataca
@@ -120,7 +120,7 @@ namespace Jondo.Unity.Tests.Combat
         private static readonly string[] VistaDeUnaPersona =
         {
             "SendFightEntryAsync", "SendPreparationAsync", "ArrancarParaUnoAsync",
-            "TerminarParaUnoAsync", "HandleFightMapLoad", "ResendFightMapBurst3",
+            "ResumeForOneAsync", "TerminarParaUnoAsync", "HandleFightMapLoad", "ResendFightMapBurst3",
             "SendFighterShow", "SendFightStarting", "SendTurnList",
             "SendPlacementTurnStart", "SendPlacementPositionsList",
             "RefreshPlayerSpellBarAsync", "AttackAsync",

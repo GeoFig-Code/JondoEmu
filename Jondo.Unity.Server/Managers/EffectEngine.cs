@@ -26,6 +26,21 @@ namespace Jondo.Unity.Server.Managers
         public int HechizoOrigen { get; init; }
         public int NivelOrigen { get; init; }
 
+        /// <summary>The caster's turn ends once this cast has gone out (effect 1031).</summary>
+        public bool AcabaElTurno { get; init; }
+
+        /// <summary>The caster picked <see cref="Sobre"/> up (effect 50): it rides on him from now on.</summary>
+        public bool Carga { get; init; }
+
+        /// <summary>The caster threw <see cref="Sobre"/> (effect 51) to <see cref="CasillaHasta"/>.</summary>
+        public bool Lanza { get; init; }
+
+        /// <summary>
+        /// The copies Tymadura left (effect 1097), already on the board. The caster himself went
+        /// from <see cref="CasillaDesde"/> to <see cref="CasillaHasta"/>.
+        /// </summary>
+        public List<Fighter> Ilusiones { get; init; }
+
         /// <summary>Si el efecto cambia una característica en el acto, cuál y en cuánto.</summary>
         public int Caracteristica { get; init; }
         public int Cuanto { get; init; }
@@ -500,6 +515,46 @@ namespace Jondo.Unity.Server.Managers
         private const int EscudoPorNivel = 1020;
         private const int EscudoPorVida = 1039;
 
+        /// <summary>
+        /// 1040, the row the client draws for a shield: "#1 de escudo". Both 1020 and 1039 go
+        /// out as it, with the points computed. Measured on Patada (1020) in the Tymador captures.
+        /// </summary>
+        public const int ShieldPanelEffect = 1040;
+
+        /// <summary>The sheet's characteristic for the shield points: 96 in the Patada capture.</summary>
+        public const int ShieldCharacteristic = 96;
+
+        private const int VitalityCharacteristic = 11;
+
+        /// <summary>
+        /// The same effect, but announced as another one with a flat number: what the panel
+        /// shows for a shield (1040 with the points) or for a vitality percentage (153 with the
+        /// points). The zone, the mask and the triggers are kept; the dice become the number.
+        /// </summary>
+        private static SpellEffect ComoSePinta(SpellEffect efecto, int effectId, int puntos) => new()
+        {
+            EffectId = effectId,
+            EffectUid = efecto.EffectUid,
+            Value = 0,
+            DiceNum = puntos,
+            DiceSide = 0,
+            Duration = efecto.Duration,
+            Delay = efecto.Delay,
+            Element = efecto.Element,
+            Dispellable = efecto.Dispellable,
+            Triggers = efecto.Triggers,
+            TargetMask = efecto.TargetMask,
+            Forma = efecto.Forma,
+            Tamano = efecto.Tamano,
+            TamanoMinimo = efecto.TamanoMinimo,
+            ParaEnElObjetivo = efecto.ParaEnElObjetivo,
+            PasoDeCaida = efecto.PasoDeCaida,
+            TopeDeCaida = efecto.TopeDeCaida,
+            MaxStack = efecto.MaxStack,
+            Probabilidad = efecto.Probabilidad,
+            Sorteo = efecto.Sorteo,
+        };
+
         /// <summary>«N de daños del mejor elemento» (20 hechizos de clase).</summary>
         /// <remarks>
         /// Llamilla, Bilbipo, Apetito de Cocobur. El dado es el daño y el elemento lo pone el
@@ -594,7 +649,7 @@ namespace Jondo.Unity.Server.Managers
         /// hechizos que los llevan no invocaban nada, en silencio.
         /// </summary>
         private static readonly HashSet<int> AlSuelo =
-            new HashSet<int> { 181, 1008, 1011, 400, 401, 1091, 2022 };
+            new HashSet<int> { 181, 1008, 1011, 400, 401, 1091, 2022, EffectSupport.Illusions };
 
         /// <summary>Los tres efectos que sacan un bicho al tablero.</summary>
         private static readonly HashSet<int> Invocaciones = new HashSet<int> { 181, 1008, 1011 };
@@ -816,6 +871,13 @@ namespace Jondo.Unity.Server.Managers
         public const string CuandoMePegan = "DBE";
 
         /// <summary>
+        /// When the bearer dies. Read off Polvo: "haciendo que explote si es destruida" is its
+        /// 1009 "Activa una bomba" and its two 792 under trigger X, and nothing else in the spell
+        /// speaks of the bomb's death. The Tymobot's own passive casts 20683 under X too.
+        /// </summary>
+        public const string AlMorir = "X";
+
+        /// <summary>
         /// Cuando uno ANDA, por cada casilla. Es el disparador del Centinela del Ocra, que da
         /// alcance y daños a distancia a cambio de quedarse quieto: cada paso se lleva uno de
         /// alcance y un dos por ciento de daños.
@@ -976,6 +1038,41 @@ namespace Jondo.Unity.Server.Managers
                     var puesta = Aplicar(combat, caster, caster, spell, grade, efecto,
                                          round, aimedCell, sharedHealRoll);
                     if (puesta != null) fuera.Add(puesta);
+                    continue;
+                }
+
+                // "Hasta la casilla objetivo" (783, 1043) is aimed at a cell that is usually
+                // empty: the one moved is the first fighter on the caster's line, before the
+                // cell for the push and past it for the pull. The mask is still honoured.
+                if (efecto.EffectId == EffectSupport.PushToTargetCell
+                    || efecto.EffectId == EffectSupport.PullToTargetCell)
+                {
+                    if (aimedCell < 0) continue;
+                    int celda = Jondo.Unity.World.Maps.Zone.FirstCellOnTheLine(
+                        caster.CellId, aimedCell, beyond: efecto.EffectId == EffectSupport.PullToTargetCell,
+                        c => EnLaCasilla(combat, c) != null);
+                    var enLaLinea = EnLaCasilla(combat, celda);
+                    if (enLaLinea == null) continue;
+                    if (!AQuien(combat, caster, enLaLinea, efecto, -1, estadosAlEmpezar).Contains(enLaLinea)) continue;
+
+                    var movido = Aplicar(combat, caster, enLaLinea, spell, grade, efecto, round,
+                                         aimedCell, sharedHealRoll);
+                    if (movido != null) fuera.Add(movido);
+                    continue;
+                }
+
+                // A throw (51) lands what the caster carries on the aimed cell: the carried one
+                // is the target, whatever the cell holds.
+                if (efecto.EffectId == EffectSupport.Throw)
+                {
+                    if (aimedCell < 0 || caster.Carrying == 0) continue;
+                    var llevado = combat.Buscar(caster.Carrying);
+                    if (llevado == null) continue;
+                    if (!AQuien(combat, caster, llevado, efecto, -1, estadosAlEmpezar).Contains(llevado)) continue;
+
+                    var lanzado = Aplicar(combat, caster, llevado, spell, grade, efecto, round,
+                                          aimedCell, sharedHealRoll);
+                    if (lanzado != null) fuera.Add(lanzado);
                     continue;
                 }
 
@@ -1186,11 +1283,32 @@ namespace Jondo.Unity.Server.Managers
                     fuera.Add(hecho);
 
                     // Un efecto puede encadenar otro hechizo: es como se enganchan las actitudes.
+                    //
+                    // WHO casts the child and WHERE it is aimed come from the table above, the
+                    // same way the new path reads it: a 792 is cast BY THE TARGET at itself, a
+                    // 1160 by the parent caster AT the target. This used to hand every child to
+                    // the parent caster at the parent's aimed cell, and that is how Mosquete's
+                    // combo never reached the bomb: 20643 chained 20497 with the Tymador as its
+                    // caster and "C" landed on him, not on the bomb; and 20643 itself was judged
+                    // on the cell aimed at instead of the bomb's. Measured on the Mosquete
+                    // capture: "jwe 300 f3=-16" -- the bomb -- casts 20497 on cell 274, its own.
                     if (hecho.HechizoEncadenado != 0)
                     {
-                        fuera.AddRange(Resolver(combat, caster, hecho.HechizoEncadenado,
+                        var lanzaElHijo = caster;
+                        int casillaDelHijo = sobre.CellId;
+                        if (Familia.TryGetValue(efecto.EffectId, out var comoEncadena))
+                        {
+                            if (comoEncadena.LanzaElCandidato) lanzaElHijo = sobre;
+                            casillaDelHijo = comoEncadena.Apunta switch
+                            {
+                                Apunta.AlLanzadorPadre => caster.CellId,
+                                Apunta.ALaCasillaDelPadre => aimedCell >= 0 ? aimedCell : sobre.CellId,
+                                _ => sobre.CellId,
+                            };
+                        }
+                        fuera.AddRange(Resolver(combat, lanzaElHijo, hecho.HechizoEncadenado,
                                                 hecho.GradoEncadenado, sobre, AlLanzar, round,
-                                                depth + 1, aimedCell, critical,
+                                                depth + 1, casillaDelHijo, critical,
                                                 nearestChainBudget,
                                                 bombasYaEstalladas: bombasYaEstalladas));
                     }
@@ -1217,16 +1335,33 @@ namespace Jondo.Unity.Server.Managers
         {
             var mascara = efecto.TargetMask ?? "";
             bool alLanzador = false, aLosMios = false, aLosDeEnfrente = false, aLasInvocaciones = false;
+            bool ownSummonsOnly = false, notOwnSummons = false, alInvocador = false, aTodasLasInvocaciones = false;
             var pideEstado = new List<int>();
             var pideNoEstado = new List<int>();
             var requiredMonsterTemplates = new List<int>();
+            var excludedMonsterTemplates = new List<int>();
             var lifeBelow = new List<int>();       // V<n>: life strictly under n% of the maximum
             var lifeNotBelow = new List<int>();    // v<n>: life at n% or above
 
+            var casterNeedsState = new List<int>();
+            var casterMustLackState = new List<int>();
+
             foreach (var trozo in mascara.Split(','))
             {
-                string t = trozo.Trim().TrimStart('*');
+                string t = trozo.Trim();
                 if (t.Length == 0) continue;
+
+                // A star puts the condition on the CASTER instead of on the target. Read off
+                // Pinzas: the pick-up carries "*e3" and the throw "*E3", and 3 is the state of
+                // the one carrying -- the bomb being picked up is not, the bot throwing it is.
+                // Every starred token in the catalogue is a state or a life threshold.
+                if (t[0] == '*' && t.Length > 2 && (t[1] == 'E' || t[1] == 'e') &&
+                    int.TryParse(t.Substring(2), out int casterState))
+                {
+                    if (t[1] == 'E') casterNeedsState.Add(casterState); else casterMustLackState.Add(casterState);
+                    continue;
+                }
+                t = t.TrimStart('*');
                 if (t == "C") { alLanzador = true; continue; }
 
                 // LA MINÚSCULA Y LA MAYÚSCULA NO SON LO MISMO: la "a" son los del propio bando y
@@ -1254,6 +1389,39 @@ namespace Jondo.Unity.Server.Managers
                     continue;
                 }
 
+                // f<n> is the exclusion, the same case rule as E/e and V/v. Patada's second
+                // push -- "A,f3112,f3113,f3114,f5161,f5163,f5162,g", the enemies and the allied
+                // summons that are NOT bombs -- was reaching the bombs too, so a bomb got the
+                // one-cell push on top of its own ring push.
+                if (t.Length > 1 && t[0] == 'f' &&
+                    int.TryParse(t.Substring(1), out int excludedTemplate))
+                {
+                    excludedMonsterTemplates.Add(excludedTemplate);
+                    continue;
+                }
+
+                // P: a summon has to be THE CASTER'S; p: it has to be somebody else's. Neither
+                // letter says anything about a fighter who is not a summon. The whole Tymador
+                // kit is written on it -- "a,P,F3112,..." is "las bombas del lanzador" in Patada,
+                // Kabúm, Mosquete and Polvo, and "a,A,p,F3112,..." is everybody else's bombs,
+                // pushed one cell -- and three cases pin the reading down:
+                //
+                //   Patada       the caster's bomb takes the ring push of three and NOT the
+                //                one-cell push of "a,A,p,F3112": p keeps his own out
+                //   Chute        "una invocación del lanzador" is "i,P": a summon, and his
+                //   Encendimiento "h,P" lands the +1 AP cost on the bomb's OWNER, who is no
+                //                summon at all: P lets him through
+                //
+                // So it is a condition on summons, not a category of its own.
+                if (t == "P") { ownSummonsOnly = true; continue; }
+                if (t == "p") { notOwnSummons = true; continue; }
+
+                // h: the caster's summoner, which is how a bomb's Encendimiento reaches the
+                // Tymador -- the capture's jxm of effect 296 is cast by bomb -9 on the player.
+                // i: the summons, whichever side, which P then narrows to the caster's own.
+                if (t == "h") { alInvocador = true; continue; }
+                if (t == "i") { aTodasLasInvocaciones = true; continue; }
+
                 if (t.Length > 1 && (t[0] == 'e' || t[0] == 'E') && int.TryParse(t.Substring(1), out int estado))
                 {
                     if (t[0] == 'E') pideEstado.Add(estado); else pideNoEstado.Add(estado);
@@ -1276,10 +1444,27 @@ namespace Jondo.Unity.Server.Managers
                 }
             }
 
+            // Against the same snapshot as the targets' states: Pinzas carries the pick-up and
+            // the throw in one grade, "*e3" and "*E3", and judged live the throw would fire in
+            // the very cast that picked the bomb up.
+            if (casterNeedsState.Count > 0 || casterMustLackState.Count > 0)
+            {
+                IReadOnlySet<int> delLanzador = estados != null && estados.TryGetValue(quienLanza, out var alEmpezar)
+                    ? alEmpezar
+                    : quienLanza.Buffs.Estados as IReadOnlySet<int> ?? new HashSet<int>(quienLanza.Buffs.Estados);
+                foreach (int estado in casterNeedsState) if (!delLanzador.Contains(estado)) yield break;
+                foreach (int estado in casterMustLackState) if (delLanzador.Contains(estado)) yield break;
+            }
+
             var candidatos = new List<Fighter>();
             if (alLanzador) candidatos.Add(quienLanza);
+            if (alInvocador && quienLanza.EsInvocado)
+            {
+                var invocador = combate.Buscar(quienLanza.Invocador);
+                if (invocador != null && invocador.IsAlive && !candidatos.Contains(invocador)) candidatos.Add(invocador);
+            }
 
-            if (aLosMios || aLosDeEnfrente || aLasInvocaciones)
+            if (aLosMios || aLosDeEnfrente || aLasInvocaciones || aTodasLasInvocaciones)
             {
                 // La zona: el efecto dice de qué FORMA coge el terreno alrededor de la casilla
                 // apuntada —un punto, un círculo de radio dos, una cruz— y le toca a todo el que
@@ -1291,7 +1476,8 @@ namespace Jondo.Unity.Server.Managers
 
                     bool leToca = (aLosMios && suyo)
                                || (aLosDeEnfrente && !suyo)
-                               || (aLasInvocaciones && esInvocado && suyo);
+                               || (aLasInvocaciones && esInvocado && suyo)
+                               || (aTodasLasInvocaciones && esInvocado);
                     if (!leToca) continue;
 
                     if (!candidatos.Contains(quien)) candidatos.Add(quien);
@@ -1329,6 +1515,17 @@ namespace Jondo.Unity.Server.Managers
                 {
                     vale = false;
                 }
+                if (quien.IsMonster && excludedMonsterTemplates.Contains(quien.MonsterId)) vale = false;
+                if (quien.EsInvocado)
+                {
+                    // "Del lanzador" seen from a summon means its master's: the Tymobot's Pinzas
+                    // carry "a,P,F3112" and pick up the Tymador's bombs, which the bot never
+                    // summoned. So a summon casting P reaches what its summoner summoned.
+                    long amo = quienLanza.EsInvocado ? quienLanza.Invocador : quienLanza.Id;
+                    bool delLanzador = quien.Invocador == amo;
+                    if (ownSummonsOnly && !delLanzador) vale = false;
+                    if (notOwnSummons && delLanzador) vale = false;
+                }
                 foreach (int estado in pideEstado) if (!susEstados.Contains(estado)) vale = false;
                 foreach (int estado in pideNoEstado) if (susEstados.Contains(estado)) vale = false;
                 foreach (int pct in lifeBelow) if (!LifeUnder(quien, pct)) vale = false;
@@ -1360,7 +1557,7 @@ namespace Jondo.Unity.Server.Managers
             if (casilla < 0) return null;
             foreach (var quien in Todos(combate))
             {
-                if (quien != null && quien.IsAlive && quien.CellId == casilla) return quien;
+                if (quien != null && quien.IsAlive && !quien.EstaCargado && quien.CellId == casilla) return quien;
             }
             return null;
         }
@@ -1376,7 +1573,7 @@ namespace Jondo.Unity.Server.Managers
             }
 
             var casillas = Jondo.Unity.World.Maps.Zone.Casillas(
-                efecto.Forma, efecto.Tamano, quienLanza.CellId, celdaApuntada);
+                efecto.Forma, efecto.Tamano, quienLanza.CellId, celdaApuntada, efecto.TamanoMinimo);
             if (casillas.Count == 0)
             {
                 if (objetivo != null) yield return objetivo;
@@ -1386,7 +1583,7 @@ namespace Jondo.Unity.Server.Managers
             var dentro = new HashSet<int>(casillas);
             foreach (var quien in Todos(combate))
             {
-                if (quien == null || !quien.IsAlive) continue;
+                if (quien == null || !quien.IsAlive || quien.EstaCargado) continue;
                 if (dentro.Contains(quien.CellId)) yield return quien;
             }
         }
@@ -1548,6 +1745,158 @@ namespace Jondo.Unity.Server.Managers
                 };
             }
 
+            if (efecto.EffectId == EffectSupport.Illusions)
+            {
+                // The caster goes to the aimed cell -- a free, walkable one -- and copies of him
+                // appear two steps down each axis of the cell he LEFT, on the cells that are
+                // free and walkable, as many as the effect says. The cell he lands on is one of
+                // the four when he aims two cells up his own axis, which is why the capture has
+                // three copies and not four.
+                if (celdaApuntada < 0 || sobre != quienLanza) return null;
+                var suelo = MapManager.GetFightWalkable(combate.ArenaMapId);
+                if (suelo != null && !suelo.Contains(celdaApuntada)) return null;
+                if (EnLaCasilla(combate, celdaApuntada) != null) return null;
+
+                int origen = quienLanza.CellId;
+                quienLanza.MoverA(celdaApuntada);
+
+                var copias = new List<Fighter>();
+                int cuantas = Math.Max(1, efecto.DiceNum);
+                var (ox, oy) = Jondo.Unity.World.Maps.MapGeometry.CellToPoint(origen);
+                foreach (var (dx, dy) in new[] { (2, 0), (-2, 0), (0, 2), (0, -2) })
+                {
+                    if (copias.Count >= cuantas) break;
+                    int celda = Jondo.Unity.World.Maps.MapGeometry.PointToCell(ox + dx, oy + dy);
+                    if (celda < 0) continue;
+                    if (suelo != null && !suelo.Contains(celda)) continue;
+                    if (EnLaCasilla(combate, celda) != null) continue;
+
+                    var copia = new Fighter
+                    {
+                        Id = combate.SiguienteIdDeInvocado(),
+                        Name = "ilusión",
+                        CellId = celda,
+                        Level = quienLanza.Level,
+                        MaxHP = 50 + 5 * Math.Max(1, quienLanza.Level),
+                        SummonCost = 0,
+                        JuegaTurno = false,
+                        EsIlusion = true,
+                        Look = quienLanza.Look,
+                        LookBoneId = quienLanza.LookBoneId,
+                    };
+                    copia.CurrentHP = copia.MaxHP;
+                    combate.Invocar(copia, quienLanza);
+                    quienLanza.Ilusiones.Add(copia.Id);
+                    copias.Add(copia);
+                }
+
+                return new Outcome
+                {
+                    Sobre = quienLanza, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    CasillaDesde = origen, CasillaHasta = celdaApuntada,
+                    Ilusiones = copias,
+                };
+            }
+
+            if (efecto.EffectId == EffectSupport.Carry)
+            {
+                // One at a time, nobody who is already carried or carrying, never oneself.
+                if (sobre == quienLanza || quienLanza.Carrying != 0 || sobre.EstaCargado
+                    || sobre.Carrying != 0) return null;
+
+                int deDonde = sobre.CellId;
+                sobre.CarriedBy = quienLanza.Id;
+                quienLanza.Carrying = sobre.Id;
+                sobre.CellId = quienLanza.CellId;
+                quienLanza.Buffs.PonerEstado(EffectSupport.CarryingState);
+                sobre.Buffs.PonerEstado(EffectSupport.CarriedState);
+
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    Carga = true, CasillaDesde = deDonde,
+                };
+            }
+
+            if (efecto.EffectId == EffectSupport.Throw)
+            {
+                if (celdaApuntada < 0 || sobre.CarriedBy != quienLanza.Id) return null;
+                var suelo = MapManager.GetFightWalkable(combate.ArenaMapId);
+                if (suelo != null && !suelo.Contains(celdaApuntada)) return null;
+                if (EnLaCasilla(combate, celdaApuntada) != null) return null;
+
+                int deDonde = quienLanza.CellId;
+                sobre.CarriedBy = 0;
+                quienLanza.Carrying = 0;
+                quienLanza.Buffs.QuitarEstado(EffectSupport.CarryingState);
+                sobre.Buffs.QuitarEstado(EffectSupport.CarriedState);
+                sobre.MoverA(celdaApuntada);
+
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    Lanza = true, CasillaDesde = deDonde, CasillaHasta = celdaApuntada,
+                };
+            }
+
+            if (efecto.EffectId == EffectSupport.EndsTheTurn)
+            {
+                // Nothing to apply on the fighter: the handler ends the turn once the cast has
+                // gone out whole. In the Tymadura capture the jyt follows the last jwe of the
+                // cast, with the illusions already placed.
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    AcabaElTurno = true,
+                };
+            }
+
+            if (efecto.EffectId == EffectSupport.VitalityPercentMalus
+                || efecto.EffectId == EffectSupport.VitalityPercentBonus)
+            {
+                int porciento = efecto.DiceNum != 0 ? efecto.DiceNum : efecto.Value;
+                if (porciento <= 0) return null;
+
+                // Of the vitality, not of the life: 1150 vitality and -50% is -575 in the
+                // capture, and 575 is what the maximum loses. The panel gets the flat effect,
+                // 153, with the points on it; the sheet gets the vitality hole; the buff carries
+                // the points on characteristic 11 so that the sheet refresh finds them, and the
+                // handler moves the maximum with it and moves it back when the buff falls.
+                int puntos = sobre.Vitality * porciento / 100;
+                if (puntos <= 0) return null;
+                if (efecto.EffectId == EffectSupport.VitalityPercentMalus) puntos = -puntos;
+
+                sobre.MaxHP = Math.Max(1, sobre.MaxHP + puntos);
+                if (sobre.CurrentHP > sobre.MaxHP) sobre.CurrentHP = sobre.MaxHP;
+
+                var embrujoDeVida = sobre.Buffs.Poner(new Buff
+                {
+                    EffectId = EffectSupport.VitalityFlatMalus,
+                    EffectUid = efecto.EffectUid,
+                    Caracteristica = VitalityCharacteristic,
+                    Cuanto = puntos,
+                    HechizoOrigen = hechizo,
+                    NivelOrigen = grado,
+                    Quien = quienLanza.Id,
+                    Disparador = AlLanzar,
+                    CaducaEnRonda = Caduca(efecto, ronda),
+                    EmpiezaEnRonda = Empieza(efecto, ronda),
+                }, combate.SiguienteEmbrujo);
+
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza,
+                    Efecto = ComoSePinta(efecto, EffectSupport.VitalityFlatMalus, Math.Abs(puntos)),
+                    Buff = embrujoDeVida,
+                    Caracteristica = VitalityCharacteristic, Cuanto = puntos,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                };
+            }
+
             if (efecto.EffectId == EscudoPorNivel || efecto.EffectId == EscudoPorVida)
             {
                 int porciento = efecto.DiceNum != 0 ? efecto.DiceNum : efecto.Value;
@@ -1563,9 +1912,32 @@ namespace Jondo.Unity.Server.Managers
                 int caduca = Caduca(efecto, ronda);
                 sobre.Escudar(cuanto, caduca);
 
+                // And the panel row, which nothing was sending: the shield held on the server
+                // and the client never drew it. Measured on Patada: the bomb gets a jxm of
+                // effect 1040 worth the points -- 350, 175% of level 200 -- with the grade and
+                // the round it falls, and its sheet gets characteristic 96 at the total. The
+                // buff carries no characteristic: the sheet reads the points off the fighter.
+                var embrujoDeEscudo = sobre.Buffs.Poner(new Buff
+                {
+                    EffectId = ShieldPanelEffect,
+                    EffectUid = efecto.EffectUid,
+                    Cuanto = cuanto,
+                    HechizoOrigen = hechizo,
+                    NivelOrigen = grado,
+                    Quien = quienLanza.Id,
+                    Disparador = AlLanzar,
+                    CaducaEnRonda = caduca,
+                    EmpiezaEnRonda = Empieza(efecto, ronda),
+                    // One row per shield, not one refreshed row: the second Patada of the
+                    // capture adds row 64 next to row 55, both worth 350, with the sheet at 700.
+                    Apila = true,
+                }, combate.SiguienteEmbrujo);
+
                 return new Outcome
                 {
-                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    Sobre = sobre, Caster = quienLanza,
+                    Efecto = ComoSePinta(efecto, ShieldPanelEffect, cuanto),
+                    Buff = embrujoDeEscudo,
                     HechizoOrigen = hechizo, NivelOrigen = grado,
                     Escudo = cuanto,
                 };
@@ -1683,13 +2055,21 @@ namespace Jondo.Unity.Server.Managers
                 };
             }
 
-            if (efecto.EffectId == Empujar || efecto.EffectId == Tirar ||
-                efecto.EffectId == Retroceder || efecto.EffectId == Avanzar)
+            bool hastaLaCasilla = efecto.EffectId == EffectSupport.PushToTargetCell
+                                  || efecto.EffectId == EffectSupport.PullToTargetCell;
+            if (efecto.EffectId == Empujar || efecto.EffectId == EffectSupport.PushWithoutDamage ||
+                efecto.EffectId == Tirar || efecto.EffectId == Retroceder || efecto.EffectId == Avanzar ||
+                hastaLaCasilla)
             {
-                // Cuántas casillas: el dado, y si no, el valor.
-                int cuantas = efecto.DiceNum != 0 ? efecto.DiceNum : efecto.Value;
+                // Cuántas casillas: el dado, y si no, el valor. "Hasta la casilla objetivo" is
+                // as many as separate the one moved from the aimed cell, and the direction is
+                // the caster's line, not the aimed cell's: the aimed cell is where it ENDS.
+                int cuantas = hastaLaCasilla
+                    ? Jondo.Unity.World.Maps.MapGeometry.Distance(sobre.CellId, celdaApuntada)
+                    : efecto.DiceNum != 0 ? efecto.DiceNum : efecto.Value;
                 if (cuantas <= 0) return null;
-                if (efecto.EffectId == Tirar) cuantas = -cuantas;
+                if (efecto.EffectId == Tirar || efecto.EffectId == EffectSupport.PullToTargetCell) cuantas = -cuantas;
+                int centroDelEmpuje = hastaLaCasilla ? quienLanza.CellId : celdaApuntada;
 
                 // "Retrocede" y "Avanza" mueven AL QUE LANZA, no al objetivo. Es lo que hace Tiro
                 // de Repliegue, que da alcance y da un paso atrás; el objetivo sólo sirve para
@@ -1719,7 +2099,7 @@ namespace Jondo.Unity.Server.Managers
 
                 var ocupadas = new HashSet<int>();
                 foreach (var otro in Todos(combate))
-                    if (otro != null && otro.IsAlive && otro != sobre) ocupadas.Add(otro.CellId);
+                    if (otro != null && otro.IsAlive && !otro.EstaCargado && otro != sobre) ocupadas.Add(otro.CellId);
 
                 int desde = sobre.CellId;
                 // Las casillas que se pueden pisar en la arena. Iban a null, que quiere decir "no
@@ -1732,7 +2112,7 @@ namespace Jondo.Unity.Server.Managers
                 // wall cell and goes no further. Which walls count for THIS fighter is the whole
                 // rule -- Kabum, its own bombs, once a turn -- and that lives in BombWalls.
                 var empujon = Jondo.Unity.World.Maps.Zone.Push(
-                    celdaApuntada, quienLanza.CellId, desde, cuantas,
+                    centroDelEmpuje, quienLanza.CellId, desde, cuantas,
                     pisables: pisables, ocupadas: ocupadas,
                     paran: BombWalls.StoppingCells(combate, sobre));
 
@@ -1768,6 +2148,7 @@ namespace Jondo.Unity.Server.Managers
                 // for pushing somebody into a wall.
                 bool empujaConDano = efecto.EffectId == Empujar && cuantas > 0
                                      && empujon.Stop != Jondo.Unity.World.Maps.Zone.PushStop.Wall;
+                // The 1103 is the 5 that never collides; it took this same branch and paid.
                 if (empujaConDano && empujon.BlockedCells > 0)
                 {
                     int deEmpuje = quienLanza.PushDamage + quienLanza.Buffs.De(DanoDeEmpuje, ronda);

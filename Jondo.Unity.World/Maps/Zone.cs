@@ -40,6 +40,8 @@ namespace Jondo.Unity.World.Maps
         public const int Rombo = 'Q';
         public const int CruzCompleta = '+';
         public const int Cuadrado = '#';
+        public const int MedioCirculo = 'U';
+        public const int Segmento = 'l';
 
         /// <summary>
         /// Las casillas que toca el efecto.
@@ -47,7 +49,27 @@ namespace Jondo.Unity.World.Maps
         /// <paramref name="desde"/> es la casilla del que lanza, que hace falta para las formas
         /// que tienen dirección (las líneas); <paramref name="centro"/> es a la que se apunta.
         /// </summary>
-        public static List<int> Casillas(int forma, int tamano, int desde, int centro)
+        /// <param name="minimo">
+        /// The inner edge, the <c>param2</c> of the zone: cells nearer than this to the centre
+        /// are left out. It means that for the round and cross shapes only -- circle, cross,
+        /// star, square, ring -- which is where the catalogue uses it: Patada's X3/3, X2/2 and
+        /// X1/1 are rings, Imantación's X6/1 is a cross with a hole where its centre is, and
+        /// "Venganza Nocturna" hits C2/1, "alrededor de Sombra" and not Sombra herself. The
+        /// ring 'Q' is the circle between the two radii: Q1/1 and Q2/2 (the bulk of them) are
+        /// one ring, Q3/1 and Q3/2 are thicker.
+        /// </param>
+        public static List<int> Casillas(int forma, int tamano, int desde, int centro, int minimo = 0)
+        {
+            var fuera = Formas(forma, tamano, desde, centro, minimo);
+            if (minimo <= 0 || !(forma is Circulo or Aspa or Cruz or CruzCompleta or Cuadrado or MedioCirculo))
+            {
+                return fuera;
+            }
+            fuera.RemoveAll(c => MapGeometry.Distance(centro, c) < minimo);
+            return fuera;
+        }
+
+        private static List<int> Formas(int forma, int tamano, int desde, int centro, int minimo)
         {
             var fuera = new List<int>();
             if (!MapGeometry.IsValid(centro)) return fuera;
@@ -113,10 +135,57 @@ namespace Jondo.Unity.World.Maps
                     return fuera;
 
                 case Rombo:
-                    // Sólo el borde del círculo, que es lo que lo distingue de la 'C'.
+                {
+                    // The ring: the circle of radius param1 without the circle of radius param2.
+                    // It was "the edge only", which is what every Q with param1 = param2 is --
+                    // 72 of Q1/1, 63 of Q2/2 -- and wrong for the 48 of Q3/2 and the 10 of Q3/1,
+                    // which are two and three cells thick. Without a param2 it is the edge.
+                    int borde = minimo > 0 ? minimo : tamano;
                     for (int c = 0; c < MapGeometry.MaxCells; c++)
-                        if (MapGeometry.Distance(centro, c) == tamano) fuera.Add(c);
+                    {
+                        int d = MapGeometry.Distance(centro, c);
+                        if (d >= borde && d <= tamano) fuera.Add(c);
+                    }
                     return fuera;
+                }
+
+                case Segmento:
+                {
+                    // The segment from the caster to the aimed cell, from param2 cells off the
+                    // caster to param1 at most, the aimed cell included. It is the zone of what
+                    // Empujoncito and Aspirador do to the bombs on the way ("l1/63") -- the line
+                    // between the Tymobot and where it aims. Not the caster's own cell unless
+                    // param2 is zero.
+                    var d = DireccionEntre(desde, centro);
+                    if (d == null) { fuera.Add(centro); return fuera; }
+                    var (x, y) = MapGeometry.CellToPoint(desde);
+                    int hasta = Math.Min(tamano, MapGeometry.Distance(desde, centro));
+                    for (int paso = Math.Max(0, minimo); paso <= hasta; paso++)
+                    {
+                        int c = MapGeometry.PointToCell(x + d.Value.Dx * paso, y + d.Value.Dy * paso);
+                        if (c < 0) break;
+                        fuera.Add(c);
+                    }
+                    return fuera;
+                }
+
+                case MedioCirculo:
+                {
+                    // The half circle: the circle of radius param1 cut by the line through the
+                    // centre perpendicular to the cast, keeping the far half -- the cells that
+                    // are not nearer to the caster than the centre is. That is the shape the
+                    // client's own zone renderer draws for 'U' (Dagas Bumerán, Tromba: "en
+                    // zona" behind the target). Not measured on a capture with two victims
+                    // apart: the two Dagas Bumerán casts of the capture each hit one fighter.
+                    int deLejos = MapGeometry.Distance(desde, centro);
+                    for (int c = 0; c < MapGeometry.MaxCells; c++)
+                    {
+                        if (MapGeometry.Distance(centro, c) > tamano) continue;
+                        if (MapGeometry.Distance(desde, c) < deLejos) continue;
+                        fuera.Add(c);
+                    }
+                    return fuera;
+                }
 
                 case Linea:
                 case MediaLinea:
@@ -188,6 +257,30 @@ namespace Jondo.Unity.World.Maps
             int origen = (MapGeometry.IsValid(centro) && centro != desde) ? centro : deQuienLanza;
             if (!MapGeometry.IsValid(origen)) return true;
             return MapGeometry.Distance(origen, hasta) >= MapGeometry.Distance(origen, desde);
+        }
+
+        /// <summary>
+        /// The first fighter on the straight line from <paramref name="desde"/> towards
+        /// <paramref name="hasta"/>: before the aimed cell (<paramref name="beyond"/> false,
+        /// strictly between the two) or past it (true, from the cell after the aimed one to the
+        /// edge). Null when there is nobody, or when the two cells are not on one of the eight
+        /// lines. What "hasta la casilla objetivo" pushes and pulls.
+        /// </summary>
+        public static int FirstCellOnTheLine(int desde, int hasta, bool beyond, Func<int, bool> ocupada)
+        {
+            var d = DireccionEntre(desde, hasta);
+            if (d == null || ocupada == null) return -1;
+            var (x, y) = MapGeometry.CellToPoint(desde);
+            int largo = MapGeometry.Distance(desde, hasta);
+            int primero = beyond ? largo + 1 : 1;
+            int ultimo = beyond ? MapGeometry.MaxCells : largo - 1;
+            for (int paso = primero; paso <= ultimo; paso++)
+            {
+                int c = MapGeometry.PointToCell(x + d.Value.Dx * paso, y + d.Value.Dy * paso);
+                if (c < 0) return -1;
+                if (ocupada(c)) return c;
+            }
+            return -1;
         }
 
         /// <summary>

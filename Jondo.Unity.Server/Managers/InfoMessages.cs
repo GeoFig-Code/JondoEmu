@@ -45,6 +45,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Aviso o error: el cliente lo pinta distinto.</summary>
         public const int Warning = 1;
 
+        /// <summary>«{0} acaba de volver a conectarse al combate.» Va con <see cref="Warning"/>.</summary>
+        public const int BackInTheFight = 184;
+
         // ─── Los que usa el emulador, con su texto al lado ──────────────────────
 
         /// <summary>«Has ganado $quantity{0} kamas.»</summary>

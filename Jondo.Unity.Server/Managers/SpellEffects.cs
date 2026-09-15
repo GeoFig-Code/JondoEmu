@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
@@ -58,6 +58,14 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public int Forma { get; init; } = 'P';
         public int Tamano { get; init; } = 1;
+
+        /// <summary>
+        /// The zone's inner edge (<c>param2</c>): cells nearer than this to the centre are left
+        /// out. Patada's three rings are X3/3, X2/2 and X1/1 -- the push grows as the ring
+        /// shrinks -- and Imantación's X6/1 is a cross without its centre, which is where the
+        /// bomb it is cast on stands and "no afecta al lanzador". See Zone.Casillas.
+        /// </summary>
+        public int TamanoMinimo { get; init; }
 
         /// <summary>Si la zona se corta al llegar al objetivo, para las líneas.</summary>
         public bool ParaEnElObjetivo { get; init; }
@@ -176,13 +184,14 @@ namespace Jondo.Unity.Server.Managers
 
                 foreach (var e in doc.RootElement.EnumerateArray())
                 {
-                    int forma = 'P', tamano = 1, paso = 0, tope = 0;
+                    int forma = 'P', tamano = 1, minimo = 0, paso = 0, tope = 0;
                     bool para = false;
                     if (e.TryGetProperty("zoneDescr", out var z) && z.ValueKind == JsonValueKind.Object)
                     {
                         int f = Entero(z, "shape");
                         if (f > 0) forma = f;
                         tamano = Entero(z, "param1");
+                        minimo = Entero(z, "param2");
                         para = Entero(z, "isStopAtTarget") != 0;
                         paso = Entero(z, "damageDecreaseStepPercent");
                         tope = Entero(z, "maxDamageDecreaseApplyCount");
@@ -203,6 +212,7 @@ namespace Jondo.Unity.Server.Managers
                         TargetMask = Texto(e, "targetMask", ""),
                         Forma = forma,
                         Tamano = tamano,
+                        TamanoMinimo = minimo,
                         ParaEnElObjetivo = para,
                         PasoDeCaida = paso,
                         TopeDeCaida = tope,

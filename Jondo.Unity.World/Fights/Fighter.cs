@@ -173,6 +173,41 @@ namespace Jondo.Unity.World.Fights
         public bool JuegaTurno { get; set; } = true;
 
         /// <summary>
+        /// The spells a summon casts, each at its grade, for the jyy of whoever controls it.
+        /// Empty for anybody who is not a summon.
+        /// </summary>
+        public IReadOnlyList<(int Spell, int Grade)> HechizosDeInvocado { get; set; }
+            = System.Array.Empty<(int, int)>();
+
+        /// <summary>
+        /// Whether <paramref name="characterId"/> plays this fighter: himself, or a summon of
+        /// his. Every summon is played by its summoner in this client -- the Osamodas' animals,
+        /// the Tymobot, the Ocra's beacon: the real server sends the owner a jyy with the
+        /// summon's spells when it appears and a jyj when its turn comes, and the owner's jrw
+        /// and jwh then move and cast it.
+        /// </summary>
+        public bool ControlledBy(long characterId)
+            => Id == characterId || (EsInvocado && Invocador == characterId);
+
+        /// <summary>Who carries this fighter (effect 50), or zero. A carried fighter shares the carrier's cell and holds no cell of his own.</summary>
+        public long CarriedBy { get; set; }
+
+        /// <summary>Whom this fighter carries, or zero.</summary>
+        public long Carrying { get; set; }
+
+        public bool EstaCargado => CarriedBy != 0;
+
+        /// <summary>
+        /// A copy left by Tymadura: it holds a cell and can tackle, plays no turn, sits in no
+        /// carousel, and goes with the first point of damage, with the whole set when its owner
+        /// is hit, and at its owner's next turn in any case.
+        /// </summary>
+        public bool EsIlusion { get; set; }
+
+        /// <summary>The copies this fighter has out, by id. Empty for everybody else.</summary>
+        public List<long> Ilusiones { get; } = new List<long>();
+
+        /// <summary>
         /// How much of its summoner's capacity this fighter takes up, copied from the template's
         /// <c>summonCost</c> when it is summoned. Zero means it is free: the Rogue's bombs, the
         /// Ocra's beacons and 483 other templates cost nothing at all, and a couple of the

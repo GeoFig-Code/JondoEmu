@@ -341,6 +341,13 @@ public static class Op
     /// <summary>Catorce conjuntos guardados, cada uno con un look; se descarta. 7 mensajes.</summary>
     public const string Ihb = "ihb";
 
+    /// <summary>
+    /// El cliente pide el tablero de un combate: va vacio, en pareja con el kmv del mapa, en
+    /// cuanto carga el mapa tactico que le anuncio un kmp con f1 = 1. Es lo que contesta la
+    /// preparacion (ijq kam kaa jxg...), y en una reconexion, el combate tal cual va.
+    /// </summary>
+    public const string Ijm = "ijm";
+
     /// <summary>Sin identificar. 1 uso en el emulador.</summary>
     public const string Ijq = "ijq";
 
@@ -1210,6 +1217,14 @@ public static class Op
     /// <summary>No te pares en la pantalla de personajes. Solo sale al entrar directo al mundo: reconexion a combate y koliseo. NO va en la rafaga normal.</summary>
     public const string Kvd = "kvd";
 
+    /// <summary>
+    /// El cliente pide la lista de personajes. Va con un krv detras (una clave larga) en cuanto
+    /// termina la rafaga de bienvenida. En una entrada corriente la lista ya viajo en la rafaga
+    /// y no se contesta nada; en una reconexion a combate la rafaga va SIN lista y la respuesta
+    /// es kvi y kvd, medido en las dos capturas de reconexion.
+    /// </summary>
+    public const string Kvc = "kvc";
+
     /// <summary>Los personajes de la cuenta en el servidor elegido.</summary>
     public const string Kvi = "kvi";
 
@@ -1244,6 +1259,14 @@ public static class Op
 
     /// <summary>El cliente senala el personaje que va a borrar. Lleva el id en el campo 2.</summary>
     public const string Kwa = "kwa";
+
+    /// <summary>
+    /// «Adelante»: la respuesta del cliente al <see cref="Kvd"/>, vacia. No dice que personaje
+    /// porque no hace falta: el servidor sabe cual esta en combate. Medido en las tres capturas
+    /// de entrada directa (dos reconexiones a combate y el koliseo): kvd, kwb, y detras el kva
+    /// y la entrada al mundo de siempre.
+    /// </summary>
+    public const string Kwb = "kwb";
 
     /// <summary>Borrar un personaje: campo 1 el id, campo 2 la confirmacion escrita en 32 hex.</summary>
     public const string Kvu = "kvu";

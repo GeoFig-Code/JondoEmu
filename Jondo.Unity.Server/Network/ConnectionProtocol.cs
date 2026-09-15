@@ -226,7 +226,15 @@ namespace Jondo.Unity.Server.Network
                 Push(Op.Jtg, BuildGiftCatalogue()),
             };
 
-        public static List<byte[]> BuildWelcomeBurst(IReadOnlyList<DatabaseManager.DbCharacter> characters)
+        /// <param name="withList">
+        /// Whether the character list closes the burst. It does on an ordinary login; when a
+        /// character of the account is still in a fight the real burst stops at the krs, the
+        /// client asks with kvc, and the answer is the list followed by the kvd. Measured in the
+        /// two reconnection captures: "kra lqu hoy kqu mgq mgt hpd krs", then "kvc krv" from the
+        /// client, then "kvi kvd".
+        /// </param>
+        public static List<byte[]> BuildWelcomeBurst(IReadOnlyList<DatabaseManager.DbCharacter> characters,
+                                                     bool withList = true)
         {
             var burst = new List<byte[]>
             {
@@ -283,7 +291,7 @@ namespace Jondo.Unity.Server.Network
             };
 
             // The list closes the burst, framed the way it always travels.
-            burst.AddRange(CharacterListFrames(characters));
+            if (withList) burst.AddRange(CharacterListFrames(characters));
             return burst;
         }
 
@@ -1955,6 +1963,14 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         public static byte[] BuildSystemMessage(int messageId, params string[] parameters)
             => BuildInfoMessage(Managers.InfoMessages.Info, messageId, parameters);
+
+        /// <summary>
+        /// "{0} acaba de volver a conectarse al combate." (lqn, type 1, text 184). The real
+        /// server sends it right behind the lqu of the tactical map when somebody reconnects
+        /// into his fight, in both reconnection captures, before the lva.
+        /// </summary>
+        public static byte[] BuildBackInTheFight(string name)
+            => BuildInfoMessage(Managers.InfoMessages.Warning, Managers.InfoMessages.BackInTheFight, name);
 
         /// <summary>El mismo, diciendo de qué tipo es.</summary>
         public static byte[] BuildInfoMessage(int type, int messageId, params string[] parameters)
