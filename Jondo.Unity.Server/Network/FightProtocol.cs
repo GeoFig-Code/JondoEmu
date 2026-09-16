@@ -1707,6 +1707,89 @@ namespace Jondo.Unity.Server.Network
         public const int Victory = 2;
 
         /// <summary>
+        /// One person's end-of-fight statistics (jxo), which the client shows on the
+        /// "Personaje" and "Estadísticas" tabs of the fight-over window. Sent right behind
+        /// the jyg, to each person with his own numbers only.
+        /// </summary>
+        /// <remarks>
+        /// Shape, as the real server sends it in the 30 fights measured (see
+        /// <see cref="Jondo.Unity.World.Fights.FightStatistics"/> for which field is what):
+        ///
+        ///   f1 { f1: the character           f2 {
+        ///        f1 { f2: '', f4: the character }
+        ///        f2 { f2: enemies defeated, f4: the same }
+        ///        f3 { f4: AP per turn (float) }
+        ///        f4 ''
+        ///        f5 { f3: taken per turn, f4: taken, f9: taken }        only when hit
+        ///        f6 { f1: shields given, f3: per turn }                 only when any
+        ///        f8 { f4: MP per turn }                                 '' when none
+        ///        f9 ''
+        ///        f10 { f3: heals per turn, f4: given, f5: received }    only when any
+        ///        f11 { f1: on triggers, f2: the summons', f3: own per AP, f4: total,
+        ///              f5: pushes, f6: total per turn, f7: glyphs, f9: direct } } }
+        ///   f2 { f1: enemies, f3: taken, f4: heals given, f5: total dealt, f8: shields }
+        ///
+        /// Zero counters are left out of their block and an empty block is sent as such,
+        /// which is how the captures have them: "f5='' f6='' f9='' f10=''" on a fight with
+        /// nothing taken, shielded or healed, and "f8=''" when no MP was spent. Floats are
+        /// the client's own float32.
+        /// </remarks>
+        public static byte[] BuildFightStatistics(long character,
+                                                  Jondo.Unity.World.Fights.FightStatistics s,
+                                                  int enemiesDefeated)
+        {
+            static byte[] F(float value) => BitConverter.GetBytes(value);
+
+            var mine = Pb.New()
+                .Msg(1, Pb.New().Bytes(2, Array.Empty<byte>()).Var(4, character))
+                .Msg(2, Pb.New().VarIfNotZero(2, enemiesDefeated).VarIfNotZero(4, enemiesDefeated))
+                .Msg(3, Pb.New().Fixed32(4, F(s.PerTurn(s.ActionPointsSpent))))
+                .EmptyMsg(4);
+
+            if (s.DamageTaken > 0)
+                mine.Msg(5, Pb.New().Fixed32(3, F(s.PerTurn(s.DamageTaken))).Var(4, s.DamageTaken).Var(9, s.DamageTaken));
+            else mine.EmptyMsg(5);
+
+            if (s.ShieldsGiven > 0)
+                mine.Msg(6, Pb.New().Var(1, s.ShieldsGiven).Fixed32(3, F(s.PerTurn(s.ShieldsGiven))));
+            else mine.EmptyMsg(6);
+
+            if (s.MovementPointsSpent > 0)
+                mine.Msg(8, Pb.New().Fixed32(4, F(s.PerTurn(s.MovementPointsSpent))));
+            else mine.EmptyMsg(8);
+
+            mine.EmptyMsg(9);
+
+            if (s.HealsGiven > 0 || s.HealsReceived > 0)
+                mine.Msg(10, Pb.New().Fixed32(3, F(s.PerTurn(s.HealsGiven)))
+                                     .VarIfNotZero(4, s.HealsGiven).VarIfNotZero(5, s.HealsReceived));
+            else mine.EmptyMsg(10);
+
+            var dealt = Pb.New()
+                .VarIfNotZero(1, s.TriggerDamage)
+                .VarIfNotZero(2, s.SummonDamage)
+                .Fixed32(3, F(s.OwnDamage / (float)Math.Max(1, s.ActionPointsOnDamage)))
+                .Var(4, s.TotalDamage)
+                .VarIfNotZero(5, s.PushDamage)
+                .Fixed32(6, F(s.PerTurn(s.TotalDamage)))
+                .VarIfNotZero(7, s.GlyphDamage)
+                .VarIfNotZero(9, s.DirectDamage);
+            mine.Msg(11, dealt);
+
+            var totals = Pb.New()
+                .VarIfNotZero(1, enemiesDefeated)
+                .VarIfNotZero(3, s.DamageTaken)
+                .VarIfNotZero(4, s.HealsGiven)
+                .VarIfNotZero(5, s.TotalDamage)
+                .VarIfNotZero(8, s.ShieldsGiven);
+
+            return Pb.New()
+                .Msg(1, Pb.New().Var(1, character).Msg(2, mine))
+                .Msg(2, totals)
+                .Build();
+        }
+
+        /// <summary>
         /// Se acabó el turno (jyt).
         ///
         ///   f1: las décimas que sobraron, que se guardan para su siguiente turno (se omite si es

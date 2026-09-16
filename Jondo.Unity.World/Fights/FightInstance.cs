@@ -266,6 +266,35 @@ namespace Jondo.Unity.World.Fights
         public CancellationTokenSource PlacementTimerCts { get; set; }
         public CancellationTokenSource TurnTimerCts { get; set; }
 
+        /// <summary>
+        /// A sequence the clients are owed but that has not been opened yet: it opens right
+        /// before the next frame of the fight goes out, and never opens at all when no frame
+        /// follows. The attitude sequences hang on this, because whether an attitude will
+        /// announce anything is only known once its effects have run, and the real server
+        /// never sends an empty jto/jwi pair -- not one in 264 captures.
+        /// </summary>
+        public Func<Task> SequenceToOpen { get; set; }
+
+        /// <summary>The end-of-fight numbers of each person, by character id.</summary>
+        private readonly Dictionary<long, FightStatistics> _statistics = new Dictionary<long, FightStatistics>();
+
+        /// <summary>This person's numbers so far, started at zero the first time they are asked for.</summary>
+        public FightStatistics StatisticsOf(long characterId)
+        {
+            if (!_statistics.TryGetValue(characterId, out var stats))
+            {
+                stats = new FightStatistics();
+                _statistics[characterId] = stats;
+            }
+            return stats;
+        }
+
+        /// <summary>
+        /// Where the blows being dealt right now come from. A glyph going off sets it to
+        /// Glyph for as long as it resolves; everything else is Direct.
+        /// </summary>
+        public DamageSource CurrentDamageSource { get; set; } = DamageSource.Direct;
+
         public FightInstance(long fightId, long mapId, long arenaMapId = 0)
         {
             FightId = fightId;

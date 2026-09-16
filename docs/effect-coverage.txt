@@ -26,7 +26,7 @@ EFFECT  SPELLS  RESOLVED BY     CLASSES  WHAT IT DOES
 2960    42      engine          7        sub-cast: spell #1
 1080    39      characteristic  17       -#1..-#2 MP
 128     39      characteristic  16       #1-#2 MP
-293     39      MISSING         14       #1: +#3 basic damage on that spell
+293     39      engine          14       #1: +#3 basic damage on that spell
 3792    39      engine          7        script marker, nothing to apply
 1109    38      engine          12       heals: #1-#2% max HP
 1020    35      engine          11       shield worth #1-#2% of the caster level
@@ -101,7 +101,7 @@ EFFECT  SPELLS  RESOLVED BY     CLASSES  WHAT IT DOES
 163     5       characteristic  5        -#1..-#2 dodge MP
 77      5       MISSING         5        Roba #1-#2 MP
 2023    5       MISSING         1        triggers runes
-281     4       MISSING         3        #1: +#3 max range
+281     4       engine          3        #1: +#3 max range
 2828    4       engine          3        #1-#2 best-element life steal
 2018    4       MISSING         1        dispels glyphs
 1172    4       characteristic  4        -#1% final damage
@@ -147,7 +147,7 @@ EFFECT  SPELLS  RESOLVED BY     CLASSES  WHAT IT DOES
 1182    2       MISSING         1        Teleportal
 320     2       MISSING         2        steals #1-#2 range
 2935    2       MISSING         1        #1: +#3 basic healing on that spell
-280     2       MISSING         1        #1: +#3 min range
+280     2       engine          1        #1: +#3 min range
 1118    1       engine          1        neutral damage: #1-#2% of the caster eroded HP
 333     1       characteristic  1        changes one colour
 2812    1       characteristic  1        #1-#2% spell damage
@@ -191,4 +191,4 @@ EFFECT  SPELLS  RESOLVED BY     CLASSES  WHAT IT DOES
 1092    1       engine          1        damage neutrales: #1-#2% HP erosionados of the objetivo
 2805    1       characteristic  1        -#1..-#2% ranged damage
 ----------------------------------------------------------------------------------------------------------------
-179 effects: 68 engine, 69 characteristic, 42 MISSING
+179 effects: 71 engine, 69 characteristic, 39 MISSING

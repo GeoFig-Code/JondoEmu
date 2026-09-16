@@ -208,6 +208,13 @@ namespace Jondo.Unity.World.Fights
         public List<long> Ilusiones { get; } = new List<long>();
 
         /// <summary>
+        /// Whether his own side still sees him drawn as hidden -- the visibility switch that
+        /// goes with the copies -- so that the switch back can be sent even after the last
+        /// copy has gone on its own.
+        /// </summary>
+        public bool HiddenAmongCopies { get; set; }
+
+        /// <summary>
         /// How much of its summoner's capacity this fighter takes up, copied from the template's
         /// <c>summonCost</c> when it is summoned. Zero means it is free: the Rogue's bombs, the
         /// Ocra's beacons and 483 other templates cost nothing at all, and a couple of the

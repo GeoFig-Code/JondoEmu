@@ -907,6 +907,14 @@ public static class Op
     /// <summary>Combate. 6556 mensajes, 23 ficheros.</summary>
     public const string Jxm = "jxm";
 
+    /// <summary>
+    /// Las estadisticas de fin de combate de UN jugador -danos infligidos por fuente, recibidos,
+    /// curas, escudos, enemigos derrotados y las medias por turno y por PA-, detras del jyg y
+    /// antes del jxo... del siguiente: "kuf jyg jxo" en cada final de combate de las capturas.
+    /// Un mapa por personaje (f1) y los totales (f2). Medido campo a campo en 30 combates.
+    /// </summary>
+    public const string Jxo = "jxo";
+
     /// <summary>Lo envia el servidor pero el emulador lo usa como disparador de cliente. 4933 mensajes en 23 ficheros.</summary>
     public const string Jxw = "jxw";
 
