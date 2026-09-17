@@ -646,6 +646,9 @@ namespace Jondo.Unity.Server
                 ";
                 createElements.ExecuteNonQuery();
 
+                // Los gremios y sus miembros. La base de todo lo del gremio; ver GuildStore.
+                Managers.GuildStore.EnsureTables(worldConnection);
+
                 // El manojo de llaves a todo el que ya tuviera personaje. Los nuevos lo reciben
                 // con el conjunto del aventurero -ver CharacterCreationHandler-, pero los que ya
                 // estaban se quedarian sin el, y sin manojo no se entra en ninguna de las 107
@@ -4956,6 +4959,74 @@ namespace Jondo.Unity.Server
                 Console.WriteLine($"[DatabaseManager] No se pudo buscar el mapa con más NPC: {ex.Message}");
             }
             return (0, 0);
+        }
+
+        /// <summary>La subárea en la que cae un mapa, o cero. Es lo que pregunta el criterio «PB».</summary>
+        public static int SubAreaOfMap(long mapId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                var query = connection.CreateCommand();
+                query.CommandText = "SELECT SubAreaId FROM MapSubareas WHERE MapId = $m LIMIT 1;";
+                query.Parameters.AddWithValue("$m", mapId);
+                var value = query.ExecuteScalar();
+                return value == null || value is DBNull ? 0 : Convert.ToInt32(value);
+            }
+            catch (Exception ex)
+            {
+                Program.LogDebug($"[DatabaseManager] No se pudo leer la subárea del mapa {mapId}: {ex.Message}");
+                return 0;
+            }
+        }
+
+        /// <summary>Los mapas de una subárea, en orden. Vacío cuando no hay ninguno.</summary>
+        public static List<long> MapsOfSubArea(int subAreaId)
+        {
+            var fuera = new List<long>();
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                var query = connection.CreateCommand();
+                query.CommandText = "SELECT MapId FROM MapSubareas WHERE SubAreaId = $s ORDER BY MapId;";
+                query.Parameters.AddWithValue("$s", subAreaId);
+                using var reader = query.ExecuteReader();
+                while (reader.Read()) fuera.Add(reader.GetInt64(0));
+            }
+            catch (Exception ex)
+            {
+                Program.LogDebug($"[DatabaseManager] No se pudieron leer los mapas de la subárea {subAreaId}: {ex.Message}");
+            }
+            return fuera;
+        }
+
+        /// <summary>
+        /// El criterio de inmunidad a la agresión de un monstruo, tal y como lo trae su plantilla.
+        /// Es lo que gobierna la luz de las raids: los de la Sima llevan
+        /// <c>(PB=1131&amp;RV!7,n1_worldlight,0)|…</c> y dejan de ser inmunes a oscuras.
+        /// </summary>
+        public static string MonsterAggressiveImmunity(int monsterTemplate)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                var query = connection.CreateCommand();
+                query.CommandText = "SELECT Data FROM MonsterTemplates WHERE Id = $m;";
+                query.Parameters.AddWithValue("$m", monsterTemplate);
+                if (query.ExecuteScalar() is not string data) return "";
+                using var doc = System.Text.Json.JsonDocument.Parse(data);
+                return doc.RootElement.TryGetProperty("aggressiveImmunityCriterion", out var criterion)
+                    ? criterion.GetString() ?? ""
+                    : "";
+            }
+            catch (Exception ex)
+            {
+                Program.LogDebug($"[DatabaseManager] No se pudo leer el criterio del monstruo {monsterTemplate}: {ex.Message}");
+                return "";
+            }
         }
 
         /// <summary>

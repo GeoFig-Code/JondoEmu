@@ -643,6 +643,61 @@ namespace Jondo.Unity.Server.Network
                 {
                     await Handlers.PrivateMessageHandler.WhisperAsync(stream, payload);
                 }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jjg)))
+                {
+                    // Crear un gremio.
+                    await Handlers.GuildHandler.CreateAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jho)))
+                {
+                    // Abandonar el gremio.
+                    await Handlers.GuildHandler.LeaveAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jlx)))
+                {
+                    // La pestaña de candidaturas. Va delante del jml al abrir la ventana.
+                    await Handlers.GuildHandler.ApplicationsAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jml)))
+                {
+                    // Abrir la ventana de gremio: pedir rangos, miembros y cabecera.
+                    await Handlers.GuildHandler.OpenWindowAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jlt)))
+                {
+                    // Ver una candidatura.
+                    await Handlers.GuildHandler.ApplicationDetailAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jjn)))
+                {
+                    // Aceptar una candidatura.
+                    await Handlers.GuildHandler.AcceptApplicationAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jiz)))
+                {
+                    // Contestar a una invitación de gremio.
+                    await Handlers.GuildHandler.AnswerInvitationAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jki)))
+                {
+                    // Abrir la tienda del gremio.
+                    await Handlers.GuildHandler.OpenShopAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jkw)))
+                {
+                    // Comprar un oráculo.
+                    await Handlers.GuildHandler.BuyOracleAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jky)))
+                {
+                    // Activarlo.
+                    await Handlers.GuildHandler.ActivateOracleAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jlb)))
+                {
+                    // Contribuir al gremio.
+                    await Handlers.GuildHandler.ContributeAsync(stream, payload);
+                }
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Iyc)))
                 {
                     // El boton de Suenos Infinitos del menu, y la tecla T: al Plano Astral.

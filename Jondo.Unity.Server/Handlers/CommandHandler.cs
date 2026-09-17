@@ -1,5 +1,6 @@
 ﻿using Jondo.Unity.Launcher;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net.Sockets;
@@ -59,6 +60,8 @@ namespace Jondo.Unity.Server.Handlers
                 [".item"] = "usage.item",
                 [".itemset"] = "usage.itemset",
                 [".packets"] = "usage.packets",
+                [".gremio"] = "usage.guild",
+                [".raid"] = "usage.raid",
             };
 
         /// <summary>
@@ -154,6 +157,8 @@ namespace Jondo.Unity.Server.Handlers
                     case ".item": await ItemAsync(stream, rest, channel, accountId); break;
                     case ".itemset": await ItemSetAsync(stream, rest, channel, accountId); break;
                     case ".packets": await PacketsAsync(stream, rest, channel, accountId); break;
+                    case ".gremio": await GremioAsync(stream, rest, channel, accountId); break;
+                    case ".raid": await RaidAsync(stream, rest, channel, accountId); break;
                 }
             }
             catch (Exception ex)
@@ -789,6 +794,116 @@ namespace Jondo.Unity.Server.Handlers
             => CommandTexts.Get(key, values);
 
         private static string Usage(string command) => T(Uso[command]);
+
+        /// <summary>
+        /// Las raids de gremio: comprarla, lanzarla, entrar, salir, cerrarla, y ver cómo va.
+        ///
+        /// Comando y no botones por lo mismo que la invitación: la pestaña de raids de la tienda
+        /// del gremio sale en las capturas VACÍA -el gremio grabado no tenía ninguna-, así que no
+        /// se sabe con qué mensaje se compra ni con cuál se lanza. Lo que hay debajo sí es de
+        /// verdad: la instancia, el reloj y las variables que el contenido del cliente lee.
+        /// </summary>
+        private static async Task RaidAsync(NetworkStream stream, string rest, int channel, long accountId)
+        {
+            long who = Jondo.Unity.Server.Network.SessionContext.State.CharacterId;
+            string[] partes = (rest ?? "").Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+            string que = partes.Length > 0 ? partes[0].ToLowerInvariant() : "";
+
+            if (que.Length == 0)
+            {
+                await NotifyAsync(stream, RaidStatus(who), channel, accountId);
+                return;
+            }
+
+            if (que == "entrar" || que == "salir" || que == "fin")
+            {
+                string fallo = que == "entrar" ? await Managers.GuildRaidManager.EnterAsync(who)
+                             : que == "salir" ? await Managers.GuildRaidManager.LeaveAsync(who)
+                             : await Managers.GuildRaidManager.CloseAsync(who);
+                await NotifyAsync(stream, fallo == null ? RaidStatus(who) : T(fallo), channel, accountId);
+                return;
+            }
+
+            if ((que == "comprar" || que == "lanzar") && partes.Length > 1
+                && int.TryParse(partes[1].Trim(), out int cual))
+            {
+                string fallo = que == "comprar"
+                    ? Managers.GuildRaidManager.Buy(who, cual)
+                    : await Managers.GuildRaidManager.LaunchAsync(who, cual);
+                await NotifyAsync(stream, fallo == null ? RaidStatus(who) : T(fallo), channel, accountId);
+                return;
+            }
+
+            await NotifyAsync(stream, Usage(".raid"), channel, accountId);
+        }
+
+        /// <summary>Cómo va la raid del gremio, que es lo que el panel del cliente enseñaría.</summary>
+        private static string RaidStatus(long characterId)
+        {
+            var guild = Managers.GuildStore.GuildOf(characterId);
+            if (guild == null) return T("raid.noguild");
+
+            var running = Managers.GuildRaidManager.RunningOf(characterId);
+            if (running == null)
+            {
+                var compradas = Managers.GuildStore.OwnedRaids(guild.Id);
+                string tiene = compradas.Count == 0
+                    ? T("raid.status.none")
+                    : string.Join(", ", compradas.Select(r =>
+                        Jondo.Unity.World.Content.Raids.Of(r)?.Name + " (" + r + ")"));
+                return T("raid.status.idle", tiene, guild.GuildKamas.ToString());
+            }
+
+            var kind = Jondo.Unity.World.Content.Raids.Of(running.RaidId);
+            var queda = running.Left(DateTimeOffset.UtcNow);
+            int planta = kind.FloorOf(Managers.GuildRaidManager.SubAreaOf(
+                Jondo.Unity.Server.Network.SessionContext.State.MapId));
+            return T("raid.status.running", kind.Name, ((int)queda.TotalMinutes).ToString(),
+                     running.Score.ToString(), running.Members.Count.ToString(),
+                     planta > 0 ? planta.ToString() : "-");
+        }
+
+        /// <summary>
+        /// Invitar a alguien al gremio, o echar una candidatura a uno.
+        ///
+        /// Esto es un comando y no un botón porque el botón NO ESTÁ MEDIDO: las capturas de
+        /// gremio son del lado de quien recibe la invitación y del líder que lee la candidatura,
+        /// así que se sabe lo que el servidor manda -el jiq y el jma- y lo que el cliente
+        /// contesta -el jiz y el jjn-, pero no con qué mensaje se piden. El día que aparezca en
+        /// una captura, el botón llama a los mismos dos métodos y el comando sobra.
+        /// </summary>
+        private static async Task GremioAsync(NetworkStream stream, string rest, int channel, long accountId)
+        {
+            string[] partes = (rest ?? "").Trim().Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+            if (partes.Length < 2)
+            {
+                await NotifyAsync(stream, Usage(".gremio"), channel, accountId);
+                return;
+            }
+
+            long who = Jondo.Unity.Server.Network.SessionContext.State.CharacterId;
+            string que = partes[0].ToLowerInvariant();
+            string quien = partes[1];
+
+            if (que == "invitar")
+            {
+                string fallo = await Handlers.GuildHandler.InviteAsync(who, quien);
+                await NotifyAsync(stream, fallo == null ? T("guild.invite.sent", quien) : T(fallo, quien),
+                                  channel, accountId);
+                return;
+            }
+
+            if (que == "solicitar")
+            {
+                string mensaje = partes.Length > 2 ? partes[2] : "";
+                string fallo = await Handlers.GuildHandler.ApplyAsync(who, quien, mensaje);
+                await NotifyAsync(stream, fallo == null ? T("guild.apply.sent", quien) : T(fallo, quien),
+                                  channel, accountId);
+                return;
+            }
+
+            await NotifyAsync(stream, Usage(".gremio"), channel, accountId);
+        }
 
         /// <summary>
         /// El aviso al jugador, por el canal donde escribió para que le salga en la pestaña que

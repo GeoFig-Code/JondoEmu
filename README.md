@@ -21,7 +21,7 @@ High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** writte
 
 &nbsp;
 
-- 🌍 &nbsp;**World** &nbsp;— &nbsp;[Connection and authentication](#-connection-and-authentication) · [World and movement](#-world-and-movement) · [Travel](#-travel) · [Houses, bins and haven bags](#-houses-bins-and-haven-bags) · [Social](#-social)
+- 🌍 &nbsp;**World** &nbsp;— &nbsp;[Connection and authentication](#-connection-and-authentication) · [World and movement](#-world-and-movement) · [Travel](#-travel) · [Houses, bins and haven bags](#-houses-bins-and-haven-bags) · [Social](#-social) · [Guilds and raids](#-guilds-and-raids)
 
 - 🎒 &nbsp;**Character** &nbsp;— &nbsp;[Character and inventory](#-character-and-inventory) · [Appearances](#-appearances) · [Professions](#-professions)
 
@@ -251,6 +251,44 @@ its own — or on another machine.
 - ✅ Friends list
 - ✅ **Every command answers in the session's own language**, from a 48-key catalogue in Spanish, English and French. The language comes from the `--langCode` the launcher started the client with, not from the wire: measured over the nine authentication captures, the client does send its two-letter code, but in `kqz` field 3
 - ❌ The invitation popup's *Details* button (`imd` → `ilb`), the dedicated member-gone message (`inc`), party search and following the leader
+
+### ⚜️ Guilds and raids
+
+**Guilds** come out of one capture — founding «Jondo» — and the three frames the real server
+answers with go back out byte for byte: the guild you belong to (`jgw`), its default ranks (`jco`)
+and its header (`jhh`).
+
+- ✅ Found a guild, leave it, open the window; and the guild comes with you into the world on
+  login, rebuilt from our own database rather than replayed from the capture
+- ✅ Member list (`jgu`), the member-gone frame, and the guild tag over your head on the map (`jhe`)
+- ✅ Applications and invitations both ways — apply, list, read one, accept. Which frame accepts a
+  candidate was settled on the timeline, not guessed: the joined-member timestamp the server sends
+  back lands exactly on it
+- ✅ Contributions — 10,000 kamas buy 10 guild kamas, five a week, and the week turns on Tuesday
+- ✅ The oracle shop, five oracles, priced by how many accounts the guild has; one of the five is
+  measured and the other four say in the code that they are inferred from it
+- ❌ The client's own request opcodes for applying, inviting and buying a raid are in no capture.
+  `.gremio` and `.raid` stand in until one exists
+
+**Raids** — the Gigalodón Abyss and the Eternal Gardens Sanctuary — are bought with guild kamas
+(360 and 480), launched by a captain and run against a clock: an hour the first, two the second.
+
+- ✅ The instance carries the raid's own named variables, `Raid_Score` and `n1..n5_worldlight`,
+  which are what the content the client already ships reads
+- ✅ A criterion evaluator over the client's own little language — `&`, `|`, parentheses — with a
+  **tri-state** answer, so what cannot be known is not quietly read as false
+- ✅ **Not one raid rule is written by hand.** The eight monsters of the Abyss carry
+  `(PB=1131&RV!7,n1_worldlight,0)|…` in `world.db`: they are immune to aggression while their floor
+  still has light. The emulator does not invent that rule, it only answers its questions — `PB`
+  with the subarea you are standing in, `RV` with your instance's variables
+- ✅ The clock returns everyone to the map **and cell** they came from, and the captain can close
+  the raid early
+- ❌ The raid panel — the timer, the score and the salt on screen — needs its own messages and no
+  capture has them. Salt and the luminomachines that spend it, the chest that takes the treasures
+  in and the weekly ladder are not there either
+- ❌ The entry map is not measured: no capture goes into a raid, and those floors carry no NPC and
+  no interactive in the data, so there is no door to point at. The lowest map of the first floor is
+  used, and the line is marked as the one to change the day it is measured
 
 ### 🎒 Character and inventory
 
@@ -1514,7 +1552,6 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 
 - Crafting professions
 - Achievements
-- Guilds
 - Party fights
 
 ---

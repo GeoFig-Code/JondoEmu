@@ -737,6 +737,114 @@ public static class Op
     /// <summary>Sin identificar. 1 uso en el emulador.</summary>
     public const string Jfc = "jfc";
 
+    // ─── Gremio ──────────────────────────────────────────────────────────────
+    //
+    // Medido en las 12 capturas de Gremio/. El identificador es el opcode; el nombre va en el
+    // comentario porque no lo sabemos por otra via que la captura. Ver Managers.GuildStore y
+    // Network.GuildProtocol.
+
+    /// <summary>C→S: crear gremio. f1 el emblema {símbolo, color símbolo, fondo, color fondo}, f2 el nombre.</summary>
+    public const string Jjg = "jjg";
+
+    /// <summary>S→C: el gremio al que se pertenece. f2 el puesto, f3 { f1{f3 emblema}, f2 id, f3 nombre, f4 nivel }.</summary>
+    public const string Jgw = "jgw";
+
+    /// <summary>S→C: los puestos del gremio (rangos). Uno por f2 { f2 nombre, f3 permisos, f4{f2 icono, f3 orden}, f5 id }.</summary>
+    public const string Jco = "jco";
+
+    /// <summary>C→S: abrir una pestaña de la ventana de gremio. f1 sección, f3 sub-pestaña.</summary>
+    public const string Jii = "jii";
+
+    /// <summary>C→S: pedir la lista de miembros del gremio.</summary>
+    public const string Jml = "jml";
+
+    /// <summary>C→S: acompaña la apertura de la ventana de gremio (parámetro fijo).</summary>
+    public const string Jlx = "jlx";
+
+    /// <summary>C→S: parte de la apertura de la ventana de gremio.</summary>
+    public const string Jlk = "jlk";
+
+    /// <summary>C→S: parte de la apertura de la ventana de gremio.</summary>
+    public const string Jfp = "jfp";
+
+    /// <summary>C→S: cambia de pestaña dentro de la ventana de gremio. f2 la pestaña.</summary>
+    public const string Jiy = "jiy";
+
+    /// <summary>C→S: abandonar el gremio. f1 el personaje.</summary>
+    public const string Jho = "jho";
+
+    /// <summary>S→C: las candidaturas al gremio. f2 el total, f3 { la candidatura }.</summary>
+    public const string Jmf = "jmf";
+
+    /// <summary>S→C: una candidatura nueva. f2 { la candidatura }, f3 la cuenta.</summary>
+    public const string Jly = "jly";
+
+    /// <summary>S→C: resultado de invitar. f1 el nombre, f2 un id, f3 el estado (1 pedida, 3 aceptada/rechazada).</summary>
+    public const string Jin = "jin";
+
+    /// <summary>S→C: acuse de invitación por id de cuenta.</summary>
+    public const string Jma = "jma";
+
+    /// <summary>S→C: la ficha pública del gremio en la ventana (descripción, líder, reclutamiento).</summary>
+    public const string Jci = "jci";
+
+    /// <summary>S→C: el número de solicitudes pendientes. f1 el estado.</summary>
+    public const string Jij = "jij";
+
+    /// <summary>C→S: abrir la tienda del gremio. Va vacío.</summary>
+    public const string Jki = "jki";
+
+    /// <summary>S→C: la tienda del gremio (oráculos). f2 { f1 cuentas, f2 { f1 id, f2 { f1 precio } } }.</summary>
+    public const string Jkh = "jkh";
+
+    /// <summary>C→S: comprar un artículo de la tienda del gremio. f1 el artículo.</summary>
+    public const string Jkw = "jkw";
+
+    /// <summary>
+    /// S→C: acuse de compra en la tienda del gremio. Con f1 el artículo comprado cuando sale
+    /// bien; VACÍO cuando se rechaza, que es lo que llega en la captura donde no había kamas.
+    /// </summary>
+    public const string Jkj = "jkj";
+
+    /// <summary>S→C: lo comprado que falta por activar. f1 { f2 { f3 el plazo } }, f2 el artículo.</summary>
+    public const string Jkv = "jkv";
+
+    /// <summary>C→S: activar un oráculo ya comprado. f1 el artículo.</summary>
+    public const string Jky = "jky";
+
+    /// <summary>S→C: acuse de activación. f1 el artículo.</summary>
+    public const string Jkx = "jkx";
+
+    /// <summary>S→C: una alteración puesta. f1 { f1 desde, f2 la alteración, f4 2, f5 hasta } en milisegundos.</summary>
+    public const string Lzs = "lzs";
+
+    /// <summary>C→S: contribuir al gremio. f1 el tramo (1 = 10.000 kamas).</summary>
+    public const string Jlb = "jlb";
+
+    /// <summary>S→C: la contribución hecha. f1 los kamas, f2 las que quedan esta semana.</summary>
+    public const string Jle = "jle";
+
+    /// <summary>S→C: te invitan a un gremio. f1 el bloque del gremio, f2 quién invita.</summary>
+    public const string Jiq = "jiq";
+
+    /// <summary>C→S: contestar a la invitación. Vacío rechaza; f1 = 1 acepta.</summary>
+    public const string Jiz = "jiz";
+
+    /// <summary>C→S: ver una candidatura. f2 el personaje que la mandó.</summary>
+    public const string Jlt = "jlt";
+
+    /// <summary>C→S: aceptar una candidatura. f2 el personaje que la mandó.</summary>
+    public const string Jjn = "jjn";
+
+    /// <summary>C→S: contribuir kamas al gremio. Varios campos: puntos, kamas, actividad.</summary>
+    public const string Jjm = "jjm";
+
+    /// <summary>S→C: los kamas de gremio que quedan. f1 la cantidad.</summary>
+    public const string Jia = "jia";
+
+    /// <summary>S→C: quitar a alguien de la lista de miembros (salió del gremio). f1 el id de puesto.</summary>
+    public const string Khj = "khj";
+
     /// <summary>El conyuge, con su look; se descarta. 13 mensajes.</summary>
     public const string Jgu = "jgu";
 

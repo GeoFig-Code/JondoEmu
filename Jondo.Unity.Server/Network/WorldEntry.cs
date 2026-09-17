@@ -751,6 +751,23 @@ namespace Jondo.Unity.Server.Network
             }
             if (skipped > 0) Console.WriteLine($"[World] {skipped} messages left out: they belong to another account.");
 
+            // The guild frames the captured jhe/jhh/jhk were dropped for: built from our own
+            // database now, so a character who has a guild sees it. Nothing goes out for one who
+            // has none, which is what the discard already did. The captured ranks are a fixed
+            // default template (jco), reused here.
+            var guild = Managers.GuildStore.GuildOf(character.Id);
+            if (guild != null)
+            {
+                int rank = Managers.GuildStore.RankOf(character.Id);
+                var members = Managers.GuildStore.Members(guild.Id);
+                await EnviarAsync(stream, ConnectionProtocol.Push(Op.Jgw,
+                    GuildProtocol.BuildGuildJoined(guild, rank)));
+                await EnviarAsync(stream, ConnectionProtocol.Push(Op.Jco, GuildProtocol.BuildDefaultRanks()));
+                await EnviarAsync(stream, ConnectionProtocol.Push(Op.Jhh,
+                    GuildProtocol.BuildGuildInfo(guild, members.Count)));
+                Console.WriteLine($"[World] Guild sent for {character.Name}: {guild.Name} ({members.Count} members).");
+            }
+
             // And in place of the characteristics of the capture, the ones of this character.
             await EnviarAsync(stream, ConnectionProtocol.Push(Op.Kub, ConnectionProtocol.BuildCharacteristics()));
             Console.WriteLine($"[World] Characteristics sent for {character.Name}: level " +
