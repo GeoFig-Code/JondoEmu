@@ -136,7 +136,15 @@ namespace Jondo.Unity.Server.Managers
         public static async Task FinishAsync(RaidInstance raid, RaidInstance.Ending how)
         {
             if (raid == null || !raid.Running) return;
-            raid.Finish(how, DateTimeOffset.UtcNow);
+            var now = DateTimeOffset.UtcNow;
+            raid.Finish(how, now);
+
+            // Y a la clasificación de la semana, como acabara: una raid que se corta por el reloj
+            // con veinte mil puntos vale esos veinte mil. Lo que no cuenta es no haber jugado.
+            if (raid.Score > 0)
+            {
+                GuildStore.RecordRaidScore(raid.GuildId, raid.RaidId, raid.Score, now);
+            }
 
             if (_clocks.TryRemove(raid.GuildId, out var clock))
             {
@@ -149,8 +157,11 @@ namespace Jondo.Unity.Server.Managers
             {
                 await SendHomeAsync(member);
             }
+
+            int puesto = GuildStore.PlaceOf(raid.GuildId, raid.RaidId, now);
             Console.WriteLine($"[Raid] {Raids.Of(raid.RaidId)?.Name} del gremio {raid.GuildId} " +
-                              $"acabada ({how}), {raid.Score} puntos.");
+                              $"acabada ({how}), {raid.Score} puntos" +
+                              (puesto > 0 ? $", puesto {puesto} de la semana." : "."));
         }
 
         /// <summary>El capitán la cierra antes de tiempo, que es lo que le deja hacer su ficha.</summary>

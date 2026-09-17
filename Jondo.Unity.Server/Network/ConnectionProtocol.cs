@@ -956,14 +956,37 @@ namespace Jondo.Unity.Server.Network
 
         private static void AddNpcs(Pb jss, long mapId)
         {
+            // Quién pregunta, para los NPCs que se pintan de varias maneras. Se arma UNA vez por
+            // mapa y sólo si hace falta: el resolvedor mira el gremio en la base, y hacerlo por
+            // cada NPC sería una consulta por actor en cada carga de mapa.
+            Jondo.Unity.World.Content.Criterion.Resolver quien = null;
+
             foreach (var npc in Managers.Npcs.Of(mapId))
             {
+                long bones = npc.Bones;
+                var skins = npc.Skins;
+                var colors = npc.Colors;
+                var scales = npc.Scales;
+
+                if (npc.Variants.Count > 1)
+                {
+                    quien ??= Managers.GuildRaidManager.ResolverFor(GameState.CharacterId);
+                    var otro = Managers.Npcs.VariantFor(npc, quien);
+                    if (otro != null)
+                    {
+                        bones = otro.Bones;
+                        skins = otro.Skins;
+                        colors = otro.Colors;
+                        scales = otro.Scales;
+                    }
+                }
+
                 var look = Pb.New();
-                if (npc.Colors.Length > 0) look.Packed(1, npc.Colors);
+                if (colors.Length > 0) look.Packed(1, colors);
                 look.Var(2, LookKind);
-                look.VarIfNotZero(3, npc.Bones);
-                if (npc.Scales.Length > 0) look.Packed(5, npc.Scales);
-                if (npc.Skins.Length > 0) look.Packed(6, npc.Skins);
+                look.VarIfNotZero(3, bones);
+                if (scales.Length > 0) look.Packed(5, scales);
+                if (skins.Length > 0) look.Packed(6, skins);
 
                 // El género sólo viaja cuando vale 1. Comprobado en las cincuenta y seis plantillas
                 // de la captura: las veinte con género 1 lo mandan, las treinta y cinco con género

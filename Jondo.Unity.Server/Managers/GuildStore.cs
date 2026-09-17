@@ -108,6 +108,15 @@ namespace Jondo.Unity.Server.Managers
                     Week TEXT NOT NULL,
                     Done INTEGER NOT NULL DEFAULT 0,
                     PRIMARY KEY (CharacterId, Week)
+                );
+                CREATE TABLE IF NOT EXISTS GuildRaidScores (
+                    GuildId INTEGER NOT NULL,
+                    RaidId INTEGER NOT NULL,
+                    Week TEXT NOT NULL,
+                    Score INTEGER NOT NULL DEFAULT 0,
+                    Runs INTEGER NOT NULL DEFAULT 0,
+                    BestUtcMs INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (GuildId, RaidId, Week)
                 );";
             create.ExecuteNonQuery();
         }
@@ -469,6 +478,115 @@ namespace Jondo.Unity.Server.Managers
             borra.Parameters.AddWithValue("$g", guildId);
             borra.Parameters.AddWithValue("$r", raidId);
             borra.ExecuteNonQuery();
+        }
+
+        // ─── La clasificación semanal ───────────────────────────────────────────
+
+        /// <summary>Una fila de la clasificación: un gremio, su mejor puntuación de la semana.</summary>
+        public sealed class LadderRow
+        {
+            public long GuildId;
+            public string Name = "";
+            public long Score;
+
+            /// <summary>Cuántas raids de ésta ha terminado el gremio esta semana.</summary>
+            public int Runs;
+
+            /// <summary>El puesto, contando desde uno.</summary>
+            public int Place;
+        }
+
+        /// <summary>
+        /// Apunta lo que ha sacado un gremio en una raid. Se queda con la MEJOR de la semana.
+        /// </summary>
+        /// <remarks>
+        /// La mejor y no la suma, y es una decisión nuestra que conviene decir: la página del juego
+        /// habla de una clasificación global en la que «los mejores podrán representar con orgullo a
+        /// su gremio», y sumar premiaría al gremio que más veces entra antes que al que mejor lo
+        /// hace. Ningún dato del cliente dice cuál de las dos es. Las veces que ha entrado se
+        /// apuntan igualmente, que es lo que hace falta para cambiar de idea sin perder nada.
+        /// </remarks>
+        public static long RecordRaidScore(long guildId, int raidId, long score, DateTimeOffset when)
+        {
+            string week = WeekOf(when);
+            using var conexion = Open();
+
+            var query = conexion.CreateCommand();
+            query.CommandText = "SELECT Score FROM GuildRaidScores " +
+                                "WHERE GuildId = $g AND RaidId = $r AND Week = $w;";
+            query.Parameters.AddWithValue("$g", guildId);
+            query.Parameters.AddWithValue("$r", raidId);
+            query.Parameters.AddWithValue("$w", week);
+            var had = query.ExecuteScalar();
+            long best = had == null || had is DBNull ? 0 : Convert.ToInt64(had);
+
+            bool better = score > best;
+            var apunta = conexion.CreateCommand();
+            apunta.CommandText = @"
+                INSERT INTO GuildRaidScores (GuildId, RaidId, Week, Score, Runs, BestUtcMs)
+                VALUES ($g, $r, $w, $s, 1, $ms)
+                ON CONFLICT(GuildId, RaidId, Week) DO UPDATE SET
+                    Runs = Runs + 1,
+                    Score = CASE WHEN $s > Score THEN $s ELSE Score END,
+                    BestUtcMs = CASE WHEN $s > Score THEN $ms ELSE BestUtcMs END;";
+            apunta.Parameters.AddWithValue("$g", guildId);
+            apunta.Parameters.AddWithValue("$r", raidId);
+            apunta.Parameters.AddWithValue("$w", week);
+            apunta.Parameters.AddWithValue("$s", score);
+            apunta.Parameters.AddWithValue("$ms", when.ToUnixTimeMilliseconds());
+            apunta.ExecuteNonQuery();
+
+            return better ? score : best;
+        }
+
+        /// <summary>
+        /// La clasificación de una raid en una semana, de más a menos.
+        /// </summary>
+        /// <remarks>
+        /// A igual puntuación manda quien la hizo antes, que es lo que hacen todas las tablas de
+        /// este juego y lo único que deja un orden estable: sin eso, dos gremios empatados se
+        /// intercambiarían el puesto cada vez que se pinta la lista.
+        /// </remarks>
+        public static List<LadderRow> Ladder(int raidId, DateTimeOffset when, int most = 20)
+        {
+            using var conexion = Open();
+            var query = conexion.CreateCommand();
+            query.CommandText = @"
+                SELECT s.GuildId, g.Name, s.Score, s.Runs
+                FROM GuildRaidScores s LEFT JOIN Guilds g ON g.Id = s.GuildId
+                WHERE s.RaidId = $r AND s.Week = $w AND s.Score > 0
+                ORDER BY s.Score DESC, s.BestUtcMs ASC
+                LIMIT $n;";
+            query.Parameters.AddWithValue("$r", raidId);
+            query.Parameters.AddWithValue("$w", WeekOf(when));
+            query.Parameters.AddWithValue("$n", Math.Max(1, most));
+
+            var rows = new List<LadderRow>();
+            using var lector = query.ExecuteReader();
+            while (lector.Read())
+            {
+                rows.Add(new LadderRow
+                {
+                    GuildId = lector.GetInt64(0),
+                    Name = lector.IsDBNull(1) ? "" : lector.GetString(1),
+                    Score = lector.GetInt64(2),
+                    Runs = lector.GetInt32(3),
+                    Place = rows.Count + 1,
+                });
+            }
+
+            return rows;
+        }
+
+        /// <summary>El puesto de un gremio esta semana en una raid, o cero si no está.</summary>
+        public static int PlaceOf(long guildId, int raidId, DateTimeOffset when)
+        {
+            foreach (var row in Ladder(raidId, when, int.MaxValue))
+            {
+                if (row.GuildId == guildId) return row.Place;
+            }
+
+            return 0;
         }
 
         /// <summary>Saca a un personaje de su gremio. Devuelve el gremio que dejó, o null si no tenía.</summary>

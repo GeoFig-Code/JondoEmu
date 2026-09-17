@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -166,6 +166,16 @@ namespace Jondo.Unity.World.Content
         /// <summary>Whether its floors carry a light to manage. Only the Gigalodón's do.</summary>
         public bool HasLight { get; init; }
 
+        /// <summary>
+        /// The three ornaments of this raid's weekly podium, first to third.
+        /// </summary>
+        /// <remarks>
+        /// Measured: six ornaments in the client's catalogue, named "Sima del Gigalodón - #1" to
+        /// "#3" and "Santuario de los Jardines Eternos - #1" to "#3", and the game's own page says
+        /// "los mejores podrán representar con orgullo a su gremio en la clasificación global".
+        /// </remarks>
+        public IReadOnlyList<int> Podium { get; init; } = Array.Empty<int>();
+
         /// <summary>Which floor a subarea is, counting from one; zero when it is not of this raid.</summary>
         public int FloorOf(int subArea)
         {
@@ -201,6 +211,7 @@ namespace Jondo.Unity.World.Content
                 MinPlayers = 8,
                 MaxPlayers = 12,
                 HasLight = true,
+                Podium = new[] { 184, 185, 186 },
             },
             [EternalGardens] = new RaidKind
             {
@@ -215,6 +226,7 @@ namespace Jondo.Unity.World.Content
                 MinPlayers = 8,
                 MaxPlayers = 16,
                 HasLight = false,
+                Podium = new[] { 181, 182, 183 },
             },
         };
 

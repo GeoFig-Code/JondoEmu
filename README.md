@@ -298,11 +298,30 @@ and its header (`jhh`).
   written both on the salt's tooltip and across the machine's seventy-six replies. A test re-reads
   all seventy-six out of `world.db`, because the client resolves a reply to its own text by id: a
   table off by one shows the player "Dejar 10 sales" and charges him 4, and nothing anywhere errors
+- ✅ **The chest at the far end**, NPC 7861, with the two screens the client ships: drop every
+  treasure in, or step up to it and be warned that taking it ends the raid for the whole team. The
+  warning is why anyone may take it and not only the captain — it would not need writing otherwise
+- ✅ **A treasure is whatever carries a value**, and there is no list of them anywhere in the code.
+  Eleven items in the whole game carry effect 4063, "Valor de un objeto", and all eleven are raid
+  resources: the gems from Quartz at 2 to Ónix at 30, the three guardians' trophies at 1000, 5000
+  and 10000, and the salt at 1 — so the same handful either buys a band of light or goes in the chest
+- ✅ **The chest fills up as the score rises.** Its look is five variants with a criterion each,
+  reading `Raid_Score` at 5000, 13000, 27000 and 45000, and the right one is picked per player with
+  the same criterion evaluator. That also fixed the look reader for the other 47 templates that ship
+  several looks: it used to cut from the first brace to the last and swallow them all at once
+- ✅ **The weekly ladder**, per raid, keeping each guild's best run of the week — the week turning on
+  Tuesday like the contributions — with ties broken by who got there first. `.raid clasificacion`
+  prints it and names the podium ornament each place has earned
+- ❌ The ladder's ornaments are named, not handed out: the wardrobe already offers all 167 to
+  everybody, so there is nothing yet to grant
 - ❌ The raid panel — the timer, the score and the light on screen — needs its own messages and no
-  capture has them, so the light is a server-side number that `.raid` prints. The chest that takes
-  the treasures in and the weekly ladder are not there either
-- ❌ Where the machines stand is not measured, same as the entrance: one per floor, on the floor's
-  lowest map, on the walkable cell nearest the middle
+  capture has them, so the light and the ladder come out through `.raid`
+- ❌ When the clock beats you to the chest, the client has a line for it — "El Gigalodón acaba de
+  devorar vuestros tesoros. ¡Subid deprisa para enfrentaros a él!" — and that fight needs a boss
+  placed and scripted. Today the clock just closes the raid
+- ❌ Where the machines and the chests stand is not measured, same as the entrance: the machines one
+  per lit floor, the chest at the far end of the last one, always on the lowest map and the walkable
+  cell nearest the middle
 - ❌ The entry map is not measured: no capture goes into a raid, and those floors carry no NPC and
   no interactive in the data, so there is no door to point at. The lowest map of the first floor is
   used, and the line is marked as the one to change the day it is measured

@@ -834,7 +834,59 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            if (que == "clasificacion" || que == "clasificación")
+            {
+                await LadderAsync(stream, partes, channel, accountId);
+                return;
+            }
+
             await NotifyAsync(stream, Usage(".raid"), channel, accountId);
+        }
+
+        /// <summary>
+        /// La clasificación semanal de una raid.
+        /// </summary>
+        /// <remarks>
+        /// Por el chat, como todo lo de las raids, y por lo mismo: la ventana de clasificaciones
+        /// existe en el cliente -«Acceder a las clasificaciones», «Ver la clasificación»- pero
+        /// ninguna captura la abre, así que no se sabe con qué mensaje se llena.
+        ///
+        /// El ornamento del podio se NOMBRA y no se entrega. Hoy el guardarropa ofrece los 167 a
+        /// todo el mundo, así que «darlo» no sería dar nada; el día que haya ornamentos por ganar,
+        /// aquí está a quién le tocan.
+        /// </remarks>
+        private static async Task LadderAsync(NetworkStream stream, string[] partes, int channel, long accountId)
+        {
+            int cual = Jondo.Unity.World.Content.Raids.Gigalodon;
+            if (partes.Length > 1 && int.TryParse(partes[1].Trim(), out int pedida)) cual = pedida;
+
+            var kind = Jondo.Unity.World.Content.Raids.Of(cual);
+            if (kind == null)
+            {
+                await NotifyAsync(stream, T("raid.unknown"), channel, accountId);
+                return;
+            }
+
+            var ahora = DateTimeOffset.UtcNow;
+            var tabla = Managers.GuildStore.Ladder(cual, ahora);
+            if (tabla.Count == 0)
+            {
+                await NotifyAsync(stream, T("raid.ladder.empty", kind.Name), channel, accountId);
+                return;
+            }
+
+            await NotifyAsync(stream, T("raid.ladder.head", kind.Name,
+                                        Managers.GuildStore.WeekOf(ahora)), channel, accountId);
+
+            foreach (var fila in tabla)
+            {
+                string premio = fila.Place <= kind.Podium.Count
+                    ? T("raid.ladder.podium", kind.Podium[fila.Place - 1].ToString())
+                    : "";
+                await NotifyAsync(stream, T("raid.ladder.row", fila.Place.ToString(), fila.Name,
+                                            fila.Score.ToString(), fila.Runs.ToString(), premio),
+                                  channel, accountId);
+            }
         }
 
         /// <summary>Cómo va la raid del gremio, que es lo que el panel del cliente enseñaría.</summary>

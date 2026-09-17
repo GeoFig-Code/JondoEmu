@@ -188,6 +188,13 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // Y el cofre de la raid tampoco tiene árbol: lo que ofrece depende de si traes tesoros.
+            if (npc.NpcId == RaidChest.NpcId)
+            {
+                await OpenChestAsync(stream, npc, mapId);
+                return;
+            }
+
             var template = Npcs.TemplateOf(npc.NpcId);
             var escrito = NpcDialogues.For(npc.NpcId, mapId);
             var primera = escrito?.First();
@@ -280,9 +287,7 @@ namespace Jondo.Unity.Server.Handlers
             else
             {
                 pregunta = Luminomachine.MessageAt(floor, light);
-                var ofrecidas = Luminomachine.RepliesFor(floor, light, salt);
-                respuestas = new long[ofrecidas.Count];
-                for (int i = 0; i < ofrecidas.Count; i++) respuestas[i] = ofrecidas[i];
+                respuestas = Lista(Luminomachine.RepliesFor(floor, light, salt));
             }
 
             SessionContext.State.OpenDialogueNpcId = npc.NpcId;
@@ -332,6 +337,146 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             await DecirleAsync(stream, CommandTexts.Get("light.lit", compra.Floor, luz, compra.Cost));
+        }
+
+        /// <summary>
+        /// El cofre de la raid: soltar los tesoros, acercarse, o dar media vuelta.
+        /// </summary>
+        /// <remarks>
+        /// Soltar los tesoros sólo sale cuando se trae alguno, por lo mismo que en la máquina. Y
+        /// fuera de una raid el cofre no es de nadie: no hay puntuación que subir ni raid que
+        /// acabar, así que lo único que ofrece es retroceder.
+        /// </remarks>
+        private static async Task OpenChestAsync(NetworkStream stream, Npcs.Spawn npc, long mapId)
+        {
+            long who = GameState.CharacterId;
+            long score = Managers.RaidChests.ScoreOf(who);
+            var traidos = score < 0 ? new Dictionary<int, int>() : Managers.RaidTreasures.InTheBag();
+
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Ioc, ConnectionProtocol.BuildNpcDialog(mapId, npc.ContextualId)));
+
+            await PreguntaDelCofreAsync(stream, npc, mapId, score, traidos.Count > 0);
+
+            Console.WriteLine($"[Raids] Cofre del mapa {mapId}: {score} puntos, " +
+                              $"{traidos.Count} clases de tesoro encima.");
+        }
+
+        /// <summary>La primera pantalla del cofre, que se vuelve a poner después de soltar.</summary>
+        private static async Task PreguntaDelCofreAsync(NetworkStream stream, Npcs.Spawn npc, long mapId,
+                                                        long score, bool carrying)
+        {
+            long[] respuestas = score < 0
+                ? new[] { RaidChest.StepBack }
+                : Lista(RaidChest.FirstReplies(carrying));
+
+            SessionContext.State.OpenDialogueNpcId = npc.NpcId;
+            SessionContext.State.OpenDialogueMapId = mapId;
+            SessionContext.State.OpenDialogueMessage = RaidChest.Vibrating;
+
+            await PreguntarAsync(stream, RaidChest.Vibrating, respuestas);
+        }
+
+        /// <summary>
+        /// Lo que hace cada respuesta del cofre.
+        /// </summary>
+        /// <remarks>
+        /// Se cobra lo que DE VERDAD sale de la bolsa, no lo que se ofreció: entre que la ventana
+        /// se abre y llega la respuesta, una pila puede haberse ido a otra parte, y puntuar lo que
+        /// no se entregó sería puntuar el aire.
+        /// </remarks>
+        private static async Task ChestReplyAsync(NetworkStream stream, long reply)
+        {
+            long who = GameState.CharacterId;
+            long mapa = SessionContext.State.OpenDialogueMapId;
+            var npc = CofreDelMapa(mapa);
+
+            if (reply == RaidChest.DropTreasures)
+            {
+                var traidos = Managers.RaidTreasures.InTheBag();
+                var entregados = new Dictionary<int, int>();
+                foreach (var kv in traidos)
+                {
+                    if (await Managers.Equipment.TakeAsync(stream, kv.Key, kv.Value))
+                    {
+                        entregados[kv.Key] = kv.Value;
+                    }
+                }
+
+                long ahora = Managers.RaidChests.Drop(who, entregados);
+                if (entregados.Count == 0 || ahora < 0)
+                {
+                    await DecirleAsync(stream, CommandTexts.Get("chest.gone"));
+                }
+                else
+                {
+                    long cuantos = 0;
+                    foreach (var kv in entregados) cuantos += kv.Value;
+                    await DecirleAsync(stream, CommandTexts.Get("chest.dropped", cuantos,
+                                                                Managers.RaidTreasures.Worth(entregados), ahora));
+                }
+
+                // Y la ventana se queda puesta, ahora sin la opción de soltar: lo normal después de
+                // vaciar la bolsa es acercarse al cofre, no tener que volver a hablarle.
+                if (npc != null)
+                {
+                    await PreguntaDelCofreAsync(stream, npc, mapa, Managers.RaidChests.ScoreOf(who), false);
+                    return;
+                }
+            }
+            else if (reply == RaidChest.Approach)
+            {
+                SessionContext.State.OpenDialogueMessage = RaidChest.Warning;
+                await PreguntarAsync(stream, RaidChest.Warning, Lista(RaidChest.WarningReplies()));
+                return;
+            }
+            else if (reply == RaidChest.TakeAndRun)
+            {
+                var raid = Managers.GuildRaidManager.RaidOf(who);
+                int cual = raid?.RaidId ?? 0;
+
+                CerrarConversacion();
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Kld, ConnectionProtocol.BuildDialogClosed(
+                        ConnectionProtocol.NpcDialogCloseReason)));
+
+                long guild = raid?.GuildId ?? 0;
+                long puntos = await Managers.RaidChests.TakeAsync(who);
+                if (puntos <= 0)
+                {
+                    await DecirleAsync(stream, CommandTexts.Get("chest.taken.none"));
+                    return;
+                }
+
+                int puesto = Managers.GuildStore.PlaceOf(guild, cual, DateTimeOffset.UtcNow);
+                await DecirleAsync(stream, CommandTexts.Get("chest.taken", puntos, puesto,
+                                                            Jondo.Unity.World.Content.Raids.Of(cual)?.Name ?? ""));
+                return;
+            }
+
+            CerrarConversacion();
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Kld, ConnectionProtocol.BuildDialogClosed(
+                    ConnectionProtocol.NpcDialogCloseReason)));
+        }
+
+        /// <summary>El cofre que hay puesto en un mapa, para volver a preguntarle.</summary>
+        private static Npcs.Spawn CofreDelMapa(long mapId)
+        {
+            foreach (var puesto in Npcs.Of(mapId))
+            {
+                if (puesto.NpcId == RaidChest.NpcId) return puesto;
+            }
+
+            return null;
+        }
+
+        /// <summary>Una lista de respuestas como el array que espera la trama.</summary>
+        private static long[] Lista(IReadOnlyList<long> respuestas)
+        {
+            var fuera = new long[respuestas.Count];
+            for (int i = 0; i < respuestas.Count; i++) fuera[i] = respuestas[i];
+            return fuera;
         }
 
         /// <summary>Una línea de servidor en el chat, que es donde se cuenta lo que no tiene ventana.</summary>
@@ -550,6 +695,13 @@ namespace Jondo.Unity.Server.Handlers
                 Luminomachine.Owns(reply))
             {
                 await MachineReplyAsync(stream, reply);
+                return;
+            }
+
+            // Y lo mismo el cofre de la raid.
+            if (SessionContext.State.OpenDialogueNpcId == RaidChest.NpcId && RaidChest.Owns(reply))
+            {
+                await ChestReplyAsync(stream, reply);
                 return;
             }
 
