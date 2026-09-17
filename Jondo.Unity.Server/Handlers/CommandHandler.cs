@@ -858,9 +858,24 @@ namespace Jondo.Unity.Server.Handlers
             var queda = running.Left(DateTimeOffset.UtcNow);
             int planta = kind.FloorOf(Managers.GuildRaidManager.SubAreaOf(
                 Jondo.Unity.Server.Network.SessionContext.State.MapId));
-            return T("raid.status.running", kind.Name, ((int)queda.TotalMinutes).ToString(),
-                     running.Score.ToString(), running.Members.Count.ToString(),
-                     planta > 0 ? planta.ToString() : "-");
+            string estado = T("raid.status.running", kind.Name, ((int)queda.TotalMinutes).ToString(),
+                              running.Score.ToString(), running.Members.Count.ToString(),
+                              planta > 0 ? planta.ToString() : "-");
+
+            // Y la luz, que no tiene otro sitio donde salir. El panel de la raid la pintaría, pero
+            // ese panel necesita mensajes que ninguna captura trae; hasta entonces, aquí.
+            if (!kind.HasLight) return estado;
+
+            var luces = new List<string>();
+            for (int planta2 = 1; planta2 <= Jondo.Unity.World.Content.Luminomachine.Machines; planta2++)
+            {
+                luces.Add($"{planta2}:{running.Get(Jondo.Unity.World.Content.RaidInstance.LightVariable(planta2))}" +
+                          $"/{Jondo.Unity.World.Content.Luminomachine.MostLight}");
+            }
+
+            return estado + T("raid.status.light", string.Join(" ", luces),
+                              Managers.Equipment.HowMany(
+                                  Jondo.Unity.World.Content.Luminomachine.SaltItem).ToString());
         }
 
         /// <summary>

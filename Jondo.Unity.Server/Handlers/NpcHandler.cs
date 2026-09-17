@@ -180,6 +180,14 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static async Task OpenDialogAsync(NetworkStream stream, Npcs.Spawn npc, long mapId)
         {
+            // ¿Es una luminomáquina? Entonces ni plantilla ni árbol escrito: lo que dice y lo que
+            // ofrece salen de la luz que tenga la planta y de la sal que lleve encima el jugador.
+            if (npc.NpcId == Luminomachine.NpcId)
+            {
+                await OpenMachineAsync(stream, npc, mapId);
+                return;
+            }
+
             var template = Npcs.TemplateOf(npc.NpcId);
             var escrito = NpcDialogues.For(npc.NpcId, mapId);
             var primera = escrito?.First();
@@ -237,6 +245,101 @@ namespace Jondo.Unity.Server.Handlers
                               $"{Math.Max(respuestas.Length, 1)} respuestas" +
                               (escrito != null ? $" (escrito, {escrito.Lines.Count} frases)" : " (de la plantilla)") + ".");
         }
+
+        /// <summary>
+        /// La ventana de una luminomáquina: lo que le queda por iluminar y lo que cuesta.
+        /// </summary>
+        /// <remarks>
+        /// La máquina no tiene conversación escrita en ninguna parte y no la necesita: sus setenta
+        /// y seis respuestas dicen cada una lo suyo -«Dejar 4 sales de las profundidades para
+        /// iluminar la segunda franja»- y lo único que hay que decidir es cuáles enseñar. Eso lo
+        /// resuelve <see cref="Luminomachine.RepliesFor"/> con dos números: cuánta luz tiene la
+        /// planta y cuánta sal lleva quien pregunta.
+        ///
+        /// Fuera de una raid la máquina está muerta. No es que se esconda: está en el mapa y se
+        /// puede hablar con ella, pero no hay instancia ninguna que iluminar, así que lo único que
+        /// ofrece es no tocarla. Prometer luz que no se puede encender sería peor que callarse.
+        /// </remarks>
+        private static async Task OpenMachineAsync(NetworkStream stream, Npcs.Spawn npc, long mapId)
+        {
+            int floor = Luminomachines.FloorOn(mapId);
+            int light = floor == 0 ? -1 : Luminomachines.LightOn(GameState.CharacterId, floor);
+            int salt = Managers.Equipment.HowMany(Luminomachine.SaltItem);
+
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Ioc, ConnectionProtocol.BuildNpcDialog(mapId, npc.ContextualId)));
+
+            long pregunta;
+            long[] respuestas;
+
+            if (light < 0)
+            {
+                pregunta = Luminomachine.LitMessage;
+                respuestas = new[] { Luminomachine.DontTouchReply };
+            }
+            else
+            {
+                pregunta = Luminomachine.MessageAt(floor, light);
+                var ofrecidas = Luminomachine.RepliesFor(floor, light, salt);
+                respuestas = new long[ofrecidas.Count];
+                for (int i = 0; i < ofrecidas.Count; i++) respuestas[i] = ofrecidas[i];
+            }
+
+            SessionContext.State.OpenDialogueNpcId = npc.NpcId;
+            SessionContext.State.OpenDialogueMapId = mapId;
+            SessionContext.State.OpenDialogueMessage = pregunta;
+
+            await PreguntarAsync(stream, pregunta, respuestas);
+
+            Console.WriteLine($"[Luminomáquinas] Planta {floor}, luz {light}, {salt} sales: " +
+                              $"pregunta {pregunta}, {respuestas.Length} respuestas.");
+        }
+
+        /// <summary>
+        /// Lo que hace una respuesta de la luminomáquina: cobrar la sal y subir la luz.
+        /// </summary>
+        /// <remarks>
+        /// La sal se cobra ANTES de tocar la luz, y si la luz ha cambiado entre medias se le
+        /// devuelve. Con ocho personas en la misma planta eso no es una rareza teórica: dos que
+        /// hablen a la vez con la misma máquina ven los dos la misma oferta, y el segundo en
+        /// contestar estaría pagando por una franja que ya está encendida.
+        /// </remarks>
+        private static async Task MachineReplyAsync(NetworkStream stream, long reply)
+        {
+            var elegida = Luminomachine.Read(reply);
+
+            CerrarConversacion();
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Kld, ConnectionProtocol.BuildDialogClosed(
+                    ConnectionProtocol.NpcDialogCloseReason)));
+
+            // No tocarla, o irse a buscar más sal: las dos se van sin pagar nada.
+            if (elegida == null || !elegida.Value.Buys) return;
+
+            var compra = elegida.Value;
+            if (!await Managers.Equipment.TakeAsync(stream, Luminomachine.SaltItem, compra.Cost))
+            {
+                await DecirleAsync(stream, CommandTexts.Get("light.nosalt", compra.Cost));
+                return;
+            }
+
+            int luz = Luminomachines.Deposit(GameState.CharacterId, compra.Floor, compra.From, compra.To);
+            if (luz < 0)
+            {
+                await Managers.Equipment.GiveAsync(stream, Luminomachine.SaltItem, compra.Cost);
+                await DecirleAsync(stream, CommandTexts.Get("light.changed"));
+                return;
+            }
+
+            await DecirleAsync(stream, CommandTexts.Get("light.lit", compra.Floor, luz, compra.Cost));
+        }
+
+        /// <summary>Una línea de servidor en el chat, que es donde se cuenta lo que no tiene ventana.</summary>
+        private static Task DecirleAsync(NetworkStream stream, string text)
+            => Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Kti, ConnectionProtocol.BuildChatLine(
+                    GameState.CharacterName, GameState.CharacterId,
+                    SessionContext.Current.AccountId, "[INFO] " + text, 0)));
 
         /// <summary>
         /// Manda una pregunta con sus respuestas, y se asegura de que haya al menos una.
@@ -439,6 +542,15 @@ namespace Jondo.Unity.Server.Handlers
             foreach (var field in ProtoMessage.Parse(ioy).Fields)
             {
                 if (field.FieldNumber == 1 && field.WireType == 0) reply = field.VarIntValue;
+            }
+
+            // ¿Ha contestado una luminomáquina? Ni misiones ni árbol escrito: lo que hace cada una
+            // de sus respuestas lo dice la respuesta misma.
+            if (SessionContext.State.OpenDialogueNpcId == Luminomachine.NpcId &&
+                Luminomachine.Owns(reply))
+            {
+                await MachineReplyAsync(stream, reply);
+                return;
             }
 
             // ¿La frase en la que está reparte alguna misión? Se mira ANTES de seguir, porque

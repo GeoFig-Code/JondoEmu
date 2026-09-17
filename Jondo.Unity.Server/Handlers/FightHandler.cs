@@ -7819,10 +7819,43 @@ namespace Jondo.Unity.Server.Handlers
                     loot.TryGetValue(drop.ObjectId, out int q);
                     loot[drop.ObjectId] = q + 1;
                 }
+
+                // Y la tabla GLOBAL, que es la otra que tiene y que no se leía. Ahí es donde vive
+                // el botín de las raids: los nueve monstruos de la Sima no llevan ni una fila en
+                // su tabla propia y llevan cincuenta y cinco en ésta —la sal de las profundidades
+                // y las siete gemas—, así que sin esto una raid es un sitio donde no cae nada.
+                foreach (var drop in DatabaseManager.GetMonsterGlobalDrops(monster.MonsterId))
+                {
+                    if (!SeLoLleva(drop.ReceiverCriterion)) continue;
+
+                    double probabilidad = extra > 0
+                        ? Math.Min(100.0, drop.PercentDrop * (100.0 + extra) / 100.0)
+                        : drop.PercentDrop;
+                    if (TirarPorcentaje() >= probabilidad) continue;
+                    loot.TryGetValue(drop.ObjectId, out int q);
+                    loot[drop.ObjectId] = q + 1;
+                }
             }
 
             EntregarBotin(loot, out caidos);
             return loot;
+        }
+
+        /// <summary>
+        /// Si a este jugador le toca una fila de la tabla global, según el criterio que ella trae.
+        /// </summary>
+        /// <remarks>
+        /// Lo que no se sabe NO cae, y eso es la mitad de por qué esto funciona. La fila de los
+        /// fragmentos de anomalía la llevan casi todos los monstruos del juego con el criterio
+        /// <c>(HA=50|HS=3383)&amp;Az=1&amp;Pm!28049666</c>, del que no sabemos contestar ni una
+        /// letra: sale Desconocido, no cae, y el mundo entero sigue como estaba. Las de la raid no
+        /// traen criterio ninguno, así que caen.
+        /// </remarks>
+        private static bool SeLoLleva(string criterion)
+        {
+            if (string.IsNullOrWhiteSpace(criterion)) return true;
+            return Jondo.Unity.World.Content.Criterion.Met(criterion,
+                Managers.GuildRaidManager.ResolverFor(GameState.CharacterId));
         }
 
         /// <summary>

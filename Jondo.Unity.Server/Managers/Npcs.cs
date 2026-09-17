@@ -162,6 +162,7 @@ namespace Jondo.Unity.Server.Managers
             // se quedarían sin aspecto, porque lo que se lee de NpcTemplates es sólo lo que hace
             // falta para los que ya están puestos.
             SembrarLosDelMundo();
+            SembrarLasLuminomaquinas();
             NpcDialogues.Load();
 
             var wanted = new HashSet<int>();
@@ -308,6 +309,51 @@ namespace Jondo.Unity.Server.Managers
                 Console.WriteLine($"[NPCs] World placements could not be seeded: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Las luminomáquinas de la Sima, una por planta con luz.
+        /// </summary>
+        /// <remarks>
+        /// No van por la capa escrita a mano porque no hay nada que escribir: su sitio se CALCULA
+        /// de la base -la planta, su mapa más bajo, la casilla andable más cercana al centro- y
+        /// dejarlo en un fichero serían cinco números mágicos que envejecen mal. Dónde y por qué
+        /// está en <see cref="Luminomachines.Place"/>, que es quien lo decide.
+        ///
+        /// Aquí, como los del mundo: sin aspecto, que lo hereda de la plantilla en el paso de más
+        /// abajo. Por eso esto corre antes de cargar las plantillas y no después.
+        /// </remarks>
+        private static void SembrarLasLuminomaquinas()
+        {
+            try
+            {
+                Luminomachines.Place();
+
+                foreach (var machine in Luminomachines.Placed)
+                {
+                    if (!_byMap.TryGetValue(machine.MapId, out var aqui))
+                    {
+                        aqui = new List<Spawn>();
+                        _byMap[machine.MapId] = aqui;
+                    }
+
+                    aqui.Add(new Spawn
+                    {
+                        MapId = machine.MapId,
+                        NpcId = Jondo.Unity.World.Content.Luminomachine.NpcId,
+                        Cell = machine.Cell,
+                        Orientation = DefaultOrientation,
+                        ContextualId = ActorIds.NpcDelMapa(aqui.Count),
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Luminomáquinas] No se han podido poner: {ex.Message}");
+            }
+        }
+
+        /// <summary>Mirando al sureste, que es lo que le toca a quien no dice otra cosa.</summary>
+        private const int DefaultOrientation = 1;
 
         /// <summary>
         /// Pone un NPC en un mapa de sala de sueño, si no está ya.

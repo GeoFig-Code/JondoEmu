@@ -4146,6 +4146,79 @@ namespace Jondo.Unity.Server
         }
 
         /// <summary>
+        /// The other loot table a monster has: the global one, the same for every grade.
+        /// </summary>
+        /// <remarks>
+        /// A monster carries two lists and they are not the same thing. <c>drops</c> is its own,
+        /// with a percentage per grade; <c>globalDrops</c> is what it hands out on top of that, one
+        /// percentage for everyone, and it is where the seasonal and the RAID loot lives -- every
+        /// one of the Abyss monsters carries its salt and its gems here and nothing at all in the
+        /// other list, so a raid where nothing drops is a raid that never read this.
+        ///
+        /// Each row brings a criterion saying who may receive it, and it is left for the caller to
+        /// answer rather than filtered here: the criterion asks where the player is standing and
+        /// what raid he is in, and that is not something a database reader knows.
+        ///
+        /// MEASURED: 55 raid-resource rows across nine monsters, all of them with min and max
+        /// alike and none of them with a criterion, so the two ends are the same number and the
+        /// minimum is what goes out. Where the two ends differ -- the anomaly fragment, at 1 to
+        /// 20 -- the row always carries a criterion we cannot satisfy, so nothing is decided here
+        /// on a guess.
+        /// </remarks>
+        public static List<MonsterDrop> GetMonsterGlobalDrops(int monsterId)
+        {
+            var drops = new List<MonsterDrop>();
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+
+                var cmd = connection.CreateCommand();
+                cmd.CommandText = "SELECT Data FROM MonsterTemplates WHERE Id = $id;";
+                cmd.Parameters.AddWithValue("$id", monsterId);
+                string? json = cmd.ExecuteScalar() as string;
+                if (string.IsNullOrEmpty(json)) return drops;
+
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                if (!doc.RootElement.TryGetProperty("globalDrops", out var list)) return drops;
+                if (list.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                    list.TryGetProperty("Array", out var inner)) list = inner;
+                if (list.ValueKind != System.Text.Json.JsonValueKind.Array) return drops;
+
+                foreach (var e in list.EnumerateArray())
+                {
+                    if (!e.TryGetProperty("objectId", out var oid)) continue;
+                    int objectId = oid.GetInt32();
+
+                    // Filas con objeto -1: no reparten un objeto, reparten una alteración, y de
+                    // eso no hay nada hecho. Se dejan pasar de largo en vez de meter un objeto
+                    // inexistente en la bolsa.
+                    if (objectId <= 0) continue;
+
+                    double pct = 0;
+                    if (e.TryGetProperty("minPercentDrop", out var min)) pct = min.GetDouble();
+                    if (pct <= 0) continue;
+
+                    string criterion = e.TryGetProperty("receiverCriterion", out var c)
+                        ? (c.GetString() ?? "") : "";
+
+                    drops.Add(new MonsterDrop
+                    {
+                        ObjectId = objectId,
+                        PercentDrop = pct,
+                        ReceiverCriterion = criterion,
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Program.LogDebug($"[DatabaseManager] Error reading the global loot table of monster " +
+                                 $"{monsterId}: {ex.Message}");
+            }
+            return drops;
+        }
+
+        /// <summary>
         /// Puts an item into the inventory. If one of the same kind is already loose in the bag,
         /// it adds to that stack instead of creating another entry. Returns the resulting item.
         /// </summary>
@@ -5111,6 +5184,16 @@ namespace Jondo.Unity.Server
         public int ObjectId { get; set; }
         /// <summary>Drop chance, as a percentage, for the monster's grade.</summary>
         public double PercentDrop { get; set; }
+
+        /// <summary>
+        /// What the receiver has to satisfy to get it, in the client's own criterion language, or
+        /// empty when anybody does.
+        /// </summary>
+        /// <remarks>
+        /// Only the global table carries one. It is what keeps a raid's treasures inside the raid
+        /// and the season's fragments inside the season.
+        /// </remarks>
+        public string ReceiverCriterion { get; set; } = "";
     }
 
     public class SpellCombatData

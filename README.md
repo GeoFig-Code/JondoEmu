@@ -283,9 +283,26 @@ and its header (`jhh`).
   with the subarea you are standing in, `RV` with your instance's variables
 - ✅ The clock returns everyone to the map **and cell** they came from, and the captain can close
   the raid early
-- ❌ The raid panel — the timer, the score and the salt on screen — needs its own messages and no
-  capture has them. Salt and the luminomachines that spend it, the chest that takes the treasures
-  in and the weekly ladder are not there either
+- ✅ **Raid loot comes out of the monsters' GLOBAL table**, which nothing had ever read. The nine
+  Abyss monsters carry not one row in their own loot table and fifty-five in that one: depths salt
+  at 30%, or 100% from the three that guard a floor, and the seven gems on a ladder of their own
+  per monster, from the Madrepeora's 0.1% onyx to the Krakenfado's 20%
+- ✅ A global row carries a criterion saying who may receive it, and **what cannot be answered does
+  not drop** — which is the whole reason reading that table does not start raining the season's
+  anomaly fragments on everybody
+- ✅ **The luminomachine**, NPC 8007, one on each of the five floors that have light: it offers
+  exactly the jumps the player can pay for, swallows the salt and raises that floor's
+  `nX_worldlight`, so the whole team sees the floor brighten off one player's bag. When he cannot
+  afford even one more band, the machine's own "Ir a recoger N sales" says how short he is
+- ✅ The ladder — 1, 3, 6 and 10 salt for one more band, a jump paying the sum — is the client's,
+  written both on the salt's tooltip and across the machine's seventy-six replies. A test re-reads
+  all seventy-six out of `world.db`, because the client resolves a reply to its own text by id: a
+  table off by one shows the player "Dejar 10 sales" and charges him 4, and nothing anywhere errors
+- ❌ The raid panel — the timer, the score and the light on screen — needs its own messages and no
+  capture has them, so the light is a server-side number that `.raid` prints. The chest that takes
+  the treasures in and the weekly ladder are not there either
+- ❌ Where the machines stand is not measured, same as the entrance: one per floor, on the floor's
+  lowest map, on the walkable cell nearest the middle
 - ❌ The entry map is not measured: no capture goes into a raid, and those floors carry no NPC and
   no interactive in the data, so there is no door to point at. The lowest map of the first floor is
   used, and the line is marked as the one to change the day it is measured
