@@ -533,13 +533,14 @@ against the real client, or checked against its own capture, and does what the g
 it has not — either the engine cannot resolve part of it on paper, and the reason follows the
 dash (an effect with no implementation, a target mask or an area shape the engine does not read;
 sub-casts are followed, so a gap in a chained spell shows on the spell that starts the chain), or
-it resolves on paper and nobody has checked it yet, and there is no reason. A spell only counts
-when **all** of it works: a spell whose rebound is measured and right but whose third effect
-has no implementation stays a ❌.
+it resolves on paper and nobody has checked it yet, and there is no reason. A ✅ with "unread on
+paper" after the dash has been seen doing what the game does while a letter of its sheet is still
+not read — the survival beacon's kill carries a mask `U` nobody reads, and she plays, heals and
+dies on time all the same.
 
 The list is generated from `world.db` and the engine's own source by `tools/spell_checklist.py`;
 the ✅ are set by hand in it, from what has been seen. What explains most of the crosses is not
-an effect but the target-mask letters the engine does not read yet (`c`, `O`, `J`, `M`, `T`,
+an effect but the target-mask letters the engine does not read yet (`c`, `J`, `M`, `T`,
 `L`, `j`, `R`, `U`, `l`, `m`, `r`, `b<n>`, `PB`/`pb`), then the area shape `G`, and only then
 the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-healing bonus
 (2935), maximised random rolls (782), damage as a share of the damage taken (1223).
@@ -549,23 +550,23 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 | Feca | 0 | 26 | 44 |
 | Osamodas | 0 | 29 | 44 |
 | Anutrof | 0 | 34 | 44 |
-| Sram | 0 | 35 | 44 |
+| Sram | 0 | 37 | 44 |
 | Xelor | 0 | 10 | 44 |
 | Zurcarák | 0 | 6 | 44 |
-| Aniripsa | 0 | 8 | 44 |
-| Yopuka | 0 | 36 | 44 |
-| Ocra | 5 | 28 | 44 |
+| Aniripsa | 0 | 27 | 44 |
+| Yopuka | 0 | 39 | 44 |
+| Ocra | 7 | 28 | 44 |
 | Sadida | 0 | 28 | 44 |
-| Sacrógrito | 0 | 33 | 44 |
+| Sacrógrito | 0 | 34 | 44 |
 | Pandawa | 0 | 29 | 44 |
-| Tymador | 10 | 34 | 44 |
-| Zobal | 0 | 29 | 44 |
+| Tymador | 13 | 37 | 44 |
+| Zobal | 0 | 30 | 44 |
 | Steamer | 0 | 23 | 44 |
 | Selatrop | 0 | 11 | 44 |
 | Hipermago | 0 | 8 | 44 |
 | Uginak | 0 | 3 | 44 |
-| Forjalanza | 0 | 9 | 44 |
-| **All** | **15** | **419** | **836** |
+| Forjalanza | 0 | 10 | 44 |
+| **All** | **20** | **449** | **836** |
 
 <details><summary><b>Feca</b> — 0 of 44 seen working, 26 resolve on paper</summary>
 
@@ -582,7 +583,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Barricada
 - ❌ Pavés — mask `U`
 - ❌ Recelo — effect 202 (reveals invisible entities), effect 402 (places an end-of-turn glyph), mask `U`
-- ❌ Parapeto — effect 1165 (places to glyph), effect 2018 (dispels glyphs), effect 202 (reveals invisible entities), mask `U`, shape `O`
+- ❌ Parapeto — effect 1165 (places to glyph), effect 2018 (dispels glyphs), effect 202 (reveals invisible entities), mask `U`
 - ❌ Letargo
 - ❌ Reagrupamiento
 - ❌ Nimbo
@@ -714,7 +715,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 
 </details>
 
-<details><summary><b>Sram</b> — 0 of 44 seen working, 35 resolve on paper</summary>
+<details><summary><b>Sram</b> — 0 of 44 seen working, 37 resolve on paper</summary>
 
 - ❌ Invisibilidad
 - ❌ Bruma
@@ -754,61 +755,61 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Artimaña
 - ❌ Trampas mortales
 - ❌ Calamidad — shape `G`
-- ❌ Escapatoria — mask `O`
+- ❌ Escapatoria
 - ❌ Marca Mortuoria
 - ❌ Trampa de Deriva
 - ❌ Trampa Insidiosa
-- ❌ Estratagema — shape `O`
+- ❌ Estratagema
 - ❌ Inyección Tóxica — effect 1036 (#1: -#3 cooldown)
 
 </details>
 
 <details><summary><b>Xelor</b> — 0 of 44 seen working, 10 resolve on paper</summary>
 
-- ❌ Teletransportación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Astrolabio — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`, mask `c`
-- ❌ Perturbación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Rueda Dentada — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`, shape `O`
-- ❌ Recuerdo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Permutación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
+- ❌ Teletransportación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Astrolabio — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`, mask `c`
+- ❌ Perturbación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Rueda Dentada — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Recuerdo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Permutación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
 - ❌ Marchitación
 - ❌ Aguja — effect 1406 (removes the effects of grade #1 of spell #2)
-- ❌ Rebobinamiento — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1099 (teleports to the turn-start position), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`, mask `c`
-- ❌ Remanencia — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`, mask `c`
-- ❌ Refracción — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Regulador — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), effect 290 (#1: +#3 cast(s) per turn), mask `O`, mask `T`
+- ❌ Rebobinamiento — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1099 (teleports to the turn-start position), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`, mask `c`
+- ❌ Remanencia — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`, mask `c`
+- ❌ Refracción — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Regulador — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), effect 290 (#1: +#3 cast(s) per turn), mask `T`
 - ❌ Cómplice
 - ❌ Esfera de Xelor
-- ❌ Congelación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Polvo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
+- ❌ Congelación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Polvo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
 - ❌ Ralentización
 - ❌ Reloj de Arena de Xelor — effect 1406 (removes the effects of grade #1 of spell #2)
-- ❌ Engranaje — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Cuentagotas — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
+- ❌ Engranaje — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Cuentagotas — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
 - ❌ Borroso Temporal
 - ❌ Conservación
-- ❌ Distorsión — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`, shape `G`
-- ❌ Arenas del Tiempo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ El Tiempo Vuela — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Premonición — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1101 (teleports o intercambia posiciones), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Rayo Oscuro — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Desecamiento — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Paradoja — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Falla — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`, mask `u`
+- ❌ Distorsión — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`, shape `G`
+- ❌ Arenas del Tiempo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ El Tiempo Vuela — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Premonición — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1101 (teleports o intercambia posiciones), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Rayo Oscuro — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Desecamiento — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Paradoja — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Falla — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`, mask `u`
 - ❌ Syncro
 - ❌ Tañido — shape `G`
-- ❌ Petrificación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), effect 285 (#1: -#3 AP), mask `O`, mask `T`
-- ❌ Reloj de Bolsillo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), effect 2018 (dispels glyphs), mask `O`, mask `T`
-- ❌ Reloj — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Reloj de Agua — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Golpe de Xelor — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Péndulo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
-- ❌ Momificación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
+- ❌ Petrificación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), effect 285 (#1: -#3 AP), mask `T`
+- ❌ Reloj de Bolsillo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), effect 2018 (dispels glyphs), mask `T`
+- ❌ Reloj — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Reloj de Agua — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Golpe de Xelor — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Péndulo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Momificación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
 - ❌ 25ª Hora
-- ❌ Rolbac — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
+- ❌ Rolbac — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
 - ❌ Inestabilidad
 - ❌ Desincronización
-- ❌ Espaciotiempo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `O`, mask `T`
+- ❌ Espaciotiempo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
 
 </details>
 
@@ -857,52 +858,52 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Ovillo — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo), mask `c`
 - ❌ Garra de Ceangal — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo), mask `c`
 - ❌ Feliación — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo), mask `c`
-- ❌ Desventura — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo), mask `c`, shape `O`
+- ❌ Desventura — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo), mask `c`
 
 </details>
 
-<details><summary><b>Aniripsa</b> — 0 of 44 seen working, 8 resolve on paper</summary>
+<details><summary><b>Aniripsa</b> — 0 of 44 seen working, 27 resolve on paper</summary>
 
 - ❌ Palabra de Amistad — effect 1045 (#1: cooldown pinned to #3 turns), effect 402 (places an end-of-turn glyph)
 - ❌ Palabra Alquímica — effect 290 (#1: +#3 cast(s) per turn), mask `x`
-- ❌ Palabra Escandalosa — mask `O`
-- ❌ Grito Ensordecedor — mask `O`
-- ❌ Palabra Juguetona — mask `O`
-- ❌ Palabra Maliciosa — mask `O`
-- ❌ Palabra Vampírica — mask `O`
-- ❌ Sollozos — effect 2973 (heals #1-#2% of the damage dealt), mask `O`
+- ❌ Palabra Escandalosa
+- ❌ Grito Ensordecedor
+- ❌ Palabra Juguetona
+- ❌ Palabra Maliciosa
+- ❌ Palabra Vampírica
+- ❌ Sollozos — effect 2973 (heals #1-#2% of the damage dealt)
 - ❌ Palabra Estimulante
 - ❌ Palabra de Declive — effect 2935 (#1: +#3 basic healing on that spell)
-- ❌ Blasfemia — mask `O`
-- ❌ Ungüento Ancestral — mask `O`
-- ❌ Pintura de Guerra — mask `O`
-- ❌ Palabra Secreta — effect 2935 (#1: +#3 basic healing on that spell), mask `O`
-- ❌ Lamentos — effect 2973 (heals #1-#2% of the damage dealt), mask `O`
-- ❌ Demencia — mask `O`
-- ❌ Palabra Turbulenta — mask `O`
-- ❌ Palabra Furiosa — mask `O`
+- ❌ Blasfemia
+- ❌ Ungüento Ancestral
+- ❌ Pintura de Guerra
+- ❌ Palabra Secreta — effect 2935 (#1: +#3 basic healing on that spell)
+- ❌ Lamentos — effect 2973 (heals #1-#2% of the damage dealt)
+- ❌ Demencia
+- ❌ Palabra Turbulenta
+- ❌ Palabra Furiosa
 - ❌ Palabra Revitalizante
 - ❌ Palabra Galvanizadora
-- ❌ Palabra Bromista — mask `O`
-- ❌ Palabra Censurada — mask `O`
-- ❌ Palabra Florida — mask `O`, shape `*`
-- ❌ Bosquecillo Encantado — mask `O`
+- ❌ Palabra Bromista
+- ❌ Palabra Censurada
+- ❌ Palabra Florida — shape `*`
+- ❌ Bosquecillo Encantado
 - ❌ Palabra de Juventud
 - ❌ Palabra Deprimente — effect 2935 (#1: +#3 basic healing on that spell)
-- ❌ Grito de Guerra — mask `O`
-- ❌ Palabra Ritual — mask `O`, shape `O`
-- ❌ Palabra Prohibida — mask `O`
-- ❌ Palabra Exangüe — effect 786 (heals the attacker for #1% of the damage), mask `O`
+- ❌ Grito de Guerra
+- ❌ Palabra Ritual
+- ❌ Palabra Prohibida
+- ❌ Palabra Exangüe — effect 786 (heals the attacker for #1% of the damage)
 - ❌ Palabra Abrumadora — effect 2935 (#1: +#3 basic healing on that spell)
 - ❌ Palabra Desanimadora — effect 2935 (#1: +#3 basic healing on that spell)
-- ❌ Ladronceo — effect 320 (steals #1-#2 range), mask `O`
-- ❌ Palabra Entretenida — mask `O`
+- ❌ Ladronceo — effect 320 (steals #1-#2 range)
+- ❌ Palabra Entretenida
 - ❌ Palabra de Vuelo
 - ❌ Fuente de Juventud — effect 402 (places an end-of-turn glyph), mask `c`
-- ❌ Pincel Tribal — mask `O`, mask `c`
-- ❌ Coro Estridente — effect 2935 (#1: +#3 basic healing on that spell), mask `O`
-- ❌ Crioterapia — mask `O`
-- ❌ Murmullo — effect 77 (Roba #1-#2 MP), mask `O`
+- ❌ Pincel Tribal — mask `c`
+- ❌ Coro Estridente — effect 2935 (#1: +#3 basic healing on that spell)
+- ❌ Crioterapia
+- ❌ Murmullo — effect 77 (Roba #1-#2 MP)
 - ❌ Palabra de Pavor
 - ❌ Escalpelo — effect 3002 (#1-#2 best-element healing)
 - ❌ Palabra de Reconstitución
@@ -910,7 +911,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 
 </details>
 
-<details><summary><b>Yopuka</b> — 0 of 44 seen working, 36 resolve on paper</summary>
+<details><summary><b>Yopuka</b> — 0 of 44 seen working, 39 resolve on paper</summary>
 
 - ❌ Machete
 - ❌ Acumulación — mask `c`
@@ -932,8 +933,8 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Sentencia
 - ❌ Furor
 - ❌ Ira de Yopuka
-- ❌ Fricción — mask `O`
-- ❌ Golpe por Golpe — mask `O`
+- ❌ Fricción
+- ❌ Golpe por Golpe
 - ❌ Influencia
 - ❌ Duelo Yopukil
 - ❌ Potencia
@@ -953,13 +954,13 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Presión
 - ❌ Fractura
 - ❌ Oleada
-- ❌ Anillo Destructor — shape `O`
+- ❌ Anillo Destructor
 - ❌ Precipitación
 - ❌ Determinación
 
 </details>
 
-<details><summary><b>Ocra</b> — 5 of 44 seen working, 28 resolve on paper</summary>
+<details><summary><b>Ocra</b> — 7 of 44 seen working, 28 resolve on paper</summary>
 
 - ✅ Flecha Helada — the critical roll, measured
 - ❌ Flecha Acosante
@@ -969,8 +970,8 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Flecha Asaltante — mask `c`
 - ❌ Flecha Vagabunda
 - ❌ Flecha Evasiva — mask `c`
-- ❌ Paso de Cacería
-- ❌ Baliza Táctica — mask `O`, mask `U`
+- ✅ Paso de Cacería — the jump, and the +1 MP the turn after
+- ❌ Baliza Táctica — mask `U`
 - ❌ Disparos Lejanos — mask `b9`
 - ❌ Tiro Penetrante
 - ❌ Flecha Detonadora
@@ -991,7 +992,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Lluvia de Flechas
 - ❌ Ojo por Ojo
 - ❌ Flecha Paralizadora — shape `G`
-- ❌ Baliza de Supervivencia — mask `U`
+- ✅ Baliza de Supervivencia — she plays her turn on her own and dies two rounds later through her own 141; unread on paper: mask `U`
 - ✅ Represalias
 - ✅ Tiro de Repliegue
 - ❌ Vendetta
@@ -1057,7 +1058,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 
 </details>
 
-<details><summary><b>Sacrógrito</b> — 0 of 44 seen working, 33 resolve on paper</summary>
+<details><summary><b>Sacrógrito</b> — 0 of 44 seen working, 34 resolve on paper</summary>
 
 - ❌ Mutilación
 - ❌ Pacto de Sangre
@@ -1082,7 +1083,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Baño de Sangre — shape `G`
 - ❌ Inmolación
 - ❌ Sacrificio — effect 765 (intercepts damage)
-- ❌ Penitencia — mask `O`, mask `c`
+- ❌ Penitencia — mask `c`
 - ❌ Desolación
 - ❌ Desencadenamiento — shape `G`
 - ❌ Disolución
@@ -1094,7 +1095,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Absorción
 - ❌ Furia
 - ❌ Suplicio — effect 786 (heals the attacker for #1% of the damage)
-- ❌ Nerviosismo — shape `O`
+- ❌ Nerviosismo
 - ❌ Estasis
 - ❌ Escozor
 - ❌ Atracción
@@ -1155,7 +1156,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 
 </details>
 
-<details><summary><b>Tymador</b> — 10 of 44 seen working, 34 resolve on paper</summary>
+<details><summary><b>Tymador</b> — 13 of 44 seen working, 37 resolve on paper</summary>
 
 - ✅ Detonador
 - ❌ Estopín
@@ -1169,7 +1170,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Cadencia
 - ❌ Imantación — mask `b12`; does nothing on an empty cell, as it should
 - ❌ Cruce — shape `*`
-- ❌ Fusil — shape `-`
+- ✅ Fusil
 - ❌ Obliteración
 - ❌ Jugarreta
 - ❌ Bomba Ambulante — mask `U`, mask `j`
@@ -1185,7 +1186,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Argucia
 - ❌ Púlsar
 - ❌ Perdigonazo
-- ❌ Remisión — mask `O`
+- ✅ Remisión
 - ❌ Búnker
 - ❌ Dagas Bumerán
 - ❌ Tromba
@@ -1197,17 +1198,17 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Trampa Magnética
 - ✅ Mosquete
 - ❌ Granalla
-- ❌ Colado — shape `O`
+- ✅ Colado
 - ❌ Arcabuz
 - ✅ Sismobomba
 - ❌ Sismobomba Resiliente — mask `U`
 
 </details>
 
-<details><summary><b>Zobal</b> — 0 of 44 seen working, 29 resolve on paper</summary>
+<details><summary><b>Zobal</b> — 0 of 44 seen working, 30 resolve on paper</summary>
 
 - ❌ Boliche
-- ❌ Ronda — shape `O`
+- ❌ Ronda
 - ❌ Catalepsia
 - ❌ Apostasía
 - ❌ Máscara Eskérdikat — effect 1036 (#1: -#3 cooldown), effect 1045 (#1: cooldown pinned to #3 turns), mask `b14`
@@ -1263,7 +1264,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Ventalla — effect 1036 (#1: -#3 cooldown), effect 2027 (Toma el control de la entidad)
 - ❌ Evolución — effect 2027 (Toma el control de la entidad)
 - ❌ Sobretensión — effect 2027 (Toma el control de la entidad)
-- ❌ Albarrama — effect 765 (intercepts damage), mask `O`
+- ❌ Albarrama — effect 765 (intercepts damage)
 - ❌ Recursividad — effect 1023 (Intercambio de posiciones (forzado)), effect 2017 (#1)
 - ❌ Escafandra
 - ❌ Blindaje — mask `c`
@@ -1323,7 +1324,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Terapia
 - ❌ Puño Relámpago — mask `R`, mask `r`
 - ❌ Distribución — effect 2973 (heals #1-#2% of the damage dealt)
-- ❌ Soberbia — effect 1223 (damage: #1-#2% of the final damage taken), mask `O`
+- ❌ Soberbia — effect 1223 (damage: #1-#2% of the final damage taken)
 - ❌ Estela — effect 1181 (places a portal (+#3% damage, +#1% per cell travelled))
 - ❌ Estupor — effect 1181 (places a portal (+#3% damage, +#1% per cell travelled))
 - ❌ Acoso — mask `R`, mask `r`
@@ -1384,7 +1385,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Diluvio — effect 320 (steals #1-#2 range)
 - ❌ Asteroide — effect 320 (steals #1-#2 range)
 - ❌ Sobrecarga Rúnica — effect 2023 (triggers runes)
-- ❌ Sublimación — effect 320 (steals #1-#2 range), mask `O`
+- ❌ Sublimación — effect 320 (steals #1-#2 range)
 - ❌ Ráfaga — effect 320 (steals #1-#2 range)
 - ❌ Brecha — effect 320 (steals #1-#2 range)
 - ❌ Meteoro — effect 320 (steals #1-#2 range)
@@ -1395,7 +1396,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Repulsión Rúnica — effect 2023 (triggers runes)
 - ❌ Drenaje Elemental
 - ❌ Tributo
-- ❌ Supernova — effect 2832 (#1-#2 damage of the peor elemento), effect 320 (steals #1-#2 range)
+- ❌ Supernova — effect 320 (steals #1-#2 range)
 - ❌ Torrente Arcano
 
 </details>
@@ -1449,17 +1450,17 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 
 </details>
 
-<details><summary><b>Forjalanza</b> — 0 of 44 seen working, 9 resolve on paper</summary>
+<details><summary><b>Forjalanza</b> — 0 of 44 seen working, 10 resolve on paper</summary>
 
 - ❌ Lanza del Lago — shape `G`
 - ❌ Chuzo Sísmico — shape `G`, shape `R`
 - ❌ Lanzapiedras — shape `G`
 - ❌ Jabalina Rayo — shape `G`
 - ❌ Epílogo — shape `G`
-- ❌ Anticipación — mask `O`, shape `G`
+- ❌ Anticipación — shape `G`
 - ❌ Lanza de Incendios — shape `G`
 - ❌ Lluvia Dorena — shape `G`
-- ❌ Carga Heroica — shape `G`, shape `O`
+- ❌ Carga Heroica — shape `G`
 - ❌ Galantería — shape `G`
 - ❌ Colapso — shape `*`
 - ❌ Lanza Ciclón — shape `G`
@@ -1480,7 +1481,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Muspel — shape `G`
 - ❌ Ydra — shape `*`, shape `G`
 - ❌ Punzón — mask `c`, shape `G`
-- ❌ Abrazo de Valquíride — mask `H`, mask `O`
+- ❌ Abrazo de Valquíride — mask `H`
 - ❌ Tierra Media — shape `G`
 - ❌ Despeje — shape `G`
 - ❌ Caballería — shape `G`
@@ -1494,7 +1495,7 @@ the effects: a cooldown pinned to a number of turns (1045), a spell's own basic-
 - ❌ Eclipse — effect 1036 (#1: -#3 cooldown), effect 289 (#1: line of sight disabled), effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3), effect 299 (#1: casilla libre necesaria activada), effect 314 (#1: casilla ocupada necesaria activada), mask `c`, shape `G`
 - ❌ Holmgang — effect 2018 (dispels glyphs), shape `G`
 - ❌ Jabalina Keatina — shape `G`
-- ❌ Molino Rojo — shape `O`
+- ❌ Molino Rojo
 
 </details>
 
