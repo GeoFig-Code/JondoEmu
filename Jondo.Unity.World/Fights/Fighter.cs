@@ -156,12 +156,6 @@ namespace Jondo.Unity.World.Fights
         public int HechizoPropio { get; set; }
 
         /// <summary>
-        /// La ronda en la que se deshace solo. Menos uno mientras no tenga cuenta atrás. Lo pone
-        /// el efecto 141, que el servidor le cuelga al nacer.
-        /// </summary>
-        public int MuereEnRonda { get; set; } = -1;
-
-        /// <summary>
         /// Si le toca turno en el carrusel.
         ///
         /// No todos los invocados juegan. Medido en las capturas: la Baliza de Supervivencia
@@ -181,13 +175,23 @@ namespace Jondo.Unity.World.Fights
 
         /// <summary>
         /// Whether <paramref name="characterId"/> plays this fighter: himself, or a summon of
-        /// his. Every summon is played by its summoner in this client -- the Osamodas' animals,
-        /// the Tymobot, the Ocra's beacon: the real server sends the owner a jyy with the
-        /// summon's spells when it appears and a jyj when its turn comes, and the owner's jrw
-        /// and jwh then move and cast it.
+        /// his that is his to play. The real server sends the owner a jyj when such a summon's
+        /// turn comes, and the owner's jrw and jwh then move and cast it.
         /// </summary>
         public bool ControlledBy(long characterId)
-            => Id == characterId || (EsInvocado && Invocador == characterId);
+            => Id == characterId || (EsInvocado && Invocador == characterId && !PlaysOnItsOwn);
+
+        /// <summary>
+        /// A summon with NOTHING TO PLAY: no step to take and no spell of its own. Its turn is
+        /// its start-of-turn triggers and then the turn handed on, and nobody gets a jyj for
+        /// it. Every other summon is its owner's to play, by hand: the Tymobot (jyj on its
+        /// jzc, then the owner's jrw and jwh, in its capture), the Bomba Ambulante, the
+        /// Osamodas' animals, the Enutrof's chests. What never gets one in the captures is what
+        /// cannot act: both beacons (no MP, no spells), the Xelor's dials, the Pandawa's
+        /// barrel. It was the owner's to play here too, which is what put a "pass turn" button
+        /// on the beacon's fifteen seconds.
+        /// </summary>
+        public bool PlaysOnItsOwn => EsInvocado && MaxMP <= 0 && HechizosDeInvocado.Count == 0;
 
         /// <summary>Who carries this fighter (effect 50), or zero. A carried fighter shares the carrier's cell and holds no cell of his own.</summary>
         public long CarriedBy { get; set; }
@@ -268,13 +272,24 @@ namespace Jondo.Unity.World.Fights
             return b.Bonus;
         }
 
-        public void StartTurn()
+        /// <summary>
+        /// The points for a new turn: the maximum plus whatever the live buffs say. A buff of
+        /// points changes the current ones the moment it lands, and from then on it is the
+        /// turn start that carries it -- "+1 PA durante 3 turnos" is one more on each of those
+        /// turns, and "-2 PA" put on somebody before his turn is two fewer when it starts.
+        /// Without the buffs here, both ended with the turn they were cast in.
+        /// </summary>
+        public void StartTurn(int ronda)
         {
-            CurrentAP = MaxAP;
-            CurrentMP = MaxMP;
+            CurrentAP = Math.Max(0, MaxAP + Buffs.De(CaracteristicaDePuntosDeAccion, ronda));
+            CurrentMP = Math.Max(0, MaxMP + Buffs.De(CaracteristicaDePuntosDeMovimiento, ronda));
             AccumulatedMpLoss = 0;
             AccumulatedApLoss = 0;
         }
+
+        /// <summary>The catalogue's numbers for the two kinds of points.</summary>
+        public const int CaracteristicaDePuntosDeAccion = 1;
+        public const int CaracteristicaDePuntosDeMovimiento = 23;
 
         /// <summary>Dónde estaba antes del último movimiento. Menos uno si no se ha movido.</summary>
         /// <remarks>

@@ -379,9 +379,6 @@ namespace Jondo.Unity.Launcher
         // abría por ruta relativa, y sin ella la ficha cae de 120 entradas a 25 sin decir nada.
         public static string CharacteristicFieldsJson => Resolve("caracteristicas_kub.json");
 
-        // Cuántas rondas vive cada invocación. Lo que no esté medido no lleva cuenta atrás.
-        public static string SummonDurationsJson => Resolve("invocaciones_duracion.json");
-
         /// <summary>
         /// Lo que hace cada bomba: su explosión, lo que lanza al objetivo y su cadena. Sale del
         /// cliente con tools/extract_bomb_spells.py, de la clase SpellBombData.

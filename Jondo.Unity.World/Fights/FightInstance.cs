@@ -295,6 +295,14 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public DamageSource CurrentDamageSource { get; set; } = DamageSource.Direct;
 
+        /// <summary>
+        /// Who dealt the blow whose triggers are firing right now, for as long as they fire;
+        /// null the rest of the time. It is what the target mask letter "O" points at: the
+        /// push of Remisión, "repele a sus atacantes", goes to whoever hit the bearer in melee,
+        /// who is nowhere near the aimed cell of the spell that pushes.
+        /// </summary>
+        public Fighter TriggeringAttacker { get; set; }
+
         public FightInstance(long fightId, long mapId, long arenaMapId = 0)
         {
             FightId = fightId;
@@ -455,21 +463,6 @@ namespace Jondo.Unity.World.Fights
                 CurrentTurnIndex = TurnOrder.IndexOf(jugando);
             }
         }
-
-        /// <summary>
-        /// Los invocados a los que se les ha acabado el tiempo en esta ronda. El efecto 141 les
-        /// cuelga la cuenta atrás al nacer y aquí se cobra.
-        /// </summary>
-        public List<Fighter> InvocadosQueSeDeshacen(int ronda)
-        {
-            var fuera = new List<Fighter>();
-            foreach (var f in Azul) if (SeDeshace(f, ronda)) fuera.Add(f);
-            foreach (var f in Rojo) if (SeDeshace(f, ronda)) fuera.Add(f);
-            return fuera;
-        }
-
-        private static bool SeDeshace(Fighter f, int ronda)
-            => f.EsInvocado && f.IsAlive && f.MuereEnRonda >= 0 && ronda >= f.MuereEnRonda;
 
         /// <summary>
         /// Takes a fighter off the board for good -- an illusion that is gone. Not a death: no
@@ -693,7 +686,7 @@ namespace Jondo.Unity.World.Fights
 
             if (CurrentFighter != null)
             {
-                CurrentFighter.StartTurn();
+                CurrentFighter.StartTurn(RoundNumber);
             }
         }
 
@@ -867,7 +860,7 @@ namespace Jondo.Unity.World.Fights
                 return null;
             }
 
-            CurrentFighter.StartTurn();
+            CurrentFighter.StartTurn(RoundNumber);
             return CurrentFighter;
         }
 

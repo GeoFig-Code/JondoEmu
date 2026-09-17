@@ -85,8 +85,40 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public int PendingHealPoints { get; set; }
 
-        public bool Vivo(int ronda)
-            => ronda >= EmpiezaEnRonda && (CaducaEnRonda < 0 || ronda < CaducaEnRonda);
+        /// <summary>
+        /// A row that is only WAITING: the effect has a delay and nothing of it applies until
+        /// <see cref="EmpiezaEnRonda"/>. The real server registers it with trigger "Y", hidden
+        /// from the panel, and drops it when the effect goes off: the kill of a beacon two
+        /// rounds after its birth, the script marker and the +1 MP of Paso de Cacería on the
+        /// next turn. What it will do is in <see cref="EffectId"/>, <see cref="Caracteristica"/>
+        /// and <see cref="Cuanto"/>, and how long it will then last in <see cref="Duracion"/>.
+        /// </summary>
+        public bool Pendiente { get; set; }
+
+        /// <summary>
+        /// The catalogue numbers of the row, kept for the frames: the dice, the value, and how
+        /// dispellable it is. A pending row announces them twice, once waiting and once live.
+        /// </summary>
+        public int Dado { get; set; }
+        public int Cara { get; set; }
+        public int Valor { get; set; }
+        public int Dispellable { get; set; }
+
+        /// <summary>How many rounds a pending row lasts once it goes off.</summary>
+        public int Duracion { get; set; }
+
+        /// <summary>
+        /// The pending row this one came out of, for the client to link the two: the activated
+        /// +1 MP of Paso de Cacería carries the number of its "Y" row. Zero when it has none.
+        /// </summary>
+        public int Padre { get; set; }
+
+        /// <summary>
+        /// Whether the row counts right now: started, and still on the bearer. Expiry is the
+        /// sweep's business, not this one's -- a row whose round has come stays in force until
+        /// the sweep takes it at its caster's turn, which is when the real server drops it.
+        /// </summary>
+        public bool Vivo(int ronda) => ronda >= EmpiezaEnRonda && !Pendiente;
     }
 
     /// <summary>
@@ -367,7 +399,15 @@ namespace Jondo.Unity.World.Fights
         }
 
         /// <summary>Se lleva los que ya han caducado y devuelve cuáles eran.</summary>
-        public List<Buff> Barrer(int ronda)
+        /// <param name="leTocaCaer">
+        /// Which of the expired rows fall NOW. Without it, all of them. The turn start passes
+        /// the rule the captures show: a row falls at the start of its caster's turn, not at
+        /// the first turn of its round. Measured over the class captures on the rounds a
+        /// monster opens -- the only ones that tell the two apart -- thirteen rows put by the
+        /// player fall at his own turn and one at the monster's; and fifty-seven rows put by a
+        /// summon fall at the summon's own turn.
+        /// </param>
+        public List<Buff> Barrer(int ronda, Func<Buff, bool> leTocaCaer = null)
         {
             // Se barre lo que ha CADUCADO, no lo que «no esta vivo».
             //
@@ -379,8 +419,9 @@ namespace Jondo.Unity.World.Fights
             // su cuenta atras -el 3 y el 2- y al turno siguiente desaparecian dejando la cadena
             // vacia, sin llegar a aplicarse nunca. Nacian y se los llevaba la escoba antes de que
             // les tocara empezar.
-            var caidos = _puestos.FindAll(e => Caducado(e, ronda));
-            _puestos.RemoveAll(e => Caducado(e, ronda));
+            bool cae(Buff e) => Caducado(e, ronda) && (leTocaCaer == null || leTocaCaer(e));
+            var caidos = _puestos.FindAll(cae);
+            _puestos.RemoveAll(cae);
 
             // Un estado temporal no puede sobrevivir al embrujo que lo puso. Se conserva si
             // todavía queda otro embrujo vivo que represente el mismo estado.
@@ -404,9 +445,22 @@ namespace Jondo.Unity.World.Fights
             return due;
         }
 
+        /// <summary>
+        /// Removes and returns the pending rows whose round has come, in the order they were
+        /// put. Like the delayed heals, before the expiry sweep: a pending row's expiry is its
+        /// activation round, and the sweep would take it as merely expired.
+        /// </summary>
+        public List<Buff> TakeDuePending(int round)
+        {
+            var due = _puestos.FindAll(e => e.Pendiente && round >= e.EmpiezaEnRonda);
+            _puestos.RemoveAll(e => e.Pendiente && round >= e.EmpiezaEnRonda);
+            return due;
+        }
+
         /// <summary>Si a un embrujo se le ha pasado la hora. Uno que aun no ha empezado, NO.</summary>
+        /// <remarks>A pending row never expires on its own: it goes when it goes off.</remarks>
         private static bool Caducado(Buff embrujo, int ronda)
-            => embrujo.CaducaEnRonda >= 0 && ronda >= embrujo.CaducaEnRonda;
+            => !embrujo.Pendiente && embrujo.CaducaEnRonda >= 0 && ronda >= embrujo.CaducaEnRonda;
 
         public void Vaciar()
         {

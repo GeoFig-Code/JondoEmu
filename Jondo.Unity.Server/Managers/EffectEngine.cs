@@ -80,6 +80,25 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>El efecto 141: mata al objetivo, sin cálculo de por medio.</summary>
         public bool Fulmina { get; init; }
 
+        /// <summary>
+        /// The 3793 script marker going off now: it travels as an action (jwe 3793) with the
+        /// spell, its grade, its value and the cell of <see cref="Sobre"/>, and leaves no row.
+        /// </summary>
+        public bool Marcador { get; init; }
+
+        /// <summary>
+        /// Points of a removal the target dodged: they go out as a jwe 308 (AP) or 309 (MP)
+        /// before anything else of the effect. Zero when nothing was dodged.
+        /// </summary>
+        public int PuntosEsquivados { get; init; }
+
+        /// <summary>
+        /// The effect the row is announced as when it is not the catalogue's own: a landed
+        /// "retira PA" travels as a "-N PA" (168) with N the points really lost, in the 74
+        /// removal rows of the captures. Zero to announce the effect as it is.
+        /// </summary>
+        public int EfectoEnElCable { get; init; }
+
         /// <summary>Los puntos de escudo que este efecto ha puesto. Cero cuando no pone ninguno.</summary>
         public int Escudo { get; init; }
 
@@ -158,6 +177,21 @@ namespace Jondo.Unity.Server.Managers
     }
 
     /// <summary>
+    /// A waiting row whose round has come: what it was, on whom, and the live row it turned
+    /// into when it is one that lasts. A kill and a marker turn into nothing: the death and the
+    /// jwe 3793 are the whole of them.
+    /// </summary>
+    internal sealed class PendingActivation
+    {
+        public Fighter Target { get; init; } = null!;
+        public long CasterId { get; init; }
+        public Buff Waiting { get; init; } = null!;
+        public Buff Live { get; init; }
+        public bool Kills => Waiting.EffectId == EffectEngine.MataAlObjetivo;
+        public bool Marks => Waiting.EffectId == EffectEngine.MarcadorDeGuion;
+    }
+
+    /// <summary>
     /// El motor de efectos: coge las entradas del EffectsJson de un hechizo y las convierte en
     /// cosas que le pasan a alguien.
     ///
@@ -208,6 +242,7 @@ namespace Jondo.Unity.Server.Managers
         public static bool EsDeDano(int efecto)
             => (efecto >= DanoPrimero && efecto <= DanoUltimo)
                || efecto == DanoDelMejorElemento
+               || efecto == DanoDelPeorElemento
                || PegaSegunLoErosionado(efecto);
 
         /// <summary>
@@ -239,6 +274,10 @@ namespace Jondo.Unity.Server.Managers
                 if (efecto.EffectId == DanoDelMejorElemento || elemento == ElementoMejor)
                 {
                     elemento = MejorElementoDe(quienLanza, combate.RoundNumber);
+                }
+                else if (efecto.EffectId == DanoDelPeorElemento)
+                {
+                    elemento = PeorElementoDe(quienLanza, combate.RoundNumber);
                 }
                 foreach (var sobre in AQuien(combate, quienLanza, objetivo, efecto, celdaApuntada))
                 {
@@ -467,7 +506,7 @@ namespace Jondo.Unity.Server.Managers
         /// panel como cualquier otro efecto que no se sabe aplicar, que es lo que ya hace el
         /// camino genérico, y aquí sólo queda dicho por qué está bien que se quede así.
         /// </remarks>
-        private const int MarcadorDeGuion = 3793;
+        internal const int MarcadorDeGuion = 3793;
 
         /// <summary>El 3792: el hermano inmediato del 3793. Tampoco hay nada que aplicar.</summary>
         /// <remarks>
@@ -563,6 +602,14 @@ namespace Jondo.Unity.Server.Managers
         /// las cuatro características y quedarse con la mayor.
         /// </remarks>
         private const int DanoDelMejorElemento = 2822;
+
+        /// <summary>
+        /// «N de daños del peor elemento» (2832): Llamita, "ocasiona daños en el peor elemento
+        /// del lanzador". The same question the other way round: of the four characteristics,
+        /// the lowest names the element. It went to the panel as a row that nobody knew how to
+        /// apply, and the spell hit for nothing.
+        /// </summary>
+        private const int DanoDelPeorElemento = 2832;
 
         /// <summary>El 5 de Effects.ElementId: «el mejor», que no es un elemento sino una pregunta.</summary>
         private const int ElementoMejor = 5;
@@ -785,6 +832,21 @@ namespace Jondo.Unity.Server.Managers
             return mejor;
         }
 
+        /// <summary>The element of the caster's lowest characteristic; the first of a tie.</summary>
+        internal static int PeorElementoDe(Fighter quien, int ronda)
+        {
+            int peor = 1, cuanto = int.MaxValue;
+
+            foreach (int elemento in new[] { 1, 2, 3, 4 })
+            {
+                int car = CharacteristicOfElement(elemento);
+                int tiene = StatOf(quien, car) + quien.Buffs.De(car, ronda);
+                if (tiene < cuanto) { cuanto = tiene; peor = elemento; }
+            }
+
+            return peor;
+        }
+
         /// <summary>Effect 1159, received healing as a percentage multiplier.</summary>
         private const int ReceivedHealingPercent = 1159;
 
@@ -844,7 +906,7 @@ namespace Jondo.Unity.Server.Managers
         /// «no sé aplicarlo pero lo anuncio», que lo pintaba en el panel de embrujos y no mataba
         /// a nadie.
         /// </remarks>
-        private const int MataAlObjetivo = 141;
+        internal const int MataAlObjetivo = 141;
 
         private const int PuntosDeAccion = 1;
         private const int PuntosDeMovimiento = 23;
@@ -869,6 +931,15 @@ namespace Jondo.Unity.Server.Managers
         public const string AlEmpezarElTurno = "TB";
         public const string AlAcabarElTurno = "TE";
         public const string CuandoMePegan = "DBE";
+
+        /// <summary>
+        /// When the bearer is hurt by somebody standing next to him (DM, "cuerpo a cuerpo")
+        /// or by somebody further away (DR), whichever side he is on. Remisión is written on
+        /// the pair: its push and its state go under DM, its "-N% de daños recibidos" on a
+        /// bomb under DR. The blow's dealer is at hand as the fight's TriggeringAttacker.
+        /// </summary>
+        public const string CuandoMePeganDeCerca = "DM";
+        public const string CuandoMePeganDeLejos = "DR";
 
         /// <summary>
         /// When the bearer dies. Read off Polvo: "haciendo que explote si es destruida" is its
@@ -965,6 +1036,21 @@ namespace Jondo.Unity.Server.Managers
                 }
                 if (!leToca) continue;
 
+                // A push or a pull under a trigger is the SHEET's copy of a displacement the
+                // spell really does through a sub-cast, and does not run. Remisión carries
+                // "5 dice 6 trig DM mask a,A" next to its "1160 13430 trig DM", and 13430
+                // holds the push that goes out -- to the attacker, through O; Fricción's "6
+                // dice 2 trig DBE", Ojo por Ojo's and Palabra Turbulenta's sit next to their
+                // 1160 the same way, and the two left (Maldición Movediza, Puño Meteoro) are
+                // under D, which nothing fires yet. In the Remisión capture the real server
+                // registers the 950 and the 1160 as hooked rows and the push as nothing, and
+                // the bearer does not move when he is hit.
+                if ((efecto.EffectId == EffectSupport.Push || efecto.EffectId == EffectSupport.Pull)
+                    && !string.Equals(trigger, AlLanzar, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
                 // Root damage is sent by HurtAsync. Damage inside a hidden chained spell must be
                 // materialized here or Aplicar will deliberately discard it as an ordinary row.
                 if (depth > 0 && EsDeDano(efecto.EffectId))
@@ -1038,6 +1124,24 @@ namespace Jondo.Unity.Server.Managers
                     var puesta = Aplicar(combat, caster, caster, spell, grade, efecto,
                                          round, aimedCell, sharedHealRoll);
                     if (puesta != null) fuera.Add(puesta);
+                    continue;
+                }
+
+                // "Teletransporta a la casilla objetivo" (4) moves THE CASTER, and is aimed at
+                // a cell that has to be empty: nobody in the zone is ever the one who moves.
+                // Its "a,A" -- 330 of its 470 rows, Paso de Cacería among them -- went looking
+                // for somebody on the empty cell and found no one, so the Ocra kept his cell
+                // and only the +1 MP of the spell went out. Measured in his capture: the jwe 4
+                // carries the Ocra to the aimed cell three casts out of three. The starred
+                // conditions on him are still honoured.
+                if (efecto.EffectId == Teletransportar)
+                {
+                    if (aimedCell < 0) continue;
+                    if (!CasterQualifies(caster, efecto.TargetMask, estadosAlEmpezar)) continue;
+
+                    var saltado = Aplicar(combat, caster, caster, spell, grade, efecto, round,
+                                          aimedCell, sharedHealRoll);
+                    if (saltado != null) fuera.Add(saltado);
                     continue;
                 }
 
@@ -1318,10 +1422,50 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
+        /// The starred tokens of a mask, which are conditions on the CASTER and not on the
+        /// target. Read off Pinzas: the pick-up carries "*e3" and the throw "*E3", and 3 is the
+        /// state of the one carrying -- the bomb being picked up is not, the bot throwing it
+        /// is. The catalogue stars states (10,121 tokens), monster templates (1,163) and life
+        /// thresholds (197); the handful of other letters starred (h, m, i, d, j, B, l, s, Q)
+        /// are not read and let the effect through.
+        /// </summary>
+        /// <remarks>
+        /// Against the same snapshot as the targets' states when one is given: judged live, the
+        /// throw of Pinzas would fire in the very cast that picked the bomb up.
+        /// </remarks>
+        internal static bool CasterQualifies(Fighter quienLanza, string mascara,
+                                             IReadOnlyDictionary<Fighter, HashSet<int>> estados = null)
+        {
+            if (string.IsNullOrEmpty(mascara) || mascara.IndexOf('*') < 0) return true;
+            IReadOnlySet<int> delLanzador = estados != null && estados.TryGetValue(quienLanza, out var alEmpezar)
+                ? alEmpezar
+                : quienLanza.Buffs.Estados as IReadOnlySet<int> ?? new HashSet<int>(quienLanza.Buffs.Estados);
+
+            foreach (var trozo in mascara.Split(','))
+            {
+                string t = trozo.Trim();
+                if (t.Length < 3 || t[0] != '*') continue;
+                char letra = t[1];
+                if (!int.TryParse(t.Substring(2), out int numero)) continue;
+                switch (letra)
+                {
+                    case 'E': if (!delLanzador.Contains(numero)) return false; break;
+                    case 'e': if (delLanzador.Contains(numero)) return false; break;
+                    case 'F': if (!quienLanza.IsMonster || quienLanza.MonsterId != numero) return false; break;
+                    case 'f': if (quienLanza.IsMonster && quienLanza.MonsterId == numero) return false; break;
+                    case 'V': if (!LifeUnder(quienLanza, numero)) return false; break;
+                    case 'v': if (LifeUnder(quienLanza, numero)) return false; break;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
         /// A quién le toca un efecto, según su máscara.
         ///
         ///   C          a quien lo lanza
-        ///   a, A       a los del otro bando (y a los del propio, según el juego; aquí, al objetivo)
+        ///   a, A       los del propio bando -- el lanzador incluido -- y los de enfrente
+        ///   O          the one whose blow set the spell off, wherever he stands
         ///   e&lt;N&gt;      sólo si NO lleva el estado N
         ///   E&lt;N&gt;      sólo si SÍ lo lleva
         ///
@@ -1334,8 +1478,9 @@ namespace Jondo.Unity.Server.Managers
                                                    IReadOnlyDictionary<Fighter, HashSet<int>> estados = null)
         {
             var mascara = efecto.TargetMask ?? "";
-            bool alLanzador = false, aLosMios = false, aLosDeEnfrente = false, aLasInvocaciones = false;
+            bool alLanzador = false, aLosMios = false, aLosDeEnfrente = false, aLosOtrosAliados = false;
             bool ownSummonsOnly = false, notOwnSummons = false, alInvocador = false, aTodasLasInvocaciones = false;
+            bool alAtacante = false;
             var pideEstado = new List<int>();
             var pideNoEstado = new List<int>();
             var requiredMonsterTemplates = new List<int>();
@@ -1343,25 +1488,14 @@ namespace Jondo.Unity.Server.Managers
             var lifeBelow = new List<int>();       // V<n>: life strictly under n% of the maximum
             var lifeNotBelow = new List<int>();    // v<n>: life at n% or above
 
-            var casterNeedsState = new List<int>();
-            var casterMustLackState = new List<int>();
-
             foreach (var trozo in mascara.Split(','))
             {
                 string t = trozo.Trim();
                 if (t.Length == 0) continue;
 
-                // A star puts the condition on the CASTER instead of on the target. Read off
-                // Pinzas: the pick-up carries "*e3" and the throw "*E3", and 3 is the state of
-                // the one carrying -- the bomb being picked up is not, the bot throwing it is.
-                // Every starred token in the catalogue is a state or a life threshold.
-                if (t[0] == '*' && t.Length > 2 && (t[1] == 'E' || t[1] == 'e') &&
-                    int.TryParse(t.Substring(2), out int casterState))
-                {
-                    if (t[1] == 'E') casterNeedsState.Add(casterState); else casterMustLackState.Add(casterState);
-                    continue;
-                }
-                t = t.TrimStart('*');
+                // A star puts the condition on the CASTER instead of on the target; those are
+                // judged apart, in CasterQualifies.
+                if (t[0] == '*') continue;
                 if (t == "C") { alLanzador = true; continue; }
 
                 // LA MINÚSCULA Y LA MAYÚSCULA NO SON LO MISMO: la "a" son los del propio bando y
@@ -1376,9 +1510,14 @@ namespace Jondo.Unity.Server.Managers
                 if (t == "a") { aLosMios = true; continue; }
                 if (t == "A") { aLosDeEnfrente = true; continue; }
 
-                // Las invocaciones. Son 1.518 efectos en la base con "g" a secas, y hasta ahora se
-                // caían todos en silencio: es lo que dejaba a la Baliza de Supervivencia sin curar.
-                if (t == "g") { aLasInvocaciones = true; continue; }
+                // g: THE OTHER ALLIES -- the caster's side without the caster. It was read as
+                // "the allied summons", and the Baliza de Supervivencia's "cura a todos los
+                // aliados" healed no Ocra. The catalogue says allies: of the 74 class spells
+                // whose sheet describes a bare "g", 62 say "aliados" and one "invocación" --
+                // "da 1 PA a los aliados en contacto", "cura a sus aliados alineados con él" --
+                // and the spells that "no afectan al lanzador" write "g,A" where the ones that
+                // do write "a,A".
+                if (t == "g") { aLosOtrosAliados = true; continue; }
 
                 // Multiple uppercase F entries are alternatives. Fulminating Arrow uses this to
                 // mark either Cra beacon template while excluding ordinary allies.
@@ -1422,6 +1561,16 @@ namespace Jondo.Unity.Server.Managers
                 if (t == "h") { alInvocador = true; continue; }
                 if (t == "i") { aTodasLasInvocaciones = true; continue; }
 
+                // O: whoever dealt the blow that set the spell off, wherever he stands, and
+                // NOBODY ELSE -- the other letters then say which sides and states of his the
+                // effect takes. Read off Remisión's capture: its push is "a,A,O,e3795" on a
+                // spell cast at the bearer's own cell, and the one pushed is the Tymador who
+                // had just hit him in melee from a cell the zone never touches, the bearer
+                // himself untouched. And off Cutícula Repulsiva, whose own pushes carry
+                // "a,A,O" under the instant trigger: with nobody attacking at the cast, they
+                // push nobody.
+                if (t == "O") { alAtacante = true; continue; }
+
                 if (t.Length > 1 && (t[0] == 'e' || t[0] == 'E') && int.TryParse(t.Substring(1), out int estado))
                 {
                     if (t[0] == 'E') pideEstado.Add(estado); else pideNoEstado.Add(estado);
@@ -1447,16 +1596,26 @@ namespace Jondo.Unity.Server.Managers
             // Against the same snapshot as the targets' states: Pinzas carries the pick-up and
             // the throw in one grade, "*e3" and "*E3", and judged live the throw would fire in
             // the very cast that picked the bomb up.
-            if (casterNeedsState.Count > 0 || casterMustLackState.Count > 0)
-            {
-                IReadOnlySet<int> delLanzador = estados != null && estados.TryGetValue(quienLanza, out var alEmpezar)
-                    ? alEmpezar
-                    : quienLanza.Buffs.Estados as IReadOnlySet<int> ?? new HashSet<int>(quienLanza.Buffs.Estados);
-                foreach (int estado in casterNeedsState) if (!delLanzador.Contains(estado)) yield break;
-                foreach (int estado in casterMustLackState) if (delLanzador.Contains(estado)) yield break;
-            }
+            if (!CasterQualifies(quienLanza, mascara, estados)) yield break;
 
             var candidatos = new List<Fighter>();
+
+            // With an O the candidate is the attacker and nobody else; without an attacker at
+            // hand -- the cast itself, a turn trigger -- the effect touches no one.
+            if (alAtacante)
+            {
+                var atacante = combate.TriggeringAttacker;
+                if (atacante == null || !atacante.IsAlive) yield break;
+                bool deLosSuyos = atacante.TeamId == quienLanza.TeamId;
+                bool leVale = (aLosMios && deLosSuyos) || (aLosDeEnfrente && !deLosSuyos)
+                           || (alLanzador && atacante == quienLanza)
+                           || (aLosOtrosAliados && deLosSuyos && atacante != quienLanza)
+                           || (aTodasLasInvocaciones && atacante.EsInvocado);
+                if (!leVale) yield break;
+                candidatos.Add(atacante);
+                aLosMios = aLosDeEnfrente = aLosOtrosAliados = aTodasLasInvocaciones = alLanzador = alInvocador = false;
+            }
+
             if (alLanzador) candidatos.Add(quienLanza);
             if (alInvocador && quienLanza.EsInvocado)
             {
@@ -1464,7 +1623,7 @@ namespace Jondo.Unity.Server.Managers
                 if (invocador != null && invocador.IsAlive && !candidatos.Contains(invocador)) candidatos.Add(invocador);
             }
 
-            if (aLosMios || aLosDeEnfrente || aLasInvocaciones || aTodasLasInvocaciones)
+            if (aLosMios || aLosDeEnfrente || aLosOtrosAliados || aTodasLasInvocaciones)
             {
                 // La zona: el efecto dice de qué FORMA coge el terreno alrededor de la casilla
                 // apuntada —un punto, un círculo de radio dos, una cruz— y le toca a todo el que
@@ -1476,23 +1635,21 @@ namespace Jondo.Unity.Server.Managers
 
                     bool leToca = (aLosMios && suyo)
                                || (aLosDeEnfrente && !suyo)
-                               || (aLasInvocaciones && esInvocado && suyo)
+                               || (aLosOtrosAliados && suyo && quien != quienLanza)
                                || (aTodasLasInvocaciones && esInvocado);
                     if (!leToca) continue;
 
                     if (!candidatos.Contains(quien)) candidatos.Add(quien);
                 }
 
-                // El que lanza NO entra en su propia zona: para eso está la "C".
-                //
-                // "a,A" quiere decir "los dos bandos", no "yo incluido". Es lo que hace peligroso
-                // al Ojo de Topo, cuyo daño lleva esa máscara y por tanto se lleva por delante a
-                // los aliados que pillen dentro del círculo. Y por eso Flecha de Dispersión tiene
-                // dos máscaras distintas: sus daños de aire son "A" y sólo tocan a los de
-                // enfrente, pero sus empujes son "a,A" y mueven a todo el mundo, así que un
-                // aliado estampado contra un muro sí se come el golpe del choque.
-                candidatos.Remove(quienLanza);
-                if (alLanzador) candidatos.Insert(0, quienLanza);
+                // The caster IS one of his own allies: "a" reaches him when he stands in the
+                // zone. It used to take him out -- "para eso está la C" -- and that is what
+                // left Kabúm without its state: cast at his own cell, its "a" of a cross of two
+                // is meant for him first. Measured in the Kabúm capture: the 950 with state 92
+                // lands on the caster, cast at 301 with him on 301. The catalogue says the
+                // same from the other side: the spells that must not touch their caster --
+                // Karadura, Aversión, Silbo, "No afecta al lanzador" -- do not write "a" at
+                // all, they write "g,A", the allied summons and the enemies.
             }
 
             // Sin máscara, al objetivo del lanzamiento. Pero si la máscara dice algo que este motor
@@ -1605,6 +1762,56 @@ namespace Jondo.Unity.Server.Managers
             foreach (var f in combate.Rojo) yield return f;
         }
 
+        /// <summary>
+        /// Registers an effect that has to WAIT: a row on the target with trigger "Y" that goes
+        /// off at the round the delay points at, and does nothing until then. What it will do
+        /// travels in the row -- the effect, the characteristic and the amount, the duration
+        /// from then on -- and the turn start applies it and drops the row.
+        /// </summary>
+        /// <remarks>
+        /// Measured on Paso de Cacería (three casts) and the Baliza de Supervivencia (two):
+        /// the waiting row carries the activation round both as its expiry and in its f12, the
+        /// hidden family, and the dice and value of the effect; at the first turn of that
+        /// round the marker goes out as a jwe 3793, the kill as a bare death, and a +1 MP as a
+        /// new, visible row that names the waiting one as its parent, and then the waiting
+        /// rows fall with their jya.
+        /// </remarks>
+        private static Outcome Pendiente(FightInstance combate, Fighter quienLanza, Fighter sobre,
+                                         int hechizo, int grado, SpellEffect efecto, int ronda,
+                                         int caracteristica = 0, int cuanto = 0)
+        {
+            int cuando = Empieza(efecto, ronda);
+            var espera = sobre.Buffs.Poner(new Buff
+            {
+                EffectId = efecto.EffectId,
+                EffectUid = efecto.EffectUid,
+                Pendiente = true,
+                Caracteristica = caracteristica,
+                Cuanto = cuanto,
+                Dado = efecto.DiceNum,
+                Cara = efecto.DiceSide,
+                Valor = efecto.Value,
+                Dispellable = efecto.Dispellable,
+                Duracion = efecto.Duration,
+                HechizoOrigen = hechizo,
+                NivelOrigen = grado,
+                Quien = quienLanza.Id,
+                Disparador = Esperando,
+                EmpiezaEnRonda = cuando,
+                CaducaEnRonda = cuando,
+                Apila = true,
+            }, combate.SiguienteEmbrujo);
+
+            return new Outcome
+            {
+                Sobre = sobre, Caster = quienLanza, Efecto = efecto, Buff = espera,
+                HechizoOrigen = hechizo, NivelOrigen = grado,
+            };
+        }
+
+        /// <summary>The trigger a waiting row is announced with.</summary>
+        public const string Esperando = "Y";
+
         private static Outcome Aplicar(FightInstance combate, Fighter quienLanza, Fighter sobre,
                                             int hechizo, int grado, SpellEffect efecto, int ronda,
                                             int celdaApuntada = -1,
@@ -1617,6 +1824,13 @@ namespace Jondo.Unity.Server.Managers
             {
                 if (!sobre.IsAlive) return null;
 
+                // "La baliza se destruye 2 turnos después de invocarla": the 141 of her own
+                // spell carries a delay of two, and the real server registers it as a waiting
+                // row -- jxm 141 with trigger "Y" and the round it goes off in -- and kills her
+                // at the first turn of that round, with a bare jwe 103. Applied at once, the
+                // beacon died the moment she was born.
+                if (efecto.Delay > 0) return Pendiente(combate, quienLanza, sobre, hechizo, grado, efecto, ronda);
+
                 return new Outcome
                 {
                     Sobre = sobre,
@@ -1625,6 +1839,18 @@ namespace Jondo.Unity.Server.Managers
                     HechizoOrigen = hechizo,
                     NivelOrigen = grado,
                     Fulmina = true,
+                };
+            }
+
+            if (efecto.EffectId == MarcadorDeGuion)
+            {
+                // Right away it is an action, not a row: 202 jwe 3793 in the class captures and
+                // not one jxm 3793 with trigger "I". With a delay it waits like the rest.
+                if (efecto.Delay > 0) return Pendiente(combate, quienLanza, sobre, hechizo, grado, efecto, ronda);
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado, Marcador = true,
                 };
             }
 
@@ -2440,10 +2666,24 @@ namespace Jondo.Unity.Server.Managers
                 int cuantos = efecto.DiceNum != 0 ? efecto.DiceNum : efecto.Value;
                 if (cuantos <= 0) return null;
 
-                // Nunca más de los que le quedan.
-                int hay = robado == PuntosDeAccion ? sobre.CurrentAP : sobre.CurrentMP;
+                // Nunca más de los que le quedan -- the points he counts with, in his turn or
+                // for his next one -- and a steal is dodged like a removal: what is dodged is
+                // announced, what lands is taken and handed over.
+                int hay = PuntosQueCuentan(combate, sobre, robado, ronda);
                 cuantos = Math.Min(cuantos, hay);
                 if (cuantos <= 0) return null;
+                int robados = PuntosQuePierde(quienLanza, sobre, robado, cuantos, hay,
+                                              robado == PuntosDeAccion ? sobre.MaxAP : sobre.MaxMP, ronda);
+                int esquivadosDelRobo = cuantos - robados;
+                if (robados == 0)
+                {
+                    return new Outcome
+                    {
+                        Sobre = sobre, Efecto = efecto,
+                        HechizoOrigen = hechizo, NivelOrigen = grado, PuntosEsquivados = esquivadosDelRobo,
+                    };
+                }
+                cuantos = robados;
 
                 var quitado = sobre.Buffs.Poner(new Buff
                 {
@@ -2469,6 +2709,7 @@ namespace Jondo.Unity.Server.Managers
                     HechizoOrigen = hechizo,
                     NivelOrigen = grado,
                     LeDaAlLanzador = cuantos,
+                    PuntosEsquivados = esquivadosDelRobo,
                 };
             }
 
@@ -2566,10 +2807,34 @@ namespace Jondo.Unity.Server.Managers
             // unas líneas más arriba, y aquí faltaba: por eso un hechizo podía dejar a un bicho
             // sin sus seis puntos de movimiento de una vez. Además, lo que se anuncia tiene que
             // ser lo que de verdad se ha quitado, no lo que se pretendía quitar.
+            //
+            // And a "retira" is ROLLED, point by point, against the target's dodge: what he
+            // dodges goes out as a 308/309 and what lands as a "-N PA/PM" row with the N that
+            // landed. Nothing rolled, nothing dodged, every removal took every point: that is
+            // how it was, and how it is not in the game.
+            int esquivados = 0, efectoEnElCable = 0;
             if (cantidad < 0 && (caracteristica == PuntosDeAccion || caracteristica == PuntosDeMovimiento))
             {
-                int quedan = caracteristica == PuntosDeAccion ? sobre.CurrentAP : sobre.CurrentMP;
-                if (-cantidad > quedan) cantidad = -quedan;
+                int cuentan = PuntosQueCuentan(combate, sobre, caracteristica, ronda);
+                int pedidos = Math.Min(-cantidad, cuentan);
+                if (EsRetiradaEsquivable(efecto.EffectId))
+                {
+                    int maximo = caracteristica == PuntosDeAccion ? sobre.MaxAP : sobre.MaxMP;
+                    int perdidos = PuntosQuePierde(quienLanza, sobre, caracteristica, pedidos, cuentan, maximo, ronda);
+                    esquivados = pedidos - perdidos;
+                    pedidos = perdidos;
+                    efectoEnElCable = PerdidaEnElCable(caracteristica);
+                }
+                cantidad = -pedidos;
+                if (pedidos == 0)
+                {
+                    if (esquivados == 0) return null;
+                    return new Outcome
+                    {
+                        Sobre = sobre, Efecto = efecto,
+                        HechizoOrigen = hechizo, NivelOrigen = grado, PuntosEsquivados = esquivados,
+                    };
+                }
             }
 
             // Y si NO toca ninguna característica, tampoco se tira.
@@ -2584,6 +2849,16 @@ namespace Jondo.Unity.Server.Managers
             //
             // Ahora el que no se sepa aplicar se anota y SE MANDA igual, con lo que trae puesto.
             bool soloPanel = caracteristica == 0 || signo == 0 || cantidad == 0;
+
+            // Points that come LATER wait: "aumenta los PM del lanzador en el siguiente turno"
+            // is a 128 with a delay of one, and applied now it was one more step in the turn
+            // of the cast and none in the next.
+            if (!soloPanel && efecto.Delay > 0
+                && (caracteristica == PuntosDeAccion || caracteristica == PuntosDeMovimiento))
+            {
+                return Pendiente(combate, quienLanza, sobre, hechizo, grado, efecto, ronda,
+                                 caracteristica, cantidad);
+            }
 
             var embrujo = sobre.Buffs.Poner(new Buff
             {
@@ -2610,6 +2885,8 @@ namespace Jondo.Unity.Server.Managers
                 HechizoOrigen = hechizo,
                 NivelOrigen = grado,
                 SoloParaElPanel = soloPanel,
+                PuntosEsquivados = esquivados,
+                EfectoEnElCable = efectoEnElCable,
             };
         }
 
@@ -2691,6 +2968,52 @@ namespace Jondo.Unity.Server.Managers
                         CasterId = pending.Quien,
                         Buff = pending,
                         Healed = healed,
+                    });
+                }
+            }
+            return results;
+        }
+
+        /// <summary>
+        /// Takes every waiting row whose round has come and turns the lasting ones into live
+        /// rows: a +1 MP becomes a visible row of the same effect, from this round for its
+        /// duration, naming the waiting row as its parent. A kill or a marker leaves nothing
+        /// behind for the fight to keep; the caller deals the death and sends the jwe.
+        /// </summary>
+        internal static List<PendingActivation> ActivateDuePending(FightInstance combat, int round)
+        {
+            var results = new List<PendingActivation>();
+            foreach (var target in Todos(combat))
+            {
+                if (target == null) continue;
+                foreach (var waiting in target.Buffs.TakeDuePending(round))
+                {
+                    Buff live = null;
+                    if (waiting.EffectId != MataAlObjetivo && waiting.EffectId != MarcadorDeGuion && target.IsAlive)
+                    {
+                        live = target.Buffs.Poner(new Buff
+                        {
+                            EffectId = waiting.EffectId,
+                            EffectUid = waiting.EffectUid,
+                            Caracteristica = waiting.Caracteristica,
+                            Cuanto = waiting.Cuanto,
+                            Dado = waiting.Dado,
+                            Cara = waiting.Cara,
+                            Valor = waiting.Valor,
+                            Dispellable = waiting.Dispellable,
+                            HechizoOrigen = waiting.HechizoOrigen,
+                            NivelOrigen = waiting.NivelOrigen,
+                            Quien = waiting.Quien,
+                            Disparador = Esperando,
+                            EmpiezaEnRonda = round,
+                            CaducaEnRonda = waiting.Duracion < 0 ? -1 : round + Math.Max(1, waiting.Duracion),
+                            Padre = waiting.Numero,
+                            Apila = true,
+                        }, combat.SiguienteEmbrujo);
+                    }
+                    results.Add(new PendingActivation
+                    {
+                        Target = target, CasterId = waiting.Quien, Waiting = waiting, Live = live,
                     });
                 }
             }
@@ -2797,6 +3120,79 @@ namespace Jondo.Unity.Server.Managers
         {
             lock (_azar) return _azar.NextDouble();
         }
+
+        /// <summary>
+        /// The dice behind AP and MP removal, one draw in [0, 1) per point. Tests set it to
+        /// decide the outcome; the fight uses the engine's own random source.
+        /// </summary>
+        internal static Func<double> DadoDeRetirada { get; set; } = SiguienteAzar;
+
+        /// <summary>The fight's own dice again, for a test that borrowed them.</summary>
+        internal static void DadoDeRetiradaPorDefecto() => DadoDeRetirada = SiguienteAzar;
+
+        /// <summary>
+        /// The removal effects that a target can DODGE: "retira PA/PM" (1079, 1080, 101, 127)
+        /// and the steals (84, 77). The plain "-N PA/PM" boosts (168, 169) are not rolled: they
+        /// are what a spell does to its own caster or what nothing avoids.
+        /// </summary>
+        private static bool EsRetiradaEsquivable(int efecto)
+            => efecto is 1079 or 1080 or 101 or 127 or 84 or 77;
+
+        /// <summary>The removal effect a landed "retira" is announced as: -N PA (168) or -N PM (169).</summary>
+        internal static int PerdidaEnElCable(int caracteristica)
+            => caracteristica == PuntosDeAccion ? 168 : 169;
+
+        /// <summary>
+        /// The points a fighter counts with right now against a removal: the ones left in his
+        /// hand while he plays, and the ones his next turn starts with -- his maximum plus the
+        /// live rows -- the rest of the time. It used to be his current points always, which
+        /// outside his turn are what he had LEFT when his last turn ended: an Ocra who had spent
+        /// six of seven could lose one at most, and the real server's sheet after a removal on
+        /// a monster that is not playing reads its maximum less the removal.
+        /// </summary>
+        internal static int PuntosQueCuentan(FightInstance combate, Fighter sobre, int caracteristica, int ronda)
+        {
+            bool enSuTurno = combate.CurrentFighter == sobre;
+            if (caracteristica == PuntosDeAccion)
+                return enSuTurno ? sobre.CurrentAP : Math.Max(0, sobre.MaxAP + sobre.Buffs.De(PuntosDeAccion, ronda));
+            return enSuTurno ? sobre.CurrentMP : Math.Max(0, sobre.MaxMP + sobre.Buffs.De(PuntosDeMovimiento, ronda));
+        }
+
+        /// <summary>
+        /// How many of the points a removal asks for are lost, the rest being dodged. One roll
+        /// per point, and the target's remaining points go down with each one lost:
+        ///
+        ///   P(lose the point) = (points left / maximum) × (removal + 2) / (dodge + 2) × 1/2,
+        ///                        never under 10 % nor over 90 %
+        ///
+        /// with the caster's "retira PA/PM" (82/83) against the target's "esquiva PA/PM"
+        /// (27/28), each a tenth of wisdom plus what the gear and the live rows say. The
+        /// game's own formula, and the reason a "-2 PM" against a well-dodging target is
+        /// usually a miss, sometimes a single point, rarely both.
+        /// </summary>
+        internal static int PuntosQuePierde(Fighter quienLanza, Fighter sobre, int caracteristica,
+                                            int pedidos, int cuentan, int maximo, int ronda)
+        {
+            int retirada = quienLanza.Otra(caracteristica == PuntosDeAccion ? RetiraPA : RetiraPM)
+                         + quienLanza.Buffs.De(caracteristica == PuntosDeAccion ? RetiraPA : RetiraPM, ronda);
+            int esquiva = sobre.Otra(caracteristica == PuntosDeAccion ? EsquivaPA : EsquivaPM)
+                        + sobre.Buffs.De(caracteristica == PuntosDeAccion ? EsquivaPA : EsquivaPM, ronda);
+            int perdidos = 0;
+            for (int i = 0; i < pedidos && cuentan > 0; i++)
+            {
+                double p = (double)cuentan / Math.Max(1, maximo)
+                         * (Math.Max(0, retirada) + 2.0) / (Math.Max(0, esquiva) + 2.0) * 0.5;
+                p = Math.Clamp(p, 0.10, 0.90);
+                if (DadoDeRetirada() < p) { perdidos++; cuentan--; }
+            }
+            return perdidos;
+        }
+
+        /// <summary>The catalogue's numbers for the four: retira PA/PM and esquiva PA/PM.</summary>
+        public const int RetiraPA = 82;
+        public const int RetiraPM = 83;
+        public const int EsquivaPA = 27;
+        public const int EsquivaPM = 28;
 
         /// <summary>
         /// Si lo que deja este efecto se acumula en vez de sustituir a lo que ya hubiera.

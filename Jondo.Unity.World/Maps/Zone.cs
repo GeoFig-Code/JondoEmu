@@ -44,6 +44,26 @@ namespace Jondo.Unity.World.Maps
         public const int Segmento = 'l';
 
         /// <summary>
+        /// The ring: the cells at EXACTLY param1 steps from the centre, the centre left out. The
+        /// client's own text for the shape (1119924) says "las casillas situadas exactamente a
+        /// una cierta distancia de la casilla objetivo, pero no a esta última", and the spells
+        /// that carry it call it "un anillo de 2 casillas" (Kabombz, Ovobz). Colado is O2, and in
+        /// its capture the bomb it mirrors stands two cells from the centre in all three casts.
+        /// </summary>
+        public const int Anillo = 'O';
+
+        /// <summary>
+        /// The perpendicular line: the centre and param1 cells to each side of it ACROSS the
+        /// direction of the cast. "Arcabuz de Dopeul" describes it in so many words -- "una zona
+        /// de efecto en línea perpendicular" -- and the client's text (1119963) is "las casillas
+        /// alineadas perpendicularmente con la zona de lanzamiento". Fusil is a '-' of 2 and
+        /// pushes "hacia los extremos", which is what a push away from the centre does along
+        /// this bar. The perpendicular of a diagonal cast is the other diagonal: the client's
+        /// preview draws it so, and Fusil has no capture to say otherwise.
+        /// </summary>
+        public const int LineaPerpendicular = '-';
+
+        /// <summary>
         /// Las casillas que toca el efecto.
         ///
         /// <paramref name="desde"/> es la casilla del que lanza, que hace falta para las formas
@@ -194,6 +214,28 @@ namespace Jondo.Unity.World.Maps
                     fuera.Add(centro);
                     var d = DireccionEntre(desde, centro);
                     if (d.HasValue) Estirar(fuera, centro, d.Value.Dx, d.Value.Dy, tamano);
+                    return fuera;
+                }
+
+                case LineaPerpendicular:
+                {
+                    // The centre and a ray to each side of it, across the cast: the direction
+                    // turned a quarter both ways. Without a direction -- the caster standing on
+                    // the centre -- it is the centre alone.
+                    fuera.Add(centro);
+                    var d = DireccionEntre(desde, centro);
+                    if (!d.HasValue) return fuera;
+                    Estirar(fuera, centro, -d.Value.Dy, d.Value.Dx, tamano);
+                    Estirar(fuera, centro, d.Value.Dy, -d.Value.Dx, tamano);
+                    return fuera;
+                }
+
+                case Anillo:
+                {
+                    // Exactly param1 away, and not the centre.
+                    if (tamano <= 0) return fuera;
+                    for (int c = 0; c < MapGeometry.MaxCells; c++)
+                        if (MapGeometry.Distance(centro, c) == tamano) fuera.Add(c);
                     return fuera;
                 }
 

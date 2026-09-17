@@ -726,9 +726,15 @@ namespace Jondo.Unity.Server.Network
 
             if (categoria == ModificaUnHechizo) return 4;
             if (efecto == PoneEstado) return 2;
-            if (boost == 0) return 7;
+            if (boost == 0) return HiddenFamily;
             return 0;                 // bono de característica: el f15 no viaja
         }
+
+        /// <summary>
+        /// The family the panel does not draw. A waiting row travels with it whatever its
+        /// effect -- the +1 MP of Paso de Cacería included -- and turns visible when it goes off.
+        /// </summary>
+        public const int HiddenFamily = 7;
 
         /// <param name="grado">
         /// El grado del hechizo que lo pone. Iba clavado a uno; medido contra los 1.297 jxm de las
@@ -739,10 +745,20 @@ namespace Jondo.Unity.Server.Network
         /// Flecha Helada deja tres turnos de daños básicos: lanzada en la ronda 5 el servidor real
         /// manda un ocho, y en la 6, un nueve. Menos uno es "hasta que acabe el combate".
         /// </param>
+        /// <param name="padre">
+        /// The waiting row this one came out of, in f11, for the rows a delayed effect turns
+        /// into when its round comes. Measured on Paso de Cacería: the live +1 MP row names
+        /// the "Y" row of the cast. Zero when there is none.
+        /// </param>
+        /// <param name="activacion">
+        /// For a waiting row, the round it goes off in, carried in f12 in place of the two
+        /// "nobody" of an ordinary row: "f12{f2=27}" on the beacon's delayed kill, "f12{f2=2}"
+        /// on Paso de Cacería's. Negative for an ordinary row.
+        /// </param>
         public static byte[] BuildBuff(long sobre, long quien, int numero, int efecto, int effectUid,
                                        int valor, int dado, int cara, int hechizo, string disparador,
                                        int rondas, int dispellable, int familia, int grado = 1,
-                                       bool critico = false)
+                                       bool critico = false, int padre = 0, int activacion = -1)
         {
             var dentro = Pb.New()
                 .VarIfNotZero(1, dado)
@@ -757,7 +773,10 @@ namespace Jondo.Unity.Server.Network
                 // es el único que trae este campo.
                 .VarIfNotZero(9, critico ? 1 : 0)
                 .VarIfNotZero(10, valor)
-                .Msg(12, Pb.New().Var(2, Nobody).Var(3, Nobody))
+                .VarIfNotZero(11, padre)
+                .Msg(12, activacion >= 0
+                    ? Pb.New().Var(2, activacion)
+                    : Pb.New().Var(2, Nobody).Var(3, Nobody))
                 .VarIfNotZero(13, cara)
                 .Var(14, hechizo)
                 .VarIfNotZero(15, familia)
@@ -942,6 +961,22 @@ namespace Jondo.Unity.Server.Network
         public const int SpentActionPoints = 102;
         public const int Died = 103;
         public const int LookChanged = 149;
+
+        /// <summary>
+        /// The 3793 script marker going off (jwe, f14 = 3793): f3 who cast the spell, f25 { f2:
+        /// the grade, f3: the cell it lands on, f4: the spell, f5: the marker's value }. The
+        /// shape of 187 of the 202 in the class captures; the other 15 carry one more field
+        /// that is not read. Remisión sends it on the attacker's cell when its push goes off,
+        /// Paso de Cacería on the cell of the cast the turn after.
+        /// </summary>
+        public const int ScriptMarker = 3793;
+
+        public static byte[] BuildScriptMarker(long author, int grade, int cell, int spell, int value)
+            => Pb.New()
+                .Var(3, author)
+                .Var(14, ScriptMarker)
+                .Msg(25, Pb.New().Var(2, grade).Var(3, cell).Var(4, spell).Var(5, value))
+                .Build();
 
         /// <summary>El campo donde va el detalle de cada cosa dentro del jwe.</summary>
         public const int CastDetail = 7;
@@ -1293,6 +1328,23 @@ namespace Jondo.Unity.Server.Network
 
         /// <summary>Retirarle puntos de movimiento a otro. El 129 es andar, que es cosa suya.</summary>
         public const int MovementPointsLost = 127;
+
+        /// <summary>
+        /// Points of a removal the target DODGED (jwe 308 for AP, 309 for MP): { f3: who cast,
+        /// f28 { f1: how many, f3: who dodged } }. The shape of all 401 in the class captures
+        /// -- 157 of AP, 244 of MP -- and always before the sheet and the row of what did land,
+        /// when anything did: "jwe 309 f28{f1=1 f3=-5}", then the -5 sheet at two MP, then the
+        /// jxm 169 with f1=1 of a Palabra Juguetona that asked for two.
+        /// </summary>
+        public const int ActionPointsDodged = 308;
+        public const int MovementPointsDodged = 309;
+
+        public static byte[] BuildPointsDodged(long author, int characteristic, long quien, int cuantos)
+            => Pb.New()
+                .Var(3, author)
+                .Var(14, characteristic == 1 ? ActionPointsDodged : MovementPointsDodged)
+                .Msg(28, Pb.New().Var(1, cuantos).Var(3, quien))
+                .Build();
 
         /// <summary>
         /// Se le han quitado puntos a alguien (jwe): { f3: quién, f14: cuál, f20 { f1: cuántos,

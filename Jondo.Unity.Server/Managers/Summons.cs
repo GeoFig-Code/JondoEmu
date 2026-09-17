@@ -106,50 +106,11 @@ namespace Jondo.Unity.Server.Managers
             => vidaFija + (int)(bonusDeVida * (Math.Max(1, nivelDelInvocador) + 10) / 20.0);
 
         // ─── Cuánto vive ────────────────────────────────────────────────────────
-
-        private static Dictionary<int, int> _duraciones;
-
-        /// <summary>
-        /// Las rondas que aguanta un invocado antes de deshacerse solo.
-        ///
-        /// Esto NO está en la base. El efecto 141 que le cuelgan al nacer viene con
-        /// <c>duration</c> a cero en los cuatro grados de los dos hechizos, y MonsterTemplates
-        /// tampoco lo trae. Así que está medido de las capturas y guardado en
-        /// <c>datos/invocaciones_duracion.json</c>, que es como se hizo con las mascoturas y con
-        /// los colores de las monturas: la baliza táctica dura 3 rondas —seis medidas iguales— y
-        /// la de supervivencia 2 —dos medidas—.
-        ///
-        /// Lo que no esté medido devuelve cero, y entonces no se le pone cuenta atrás: es
-        /// preferible a inventarse un número.
-        /// </summary>
-        public static int RondasQueVive(int plantilla)
-        {
-            if (_duraciones == null)
-            {
-                _duraciones = new Dictionary<int, int>();
-                try
-                {
-                    // Por Paths, no relativo: si no aparece, las invocaciones dejan de caducar
-                    // y se quedan en el combate para siempre.
-                    string ruta = Paths.SummonDurationsJson;
-                    if (System.IO.File.Exists(ruta))
-                    {
-                        using var doc = JsonDocument.Parse(System.IO.File.ReadAllText(ruta));
-                        foreach (var entrada in doc.RootElement.EnumerateObject())
-                        {
-                            if (int.TryParse(entrada.Name, out int id))
-                                _duraciones[id] = Entero(entrada.Value, "rondas");
-                        }
-                    }
-                    Program.LogDebug($"[Summons] {_duraciones.Count} duración(es) medida(s).");
-                }
-                catch (Exception ex)
-                {
-                    Program.LogDebug($"[Summons] No se pudo leer la tabla de duraciones: {ex.Message}");
-                }
-            }
-            return _duraciones.TryGetValue(plantilla, out int rondas) ? rondas : 0;
-        }
+        //
+        // Nothing here any more: how long a summon lives is the DELAY of the 141 its own spell
+        // hangs on it at birth -- two rounds for the Baliza de Supervivencia, three for the
+        // Táctica, the numbers a hand-measured table used to carry -- and the engine's waiting
+        // rows collect it through the ordinary death. See EffectEngine.Pendiente.
 
         public static Summon De(int plantilla, int grado)
         {

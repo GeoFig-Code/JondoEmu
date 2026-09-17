@@ -288,14 +288,27 @@ namespace Jondo.Unity.Tests.Combat
                          string.Concat(jyy.Select(b => b.ToString("x2"))));
         }
 
+        /// <summary>
+        /// A summon that can act -- a step to take or a spell of its own: the Tymobot, the
+        /// walking bomb, an Osamodas' animal -- is its summoner's to play; one with nothing
+        /// to play -- a beacon, a bomb -- hands its turn on by itself, with no jyj to anybody.
+        /// </summary>
         [Fact]
-        public void A_summon_is_played_by_its_summoner()
+        public void A_summon_is_played_by_its_summoner_when_it_has_anything_to_play()
         {
             var me = Rogue(10, 0, 300);
             var bomb = Bomb(-1, me, 301);
+            var bot = Bomb(-2, me, 302);
+            bot.MaxMP = 5; bot.HechizosDeInvocado = new[] { (13451, 3), (30938, 1) };
+            var beacon = Bomb(-3, me, 303);
+            beacon.MaxMP = -1; beacon.MaxAP = 0;
             Assert.True(me.ControlledBy(10));
-            Assert.True(bomb.ControlledBy(10));
-            Assert.False(bomb.ControlledBy(11));
+            Assert.True(bomb.PlaysOnItsOwn);
+            Assert.False(bomb.ControlledBy(10));
+            Assert.False(bot.PlaysOnItsOwn);
+            Assert.True(bot.ControlledBy(10));
+            Assert.False(bot.ControlledBy(11));
+            Assert.True(beacon.PlaysOnItsOwn);
             Assert.False(me.ControlledBy(11));
         }
     }
