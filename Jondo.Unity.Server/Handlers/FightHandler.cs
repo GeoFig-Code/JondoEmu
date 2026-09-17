@@ -721,8 +721,25 @@ namespace Jondo.Unity.Server.Handlers
             // al recibir un golpe. De ahí sale, sin escribir nada suyo, el punto de acción del
             // Dofus Ocre.
             playerFighter.Buffs.Vaciar();
-            playerFighter.Buffs.Actitudes.AddRange(
-                Managers.SpellEffects.ActitudesDelEquipo(GameState.CharacterId));
+
+            // And the class's own, in the order the real server casts them before the first
+            // turn: the initial spells of his choices, the items' attitudes, the class passive
+            // last. See ClassPassives for what is measured and what is read off the names.
+            var propios = Managers.ClassPassives.ForFight(
+                GameState.Breed,
+                Managers.FightSpellLayout.Current(GameState.Breed, GameState.CharacterLevel,
+                                                  SessionContext.Current.AccountId).Spells);
+            int pasivo = Managers.ClassPassives.PassiveOf(GameState.Breed);
+            foreach (var (hechizo, grado) in propios)
+            {
+                if (hechizo != pasivo) playerFighter.Buffs.PonerActitud(hechizo, grado);
+            }
+            foreach (int hechizo in Managers.SpellEffects.ActitudesDelEquipo(GameState.CharacterId))
+            {
+                playerFighter.Buffs.PonerActitud(hechizo);
+            }
+            if (pasivo != 0) playerFighter.Buffs.PonerActitud(pasivo);
+
             if (playerFighter.Buffs.Actitudes.Count > 0)
             {
                 Program.LogDebug($"[Combate] Actitudes del equipo: " +
@@ -1840,6 +1857,33 @@ namespace Jondo.Unity.Server.Handlers
             return owner != null && !owner.IsMonster ? fight.StatisticsOf(owner.Id) : null;
         }
 
+        /// <summary>
+        /// What goes off when a fighter dies, fired while he is still standing: his attitudes
+        /// under X and the spells hooked on him with an X trigger. Called by whoever is about
+        /// to take his last point of life, BEFORE taking it -- the Tymobot's passive casts
+        /// 20683 under X and the capture has that cast before the 103, and Polvo's "explode if
+        /// destroyed" needs a bomb that can still cast its explosion. The explosion's own 141
+        /// comes back through here for the same bomb, which is what the flag is for: the
+        /// second time round nothing fires, the blow is simply taken.
+        /// </summary>
+        /// <returns>Whether he is still alive once everything of his has gone off.</returns>
+        private static async Task<bool> AlMorirAsync(NetworkStream stream, FightInstance fight, Fighter quien)
+        {
+            if (quien == null || !quien.IsAlive) return false;
+            if (quien.Muriendo) return true;
+            quien.Muriendo = true;
+            try
+            {
+                await ActitudesAsync(stream, fight, quien, Managers.EffectEngine.AlMorir);
+                await EngancheAsync(stream, fight, quien, Managers.EffectEngine.AlMorir);
+            }
+            finally
+            {
+                if (quien.IsAlive) quien.Muriendo = false;
+            }
+            return quien.IsAlive;
+        }
+
         /// <summary>A blow landed: written down for whoever dealt it and for whoever took it.</summary>
         private static void AnotarElGolpe(FightInstance fight, Fighter author, Fighter victim, int amount,
                                           bool fromTurnTrigger = false, bool push = false)
@@ -2838,10 +2882,14 @@ namespace Jondo.Unity.Server.Handlers
             // Y ahora las actitudes de "principio de turno": aquí es donde el Dofus Ocre mira si le
             // han pegado desde su turno anterior.
             await ActitudesAsync(stream, fight, fighter, Managers.EffectEngine.AlEmpezarElTurno);
+            await EngancheAsync(stream, fight, fighter, Managers.EffectEngine.AlEmpezarElTurno);
             fighter.LeHanPegado = false;
 
-            // Y los dos combos que reparte el tymador entre sus bombas.
-            await CombosDelTurnoAsync(stream, fight, fighter);
+            // The two combos the Tymador hands his bombs each turn are no longer dealt here:
+            // they are what his class passive does at turn start -- 20488, "La Astucia del
+            // Tymador": 20683 for the state that doubles his walls, then 20577 whose two 792
+            // climb the ladder on every bomb of his -- and the passive is an attitude of his
+            // like any other since ClassPassives. Dealt here on top, every bomb climbed four.
 
             // El "ya puedes jugar" sólo va si el que juega es de los que maneja este cliente. En el
             // turno de un monstruo ese paso no existe.
@@ -3788,10 +3836,18 @@ namespace Jondo.Unity.Server.Handlers
 
             // Y si es una bomba, nace en Combo I. Uno, no dos: medido en «tymador-explobomba
             // resiliente», donde las tres bombas reciben UN combo la ronda en que salen y DOS
-            // cada ronda posterior.
+            // cada ronda posterior. And that one comes out of its own spell: Encendimiento's
+            // 1017 hands La Astucia del Tymador back to its summoner, whose 792 casts the
+            // ladder on the bomb -- "20577 by the Rogue, 20497 by the bomb, state 2484" at the
+            // birth of every bomb in the sismobomba capture, nothing more. Giving it another
+            // one here on top, as was done before the chain resolved, had every bomb born at
+            // II. The rung is only given by hand when the chain left the bomb without one.
             if (EsBomba(plantilla))
             {
-                await UnComboAsync(stream, fight, quienInvoca, invocado);
+                if (Managers.Combo.LevelOf(invocado) == 0)
+                {
+                    await UnComboAsync(stream, fight, quienInvoca, invocado);
+                }
                 Program.LogDebug($"[Combo] La bomba {invocado.Id} nace en el nivel " +
                                  $"{Managers.Combo.LevelOf(invocado)}.");
             }
@@ -3801,58 +3857,25 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Los dos combos que el tymador le da a cada una de sus bombas al empezar su turno.
+        /// The jwe 300 of a spell set off by another. A summon's carries two f4 -- itself and
+        /// its summoner -- and no f8, the shape of the bomb's ladder casts in "tymador-explobomba
+        /// resiliente" (frames 262 and 264); a person's carries the ordinary cast block.
         /// </summary>
-        /// <remarks>
-        /// De la ficha de clase del cliente: «Al principio de cada turno, el tymador dará 2 combos
-        /// a todas sus bombas presentes en el terreno». Y medido: ocho rondas, tres bombas, dos
-        /// combos cada una cada ronda, salvo la ronda en que nace, que recibe uno solo.
-        ///
-        /// Las que nazcan DESPUÉS de este momento se quedan con el suyo de nacimiento, que es
-        /// justo lo que se ve en la captura y sale gratis por hacerlo al empezar el turno.
-        /// </remarks>
-        private static async Task CombosDelTurnoAsync(NetworkStream stream, FightInstance fight,
-                                                      Fighter dueno)
+        private static async Task AnunciarElEncadenadoAsync(FightInstance fight, Fighter quien,
+                                                            Fighter sobre, int hechizo, int grado)
         {
-            if (dueno == null || dueno.IsMonster) return;
+            var limites = LimitesDeGrado(hechizo, Math.Max(1, grado));
+            if (limites.LevelId <= 0) return;
 
-            var suyas = new List<Fighter>();
-            foreach (var f in TodosLosCombatientes(fight))
-            {
-                if (f.EsInvocado && f.IsAlive && f.Invocador == dueno.Id &&
-                    EsBomba(f.MonsterId)) suyas.Add(f);
-            }
-            if (suyas.Count == 0) return;
-
-            // INSIDE ONE SEQUENCE, IN THE ROGUE NAME, FOR ALL THE BOMBS AT ONCE. This was the
-            // last thing standing between a combo that climbed on the server and one that showed
-            // on screen: every frame of it went out at depth zero, outside any jto, and the
-            // 3.6.10.10 client only applies what reaches it inside an open sequence -- the same
-            // rule that once fixed the expiring buffs a hundred lines up.
-            //
-            // Measured in "tymador-explobomba resiliente" with the sequence stack tracked frame by
-            // frame: a jto {author = Rogue, kind = 3} opens at #710 and stays open while the
-            // combos of -5 (#719-734), then -6 (#738-747), then -5 again (#757) all go by at depth
-            // one -- the casts, the rung, the 1027/1060, the jya, the look, the 514, all of it.
-            // The bombs own sheets nest a short jto/jwi of their own inside it, at depth two.
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
-                Network.FightProtocol.BuildSequenceStart(dueno.Id,
-                                                         Network.FightProtocol.ActionSequence)));
-
-            foreach (var bomba in suyas)
-            {
-                for (int vez = 0; vez < CombosPorTurno; vez++)
-                {
-                    await UnComboAsync(stream, fight, dueno, bomba);
-                }
-                Program.LogDebug($"[Combo] La bomba {bomba.Id} sube al nivel " +
-                                 $"{Managers.Combo.LevelOf(bomba)} " +
-                                 $"({Managers.Combo.PercentOf(bomba)}% de daños).");
-            }
-
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
-                Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), dueno.Id,
-                                                       Network.FightProtocol.ActionSequence)));
+            byte[] trama = quien.EsInvocado
+                ? Network.FightProtocol.BuildComboCast(quien.Id, quien.Invocador, quien.CellId,
+                                                       hechizo, limites.LevelId)
+                : Network.FightProtocol.BuildAction(
+                    quien.Id, Network.FightProtocol.Cast,
+                    Network.FightProtocol.CastAt(quien.Id, sobre.Id, sobre.CellId, hechizo,
+                                                 limites.LevelId, critical: false),
+                    Network.FightProtocol.CastDetail);
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe, trama));
         }
 
         /// <summary>
@@ -3890,28 +3913,18 @@ namespace Jondo.Unity.Server.Handlers
             await AplicarEfectosAsync(stream, fight, bomba, Managers.Combo.LadderSpell, 1,
                                       bomba, Managers.EffectEngine.AlLanzar, bomba.CellId);
 
-            int ahora = Managers.Combo.LevelOf(bomba);
-            if (ahora <= antes) return;
-
-            int grado = Managers.Combo.GradeOf(ahora);
-            if (grado > 0)
-            {
-                var bono = LimitesDeGrado(Managers.Combo.BonusSpell, grado);
-                if (bono.LevelId > 0)
-                {
-                    await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
-                        Network.FightProtocol.BuildComboCast(bomba.Id, dueno.Id, bomba.CellId,
-                                                             Managers.Combo.BonusSpell,
-                                                             bono.LevelId)));
-                }
-            }
-
-            // The look goes out from AplicarEfectosAsync itself now, for every cast that moves
-            // a bomb's size, this one included.
-            _ = tamanoAntes;
+            // The 20500 behind the rung, and the look, go out from AplicarEfectosAsync itself
+            // now: every chained cast is announced there, and every cast that moves a bomb's
+            // size redraws it.
+            _ = antes; _ = tamanoAntes;
         }
 
-        /// <summary>Lo que sube el combo de cada bomba al empezar el turno de su tymador.</summary>
+        /// <summary>
+        /// Lo que sube el combo de cada bomba al empezar el turno de su tymador. Measured --
+        /// "tymador-explobomba resiliente", three bombs over eight rounds, two each every round
+        /// after the one they are born in -- and dealt by his class passive, whose 20577 carries
+        /// exactly two ladder casts.
+        /// </summary>
         internal const int CombosPorTurno = 2;
 
         /// <summary>
@@ -3933,7 +3946,7 @@ namespace Jondo.Unity.Server.Handlers
         /// que decide hasta cuándo sigue vivo el hechizo.
         /// </summary>
         private static void EngancharLoPendiente(List<Managers.Outcome> consecuencias,
-                                                 int hechizo, int grado)
+                                                 int hechizo, int grado, long lanzador)
         {
             bool haySuspendidos = false;
             foreach (var efecto in Managers.SpellEffects.De(hechizo, grado))
@@ -3963,7 +3976,7 @@ namespace Jondo.Unity.Server.Handlers
 
             foreach (var (quien, cuando) in hasta)
             {
-                quien.Buffs.Enganchar(hechizo, grado, cuando);
+                quien.Buffs.Enganchar(hechizo, grado, cuando, lanzador);
             }
         }
 
@@ -3971,6 +3984,13 @@ namespace Jondo.Unity.Server.Handlers
         /// Dispara lo que un luchador tenga pendiente para este momento: los hechizos que lleva
         /// puestos y que reaccionan a lo que acaba de pasar.
         /// </summary>
+        /// <remarks>
+        /// Fired for every trigger the engine names -- turn start, turn end, when hit, on
+        /// death, per step walked -- and not only for the steps, which is all it was wired to
+        /// for a long while: a spell hooked with an X effect, Polvo's "explode if destroyed",
+        /// never went off. The effects come from whoever cast the spell, with the bearer as
+        /// the target, which is who the mask letters were written for.
+        /// </remarks>
         private static async Task EngancheAsync(NetworkStream stream, FightInstance fight,
                                                 Fighter quien, string disparador)
         {
@@ -3979,7 +3999,8 @@ namespace Jondo.Unity.Server.Handlers
 
             foreach (var enganche in new List<Jondo.Unity.World.Fights.Buffs.ActiveSpell>(quien.Buffs.ActiveSpells))
             {
-                await AplicarEfectosAsync(stream, fight, quien, enganche.Hechizo, enganche.Grado,
+                var lanzador = (enganche.Lanzador != 0 ? fight.Buscar(enganche.Lanzador) : null) ?? quien;
+                await AplicarEfectosAsync(stream, fight, lanzador, enganche.Hechizo, enganche.Grado,
                                           quien, disparador, quien.CellId);
             }
         }
@@ -4627,11 +4648,23 @@ namespace Jondo.Unity.Server.Handlers
             // ocurren al andar, y sin acordarse de que el hechizo sigue puesto no hay manera.
             if (string.Equals(disparador, Managers.EffectEngine.AlLanzar, StringComparison.OrdinalIgnoreCase))
             {
-                EngancharLoPendiente(consecuencias, hechizo, grado);
+                EngancharLoPendiente(consecuencias, hechizo, grado, quienLanza.Id);
             }
 
             var fichas = new HashSet<(long Quien, int Caracteristica)>();
             var vidasCambiadas = new Dictionary<long, Fighter>();
+
+            // EVERY CHAINED CAST IS ANNOUNCED, once, before the first thing it does: the real
+            // server sends a jwe 300 for each spell a 792 or a 1160 sets off -- "20577 by the
+            // Tymador, 20497 by the bomb, 20500 by the bomb" at every combo -- and the client
+            // draws the combo off that cast, not off the buff. Damage chains announce their own
+            // per target (the rebound's animation, below) and are left alone here.
+            var conDano = new HashSet<(int, long)>();
+            foreach (var c in consecuencias)
+            {
+                if (c.NestedDamage && c.HechizoOrigen != hechizo) conDano.Add((c.HechizoOrigen, (c.Caster ?? quienLanza).Id));
+            }
+            var anunciados = new HashSet<(int, long)>();
 
             // lo pisa, y entonces el orden deja de tener sentido.
             // ya en su sitio. No dentro del recorrido: un glifo puede volver a mover a quien
@@ -4640,6 +4673,17 @@ namespace Jondo.Unity.Server.Handlers
 
             foreach (var c in consecuencias)
             {
+                if (c.HechizoOrigen != 0 && c.HechizoOrigen != hechizo)
+                {
+                    var quienEncadena = c.Caster ?? quienLanza;
+                    var clave = (c.HechizoOrigen, quienEncadena.Id);
+                    if (!conDano.Contains(clave) && anunciados.Add(clave))
+                    {
+                        await AnunciarElEncadenadoAsync(fight, quienEncadena, c.Sobre ?? quienEncadena,
+                                                        c.HechizoOrigen, c.NivelOrigen);
+                    }
+                }
+
                 // El 141: mata, y por el mismo camino que un golpe, para que se anuncie igual,
                 // se le caigan las invocaciones igual y el combate termine igual.
                 if (c.Fulmina)
@@ -4838,13 +4882,27 @@ namespace Jondo.Unity.Server.Handlers
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                         Network.FightProtocol.BuildTeleport(quienLanza.Id, quienLanza.Id, c.CasillaHasta)));
                     byte[] look = NormalFightLook(quienLanza);
+
+                    // Two blocks per copy. His own side gets the captured one -- no identity,
+                    // a monster's mould of a sheet -- and the other side gets the copy dressed
+                    // as him, or hovering it would show no name where hovering him shows his.
+                    var ficha = DatabaseManager.GetCharacterById(quienLanza.Id);
+                    var comoEl = Network.FightProtocol.PlayerIdentity(ficha?.Breed ?? 0, quienLanza.Name,
+                                                                      ficha?.Sex ?? 0, quienLanza.Level);
+                    var suFicha = FullSheetOf(quienLanza, conTraza: false);
+                    int elOtroBando = quienLanza.TeamId == FightInstance.Azules ? FightInstance.Rojos : FightInstance.Azules;
                     foreach (var copia in c.Ilusiones)
                     {
-                        await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                        await ASuBandoAsync(fight, quienLanza.TeamId, ConnectionProtocol.Push(Op.Jwe,
                             Network.FightProtocol.BuildIllusion(
                                 quienLanza.Id, copia.Id, copia.CellId, FacingOf(fight, copia),
                                 c.CasillaDesde, FacingOf(fight, quienLanza),
                                 Network.FightProtocol.IllusionSheet(quienLanza.Level), look)));
+                        await ASuBandoAsync(fight, elOtroBando, ConnectionProtocol.Push(Op.Jwe,
+                            Network.FightProtocol.BuildIllusion(
+                                quienLanza.Id, copia.Id, copia.CellId, FacingOf(fight, copia),
+                                c.CasillaDesde, FacingOf(fight, quienLanza),
+                                suFicha, look, identity: comoEl)));
                     }
                     Program.LogDebug($"[Combate] {quienLanza.Id} salta de {c.CasillaDesde} a " +
                                      $"{c.CasillaHasta} y deja {c.Ilusiones.Count} ilusiones.");
@@ -5155,8 +5213,9 @@ namespace Jondo.Unity.Server.Handlers
                 // Over a COPY: see ActitudesAsync.
                 foreach (int actitud in quien.Buffs.Actitudes.ToList())
                 {
-                    const int grado = Managers.EffectEngine.GradoDelEnganche;
-                    var (_, nivelId, _) = Managers.SpellEffects.GradoDe(actitud, quien.Level);
+                    int grado = quien.Buffs.GradoDeActitud(actitud);
+                    int nivelId = LimitesDeGrado(actitud, grado).LevelId;
+                    if (nivelId <= 0) (_, nivelId, _) = Managers.SpellEffects.GradoDe(actitud, quien.Level);
 
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                         Network.FightProtocol.BuildSequenceStart(quien.Id,
@@ -5240,8 +5299,10 @@ namespace Jondo.Unity.Server.Handlers
                 // personaje tenga abierto. Los tres grados del Amarillo Ocre son de nivel mínimo 1,
                 // así que preguntar por el grado del personaje devolvía el 3 —el que da el punto de
                 // acción— y allí no hay ningún disparador de principio de turno, con lo que la
-                // actitud no hacía nada. Los grados de dentro los dice el propio enganche.
-                const int grado = Managers.EffectEngine.GradoDelEnganche;
+                // actitud no hacía nada. Los grados de dentro los dice el propio enganche. The
+                // one exception is an initial spell of the character's own choices, held at his
+                // grade of the choice (see Buffs.GradoDeActitud).
+                int grado = quien.Buffs.GradoDeActitud(actitud);
                 await AplicarEfectosAsync(stream, fight, quien, actitud, grado, quien, disparador);
 
                 // Y los grados que la actitud encadena, por su cuenta. Hace falta porque un grado
@@ -5623,6 +5684,16 @@ namespace Jondo.Unity.Server.Handlers
             // le entran doscientos, el golpe que ve el jugador es de setenta: por encima de eso no
             // hay vida que quitar, y el número que sobra sólo confunde.
             int aplicado = Math.Min(damage, target.CurrentHP);
+
+            // The blow that finishes him: what fires on his death goes first, with him still
+            // standing. If that finished him on its own -- a Polvo bomb blowing itself up --
+            // the death has been announced in there and this blow has nothing left to take.
+            if (aplicado >= target.CurrentHP && !target.Muriendo)
+            {
+                if (!await AlMorirAsync(stream, fight, target)) return;
+                aplicado = Math.Min(damage, target.CurrentHP);
+            }
+
             target.TakeDamage(aplicado);
             AnotarElGolpe(fight, caster, target, aplicado, fromTurnTrigger);
 
@@ -5699,6 +5770,7 @@ namespace Jondo.Unity.Server.Handlers
             if (target.LeHanPegado)
             {
                 await ActitudesAsync(stream, fight, target, Managers.EffectEngine.CuandoMePegan);
+                await EngancheAsync(stream, fight, target, Managers.EffectEngine.CuandoMePegan);
             }
 
             Program.LogDebug($"[Combate] {aplicado} de daño a {target.Id} (calculado {damage}); " +
@@ -5709,13 +5781,11 @@ namespace Jondo.Unity.Server.Handlers
             // hacía que el bicho se cayera muerto antes de que se viera la animación.
             if (!target.IsAlive)
             {
+                // What goes off on his death has already gone off, above, with him standing.
+                CarriedFollows(fight, target);
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                     Network.FightProtocol.BuildDeath(caster.Id, target.Id)));
                 Program.LogDebug($"[Combate] {target.Id} se queda sin vida.");
-
-                // What its attitudes do when it dies: a bomb under Polvo explodes.
-                CarriedFollows(fight, target);
-                await ActitudesAsync(stream, fight, target, Managers.EffectEngine.AlMorir);
 
                 // Orden de niveles, remate con arma y caida junto a un obstaculo: los tres se
                 // juzgan aqui. El arma es el hechizo cero, que es como viaja el cuerpo a cuerpo.
@@ -5769,6 +5839,11 @@ namespace Jondo.Unity.Server.Handlers
             // Lo que se anuncia nunca puede pasar de la vida que le queda, igual que en un golpe
             // normal: por encima de eso no hay vida que quitar.
             int aplicado = Math.Min(dano, quien.CurrentHP);
+            if (aplicado >= quien.CurrentHP && !quien.Muriendo)
+            {
+                if (!await AlMorirAsync(stream, fight, quien)) return;
+                aplicado = Math.Min(dano, quien.CurrentHP);
+            }
             quien.TakeDamage(aplicado);
             AnotarElGolpe(fight, quienEmpuja, quien, aplicado, push: true);
 
@@ -5794,15 +5869,16 @@ namespace Jondo.Unity.Server.Handlers
             if (quien.LeHanPegado)
             {
                 await ActitudesAsync(stream, fight, quien, Managers.EffectEngine.CuandoMePegan);
+                await EngancheAsync(stream, fight, quien, Managers.EffectEngine.CuandoMePegan);
             }
 
             if (quien.IsAlive) return;
 
+            // What goes off on his death has already gone off, above, with him standing.
+            CarriedFollows(fight, quien);
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildDeath(quienEmpuja.Id, quien.Id)));
             Program.LogDebug($"[Combate] {quien.Id} se queda sin vida por el golpe del empujón.");
-            CarriedFollows(fight, quien);
-            await ActitudesAsync(stream, fight, quien, Managers.EffectEngine.AlMorir);
 
             await ChallengeWatcher.DiedAsync(stream, fight, quien, false, quienEmpuja);
             await ChallengeWatcher.AllyDiedAsync(stream, fight, quien);
@@ -6924,6 +7000,7 @@ namespace Jondo.Unity.Server.Handlers
             // Ocre se quita el estado de "me han pegado", para que el turno siguiente vuelva a
             // mirarlo limpio.
             await ActitudesAsync(stream, fight, ending, Managers.EffectEngine.AlAcabarElTurno);
+            await EngancheAsync(stream, fight, ending, Managers.EffectEngine.AlAcabarElTurno);
 
             // A turn-end effect can be the one that empties a side -- a poison, a Tymobot that
             // was the last of its team -- and then there is no next turn to hand out.

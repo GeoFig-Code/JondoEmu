@@ -1474,22 +1474,35 @@ namespace Jondo.Unity.Server.Network
         /// 230, facing 3 -- and whose f3 is the original's id. Measured on the three copies of
         /// the capture, byte for byte.
         /// </remarks>
+        /// <param name="identity">
+        /// Who the copy claims to be, for the side that must not tell it apart. The captured
+        /// block -- the Tymador's own client -- carries no identity and a monster's mould of a
+        /// sheet, and the client names nothing on hovering such a copy while it names the
+        /// original: enough of a tell for an enemy. What the enemy's client is sent is not
+        /// measured, so it gets the copy dressed as the person -- his identity, his own sheet
+        /// with his life as it stands, his look -- and the copy's own id where the person's
+        /// would go. Null keeps the captured shape.
+        /// </param>
         public static byte[] BuildIllusion(long author, long illusionId, int cell, int orientation,
                                            int originalCell, int originalOrientation,
                                            IEnumerable<(int Characteristic, long Base, long Gear)> sheet,
-                                           byte[] look)
+                                           byte[] look, Pb identity = null)
         {
             var stats = Pb.New().Var(3, SheetKind);
             foreach (var (characteristic, baseValue, gear) in sheet)
             {
-                stats.Msg(5, SheetEntry(characteristic, baseValue, gear, isMonster: true));
+                stats.Msg(5, SheetEntry(characteristic, baseValue, gear, isMonster: identity == null));
             }
             var original = Pb.New()
                 .Var(3, 1)
                 .Msg(4, Pb.New()
                     .Msg(1, Pb.New().Var(1, originalCell).VarIfNotZero(2, originalOrientation).Var(4, 0))
                     .Var(3, author));
-            var fighter = Pb.New().Msg(2, stats).Msg(7, original);
+            var fighter = Pb.New();
+            if (identity != null) fighter.Var(1, illusionId);
+            fighter.Msg(2, stats);
+            if (identity != null) fighter.Msg(6, identity);
+            fighter.Msg(7, original);
             var block = Pb.New()
                 .Msg(1, Pb.New().Var(1, cell).VarIfNotZero(2, orientation).Var(4, 0))
                 .Msg(2, Pb.New().Msg(2, fighter).Bytes(3, look))

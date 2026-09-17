@@ -1748,10 +1748,15 @@ namespace Jondo.Unity.Server.Managers
             if (efecto.EffectId == EffectSupport.Illusions)
             {
                 // The caster goes to the aimed cell -- a free, walkable one -- and copies of him
-                // appear two steps down each axis of the cell he LEFT, on the cells that are
-                // free and walkable, as many as the effect says. The cell he lands on is one of
-                // the four when he aims two cells up his own axis, which is why the capture has
-                // three copies and not four.
+                // appear on the cells symmetric to it around the cell he LEFT: the vector from
+                // there to the aimed cell, turned a quarter, a half and three quarters. The
+                // capture is one sample and fits both readings -- aimed two cells up his own
+                // axis, the copies landed two cells down the other three -- and the fixed
+                // "two steps down each axis" that was written first put the copies two cells
+                // away from a cast aimed one cell away, out of any cross. Turning the aimed
+                // vector keeps them at the distance he jumped, in the shape the sheet
+                // describes, and the copies go only on cells that are free and walkable, as
+                // many as the effect says.
                 if (celdaApuntada < 0 || sobre != quienLanza) return null;
                 var suelo = MapManager.GetFightWalkable(combate.ArenaMapId);
                 if (suelo != null && !suelo.Contains(celdaApuntada)) return null;
@@ -1763,7 +1768,11 @@ namespace Jondo.Unity.Server.Managers
                 var copias = new List<Fighter>();
                 int cuantas = Math.Max(1, efecto.DiceNum);
                 var (ox, oy) = Jondo.Unity.World.Maps.MapGeometry.CellToPoint(origen);
-                foreach (var (dx, dy) in new[] { (2, 0), (-2, 0), (0, 2), (0, -2) })
+                var (ax, ay) = Jondo.Unity.World.Maps.MapGeometry.CellToPoint(celdaApuntada);
+                int vx = ax - ox, vy = ay - oy;
+                // A quarter turn, three quarters, a half: the order the three copies of the
+                // capture came out in -- 259, 201, 203 for a jump from 230 to 257.
+                foreach (var (dx, dy) in new[] { (-vy, vx), (vy, -vx), (-vx, -vy) })
                 {
                     if (copias.Count >= cuantas) break;
                     int celda = Jondo.Unity.World.Maps.MapGeometry.PointToCell(ox + dx, oy + dy);

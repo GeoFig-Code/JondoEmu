@@ -204,6 +204,13 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public bool EsIlusion { get; set; }
 
+        /// <summary>
+        /// Set while the blow that finishes him is being resolved, so that what goes off on
+        /// his death -- his attitudes, the spells hooked on him with an X trigger -- fires once,
+        /// with him still standing, and not again from whatever it sets off.
+        /// </summary>
+        public bool Muriendo { get; set; }
+
         /// <summary>The copies this fighter has out, by id. Empty for everybody else.</summary>
         public List<long> Ilusiones { get; } = new List<long>();
 

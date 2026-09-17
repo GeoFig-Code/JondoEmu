@@ -436,6 +436,7 @@ rules object, and nothing writing to a single socket unless it is painting one p
 - ✅ Turn protocol, 30-second timers with automatic pass, AP/MP replenishment
 - ✅ Movement with per-tile MP cost and collision against occupied cells
 - ✅ Loot, victory and defeat screens, experience over **1,889 levels**, level-ups and group respawn
+- ✅ **End-of-fight statistics** — damage dealt by source (own casts, glyphs and walls, summons, turn triggers, pushes), taken, heals given and received, shields, enemies defeated, and the per-turn and per-AP averages, each field measured against the frames of its own fight over 30 fights; every player gets his own numbers and nobody else's, and the results list carries people and monsters, not summons
 - ✅ Monster AI: a target chosen **per spell**, range measured against that target rather than against the nearest enemy, walking to the spell's own range band, `MaxCastPerTurn` honoured, breadth-first pathing around obstacles and line of sight. Measured over the 5,134 monsters: **15.1%** cannot reach the player, against 24.9% without it, and **87.2%** of action points get spent, against 58.7%
 - 🟡 Weapon strikes apply damage and AP cost; the slash animation does not
 - 🟡 `MaxCastPerTarget`, minimum cast interval and cast-in-line are enforced for the player, not for monsters
@@ -496,7 +497,7 @@ no code at all** — they are characteristics, read straight off the client's ow
 - ✅ Displacement — push, pull, step back, step forward, push without damage, and push or pull **to the aimed cell** (783/1043); direction taken from the centre of the area, stopping at walls, holes and fighters. Every displacement travels as a 5 (553 of 553 samples), a teleport as a 4 (581), a swap as one 8
 - ✅ Teleports — to a cell, back to the previous position, symmetrical around the caster or the target — and position swaps
 - ✅ **Carry and throw** (50/51) — the Pandawa's Karcham and Chamrak and the Tymobot's Pinzas are the same two primitives. The one carried leaves the board's cells and follows; the states 3 and 8 come off the spell's own cast conditions
-- ✅ **Illusions** (1097) — Tymadura, byte for byte against its capture: the caster jumps to the aimed cell and copies with his stats of the moment appear two steps down each free axis of the cell he left. They hold a cell, do not play, do not sit in the carousel, and go at the first hit that deals damage — all of them when the original is hit, or at his next turn
+- ✅ **Illusions** (1097) — Tymadura, byte for byte against its capture: the caster jumps to the aimed cell and copies with his stats of the moment appear two steps down each free axis of the cell he left. They stand where the aimed vector points when turned a quarter, a half and three quarters around the cell he left, hold a cell, do not play, do not sit in the carousel, and go at the first hit that deals damage — all of them when the original is hit, or at his next turn. His own side gets the captured block and sees him translucent among opaque copies; the other side gets the copies dressed as him, name and life included, and no visibility switch at all
 - ✅ Criticals rolled against the spell's probability plus the character's, using the spell's separate critical effect list
 - ✅ Point steal, life steal, erosion of maximum HP and damage-taken multipliers
 - ✅ Healing in all five elements, AP given back, best-element damage and life steal
@@ -508,7 +509,9 @@ no code at all** — they are characteristics, read straight off the client's ow
 - ✅ **Nine sub-cast families, one table** — 792 is cast by the target at its own cell, 1160 by the caster at the candidate's, 1017 back at the parent caster, 2160 at the nearest eligible target under a budget so a chain cannot loop, 2794 at the parent cell; counted over 21,307 casts. Getting the caster and the cell of a chained cast wrong is what left Mosquete, Kabúm and Último Aliento without combos
 - ✅ **Glyphs, traps and runes** — 623 spells, one system: the four families share a shape and differ in when they fire, and a glyph that fires goes through the ordinary cast path, so it inherits damage, resistances and announcements for free
 - ✅ Summons as real fighters — own sheet, behaviour spell, lifetime, and they all fall when their summoner dies. **Whether one plays is bit 6 of its template's `m_flags`, and those that do are driven by their owner from his own client** — spell bar, moves and casts at their own grade — measured on the Osamodas and the Tymador. Capacity is the template's `summonCost` added up, not bodies counted: 485 of the 5,134 templates cost nothing
-- ✅ **Bombs** — a summon that costs nothing against the limit, stays out of the carousel, detonates through its own explosion (1009) once per chain, climbs a combo that comes whole out of spells 20497 and 20500 — one step at birth, two per turn, and a size of 100 plus the combo carried — and lines up into walls, two or three of a kind 2 to 6 cells apart, charged on entry and at turn start and never by the Tymador's own bombs. Every number measured over the 22 Tymador captures; the +1 AP per living bomb and the chain reaction are not done
+- ✅ **Bombs** — a summon that costs nothing against the limit, stays out of the carousel, detonates through its own explosion (1009) once per chain, is born in Combo I through its own spell and climbs a combo that comes whole out of spells 20497 and 20500 — a size of 100 plus the combo carried — and lines up into walls, two or three of a kind with one to six cells between them, charged on entry and at turn start, never by the Tymador's own bombs, and at double strength while he or a summon of his is playing. Polvo's "explode if destroyed" fires with the bomb still standing. Every number measured over the 22 Tymador captures; the +1 AP per living bomb and the chain reaction are not done
+- ✅ **Class passives** — each class carries its own initial spell into every fight and the real server casts it before the first turn: *La Astucia del Tymador*, *El Alcance de Ocra*, *La Sombra de Sram*, *El Escudo de Feca*… Measured over 77 fights of 14 classes and kept in `content/fights/class_passives.json`; the client's data does not link them to a breed. Their turn triggers are what put the Tymador's turn state on him and hand every bomb of his two combos a turn — no rule of that is written by hand. The initial spells of a character's own choices go with it, matched by icon
+- ✅ **Hooked spells fire on every trigger** — turn start, turn end, when hit, on death and per step walked, from their original caster; what goes off on a death goes out before the death itself, the way the Tymobot's does in its capture. And every chained cast is announced, once, before the first thing it does
 - ✅ Item attitudes — the six Dofus and the trophies grant their spell through effect 1175. Whatever a turn trigger announces goes inside one sequence of the bearer's, which is how the real server sends the Tymobot's death at the end of its turn
 - ✅ Appearance-changing spells — the transform replaces the root bones and keeps colours, skins, scale and pets, through combat action 149
 - ✅ Script markers 3792 and 3793 do nothing, and that is measured: their value is a script id, not an effect
@@ -1601,7 +1604,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,047 xUnit tests** across 120 files, grouped by domain: `Auth`, `Combat`,
+`Jondo.Unity.Tests` — **1,057 xUnit tests** across 122 files, grouped by domain: `Auth`, `Combat`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 
@@ -1687,7 +1690,7 @@ Shared:
 * **`Jondo.Unity.World`** — world logic, `FightInstance`, the fight rulebooks (`FightRules`), buffs and states (`Buff`), area shapes and displacement (`Zone`), isometric geometry (`MapGeometry`)
 * **`Jondo.Unity.Sprites`** — draws a character or an NPC out of the client's own bones, skins and atlases. Shared by the Studio and the launcher so a fix to either reaches both
 * **`Jondo.Unity.Parser`** — capture parsing
-* **`Jondo.Unity.Tests`** — 1,047 xUnit tests, and the gate on publishing
+* **`Jondo.Unity.Tests`** — 1,057 xUnit tests, and the gate on publishing
 
 The protocol toolchain, which the emulator does not depend on:
 * **`Jondo.Unity.Reversing`** — reads a client with Cpp2IL, rebuilds the `.proto`, matches two versions, indexes the code, downloads old clients from the CDN (`Cytrus`) and generates the `Op` layer

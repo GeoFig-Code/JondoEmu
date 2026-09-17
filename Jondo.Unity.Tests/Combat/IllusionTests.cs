@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Linq;
 using Jondo.Unity.Server.Managers;
 using Jondo.Unity.Server.Network;
 using Jondo.Unity.World.Combat;
 using Jondo.Unity.World.Fights;
+using Jondo.Unity.World.Maps;
 using Xunit;
 
 namespace Jondo.Unity.Tests.Combat
@@ -80,6 +81,48 @@ namespace Jondo.Unity.Tests.Combat
                          Hex(FightProtocol.BuildIllusionGone(Rogue, -6)));
             Assert.Equal("121108840210f5ffffffffffffffff0118d50218e380b490c8017008",
                          Hex(FightProtocol.BuildSwap(Rogue, 260, -11, 341)));
+        }
+
+        /// <summary>
+        /// Aimed one cell away, the copies come one cell away too: a jump from 299 to 285 --
+        /// (-1, 0) on the grid -- leaves them on 313, 286 and 314, the quarter, three-quarter
+        /// and half turns of that step around 299. The first shape sent them two cells out.
+        /// </summary>
+        [Fact]
+        public void The_copies_stand_as_far_as_he_jumped()
+        {
+            var (fight, me) = Board();
+            me.CellId = 299;
+
+            var outcomes = EffectEngine.Resolver(fight, me, Tymadura, 3, me, EffectEngine.AlLanzar,
+                                                 fight.RoundNumber, celdaApuntada: 285);
+
+            var made = Assert.Single(outcomes, o => o.Ilusiones != null);
+            Assert.Equal(new[] { 313, 286, 314 }, made.Ilusiones.Select(i => i.CellId));
+            Assert.All(made.Ilusiones, i => Assert.Equal(1, MapGeometry.Distance(299, i.CellId)));
+        }
+
+        /// <summary>
+        /// The block the other side gets carries the person's identity and his own sheet, so
+        /// the copy answers to his name; the captured block, with no identity, is what his own
+        /// side keeps getting.
+        /// </summary>
+        [Fact]
+        public void The_enemy_side_gets_the_copy_dressed_as_him()
+        {
+            var identity = FightProtocol.PlayerIdentity(13, "Tymaviejas", 0, 200);
+
+            byte[] dressed = FightProtocol.BuildIllusion(Rogue, -8, 259, 1, 230, 3,
+                                                         new[] { (1, 7L, 0L), (0, 2387L, 0L) }, CapturedLook, identity);
+            byte[] bare = FightProtocol.BuildIllusion(Rogue, -8, 259, 1, 230, 3,
+                                                      new[] { (1, 7L, 0L), (0, 2387L, 0L) }, CapturedLook);
+
+            Assert.Contains("Tymaviejas", System.Text.Encoding.UTF8.GetString(dressed));
+            Assert.DoesNotContain("Tymaviejas", System.Text.Encoding.UTF8.GetString(bare));
+            Assert.Equal(Hex(FightProtocol.BuildIllusion(Rogue, -8, 259, 1, 230, 3,
+                                                         FightProtocol.IllusionSheet(200), CapturedLook)),
+                         Hex(FightProtocol.BuildIllusion(Rogue, -8, 259, 1, 230, 3,
+                                                         FightProtocol.IllusionSheet(200), CapturedLook, null)));
         }
 
         /// <summary>A copy holds its cell: the next cast finds it there and the caster cannot land on it.</summary>

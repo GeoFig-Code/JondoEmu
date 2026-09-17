@@ -91,7 +91,7 @@ namespace Jondo.Unity.World.Combat
 
         /// <summary>
         /// 1097 "Crea ilusiones": the caster teleports to the aimed cell and leaves copies of
-        /// himself on the free cells two steps down each axis of the cell he left. 1029 is the
+        /// himself on the cells symmetric to it around the cell he left. 1029 is the
         /// one that takes a copy away: at the caster's next turn start, all of them at once, and
         /// -- the class sheet -- the moment any of them takes damage. 150 is the visibility
         /// switch that goes with it: state 1 as the copies appear, 2 as they go.

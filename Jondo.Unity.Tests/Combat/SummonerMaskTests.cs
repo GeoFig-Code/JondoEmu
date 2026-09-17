@@ -200,6 +200,62 @@ namespace Jondo.Unity.Tests.Combat
             Assert.DoesNotContain(me.Buffs.Estados, e => e == 2485);
         }
 
+        /// <summary>
+        /// A bomb is born in Combo I, and its own spell is what puts it there: Encendimiento's
+        /// 1017 hands La Astucia del Tymador back to the summoner, whose 792 casts the ladder on
+        /// the bomb once -- state 2484 and nothing above it, as the sismobomba capture has it.
+        /// </summary>
+        [Fact]
+        public void A_bomb_is_born_in_combo_one_through_its_own_spell()
+        {
+            var fight = new FightInstance(1, 1);
+            var me = Rogue(10, 0, 300);
+            var enemy = Rogue(20, 1, 400);
+            fight.AddPlayer(me); fight.AddOpponent(enemy);
+            var mine = Bomb(-1, me, 260);
+            fight.Invocar(mine, me);
+
+            EffectEngine.Resolver(fight, mine, 13468, 1, mine, EffectEngine.AlLanzar,
+                                  fight.RoundNumber, celdaApuntada: 260);
+
+            Assert.Equal(1, Combo.LevelOf(mine));
+            Assert.Contains(2484, mine.Buffs.Estados);
+            Assert.DoesNotContain(2485, mine.Buffs.Estados);
+        }
+
+        /// <summary>
+        /// Polvo on a fresh bomb leaves it Unmovable (97) and marked (2511) and gives it no
+        /// combo: its two ladder casts ask for 2511 on the bomb before the cast, and the real
+        /// server sends five buffs and no 20497 -- both casts of "tymador-polvo". The two
+        /// combos are the X trigger's, with the explosion: they come when the bomb is
+        /// destroyed, resolved with the bomb still standing -- the killing blow fires them
+        /// before taking the last point -- so it climbs two rungs and casts its explosion.
+        /// </summary>
+        [Fact]
+        public void Polvo_gives_no_combo_on_the_cast_and_two_with_the_explosion_on_death()
+        {
+            var fight = new FightInstance(1, 1);
+            var me = Rogue(10, 0, 300);
+            var enemy = Rogue(20, 1, 400);
+            fight.AddPlayer(me); fight.AddOpponent(enemy);
+            var mine = Bomb(-1, me, 260);
+            fight.Invocar(mine, me);
+            mine.Buffs.PonerEstado(2484);
+
+            EffectEngine.Resolver(fight, me, 13441, 2, mine, EffectEngine.AlLanzar,
+                                  fight.RoundNumber, celdaApuntada: 260);
+
+            Assert.Contains(97, mine.Buffs.Estados);
+            Assert.Contains(2511, mine.Buffs.Estados);
+            Assert.Equal(1, Combo.LevelOf(mine));
+
+            var onDeath = EffectEngine.Resolver(fight, me, 13441, 2, mine, EffectEngine.AlMorir,
+                                                fight.RoundNumber, celdaApuntada: 260);
+
+            Assert.Equal(3, Combo.LevelOf(mine));
+            Assert.Contains(onDeath, o => o.HechizoOrigen == Bombs.Explosion(Explobomba));
+        }
+
         /// <summary>Who plays and who does not, off the template flag.</summary>
         [Fact]
         public void A_summon_plays_by_its_template_flag()

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -108,6 +108,23 @@ namespace Jondo.Unity.World.Fights
         public List<int> Actitudes { get; } = new List<int>();
 
         /// <summary>
+        /// The grade an attitude is held at, for the few that have one: the initial spells of a
+        /// character's own choices are cast at his grade of the choice -- 25200 "Explobomba" at
+        /// grade 3 for the Tymador who has Explobomba at 3 -- while an item's attitude and a
+        /// class passive are always their grade one.
+        /// </summary>
+        private readonly Dictionary<int, int> _gradosDeActitud = new Dictionary<int, int>();
+
+        public void PonerActitud(int hechizo, int grado = 1)
+        {
+            if (!Actitudes.Contains(hechizo)) Actitudes.Add(hechizo);
+            if (grado > 1) _gradosDeActitud[hechizo] = grado;
+        }
+
+        public int GradoDeActitud(int hechizo)
+            => _gradosDeActitud.TryGetValue(hechizo, out int grado) ? grado : 1;
+
+        /// <summary>
         /// Los hechizos que uno lleva puestos y que TODAVÍA TIENEN ALGO QUE HACER más adelante.
         ///
         /// Un hechizo no se acaba al lanzarlo: sus efectos con disparador distinto de "I" quedan a
@@ -127,20 +144,32 @@ namespace Jondo.Unity.World.Fights
             public int Hechizo { get; set; }
             public int Grado { get; set; }
             public int CaducaEnRonda { get; set; }
+
+            /// <summary>
+            /// Who cast it, and therefore who its later effects come from: Polvo's "explode if
+            /// destroyed" is the Tymador's doing on his bomb, not the bomb's on itself. Zero
+            /// means the bearer.
+            /// </summary>
+            public long Lanzador { get; set; }
+
             public bool Vivo(int ronda) => CaducaEnRonda < 0 || ronda < CaducaEnRonda;
         }
 
         /// <summary>Deja apuntado que este hechizo sigue puesto, o alarga el que ya estaba.</summary>
-        public void Enganchar(int hechizo, int grado, int caducaEnRonda)
+        public void Enganchar(int hechizo, int grado, int caducaEnRonda, long lanzador = 0)
         {
             var ya = _enganchesPorHechizo(hechizo);
             if (ya != null)
             {
                 ya.Grado = grado;
                 ya.CaducaEnRonda = caducaEnRonda;
+                ya.Lanzador = lanzador;
                 return;
             }
-            ActiveSpells.Add(new ActiveSpell { Hechizo = hechizo, Grado = grado, CaducaEnRonda = caducaEnRonda });
+            ActiveSpells.Add(new ActiveSpell
+            {
+                Hechizo = hechizo, Grado = grado, CaducaEnRonda = caducaEnRonda, Lanzador = lanzador,
+            });
         }
 
         private ActiveSpell _enganchesPorHechizo(int hechizo)
@@ -384,6 +413,7 @@ namespace Jondo.Unity.World.Fights
             _puestos.Clear();
             _estados.Clear();
             Actitudes.Clear();
+            _gradosDeActitud.Clear();
         }
     }
 }
