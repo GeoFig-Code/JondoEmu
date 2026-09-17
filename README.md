@@ -517,6 +517,7 @@ no code at all** — they are characteristics, read straight off the client's ow
 - ✅ **AP and MP removal against dodge** — a "retira PA/PM" (1079/1080, and the steals) is rolled point by point with the game's own odds, `(points left / maximum) × (retira + 2) / (esquiva + 2) × ½`, never under 10 % nor over 90 %, the target's points going down with each one lost; *retira* and *esquiva* are a tenth of wisdom plus the gear (410–413, 160–163) and the live rows, monsters carry their grade's `paDodge`/`pmDodge`. What is dodged goes out as a `jwe 308/309` and what lands as a `-N PA/PM` row (168/169) with the N that landed — the shape of all 401 dodges and 74 landed removals in the captures, where no `jwe 101/127` ever travels. Outside his turn a target counts with the points his next turn starts with, not with what he had left, which is what his sheet reads too
 - ✅ **A summon with nothing to play hands its turn on** — a beacon (no step, no spell) gets no `jyj`: its turn-start cast goes out and the turn moves on, a quarter of a second in its capture. Every summon that can act is its owner's to play by hand, as the captures show for the Tymobot, the walking bomb and the Osamodas' animals (`jyj` on their `jzc`, then the owner's `jrw`/`jwh`). The beacon's fifteen seconds with a "pass turn" button were ours
 - ✅ **Damage in the caster's worst element** (2832, Llamita), next to the best one (2822)
+- ✅ **"-N de daños recibidos"** (105, 265) — a flat cut at the end of the sum, held as a row on the target whose damage-kind letters say which blows it reads: `DR` ranged, `DM`/`DCAC` melee, `D` any, `DTB`/`DTE` a turn's poison. Remisión on a bomb of the Tymador is 20 less at grade 3 from afar and nothing from next door, for three rounds; the row travels hidden with its trigger and its value in the dice slot, as the capture's `jxm 265 f1=23 'DR'`. The elemental and per-source letters (`DA`, `DF`, `DW`, `DT`, `DN`, `DE`, `DG`, `DS`, `DV`) are registered and not yet read
 - ✅ Item attitudes — the six Dofus and the trophies grant their spell through effect 1175. Whatever a turn trigger announces goes inside one sequence of the bearer's, which is how the real server sends the Tymobot's death at the end of its turn
 - ✅ Appearance-changing spells — the transform replaces the root bones and keeps colours, skins, scale and pets, through combat action 149
 - ✅ Script markers 3792 and 3793 do nothing, and that is measured: their value is a script id, not an effect
@@ -1610,7 +1611,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,077 xUnit tests** across 126 files, grouped by domain: `Auth`, `Combat`,
+`Jondo.Unity.Tests` — **1,078 xUnit tests** across 126 files, grouped by domain: `Auth`, `Combat`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 
@@ -1696,7 +1697,7 @@ Shared:
 * **`Jondo.Unity.World`** — world logic, `FightInstance`, the fight rulebooks (`FightRules`), buffs and states (`Buff`), area shapes and displacement (`Zone`), isometric geometry (`MapGeometry`)
 * **`Jondo.Unity.Sprites`** — draws a character or an NPC out of the client's own bones, skins and atlases. Shared by the Studio and the launcher so a fix to either reaches both
 * **`Jondo.Unity.Parser`** — capture parsing
-* **`Jondo.Unity.Tests`** — 1,077 xUnit tests, and the gate on publishing
+* **`Jondo.Unity.Tests`** — 1,078 xUnit tests, and the gate on publishing
 
 The protocol toolchain, which the emulator does not depend on:
 * **`Jondo.Unity.Reversing`** — reads a client with Cpp2IL, rebuilds the `.proto`, matches two versions, indexes the code, downloads old clients from the CDN (`Cytrus`) and generates the `Op` layer

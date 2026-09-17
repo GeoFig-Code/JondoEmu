@@ -362,6 +362,38 @@ namespace Jondo.Unity.World.Fights
         /// Devuelve cien cuando no hay ninguno, o sea "por uno". Varios se encadenan: dos del
         /// ciento diez dan un ciento veintiuno.
         /// </summary>
+        /// <summary>
+        /// The flat "-N de daños recibidos" (105, 265) the bearer holds against a blow of the
+        /// given kinds: the rows put with no trigger at all, and the rows whose trigger names
+        /// one of the kinds. Those letters are not triggers that fire but CONDITIONS on the
+        /// blow -- "DR" ranged, "DM"/"DCAC" melee, "D" any, "DTB"/"DTE" the poisons of a turn
+        /// -- and Remisión's on a bomb is "DR": a bomb shot from afar takes 20 less at grade 3,
+        /// one hit from next door takes it all.
+        /// </summary>
+        public int ReduccionDeDanoRecibido(int ronda, IReadOnlyCollection<string> clasesDelGolpe)
+        {
+            int total = 0;
+            foreach (var e in _puestos)
+            {
+                if (e.EffectId != DanoRecibidoMenos && e.EffectId != DanoRecibidoMenosFijo) continue;
+                if (!e.Vivo(ronda) || e.Cuanto <= 0) continue;
+                bool aplica = string.IsNullOrEmpty(e.Disparador) || e.Disparador == "I";
+                if (!aplica)
+                {
+                    foreach (var d in e.Disparador.Split('|'))
+                    {
+                        if (clasesDelGolpe.Contains(d.Trim())) { aplica = true; break; }
+                    }
+                }
+                if (aplica) total += e.Cuanto;
+            }
+            return total;
+        }
+
+        /// <summary>The two "-N de daños recibidos" of the catalogue.</summary>
+        public const int DanoRecibidoMenos = 265;
+        public const int DanoRecibidoMenosFijo = 105;
+
         public int Multiplicador(int efecto, int ronda)
         {
             double total = 1.0;

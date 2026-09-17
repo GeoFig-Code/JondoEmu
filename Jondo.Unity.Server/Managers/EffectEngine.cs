@@ -99,6 +99,14 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public int EfectoEnElCable { get; init; }
 
+        /// <summary>
+        /// A row registered for later -- a "-N de daños recibidos" that waits for a blow of its
+        /// kind. It travels with its own trigger, hidden, and with the value in the dice slot
+        /// when the effect rolls none: "jxm 265 f1=23 f10=23 'DR' f15=7" on the bomb of the
+        /// Remisión capture.
+        /// </summary>
+        public bool FilaEnganchada { get; init; }
+
         /// <summary>Los puntos de escudo que este efecto ha puesto. Cero cuando no pone ninguno.</summary>
         public int Escudo { get; init; }
 
@@ -614,6 +622,10 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>El 5 de Effects.ElementId: «el mejor», que no es un elemento sino una pregunta.</summary>
         private const int ElementoMejor = 5;
 
+        /// <summary>The two "-N de daños recibidos": a flat cut on the blows the row names.</summary>
+        internal static bool EsReduccionDeDanoRecibido(int efecto)
+            => efecto == Buffs.DanoRecibidoMenos || efecto == Buffs.DanoRecibidoMenosFijo;
+
         /// <summary>«-N% PdV» (9 hechizos). El dado es el TANTO POR CIENTO de la vida máxima.</summary>
         private const int QuitaPorcentajeDeVida = 1048;
 
@@ -1034,7 +1046,43 @@ namespace Jondo.Unity.Server.Managers
                 {
                     if (string.Equals(d, trigger, StringComparison.OrdinalIgnoreCase)) { leToca = true; break; }
                 }
+                // "-N de daños recibidos" under a damage kind is not something to fire: it is a
+                // row that waits on the target for a blow of that kind, put at the cast and
+                // read when the blow lands (Buffs.ReduccionDeDanoRecibido). Registered here,
+                // on whoever the mask and the zone name, with its trigger kept as it is.
+                if (!leToca && string.Equals(trigger, AlLanzar, StringComparison.OrdinalIgnoreCase)
+                    && EsReduccionDeDanoRecibido(efecto.EffectId))
+                {
+                    foreach (var recipient in AQuien(combat, caster, target, efecto, aimedCell, estadosAlEmpezar))
+                    {
+                        if (recipient == null || !recipient.IsAlive) continue;
+                        var fila = recipient.Buffs.Poner(new Buff
+                        {
+                            EffectId = efecto.EffectId,
+                            EffectUid = efecto.EffectUid,
+                            Cuanto = DelDado(efecto.DiceNum, efecto.DiceSide, efecto.Value),
+                            HechizoOrigen = spell,
+                            NivelOrigen = grade,
+                            Quien = caster.Id,
+                            Disparador = efecto.Triggers,
+                            CaducaEnRonda = Caduca(efecto, round),
+                            EmpiezaEnRonda = Empieza(efecto, round),
+                        }, combat.SiguienteEmbrujo);
+                        fuera.Add(new Outcome
+                        {
+                            Sobre = recipient, Efecto = efecto, Buff = fila,
+                            HechizoOrigen = spell, NivelOrigen = grade, FilaEnganchada = true,
+                        });
+                    }
+                    continue;
+                }
+
                 if (!leToca) continue;
+
+                // And it never FIRES: the row registered at the cast is read by the blow. Fired
+                // on the blow's own trigger it would put a second, unconditional row.
+                if (EsReduccionDeDanoRecibido(efecto.EffectId)
+                    && !string.Equals(trigger, AlLanzar, StringComparison.OrdinalIgnoreCase)) continue;
 
                 // A push or a pull under a trigger is the SHEET's copy of a displacement the
                 // spell really does through a sub-cast, and does not run. Remisión carries
@@ -2650,6 +2698,32 @@ namespace Jondo.Unity.Server.Managers
                 return new Outcome
                 {
                     Sobre = sobre, Efecto = efecto, Buff = puesto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                };
+            }
+
+            // "-N de daños recibidos" right away (105 with a roll, 265): a row with the cut
+            // in it, read when a blow lands. The catalogue hangs it on characteristic 16 with
+            // no sign, so the generic path made a row that cut nothing.
+            if (EsReduccionDeDanoRecibido(efecto.EffectId))
+            {
+                int corte = DelDado(efecto.DiceNum, efecto.DiceSide, efecto.Value);
+                if (corte <= 0) return null;
+                var fila = sobre.Buffs.Poner(new Buff
+                {
+                    EffectId = efecto.EffectId,
+                    EffectUid = efecto.EffectUid,
+                    Cuanto = corte,
+                    HechizoOrigen = hechizo,
+                    NivelOrigen = grado,
+                    Quien = quienLanza.Id,
+                    Disparador = AlLanzar,
+                    CaducaEnRonda = Caduca(efecto, ronda),
+                    EmpiezaEnRonda = Empieza(efecto, ronda),
+                }, combate.SiguienteEmbrujo);
+                return new Outcome
+                {
+                    Sobre = sobre, Efecto = efecto, Buff = fila,
                     HechizoOrigen = hechizo, NivelOrigen = grado,
                 };
             }

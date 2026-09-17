@@ -184,6 +184,45 @@ namespace Jondo.Unity.Tests.Combat
             Assert.True(EffectEngine.EsDeDano(2832));
         }
 
+        /// <summary>
+        /// Remisión on a bomb of his: the "-N de daños recibidos" under DR is a row on the bomb,
+        /// hidden, with the cut in it -- 20 at grade 3, the capture's 23 being a critical cast --
+        /// that a ranged blow reads and a melee one does not, for three rounds. Nothing of it
+        /// on the enemy the same spell marks, and nothing fires on the blow's own trigger.
+        /// </summary>
+        [Fact]
+        public void Remision_on_a_bomb_cuts_ranged_damage_and_not_melee()
+        {
+            var fight = new FightInstance(1, 1);
+            var me = Person(10, 0, 232);
+            var enemy = Person(20, 1, 400);
+            fight.AddPlayer(me); fight.AddOpponent(enemy);
+            var bomb = Bomb(-1, me, 218);
+            fight.Invocar(bomb, me);
+
+            var outcomes = EffectEngine.Resolver(fight, me, Remision, 3, bomb, EffectEngine.AlLanzar,
+                                                 fight.RoundNumber, celdaApuntada: 218);
+
+            var row = Assert.Single(outcomes, o => o.FilaEnganchada);
+            Assert.Equal(bomb, row.Sobre);
+            Assert.Equal(265, row.Efecto.EffectId);
+            Assert.Equal("DR", row.Buff.Disparador);
+            Assert.Equal(20, row.Buff.Cuanto);
+            Assert.Equal(fight.RoundNumber + 3, row.Buff.CaducaEnRonda);
+            Assert.Contains(2512, bomb.Buffs.Estados);
+
+            Assert.Equal(20, bomb.Buffs.ReduccionDeDanoRecibido(fight.RoundNumber, new[] { "D", "DR" }));
+            Assert.Equal(0, bomb.Buffs.ReduccionDeDanoRecibido(fight.RoundNumber, new[] { "D", "DM", "DCAC" }));
+            Assert.Equal(0, enemy.Buffs.ReduccionDeDanoRecibido(fight.RoundNumber, new[] { "D", "DR" }));
+
+            // The blow's trigger fires the hooked spell on the bomb: no second row comes of it.
+            fight.TriggeringAttacker = enemy;
+            EffectEngine.Resolver(fight, me, Remision, 3, bomb, EffectEngine.CuandoMePeganDeLejos,
+                                  fight.RoundNumber, celdaApuntada: 218);
+            fight.TriggeringAttacker = null;
+            Assert.Single(bomb.Buffs.Puestos, b => b.EffectId == 265);
+        }
+
         /// <summary>The bar and the ring are what the shapes say; nothing hits the caster's cell.</summary>
         [Fact]
         public void Fusil_leaves_the_caster_alone_and_hits_the_bar_only()

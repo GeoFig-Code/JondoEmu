@@ -5164,7 +5164,9 @@ namespace Jondo.Unity.Server.Handlers
                 // A landed removal is announced as the loss it turned out to be: "-N PA" with
                 // the N that landed, the family of that effect, and no dice of its own.
                 int efectoAnunciado = c.EfectoEnElCable != 0 ? c.EfectoEnElCable : c.Efecto.EffectId;
-                int dadoAnunciado = c.EfectoEnElCable != 0 ? -c.Cuanto : c.Efecto.DiceNum;
+                int dadoAnunciado = c.EfectoEnElCable != 0 ? -c.Cuanto
+                                  : c.FilaEnganchada && c.Efecto.DiceNum == 0 ? c.Efecto.Value
+                                  : c.Efecto.DiceNum;
                 int caraAnunciada = c.EfectoEnElCable != 0 ? 0 : c.Efecto.DiceSide;
                 if (c.EfectoEnElCable != 0)
                 {
@@ -5795,6 +5797,26 @@ namespace Jondo.Unity.Server.Handlers
                                  $"{antes} pasa a {damage}.");
             }
 
+            // "-N de daños recibidos" (105, 265): a flat cut at the end of the sum, from the
+            // rows the target holds for blows of this KIND -- Remisión's on a bomb is ranged
+            // blows only. A kill is not a blow.
+            bool deCerca = Jondo.Unity.World.Maps.MapGeometry.Distance(caster.CellId, target.CellId) <= 1;
+            if (!fulmina && damage > 0)
+            {
+                var clases = new List<string> { "D", deCerca ? Managers.EffectEngine.CuandoMePeganDeCerca
+                                                             : Managers.EffectEngine.CuandoMePeganDeLejos };
+                if (deCerca) clases.Add("DCAC");
+                if (fromTurnTrigger) { clases.Add("DTB"); clases.Add("DTE"); }
+                int reduccion = target.Buffs.ReduccionDeDanoRecibido(fight.RoundNumber, clases);
+                if (reduccion > 0)
+                {
+                    int antes = damage;
+                    damage = Math.Max(0, damage - reduccion);
+                    Program.LogDebug($"[Combate] {target.Id} recibe {reduccion} menos de daño " +
+                                     $"({(deCerca ? "de cerca" : "de lejos")}): {antes} se queda en {damage}.");
+                }
+            }
+
             // FULMINAR: el efecto 141 del catálogo, «Mata al objetivo». No es un golpe muy grande,
             // es otra cosa, y por eso entra AQUÍ y no arriba: ni el dado, ni las resistencias, ni
             // los porcentajes pueden dejar a nadie exactamente en cero. Se le quita la vida que
@@ -5914,7 +5936,7 @@ namespace Jondo.Unity.Server.Handlers
             }
             if (aplicado > 0 && !fulmina && target.IsAlive)
             {
-                string alcance = Jondo.Unity.World.Maps.MapGeometry.Distance(caster.CellId, target.CellId) <= 1
+                string alcance = deCerca
                     ? Managers.EffectEngine.CuandoMePeganDeCerca
                     : Managers.EffectEngine.CuandoMePeganDeLejos;
                 await ActitudesAsync(stream, fight, target, alcance);
