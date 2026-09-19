@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using Jondo.Unity.Server.Handlers;
 using Jondo.Unity.Server.Managers;
 using Jondo.Unity.Server.Network;
 using Xunit;
@@ -34,6 +35,27 @@ namespace Jondo.Unity.Tests.World
         };
 
         private static string Hex(byte[] bytes) => string.Concat(bytes.Select(b => b.ToString("x2")));
+
+        [Theory]
+        [InlineData("Jondo")]
+        [InlineData("Les BG")]
+        [InlineData("L'été-2")]
+        [InlineData("ABC")]
+        public void Guild_names_accepted_by_the_command_are_valid(string name)
+        {
+            Assert.True(GuildHandler.IsValidGuildName(name));
+            Assert.Equal(1575, GuildHandler.GuildalogemTemplate);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("AB")]
+        [InlineData("Nom!")]
+        [InlineData("1234567890123456789012345678901")]
+        public void Guild_names_rejected_by_the_command_are_invalid(string name)
+        {
+            Assert.False(GuildHandler.IsValidGuildName(name));
+        }
 
         /// <summary>
         /// «Perteneces a este gremio» (jgw) tal y como salió al crear «Jondo»: el puesto 1 y el
