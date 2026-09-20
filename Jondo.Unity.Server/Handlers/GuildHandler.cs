@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Jondo.Unity.Server.Managers;
@@ -18,10 +18,26 @@ namespace Jondo.Unity.Server.Handlers
     /// </summary>
     public static class GuildHandler
     {
+        /// <summary>La gremialogema, el objeto que se gasta al fundar. «Gremialogema» en el catálogo del cliente.</summary>
         public const int GuildalogemTemplate = 1575;
 
-        // Emblema de la captura usada para reconstruir la fundación de gremios. El comando no
-        // dispone del editor gráfico del cliente, así que parte de este emblema neutro.
+        /// <summary>
+        /// El Templo de los Gremios y su altar, donde empieza la fundación.
+        /// </summary>
+        /// <remarks>
+        /// Medido en la captura de fundar «Jondo»: el jugador pulsa el elemento 480310 del mapa
+        /// 106169344 -«The Guild Temple», al norte del pueblo de Amakna, casilla 326 en los datos
+        /// del mapa-, el servidor contesta iwn con la habilidad 184 y un jjc vacío, y el cliente
+        /// abre su editor de nombre y emblema. Sin ese jjc el editor no se abre nunca, que es lo
+        /// que llevó a escribir el comando.
+        /// </remarks>
+        public const long FoundingMap = 106169344;
+        public const int FoundingAltar = 480310;
+        public const int FoundingSkill = 184;
+        public const int FoundingType = -1;
+
+        // El emblema con el que funda el COMANDO, que no tiene editor: el de la captura de «Jondo».
+        // Por el altar el emblema lo elige el jugador y esto no se usa.
         private const int DefaultEmblemSymbol = 165;
         private const int DefaultEmblemSymbolColor = 8;
         private const int DefaultEmblemBackground = 16744448;
@@ -31,62 +47,29 @@ namespace Jondo.Unity.Server.Handlers
             => await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, frame);
 
         /// <summary>
-        /// Funda un gremio sin depender del editor que el cliente no sabe abrir. Devuelve la clave
-        /// del mensaje de error, o null si se ha creado. La guildalogema sólo se consume cuando
-        /// todas las validaciones han pasado.
+        /// El altar del templo: se ha pulsado, y se le abre al jugador el editor de fundación.
         /// </summary>
-        public static async Task<string?> CreateFromCommandAsync(NetworkStream stream,
-                                                                  long founderCharacterId,
-                                                                  string name)
+        /// <remarks>
+        /// Se abre aunque no lleve gremialogema ni pueda fundar: la captura no enseña qué hace el
+        /// servidor real en ese caso, y lo que sí enseña es que la gremialogema se gasta en el jjg,
+        /// no aquí. Quien no la tenga se enterará al firmar, que es donde se comprueba.
+        /// </remarks>
+        public static async Task OpenFoundingAsync(NetworkStream stream, int elementId, int skillId)
         {
-            if (founderCharacterId == 0) return "guild.create.nocharacter";
-            if (GuildStore.GuildOf(founderCharacterId) != null) return "guild.create.hasguild";
-
-            name = (name ?? "").Trim();
-            if (!IsValidGuildName(name)) return "guild.create.invalidname";
-            if (GuildStore.ByName(name) != null) return "guild.create.exists";
-            if (Equipment.HowMany(GuildalogemTemplate) < 1) return "guild.create.nogem";
-            if (!await Equipment.TakeAsync(stream, GuildalogemTemplate, 1))
-                return "guild.create.nogem";
-
-            var guild = GuildStore.Create(founderCharacterId, name,
-                DefaultEmblemSymbol, DefaultEmblemSymbolColor,
-                DefaultEmblemBackground, DefaultEmblemSymbolRgb);
-            await SendGuildToOwnerAsync(stream, guild, founderCharacterId);
-
-            Console.WriteLine($"[Gremio] {SessionContext.State.CharacterName} funda «{name}» " +
-                              $"con la guildalogema {GuildalogemTemplate}.");
-            return null;
-        }
-
-        internal static bool IsValidGuildName(string name)
-        {
-            if (name.Length < 3 || name.Length > 30) return false;
-            foreach (char character in name)
-            {
-                if (!char.IsLetterOrDigit(character) && character != ' ' &&
-                    character != '-' && character != '\'')
-                    return false;
-            }
-            return true;
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Iwn,
+                ConnectionProtocol.BuildElementInUse(elementId, skillId, SessionContext.State.CharacterId)));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jjc, System.Array.Empty<byte>()));
+            Console.WriteLine($"[Gremio] {SessionContext.State.CharacterName} abre el editor de fundación.");
         }
 
         /// <summary>
         /// Crear un gremio (jjg): f1 el emblema {símbolo, color símbolo, fondo, color fondo}, f2
-        /// el nombre. Se guarda, el fundador entra de rango 1 y se le manda todo lo suyo.
+        /// el nombre, tal como los deja el editor. Pasa por <see cref="FoundAsync"/>.
         /// </summary>
-        /// <remarks>
-        /// El gremialogema -el objeto que se gasta al crear- no se comprueba aquí todavía: en las
-        /// capturas se compra a un PNJ aparte, y sin el inventario de objetos consumibles del
-        /// gremio montado no hay nada que descontar. Queda dicho para cuando lo haya.
-        /// </remarks>
         public static async Task CreateAsync(NetworkStream stream, byte[] frame)
         {
             byte[] jjg = ConnectionProtocol.ReadPayload(frame, Op.Jjg);
             if (jjg == null) return;
-
-            long who = SessionContext.State.CharacterId;
-            if (who == 0 || GuildStore.GuildOf(who) != null) return;   // ya tiene gremio: no se crea otro
 
             string name = "";
             int symbol = 0, symbolColor = 0, background = 0, symbolRgb = 0;
@@ -108,10 +91,91 @@ namespace Jondo.Unity.Server.Handlers
                     }
                 }
             }
-            if (string.IsNullOrWhiteSpace(name)) return;
 
-            var guild = GuildStore.Create(who, name, symbol, symbolColor, background, symbolRgb);
-            await SendGuildToOwnerAsync(stream, guild, who);
+            string fallo = await FoundAsync(stream, SessionContext.State.CharacterId, name,
+                                            symbol, symbolColor, background, symbolRgb);
+            if (fallo != null)
+            {
+                // No hay trama medida con la que decirle al editor que no: la captura sólo tiene
+                // el caso bueno. Se cuenta por el chat, que es lo que hay.
+                Console.WriteLine($"[Gremio] Fundación de «{name}» rechazada: {fallo}.");
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Kti, ConnectionProtocol.BuildChatLine(
+                    SessionContext.State.CharacterName, SessionContext.State.CharacterId,
+                    SessionContext.Current.AccountId, "[INFO] " + CommandTexts.Get(fallo, name), 0)));
+            }
+        }
+
+        /// <summary>
+        /// Funda por el comando, sin editor: el mismo camino con el emblema de la captura.
+        /// Devuelve la clave del mensaje de error, o null si se ha creado.
+        /// </summary>
+        public static Task<string> CreateFromCommandAsync(NetworkStream stream, long founderCharacterId, string name)
+            => FoundAsync(stream, founderCharacterId, name, DefaultEmblemSymbol, DefaultEmblemSymbolColor,
+                          DefaultEmblemBackground, DefaultEmblemSymbolRgb);
+
+        /// <summary>
+        /// La fundación, una sola para el editor y para el comando: se comprueba todo, se gasta
+        /// la gremialogema, se guarda el gremio y se le manda al fundador lo suyo.
+        /// </summary>
+        /// <remarks>
+        /// Lo que sale después del jjg, en el orden de la captura: ium (la gremialogema que se
+        /// va), jjs, jhq, jco, jgw, khi, jgu, jhh y un jsn que redibuja al fundador ya con el
+        /// nombre del gremio debajo del suyo. El ium lo manda Equipment.TakeAsync, que es lo que
+        /// quita el objeto; el iun de los pods que va detrás en la captura no se manda, que la
+        /// gremialogema no pesa nada aquí; y el khi, con su 97 sin significado, tampoco.
+        ///
+        /// La gremialogema se gasta la ÚLTIMA, cuando todo lo demás ha pasado: una fundación que
+        /// falle por el nombre no puede dejar al jugador sin la piedra.
+        /// </remarks>
+        private static async Task<string> FoundAsync(NetworkStream stream, long founderCharacterId, string name,
+                                                     int symbol, int symbolColor, int background, int symbolRgb)
+        {
+            if (founderCharacterId == 0) return "guild.create.nocharacter";
+            if (GuildStore.GuildOf(founderCharacterId) != null) return "guild.create.hasguild";
+
+            name = (name ?? "").Trim();
+            if (!IsValidGuildName(name)) return "guild.create.invalidname";
+            if (GuildStore.ByName(name) != null) return "guild.create.exists";
+            if (Equipment.HowMany(GuildalogemTemplate) < 1) return "guild.create.nogem";
+            if (!await Equipment.TakeAsync(stream, GuildalogemTemplate, 1)) return "guild.create.nogem";
+
+            var guild = GuildStore.Create(founderCharacterId, name, symbol, symbolColor, background, symbolRgb);
+
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jjs, System.Array.Empty<byte>()));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jhq, System.Array.Empty<byte>()));
+            await SendGuildToOwnerAsync(stream, guild, founderCharacterId);
+
+            var character = DatabaseManager.GetCharacterById(founderCharacterId);
+            if (character != null)
+            {
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Jsn, ConnectionProtocol.BuildActorRefreshed(
+                    character, SessionContext.State.CellId, SessionContext.State.Orientation,
+                    SessionContext.Current.AccountId)));
+            }
+
+            Console.WriteLine($"[Gremio] {SessionContext.State.CharacterName} funda «{name}» " +
+                              "y gasta su gremialogema.");
+            return null;
+        }
+
+        /// <summary>
+        /// Lo que se admite como nombre de gremio.
+        /// </summary>
+        /// <remarks>
+        /// NO está medido: la captura sólo funda «Jondo». Por el altar el nombre lo filtra el
+        /// editor del propio cliente antes de mandarlo; esto es lo que se le pide a un nombre
+        /// escrito a mano por el comando, y es la regla que trajo la PR #43.
+        /// </remarks>
+        internal static bool IsValidGuildName(string name)
+        {
+            if (name.Length < 3 || name.Length > 30) return false;
+            foreach (char character in name)
+            {
+                if (!char.IsLetterOrDigit(character) && character != ' ' &&
+                    character != '-' && character != '\'')
+                    return false;
+            }
+            return true;
         }
 
         /// <summary>

@@ -2269,6 +2269,16 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         private static void AddCharacterOptions(Pb humanoidBody, long characterId)
         {
+            // El gremio, el primero de las opciones. Medido en el jsn del fundador nada más fundar
+            // «Jondo»: f5 { f4 { f1{f3 emblema}, f2 id, f3 nombre, f4 nivel } }, delante del
+            // ornamento y del f7:1. Sin esto un personaje con gremio no lleva su nombre en el
+            // mapa, ni para él ni para los demás.
+            var guild = Managers.GuildStore.GuildOf(characterId);
+            if (guild != null)
+            {
+                humanoidBody.Msg(5, Pb.New().Msg(4, GuildProtocol.GuildBlock(guild)));
+            }
+
             var (title, ornament) = Managers.Wardrobe.Of(characterId);
 
             if (title != Managers.Wardrobe.None)

@@ -258,8 +258,17 @@ its own — or on another machine.
 answers with go back out byte for byte: the guild you belong to (`jgw`), its default ranks (`jco`)
 and its header (`jhh`).
 
-- ✅ Found a guild, leave it, open the window; and the guild comes with you into the world on
-  login, rebuilt from our own database rather than replayed from the capture
+- ✅ **Found a guild where the game does**: the altar of the Guild Temple (element 480310 on
+  106169344, skill 184) answers `iwn` + `jjc` and the client's own editor opens; the `jjg` it sends
+  back spends the guildalogem (`ium`), and the founder is redrawn with the guild under his name.
+  `.gremio crear <nombre>` founds through the same path with a fixed emblem, for whoever would
+  rather not walk there — that command came in PR #43 from julianout, whose diagnosis was right:
+  nothing was opening the editor
+- ✅ **The guild block rides in every map actor** as its first option, `f5 { f4 { emblem, id, name,
+  level } }`, measured on the founder's `jsn`. Without it a guilded character carried no guild on
+  the map, for himself or for anybody else
+- ✅ Leave the guild, open the window; and the guild comes with you into the world on login,
+  rebuilt from our own database rather than replayed from the capture
 - ✅ Member list (`jgu`), the member-gone frame, and the guild tag over your head on the map (`jhe`)
 - ✅ Applications and invitations both ways — apply, list, read one, accept. Which frame accepts a
   candidate was settled on the timeline, not guessed: the joined-member timestamp the server sends

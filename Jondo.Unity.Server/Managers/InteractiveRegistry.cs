@@ -33,6 +33,9 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>Una de las tres puertas de una sala, que lleva a la fila de abajo.</summary>
         DreamDoor,
+
+        /// <summary>El altar del Templo de los Gremios, que abre el editor de fundación.</summary>
+        GuildFounding,
     }
 
     /// <summary>Una habilidad ofrecida por un elemento interactivo.</summary>
@@ -198,6 +201,18 @@ namespace Jondo.Unity.Server.Managers
                 if (!Houses.TryGetExit(interior, out var exit)) continue;
                 Register(interior, new Interactives.Element(exit.ElementId, exit.Cell, exit.Gfx),
                          Houses.ExitType, InteractiveActionKind.HouseExit, Houses.ExitSkill);
+            }
+
+            // El altar del Templo de los Gremios. Como el pozo: está en los datos del cliente como
+            // un elemento más -el 480310, casilla 326 del mapa 106169344- y sin una acción
+            // declarada es un adorno. La habilidad y el elemento salen del iwo/iwn de la captura
+            // de fundar «Jondo»: iwo {3597, 480310} → iwn {1, 480310, f4 184} y detrás el jjc que
+            // abre el editor. Véase GuildHandler.OpenFoundingAsync.
+            foreach (var altar in Interactives.ElementsOf(Handlers.GuildHandler.FoundingMap))
+            {
+                if (altar.Id != Handlers.GuildHandler.FoundingAltar) continue;
+                Register(Handlers.GuildHandler.FoundingMap, altar, Handlers.GuildHandler.FoundingType,
+                         InteractiveActionKind.GuildFounding, Handlers.GuildHandler.FoundingSkill);
             }
 
             // Los pasos entre mapas. Las casas ya han pasado por arriba con su protocolo jqw;

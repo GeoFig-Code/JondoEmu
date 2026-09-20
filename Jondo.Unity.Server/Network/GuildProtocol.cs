@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Jondo.Unity.Server.Managers;
 
 namespace Jondo.Unity.Server.Network
@@ -14,10 +14,12 @@ namespace Jondo.Unity.Server.Network
     public static class GuildProtocol
     {
         /// <summary>
-        /// El bloque del gremio que comparten el jgw y el jhe: el emblema, el id, el nombre y el
-        /// nivel. En la captura de crear «Jondo»: f1{f3 emblema}, f2 42043, f3 «Jondo», f4 1.
+        /// El bloque del gremio que comparten el jgw, el jhe y el actor del mapa: el emblema, el
+        /// id, el nombre y el nivel. En la captura de crear «Jondo»: f1{f3 emblema}, f2 42043,
+        /// f3 «Jondo», f4 1. En el actor va como opción f5 { f4: este bloque }, y es lo que pone
+        /// el nombre del gremio bajo el del personaje.
         /// </summary>
-        private static Pb GuildBlock(GuildStore.Guild guild)
+        public static Pb GuildBlock(GuildStore.Guild guild)
             => Pb.New()
                 .Msg(1, Pb.New().Msg(3, Emblem(guild)))
                 .Var(2, guild.Id)

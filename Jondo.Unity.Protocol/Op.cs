@@ -743,8 +743,21 @@ public static class Op
     // comentario porque no lo sabemos por otra via que la captura. Ver Managers.GuildStore y
     // Network.GuildProtocol.
 
+    /// <summary>
+    /// S→C, vacío: abre el editor de fundación del cliente. Es la respuesta al iwo del altar del
+    /// Templo de los Gremios (elemento 480310 del mapa 106169344), detrás del iwn. 1 mensaje en
+    /// la captura de fundar «Jondo», y sin él el editor no se abre nunca.
+    /// </summary>
+    public const string Jjc = "jjc";
+
     /// <summary>C→S: crear gremio. f1 el emblema {símbolo, color símbolo, fondo, color fondo}, f2 el nombre.</summary>
     public const string Jjg = "jjg";
+
+    /// <summary>S→C, vacío: detrás del jjg, entre el ium de la gremialogema y el jco. 1 mensaje, sin significado reconstruido.</summary>
+    public const string Jhq = "jhq";
+
+    /// <summary>S→C: f1=97 entre el jgw y el jgu al fundar. 1 mensaje, sin significado reconstruido.</summary>
+    public const string Khi = "khi";
 
     /// <summary>S→C: el gremio al que se pertenece. f2 el puesto, f3 { f1{f3 emblema}, f2 id, f3 nombre, f4 nivel }.</summary>
     public const string Jgw = "jgw";
