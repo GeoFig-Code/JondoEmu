@@ -18,8 +18,58 @@ namespace Jondo.Unity.Server.Handlers
     /// </summary>
     public static class GuildHandler
     {
+        public const int GuildalogemTemplate = 1575;
+
+        // Emblema de la captura usada para reconstruir la fundación de gremios. El comando no
+        // dispone del editor gráfico del cliente, así que parte de este emblema neutro.
+        private const int DefaultEmblemSymbol = 165;
+        private const int DefaultEmblemSymbolColor = 8;
+        private const int DefaultEmblemBackground = 16744448;
+        private const int DefaultEmblemSymbolRgb = 9476018;
+
         private static async Task WriteAsync(NetworkStream stream, byte[] frame)
             => await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, frame);
+
+        /// <summary>
+        /// Funda un gremio sin depender del editor que el cliente no sabe abrir. Devuelve la clave
+        /// del mensaje de error, o null si se ha creado. La guildalogema sólo se consume cuando
+        /// todas las validaciones han pasado.
+        /// </summary>
+        public static async Task<string?> CreateFromCommandAsync(NetworkStream stream,
+                                                                  long founderCharacterId,
+                                                                  string name)
+        {
+            if (founderCharacterId == 0) return "guild.create.nocharacter";
+            if (GuildStore.GuildOf(founderCharacterId) != null) return "guild.create.hasguild";
+
+            name = (name ?? "").Trim();
+            if (!IsValidGuildName(name)) return "guild.create.invalidname";
+            if (GuildStore.ByName(name) != null) return "guild.create.exists";
+            if (Equipment.HowMany(GuildalogemTemplate) < 1) return "guild.create.nogem";
+            if (!await Equipment.TakeAsync(stream, GuildalogemTemplate, 1))
+                return "guild.create.nogem";
+
+            var guild = GuildStore.Create(founderCharacterId, name,
+                DefaultEmblemSymbol, DefaultEmblemSymbolColor,
+                DefaultEmblemBackground, DefaultEmblemSymbolRgb);
+            await SendGuildToOwnerAsync(stream, guild, founderCharacterId);
+
+            Console.WriteLine($"[Gremio] {SessionContext.State.CharacterName} funda «{name}» " +
+                              $"con la guildalogema {GuildalogemTemplate}.");
+            return null;
+        }
+
+        internal static bool IsValidGuildName(string name)
+        {
+            if (name.Length < 3 || name.Length > 30) return false;
+            foreach (char character in name)
+            {
+                if (!char.IsLetterOrDigit(character) && character != ' ' &&
+                    character != '-' && character != '\'')
+                    return false;
+            }
+            return true;
+        }
 
         /// <summary>
         /// Crear un gremio (jjg): f1 el emblema {símbolo, color símbolo, fondo, color fondo}, f2

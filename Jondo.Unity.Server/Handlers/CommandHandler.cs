@@ -82,6 +82,7 @@ namespace Jondo.Unity.Server.Handlers
                 [".level"] = Roles.GameMaster,
                 [".size"] = Roles.GameMaster,
                 [".shop"] = Roles.GameMaster,
+                [".gremio"] = Roles.Jugador,
             };
 
         /// <summary>El nivel al que se acaba el juego normal; de ahí para arriba es Omega.</summary>
@@ -941,7 +942,27 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static async Task GremioAsync(NetworkStream stream, string rest, int channel, long accountId)
         {
-            string[] partes = (rest ?? "").Trim().Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+            string entrada = (rest ?? "").Trim();
+            string[] crear = entrada.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+            if (crear.Length > 0 && (crear[0].Equals("crear", StringComparison.OrdinalIgnoreCase) ||
+                                     crear[0].Equals("creer", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (crear.Length < 2)
+                {
+                    await NotifyAsync(stream, Usage(".gremio"), channel, accountId);
+                    return;
+                }
+
+                long founder = Jondo.Unity.Server.Network.SessionContext.State.CharacterId;
+                string name = crear[1].Trim();
+                string? fallo = await Handlers.GuildHandler.CreateFromCommandAsync(stream, founder, name);
+                await NotifyAsync(stream,
+                    fallo == null ? T("guild.create.done", name) : T(fallo, name),
+                    channel, accountId);
+                return;
+            }
+
+            string[] partes = entrada.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
             if (partes.Length < 2)
             {
                 await NotifyAsync(stream, Usage(".gremio"), channel, accountId);
