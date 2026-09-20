@@ -141,9 +141,16 @@ namespace Jondo.Unity.Server.Handlers
 
             var guild = GuildStore.Create(founderCharacterId, name, symbol, symbolColor, background, symbolRgb);
 
+            // jjs, jhq, jco, jgw, khi, jgu, jhh: el orden de la captura.
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jjs, System.Array.Empty<byte>()));
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jhq, System.Array.Empty<byte>()));
-            await SendGuildToOwnerAsync(stream, guild, founderCharacterId);
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jco, GuildProtocol.BuildDefaultRanks()));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jgw,
+                GuildProtocol.BuildGuildJoined(guild, GuildStore.RankOf(founderCharacterId))));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Khi, GuildProtocol.BuildGoneNotice()));
+            var members = GuildStore.Members(guild.Id);
+            foreach (var frame in MemberFrames(members)) await WriteAsync(stream, frame);
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jhh, GuildProtocol.BuildGuildInfo(guild, members.Count)));
 
             var character = DatabaseManager.GetCharacterById(founderCharacterId);
             if (character != null)
@@ -205,7 +212,10 @@ namespace Jondo.Unity.Server.Handlers
                 var character = DatabaseManager.GetCharacterById(member.CharacterId);
                 if (character == null) continue;
                 fuera.Add(ConnectionProtocol.Push(Op.Jgu,
-                    GuildProtocol.BuildMember(member, character.Name, character.Level, character.AccountId)));
+                    GuildProtocol.BuildMember(member, character.Name, character.Level, character.AccountId,
+                                              character.Breed, Achievements.PointsOf(member.CharacterId),
+                                              GuildStore.ContributedBy(member.CharacterId),
+                                              SessionRegistry.FindByCharacter(member.CharacterId) != null)));
             }
             return fuera;
         }
@@ -223,19 +233,414 @@ namespace Jondo.Unity.Server.Handlers
             await SendGuildToOwnerAsync(stream, guild, who);
         }
 
+        /// <summary>El f2 del jiy que pide la ficha del anuario.</summary>
+        public const int ProfileTab = 4;
+
+        /// <summary>
+        /// Una pestaña de la ventana (jiy). Con f2 = 4 se contesta la ficha del anuario (jci),
+        /// que es el único par de la apertura medido suelto -dos veces en la captura de fundar
+        /// «Jondo»-; sin f2, las contribuciones que quedan (jla), que es lo que ocupa su sitio en
+        /// la ráfaga de apertura: cinco peticiones, cinco respuestas, y ésa es la que queda.
+        /// </summary>
+        public static async Task TabAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jiy = ConnectionProtocol.ReadPayload(frame, Op.Jiy);
+            if (jiy == null) return;
+
+            long tab = 0;
+            foreach (var field in ProtoMessage.Parse(jiy).Fields)
+            {
+                if (field.FieldNumber == 2 && field.WireType == 0) tab = field.VarIntValue;
+            }
+
+            long who = SessionContext.State.CharacterId;
+            var guild = who == 0 ? null : GuildStore.GuildOf(who);
+            if (guild == null) return;
+
+            if (tab == ProfileTab)
+            {
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Jci, ProfileOf(guild)));
+            }
+            else if (tab == 0)
+            {
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Jla,
+                    GuildProtocol.BuildContributionsLeft(GuildStore.ContributionsLeft(who))));
+            }
+        }
+
+        /// <summary>La ficha del anuario de un gremio, con el nombre de su jefe puesto.</summary>
+        private static byte[] ProfileOf(GuildStore.Guild guild)
+        {
+            var leader = GuildStore.LeaderOf(guild.Id);
+            string leaderName = leader == null ? "" : DatabaseManager.GetCharacterById(leader.CharacterId)?.Name ?? "";
+            return GuildProtocol.BuildProfile(guild, GuildStore.ProfileOf(guild.Id), leaderName);
+        }
+
+        /// <summary>El jfp de la apertura: se contesta con el jff de un gremio nuevo.</summary>
+        public static async Task BenefitsAsync(NetworkStream stream, byte[] frame)
+        {
+            long who = SessionContext.State.CharacterId;
+            if (who == 0 || GuildStore.GuildOf(who) == null) return;
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jff, GuildProtocol.BuildNoBenefits()));
+        }
+
+        // ─── Los rangos ─────────────────────────────────────────────────────────
+
+        /// <summary>Abrir la gestión de rangos (jcs): el jco con los del gremio.</summary>
+        public static async Task RanksAsync(NetworkStream stream, byte[] frame)
+        {
+            long who = SessionContext.State.CharacterId;
+            var guild = who == 0 ? null : GuildStore.GuildOf(who);
+            if (guild == null) return;
+            await SendRanksAsync(stream, guild);
+        }
+
+        private static async Task SendRanksAsync(NetworkStream stream, GuildStore.Guild guild)
+            => await WriteAsync(stream, ConnectionProtocol.Push(Op.Jco, GuildProtocol.BuildRanks(GuildStore.Ranks(guild.Id))));
+
+        /// <summary>Sólo el jefe toca los rangos. Devuelve su gremio, o null si no toca.</summary>
+        private static GuildStore.Guild GuildIfLeader(long who)
+        {
+            if (who == 0 || GuildStore.RankOf(who) != GuildStore.RankLeader) return null;
+            return GuildStore.GuildOf(who);
+        }
+
+        /// <summary>
+        /// Editar un rango (jct): el rango entero como lo deja el editor, y el jco de vuelta.
+        /// </summary>
+        /// <remarks>
+        /// Medido dos veces en «muchas acciones»: renombrar el rango 1 a «Tesorero» con su f4
+        /// vacío -y el servidor le deja el icono 116 que tenía- y renombrar el 2 a «Test rango».
+        /// </remarks>
+        public static async Task EditRankAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jct = ConnectionProtocol.ReadPayload(frame, Op.Jct);
+            if (jct == null) return;
+            var guild = GuildIfLeader(SessionContext.State.CharacterId);
+            if (guild == null) return;
+
+            var inner = ProtoMessage.Parse(jct).Fields.Find(f => f.FieldNumber == 1 && f.WireType == 2);
+            if (inner == null) return;
+
+            string name = null;
+            byte[] rights = null;
+            bool? flag = null;
+            int icon = 0, order = -1, id = 0;
+            foreach (var field in ProtoMessage.Parse(inner.BytesValue).Fields)
+            {
+                switch (field.FieldNumber)
+                {
+                    case 2 when field.WireType == 2: name = System.Text.Encoding.UTF8.GetString(field.BytesValue); break;
+                    case 3 when field.WireType == 2:
+                        flag = false;
+                        rights = System.Array.Empty<byte>();
+                        foreach (var right in ProtoMessage.Parse(field.BytesValue).Fields)
+                        {
+                            if (right.FieldNumber == 1 && right.WireType == 0) flag = right.VarIntValue != 0;
+                            else if (right.FieldNumber == 3 && right.WireType == 2) rights = right.BytesValue;
+                        }
+                        break;
+                    case 4 when field.WireType == 2:
+                        foreach (var look in ProtoMessage.Parse(field.BytesValue).Fields)
+                        {
+                            if (look.FieldNumber == 2 && look.WireType == 0) icon = (int)look.VarIntValue;
+                            else if (look.FieldNumber == 3 && look.WireType == 0) order = (int)look.VarIntValue;
+                        }
+                        break;
+                    case 5 when field.WireType == 0: id = (int)field.VarIntValue; break;
+                }
+            }
+
+            var rank = GuildStore.Ranks(guild.Id).Find(r => r.Id == id);
+            if (rank == null) return;
+
+            if (name != null) rank.Name = name;
+            if (rights != null) rank.Rights = rights;
+            if (flag.HasValue) rank.Flag = flag.Value;
+            if (icon != 0) rank.Icon = icon;
+            if (order >= 0) rank.Order = order;
+            GuildStore.SaveRank(rank);
+
+            await SendRanksAsync(stream, guild);
+            Console.WriteLine($"[Gremio] Rango {id} de «{guild.Name}» editado: «{rank.Name}».");
+        }
+
+        /// <summary>Los permisos de un rango (jck): f1 la lista tal cual, f2 el rango. La marca se queda.</summary>
+        public static async Task SetRightsAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jck = ConnectionProtocol.ReadPayload(frame, Op.Jck);
+            if (jck == null) return;
+            var guild = GuildIfLeader(SessionContext.State.CharacterId);
+            if (guild == null) return;
+
+            byte[] rights = System.Array.Empty<byte>();
+            int id = 0;
+            foreach (var field in ProtoMessage.Parse(jck).Fields)
+            {
+                if (field.FieldNumber == 1 && field.WireType == 2) rights = field.BytesValue;
+                else if (field.FieldNumber == 2 && field.WireType == 0) id = (int)field.VarIntValue;
+            }
+
+            var rank = GuildStore.Ranks(guild.Id).Find(r => r.Id == id);
+            if (rank == null) return;
+            rank.Rights = rights;
+            GuildStore.SaveRank(rank);
+
+            await SendRanksAsync(stream, guild);
+        }
+
+        /// <summary>Crear un rango (jcv): f1 el orden, f4 el nombre, f5 el icono.</summary>
+        public static async Task CreateRankAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jcv = ConnectionProtocol.ReadPayload(frame, Op.Jcv);
+            if (jcv == null) return;
+            var guild = GuildIfLeader(SessionContext.State.CharacterId);
+            if (guild == null) return;
+
+            int order = 0, icon = 0;
+            string name = "";
+            foreach (var field in ProtoMessage.Parse(jcv).Fields)
+            {
+                if (field.FieldNumber == 1 && field.WireType == 0) order = (int)field.VarIntValue;
+                else if (field.FieldNumber == 4 && field.WireType == 2) name = System.Text.Encoding.UTF8.GetString(field.BytesValue);
+                else if (field.FieldNumber == 5 && field.WireType == 0) icon = (int)field.VarIntValue;
+            }
+
+            var created = GuildStore.CreateRank(guild.Id, name, icon, order);
+            await SendRanksAsync(stream, guild);
+            Console.WriteLine($"[Gremio] Rango {created.Id} «{created.Name}» creado en «{guild.Name}».");
+        }
+
+        /// <summary>
+        /// El rango de un miembro, por el comando: no hay captura de la petición con la que el
+        /// cliente lo cambia. Devuelve la clave del error, o null si se ha cambiado.
+        /// </summary>
+        public static async Task<string> SetMemberRankAsync(long leaderCharacterId, string targetName, int rankId)
+        {
+            var guild = GuildStore.GuildOf(leaderCharacterId);
+            if (guild == null) return "guild.noguild";
+            if (GuildStore.RankOf(leaderCharacterId) != GuildStore.RankLeader) return "guild.rank.notleader";
+            if (GuildStore.Ranks(guild.Id).Find(r => r.Id == rankId) == null) return "guild.rank.norank";
+
+            foreach (var member in GuildStore.Members(guild.Id))
+            {
+                var character = DatabaseManager.GetCharacterById(member.CharacterId);
+                if (character == null || !string.Equals(character.Name, targetName, System.StringComparison.OrdinalIgnoreCase)) continue;
+                if (member.CharacterId == leaderCharacterId) return "guild.rank.self";
+
+                var updated = GuildStore.SetRank(member.CharacterId, rankId);
+                await TellEveryoneAsync(guild, ConnectionProtocol.Push(Op.Jgz, MemberUpdated(updated, character)));
+                return null;
+            }
+
+            return "guild.kick.notmember";
+        }
+
+        // ─── La nota, el diario y el anuario ────────────────────────────────────
+
+        /// <summary>La entrada de un miembro puesta al día (jgz), con todo lo que se sabe de él.</summary>
+        private static byte[] MemberUpdated(GuildStore.Member member, DatabaseManager.DbCharacter character)
+            => GuildProtocol.BuildMemberUpdated(member, character.Name, character.Level, character.AccountId,
+                                                character.Breed, Achievements.PointsOf(member.CharacterId),
+                                                GuildStore.ContributedBy(member.CharacterId),
+                                                SessionRegistry.FindByCharacter(member.CharacterId) != null);
+
+        /// <summary>Una trama para todos los del gremio que estén conectados.</summary>
+        private static async Task TellEveryoneAsync(GuildStore.Guild guild, byte[] frame)
+        {
+            foreach (var member in GuildStore.Members(guild.Id))
+            {
+                var session = SessionRegistry.FindByCharacter(member.CharacterId);
+                if (session != null) await session.SendAsync(frame);
+            }
+        }
+
+        /// <summary>
+        /// La nota de un miembro (jjj): f1 el texto, f3 el personaje. Medido en «muchas
+        /// acciones»: «hola» sobre el propio jefe, y de vuelta su entrada entera con la nota y
+        /// la hora en el f7.f8.
+        /// </summary>
+        public static async Task NoteAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jjj = ConnectionProtocol.ReadPayload(frame, Op.Jjj);
+            if (jjj == null) return;
+            var guild = GuildIfLeader(SessionContext.State.CharacterId);
+            if (guild == null) return;
+
+            string note = "";
+            long target = 0;
+            foreach (var field in ProtoMessage.Parse(jjj).Fields)
+            {
+                if (field.FieldNumber == 1 && field.WireType == 2) note = System.Text.Encoding.UTF8.GetString(field.BytesValue);
+                else if (field.FieldNumber == 3 && field.WireType == 0) target = field.VarIntValue;
+            }
+
+            var member = GuildStore.MemberOf(target);
+            if (member == null || member.GuildId != guild.Id) return;
+            var character = DatabaseManager.GetCharacterById(target);
+            if (character == null) return;
+
+            var updated = GuildStore.SetNote(target, note, System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            await TellEveryoneAsync(guild, ConnectionProtocol.Push(Op.Jgz, MemberUpdated(updated, character)));
+        }
+
+        /// <summary>El diario (jim → jil).</summary>
+        public static async Task LogAsync(NetworkStream stream, byte[] frame)
+        {
+            long who = SessionContext.State.CharacterId;
+            var guild = who == 0 ? null : GuildStore.GuildOf(who);
+            if (guild == null) return;
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jil, GuildProtocol.BuildLog(GuildStore.LogOf(guild.Id))));
+        }
+
+        /// <summary>
+        /// Escribir la ficha del anuario (jcc): se guarda como llega y se devuelve el jci con la
+        /// hora y el jefe puestos. Medido en la captura de fundar «Jondo» y otra vez en la de
+        /// contribuir, con la misma ficha.
+        /// </summary>
+        public static async Task SetProfileAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jcc = ConnectionProtocol.ReadPayload(frame, Op.Jcc);
+            if (jcc == null) return;
+            var guild = GuildIfLeader(SessionContext.State.CharacterId);
+            if (guild == null) return;
+
+            var body = ProtoMessage.Parse(jcc).Fields.Find(f => f.FieldNumber == 2 && f.WireType == 2);
+            if (body == null) return;
+
+            var profile = new GuildStore.Profile { GuildId = guild.Id, WhenMs = System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() };
+            foreach (var field in ProtoMessage.Parse(body.BytesValue).Fields)
+            {
+                switch (field.FieldNumber)
+                {
+                    case 2 when field.WireType == 2: profile.Description = System.Text.Encoding.UTF8.GetString(field.BytesValue); break;
+                    case 3 when field.WireType == 0: profile.MinLevel = (int)field.VarIntValue; break;
+                    case 4 when field.WireType == 2: profile.Tags = field.BytesValue; break;
+                    case 5 when field.WireType == 0: profile.F5 = (int)field.VarIntValue; break;
+                    case 6 when field.WireType == 2: profile.F6 = field.BytesValue; break;
+                    case 9 when field.WireType == 0: profile.MaxLevel = (int)field.VarIntValue; break;
+                    case 13 when field.WireType == 2: profile.Title = System.Text.Encoding.UTF8.GetString(field.BytesValue); break;
+                }
+            }
+
+            GuildStore.SaveProfile(profile);
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jci, ProfileOf(guild)));
+            Console.WriteLine($"[Gremio] Ficha de «{guild.Name}» escrita: «{profile.Title}».");
+        }
+
+        /// <summary>
+        /// Buscar en el anuario (jjm): el acuse vacío (jme) y la lista de gremios (jiv).
+        /// </summary>
+        /// <remarks>
+        /// Los filtros del jjm -niveles, actividades- no se aplican: con los gremios que hay en un
+        /// servidor de estas dimensiones, la lista entera es la respuesta útil. Van todos los que
+        /// tienen ficha escrita y también los que no, con la vacía.
+        /// </remarks>
+        public static async Task SearchAsync(NetworkStream stream, byte[] frame)
+        {
+            var entries = new List<GuildProtocol.DirectoryEntry>();
+            foreach (var guild in GuildStore.AllGuilds())
+            {
+                var leader = GuildStore.LeaderOf(guild.Id);
+                var leaderCharacter = leader == null ? null : DatabaseManager.GetCharacterById(leader.CharacterId);
+                entries.Add(new GuildProtocol.DirectoryEntry
+                {
+                    Guild = guild,
+                    Profile = GuildStore.ProfileOf(guild.Id),
+                    LeaderId = leader?.CharacterId ?? 0,
+                    LeaderName = leaderCharacter?.Name ?? "",
+                    Members = GuildStore.Members(guild.Id).Count,
+                });
+            }
+
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jme, System.Array.Empty<byte>()));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jiv, GuildProtocol.BuildDirectory(entries)));
+        }
+
         /// <summary>
         /// Abandonar el gremio (jho): f1 el personaje. Se saca y se confirma con khj, que es como
         /// el cliente vacía la ventana. Medido en «salir de mi gremio».
         /// </summary>
-        public static async Task LeaveAsync(NetworkStream stream, byte[] frame)
+        public static Task LeaveAsync(NetworkStream stream, byte[] frame)
+            => LeaveAsync(stream, SessionContext.State.CharacterId);
+
+        /// <summary>Salir, venga del jho o del comando.</summary>
+        public static async Task LeaveAsync(NetworkStream stream, long who)
         {
-            long who = SessionContext.State.CharacterId;
             if (who == 0) return;
             var guild = GuildStore.GuildOf(who);
-            int slot = GuildStore.RankOf(who);
             if (GuildStore.Leave(who) == null) return;
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Khj, GuildProtocol.BuildMemberGone(slot)));
+
+            await GoneAsync(stream, who);
             if (guild != null) await RefreshEveryoneAsync(guild, who);
+            Console.WriteLine($"[Gremio] {SessionContext.State.CharacterName} deja «{guild?.Name}».");
+        }
+
+        /// <summary>
+        /// Lo que recibe quien se queda sin gremio, salga o lo echen: la captura «salir de mi
+        /// gremio» tras el jho es khj {f1: 97}, jhc vacío y un jsn que lo redibuja ya sin el
+        /// nombre del gremio debajo del suyo. Se manda por la sesión que se pase, que puede no
+        /// ser la que ha hablado: al expulsado se le avisa desde la sesión del que expulsa.
+        /// </summary>
+        private static async Task GoneAsync(NetworkStream stream, long characterId)
+        {
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Khj, GuildProtocol.BuildGoneNotice()));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jhc, System.Array.Empty<byte>()));
+
+            var session = SessionRegistry.FindByCharacter(characterId);
+            var character = DatabaseManager.GetCharacterById(characterId);
+            if (session != null && character != null)
+            {
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Jsn, ConnectionProtocol.BuildActorRefreshed(
+                    character, session.State.CellId, session.State.Orientation, session.AccountId)));
+            }
+        }
+
+        /// <summary>
+        /// Expulsar a un miembro. Devuelve la clave del mensaje de error, o null si ha salido.
+        /// </summary>
+        /// <remarks>
+        /// Sin captura: la petición con la que el cliente expulsa a alguien no está en ninguna, así
+        /// que se hace por el comando. Lo que SÍ está medido es cómo queda cada uno: el expulsado
+        /// recibe lo mismo que quien sale por su pie -khj, jhc y su jsn sin gremio-, y a los demás
+        /// se les pone al día la lista y la cabecera.
+        ///
+        /// Sólo expulsa el jefe, y no a sí mismo: para irse está el jho.
+        /// </remarks>
+        public static async Task<string> KickAsync(long kickerCharacterId, string targetName)
+        {
+            var guild = GuildStore.GuildOf(kickerCharacterId);
+            if (guild == null) return "guild.noguild";
+            if (GuildStore.RankOf(kickerCharacterId) != GuildStore.RankLeader) return "guild.kick.notleader";
+
+            GuildStore.Member target = null;
+            foreach (var member in GuildStore.Members(guild.Id))
+            {
+                var character = DatabaseManager.GetCharacterById(member.CharacterId);
+                if (character != null && string.Equals(character.Name, targetName, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    target = member;
+                    break;
+                }
+            }
+
+            if (target == null) return "guild.kick.notmember";
+            if (target.CharacterId == kickerCharacterId) return "guild.kick.self";
+
+            GuildStore.Leave(target.CharacterId);
+
+            var kicked = SessionRegistry.FindByCharacter(target.CharacterId);
+            if (kicked != null)
+            {
+                using (SessionContext.Push(kicked))
+                {
+                    await GoneAsync(kicked.Stream, target.CharacterId);
+                }
+            }
+
+            await RefreshEveryoneAsync(guild);
+            Console.WriteLine($"[Gremio] {targetName} expulsado de «{guild.Name}».");
+            return null;
         }
 
         /// <summary>
@@ -374,12 +779,20 @@ namespace Jondo.Unity.Server.Handlers
             GameState.Kamas -= GuildStore.ContributionKamas;
             DatabaseManager.SaveCurrentCharacter();
 
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jle,
-                GuildProtocol.BuildContribution(GuildStore.ContributionKamas, left)));
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jia,
-                GuildProtocol.BuildGuildKamas(GuildStore.GuildOf(who).GuildKamas)));
+            // El orden de la captura: ivf, jgz, (ivj), jia, (iun, khd), jle.
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Ivf,
                 ConnectionProtocol.BuildKamas(GameState.Kamas)));
+            var me = GuildStore.MemberOf(who);
+            var myself = DatabaseManager.GetCharacterById(who);
+            if (me != null && myself != null)
+            {
+                await TellEveryoneAsync(guild, ConnectionProtocol.Push(Op.Jgz, MemberUpdated(me, myself)));
+            }
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jia,
+                GuildProtocol.BuildGuildKamas(GuildStore.GuildOf(who).GuildKamas)));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jle,
+                GuildProtocol.BuildContribution(GuildStore.ContributionKamas, left)));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jla, GuildProtocol.BuildContributionsLeft(left)));
         }
 
         // ─── Candidaturas ───────────────────────────────────────────────────────

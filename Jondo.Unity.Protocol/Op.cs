@@ -731,8 +731,44 @@ public static class Op
     /// <summary>Los muebles de la habitacion, esperados detras del mapa; misma forma que jbg pero en f1 en vez de f2.</summary>
     public const string Jbu = "jbu";
 
-    /// <summary>Sin identificar. 1 uso en el emulador.</summary>
+    /// <summary>C→S: editar un rango del gremio. f1 { f2 nombre, f3 permisos, f4 { f2 icono, f3 orden }, f5 id }. Se contesta con el jco entero.</summary>
     public const string Jct = "jct";
+
+    /// <summary>C→S, vacío: abrir la gestión de rangos. Se contesta con el jco.</summary>
+    public const string Jcs = "jcs";
+
+    /// <summary>C→S: los permisos de un rango. f1 la lista empaquetada, f2 el rango. Se contesta con el jco.</summary>
+    public const string Jck = "jck";
+
+    /// <summary>C→S: crear un rango. f1 el orden, f4 el nombre, f5 el icono. Se contesta con el jco.</summary>
+    public const string Jcv = "jcv";
+
+    /// <summary>C→S: la nota de un miembro. f1 el texto, f3 el personaje. Se contesta con el jgz.</summary>
+    public const string Jjj = "jjj";
+
+    /// <summary>S→C: un miembro puesto al día. f2 { la misma entrada que el jgu }. Tras la nota y tras contribuir.</summary>
+    public const string Jgz = "jgz";
+
+    /// <summary>C→S, vacío: el diario del gremio. Se contesta con el jil.</summary>
+    public const string Jim = "jim";
+
+    /// <summary>S→C: el diario. Un f1 por línea { f11 gremio, f17 '' la fundación, f19 cuándo, f20 { f2 personaje, f3 nombre, f4 } }.</summary>
+    public const string Jil = "jil";
+
+    /// <summary>C→S: escribir la ficha del anuario. f2 { f2 descripción, f3 nivel mínimo, f4 etiquetas, f5, f6, f9 nivel máximo, f10 gremio, f13 título }. Se contesta con el jci.</summary>
+    public const string Jcc = "jcc";
+
+    /// <summary>S→C, vacío: acuse de la búsqueda del anuario, delante del jiv.</summary>
+    public const string Jme = "jme";
+
+    /// <summary>S→C: el anuario. Un f1 por gremio { f1 { f1 { f1 jefe, f6 ficha, f7 miembros }, f3 emblema }, f2 id, f3 nombre, f4 nivel }.</summary>
+    public const string Jiv = "jiv";
+
+    /// <summary>S→C: al abrir la ventana, f3 '' en un gremio nuevo. Lo que lleva en uno con recorrido no está entendido.</summary>
+    public const string Jff = "jff";
+
+    /// <summary>S→C: las contribuciones que quedan esta semana. f1 = 5, 4, 3 en la captura de contribuir.</summary>
+    public const string Jla = "jla";
 
     /// <summary>Sin identificar. 1 uso en el emulador.</summary>
     public const string Jfc = "jfc";
@@ -756,8 +792,15 @@ public static class Op
     /// <summary>S→C, vacío: detrás del jjg, entre el ium de la gremialogema y el jco. 1 mensaje, sin significado reconstruido.</summary>
     public const string Jhq = "jhq";
 
-    /// <summary>S→C: f1=97 entre el jgw y el jgu al fundar. 1 mensaje, sin significado reconstruido.</summary>
+    /// <summary>
+    /// S→C: f1=97 entre el jgw y el jgu al fundar. Su pareja khj lleva el mismo 97 al salir del
+    /// gremio, así que el número no es del gremio ni del miembro: es el mismo aviso en las dos
+    /// direcciones. 1 mensaje, sin significado reconstruido.
+    /// </summary>
     public const string Khi = "khi";
+
+    /// <summary>S→C, vacío: detrás del khj al salir del gremio, antes del jsn que redibuja al que sale. 1 mensaje.</summary>
+    public const string Jhc = "jhc";
 
     /// <summary>S→C: el gremio al que se pertenece. f2 el puesto, f3 { f1{f3 emblema}, f2 id, f3 nombre, f4 nivel }.</summary>
     public const string Jgw = "jgw";
@@ -849,7 +892,7 @@ public static class Op
     /// <summary>C→S: aceptar una candidatura. f2 el personaje que la mandó.</summary>
     public const string Jjn = "jjn";
 
-    /// <summary>C→S: contribuir kamas al gremio. Varios campos: puntos, kamas, actividad.</summary>
+    /// <summary>C→S: buscar en el anuario. f2, f3 y f17 niveles, f9 y f14 filtros. Se contesta con jme y jiv. (Contribuir es el jlb.)</summary>
     public const string Jjm = "jjm";
 
     /// <summary>S→C: los kamas de gremio que quedan. f1 la cantidad.</summary>

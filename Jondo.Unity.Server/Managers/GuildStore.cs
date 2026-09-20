@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Microsoft.Data.Sqlite;
 
@@ -42,7 +42,7 @@ namespace Jondo.Unity.Server.Managers
             public long GuildKamas { get; set; }
         }
 
-        /// <summary>Un miembro: su personaje, su rango y cuándo entró.</summary>
+        /// <summary>Un miembro: su personaje, su rango, cuándo entró y la nota que le puso el jefe.</summary>
         public sealed class Member
         {
             public long CharacterId { get; init; }
@@ -50,6 +50,63 @@ namespace Jondo.Unity.Server.Managers
             public int Rank { get; set; } = 1;
             public long JoinedUtcMs { get; init; }
             public long Experience { get; set; }
+
+            /// <summary>La nota de la columna «Nota» y cuándo se escribió. Medido en el jgz de «hola».</summary>
+            public string Note { get; set; } = "";
+            public long NoteMs { get; set; }
+        }
+
+        /// <summary>
+        /// Un rango del gremio, tal como viaja en el jco: nombre, permisos, icono y orden.
+        /// </summary>
+        /// <remarks>
+        /// Los permisos son dos cosas que el cliente manda y el servidor devuelve sin cambiarlas:
+        /// una lista empaquetada de números (el f3.f3) y una marca (el f3.f1, 1 en todos los
+        /// rangos salvo el del jefe y el de los recién llegados). Qué permiso es cada número no se
+        /// ha reconstruido y no hace falta para guardarlos: se devuelven como llegaron.
+        /// </remarks>
+        public sealed class Rank
+        {
+            public long GuildId { get; init; }
+            public int Id { get; init; }
+            public string Name { get; set; } = "";
+            public byte[] Rights { get; set; } = Array.Empty<byte>();
+            public bool Flag { get; set; }
+            public int Icon { get; set; }
+            public int Order { get; set; }
+        }
+
+        /// <summary>Una línea del diario del gremio (jil).</summary>
+        public sealed class LogEntry
+        {
+            public long GuildId { get; init; }
+            public long WhenMs { get; init; }
+
+            /// <summary>0 la fundación, 1 alguien entra, 2 alguien pasa por algo con f4 = 2 (medido, no entendido).</summary>
+            public int Kind { get; init; }
+            public long CharacterId { get; init; }
+            public string Name { get; init; } = "";
+        }
+
+        public const int LogFounded = 0;
+        public const int LogJoined = 1;
+
+        /// <summary>
+        /// La ficha pública del gremio, la del anuario: lo que el jefe escribe con el jcc y lo que
+        /// el jci devuelve. Los campos se guardan como llegan; el f1 es cuándo se escribió y el f8
+        /// el nombre del jefe, que pone el servidor.
+        /// </summary>
+        public sealed class Profile
+        {
+            public long GuildId { get; init; }
+            public long WhenMs { get; set; }
+            public string Description { get; set; } = "";
+            public int MinLevel { get; set; }
+            public int MaxLevel { get; set; }
+            public byte[] Tags { get; set; } = Array.Empty<byte>();
+            public int F5 { get; set; }
+            public byte[] F6 { get; set; } = Array.Empty<byte>();
+            public string Title { get; set; } = "";
         }
 
         /// <summary>
@@ -117,8 +174,52 @@ namespace Jondo.Unity.Server.Managers
                     Runs INTEGER NOT NULL DEFAULT 0,
                     BestUtcMs INTEGER NOT NULL DEFAULT 0,
                     PRIMARY KEY (GuildId, RaidId, Week)
+                );
+                CREATE TABLE IF NOT EXISTS GuildRanks (
+                    GuildId INTEGER NOT NULL,
+                    RankId INTEGER NOT NULL,
+                    Name TEXT NOT NULL DEFAULT '',
+                    Rights BLOB,
+                    Flag INTEGER NOT NULL DEFAULT 0,
+                    Icon INTEGER NOT NULL DEFAULT 0,
+                    Ord INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (GuildId, RankId)
+                );
+                CREATE TABLE IF NOT EXISTS GuildLog (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    GuildId INTEGER NOT NULL,
+                    WhenMs INTEGER NOT NULL,
+                    Kind INTEGER NOT NULL,
+                    CharacterId INTEGER NOT NULL DEFAULT 0,
+                    Name TEXT NOT NULL DEFAULT ''
+                );
+                CREATE TABLE IF NOT EXISTS GuildProfiles (
+                    GuildId INTEGER PRIMARY KEY,
+                    WhenMs INTEGER NOT NULL DEFAULT 0,
+                    Description TEXT NOT NULL DEFAULT '',
+                    MinLevel INTEGER NOT NULL DEFAULT 0,
+                    MaxLevel INTEGER NOT NULL DEFAULT 0,
+                    Tags BLOB,
+                    F5 INTEGER NOT NULL DEFAULT 0,
+                    F6 BLOB,
+                    Title TEXT NOT NULL DEFAULT ''
                 );";
             create.ExecuteNonQuery();
+
+            // Las notas de los miembros, en la tabla que ya existía.
+            foreach (string column in new[] { "Note TEXT NOT NULL DEFAULT ''", "NoteMs INTEGER NOT NULL DEFAULT 0" })
+            {
+                try
+                {
+                    var add = world.CreateCommand();
+                    add.CommandText = $"ALTER TABLE GuildMembers ADD COLUMN {column};";
+                    add.ExecuteNonQuery();
+                }
+                catch (SqliteException)
+                {
+                    // Ya estaba.
+                }
+            }
         }
 
         /// <summary>A connection string a test can point at a temp database; null uses world.db.</summary>
@@ -161,6 +262,9 @@ namespace Jondo.Unity.Server.Managers
             insertMember.Parameters.AddWithValue("$g", id);
             insertMember.Parameters.AddWithValue("$ms", ms);
             insertMember.ExecuteNonQuery();
+
+            foreach (var rank in DefaultRanks(id)) SaveRank(conexion, rank);
+            WriteLog(conexion, id, ms, LogFounded, 0, "");
 
             return new Guild
             {
@@ -233,7 +337,7 @@ namespace Jondo.Unity.Server.Managers
             using var conexion = Open();
             var query = conexion.CreateCommand();
             query.CommandText = @"
-                SELECT CharacterId, GuildId, Rank, JoinedUtcMs, Experience
+                SELECT CharacterId, GuildId, Rank, JoinedUtcMs, Experience, Note, NoteMs
                 FROM GuildMembers WHERE GuildId = $g ORDER BY Rank, CharacterId;";
             query.Parameters.AddWithValue("$g", guildId);
             using var lector = query.ExecuteReader();
@@ -245,6 +349,8 @@ namespace Jondo.Unity.Server.Managers
                     CharacterId = lector.GetInt64(0), GuildId = lector.GetInt64(1),
                     Rank = lector.GetInt32(2), JoinedUtcMs = lector.GetInt64(3),
                     Experience = lector.GetInt64(4),
+                    Note = lector.IsDBNull(5) ? "" : lector.GetString(5),
+                    NoteMs = lector.IsDBNull(6) ? 0 : lector.GetInt64(6),
                 });
             }
             return fuera;
@@ -256,6 +362,9 @@ namespace Jondo.Unity.Server.Managers
         /// candidatura en la captura de crear «Jondo».
         /// </summary>
         public const int RankNewcomer = 4;
+
+        /// <summary>El rango 1 es el del jefe: el que lleva el fundador en el jgw y el jgu de la captura.</summary>
+        public const int RankLeader = 1;
 
         public static Member Join(long characterId, long guildId, int rank = RankNewcomer)
         {
@@ -271,7 +380,282 @@ namespace Jondo.Unity.Server.Managers
             insert.Parameters.AddWithValue("$r", rank);
             insert.Parameters.AddWithValue("$ms", ms);
             insert.ExecuteNonQuery();
+
+            var character = DatabaseManager.GetCharacterById(characterId);
+            WriteLog(conexion, guildId, ms, LogJoined, characterId, character?.Name ?? "");
             return new Member { CharacterId = characterId, GuildId = guildId, Rank = rank, JoinedUtcMs = ms };
+        }
+
+        /// <summary>Un miembro suelto, o null.</summary>
+        public static Member MemberOf(long characterId)
+        {
+            using var conexion = Open();
+            var query = conexion.CreateCommand();
+            query.CommandText = @"
+                SELECT CharacterId, GuildId, Rank, JoinedUtcMs, Experience, Note, NoteMs
+                FROM GuildMembers WHERE CharacterId = $c;";
+            query.Parameters.AddWithValue("$c", characterId);
+            using var lector = query.ExecuteReader();
+            if (!lector.Read()) return null;
+            return new Member
+            {
+                CharacterId = lector.GetInt64(0), GuildId = lector.GetInt64(1),
+                Rank = lector.GetInt32(2), JoinedUtcMs = lector.GetInt64(3),
+                Experience = lector.GetInt64(4),
+                Note = lector.IsDBNull(5) ? "" : lector.GetString(5),
+                NoteMs = lector.IsDBNull(6) ? 0 : lector.GetInt64(6),
+            };
+        }
+
+        /// <summary>La nota que el jefe le pone a un miembro (jjj). Devuelve el miembro puesto al día.</summary>
+        public static Member SetNote(long characterId, string note, long whenMs)
+        {
+            using var conexion = Open();
+            var update = conexion.CreateCommand();
+            update.CommandText = "UPDATE GuildMembers SET Note = $n, NoteMs = $ms WHERE CharacterId = $c;";
+            update.Parameters.AddWithValue("$n", note ?? "");
+            update.Parameters.AddWithValue("$ms", whenMs);
+            update.Parameters.AddWithValue("$c", characterId);
+            update.ExecuteNonQuery();
+            return MemberOf(characterId);
+        }
+
+        /// <summary>Cambia el rango de un miembro. Devuelve el miembro puesto al día, o null si no está.</summary>
+        public static Member SetRank(long characterId, int rank)
+        {
+            using var conexion = Open();
+            var update = conexion.CreateCommand();
+            update.CommandText = "UPDATE GuildMembers SET Rank = $r WHERE CharacterId = $c;";
+            update.Parameters.AddWithValue("$r", rank);
+            update.Parameters.AddWithValue("$c", characterId);
+            update.ExecuteNonQuery();
+            return MemberOf(characterId);
+        }
+
+        /// <summary>
+        /// Las gremichas de un miembro: lo que ha contribuido, en kamas de gremio. Es lo que el
+        /// f7.f2 del jgu enseña -10 tras una contribución, 20 tras dos- y la columna «Gremichas».
+        /// </summary>
+        public static int ContributedBy(long characterId)
+        {
+            using var conexion = Open();
+            var query = conexion.CreateCommand();
+            query.CommandText = "SELECT COALESCE(SUM(Done), 0) FROM GuildContributions WHERE CharacterId = $c;";
+            query.Parameters.AddWithValue("$c", characterId);
+            return Convert.ToInt32(query.ExecuteScalar()) * ContributionGuildKamas;
+        }
+
+        // ─── Rangos ─────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Los cuatro rangos con los que nace un gremio, los del jco de la captura de crear
+        /// «Jondo»: nombres por clave de traducción, permisos como llegaron, iconos 116, 115, 114
+        /// y 117, y el orden 0 a 3.
+        /// </summary>
+        public static List<Rank> DefaultRanks(long guildId)
+        {
+            byte[] rights1 = { 0x01, 0x02, 0x05, 0x06, 0x07, 0x08, 0x0d, 0x0e, 0x0f, 0x17, 0x18, 0x19,
+                               0x1a, 0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+                               0x28, 0x29, 0x2a, 0x2b };
+            byte[] rights2 = { 0x01, 0x02, 0x05, 0x06, 0x26, 0x07, 0x27, 0x08, 0x28, 0x29, 0x0d, 0x0e,
+                               0x0f, 0x17, 0x18, 0x19, 0x1a };
+            return new List<Rank>
+            {
+                new Rank { GuildId = guildId, Id = 1, Name = "guild.rank.1.name", Rights = rights1, Flag = false, Icon = 116, Order = 0 },
+                new Rank { GuildId = guildId, Id = 2, Name = "guild.rank.2.name", Rights = rights2, Flag = true, Icon = 115, Order = 1 },
+                new Rank { GuildId = guildId, Id = 3, Name = "guild.rank.3.name", Rights = Array.Empty<byte>(), Flag = true, Icon = 114, Order = 2 },
+                new Rank { GuildId = guildId, Id = 4, Name = "guild.rank.4.name", Rights = Array.Empty<byte>(), Flag = false, Icon = 117, Order = 3 },
+            };
+        }
+
+        /// <summary>Los rangos de un gremio, en el orden en que se enseñan. Los de siempre si no tiene ninguno guardado.</summary>
+        public static List<Rank> Ranks(long guildId)
+        {
+            using var conexion = Open();
+            var query = conexion.CreateCommand();
+            query.CommandText = "SELECT RankId, Name, Rights, Flag, Icon, Ord FROM GuildRanks WHERE GuildId = $g ORDER BY Ord, RankId;";
+            query.Parameters.AddWithValue("$g", guildId);
+            using var lector = query.ExecuteReader();
+            var fuera = new List<Rank>();
+            while (lector.Read())
+            {
+                fuera.Add(new Rank
+                {
+                    GuildId = guildId, Id = lector.GetInt32(0), Name = lector.GetString(1),
+                    Rights = lector.IsDBNull(2) ? Array.Empty<byte>() : (byte[])lector[2],
+                    Flag = lector.GetInt32(3) != 0, Icon = lector.GetInt32(4), Order = lector.GetInt32(5),
+                });
+            }
+
+            if (fuera.Count > 0) return fuera;
+
+            // Un gremio de antes de que se guardaran: se le ponen los de siempre.
+            var defaults = DefaultRanks(guildId);
+            foreach (var rank in defaults) SaveRank(conexion, rank);
+            return defaults;
+        }
+
+        public static void SaveRank(Rank rank)
+        {
+            using var conexion = Open();
+            SaveRank(conexion, rank);
+        }
+
+        private static void SaveRank(SqliteConnection conexion, Rank rank)
+        {
+            var upsert = conexion.CreateCommand();
+            upsert.CommandText = @"
+                INSERT INTO GuildRanks (GuildId, RankId, Name, Rights, Flag, Icon, Ord)
+                VALUES ($g, $r, $n, $rights, $f, $i, $o)
+                ON CONFLICT(GuildId, RankId) DO UPDATE SET
+                    Name = $n, Rights = $rights, Flag = $f, Icon = $i, Ord = $o;";
+            upsert.Parameters.AddWithValue("$g", rank.GuildId);
+            upsert.Parameters.AddWithValue("$r", rank.Id);
+            upsert.Parameters.AddWithValue("$n", rank.Name ?? "");
+            upsert.Parameters.AddWithValue("$rights", rank.Rights ?? Array.Empty<byte>());
+            upsert.Parameters.AddWithValue("$f", rank.Flag ? 1 : 0);
+            upsert.Parameters.AddWithValue("$i", rank.Icon);
+            upsert.Parameters.AddWithValue("$o", rank.Order);
+            upsert.ExecuteNonQuery();
+        }
+
+        /// <summary>
+        /// Un rango nuevo (jcv): con el nombre y el icono que se le dan, en el orden que se pide,
+        /// y los que estaban de ahí para abajo se corren uno. El id es el siguiente libre y la
+        /// marca va puesta, que es como nació «Rango personalizado» en la captura: f3 { f1: 1 }.
+        /// </summary>
+        public static Rank CreateRank(long guildId, string name, int icon, int order)
+        {
+            var ranks = Ranks(guildId);
+            int id = 1;
+            foreach (var rank in ranks) if (rank.Id >= id) id = rank.Id + 1;
+
+            using var conexion = Open();
+            foreach (var rank in ranks)
+            {
+                if (rank.Order < order) continue;
+                rank.Order++;
+                SaveRank(conexion, rank);
+            }
+
+            var created = new Rank { GuildId = guildId, Id = id, Name = name ?? "", Icon = icon, Order = order, Flag = true };
+            SaveRank(conexion, created);
+            return created;
+        }
+
+        // ─── El diario ──────────────────────────────────────────────────────────
+
+        private static void WriteLog(SqliteConnection conexion, long guildId, long whenMs, int kind, long characterId, string name)
+        {
+            var insert = conexion.CreateCommand();
+            insert.CommandText = "INSERT INTO GuildLog (GuildId, WhenMs, Kind, CharacterId, Name) VALUES ($g, $ms, $k, $c, $n);";
+            insert.Parameters.AddWithValue("$g", guildId);
+            insert.Parameters.AddWithValue("$ms", whenMs);
+            insert.Parameters.AddWithValue("$k", kind);
+            insert.Parameters.AddWithValue("$c", characterId);
+            insert.Parameters.AddWithValue("$n", name ?? "");
+            insert.ExecuteNonQuery();
+        }
+
+        /// <summary>El diario de un gremio, de lo más viejo a lo más nuevo, como lo manda el jil.</summary>
+        public static List<LogEntry> LogOf(long guildId)
+        {
+            using var conexion = Open();
+            var query = conexion.CreateCommand();
+            query.CommandText = "SELECT WhenMs, Kind, CharacterId, Name FROM GuildLog WHERE GuildId = $g ORDER BY WhenMs, Id;";
+            query.Parameters.AddWithValue("$g", guildId);
+            using var lector = query.ExecuteReader();
+            var fuera = new List<LogEntry>();
+            while (lector.Read())
+            {
+                fuera.Add(new LogEntry
+                {
+                    GuildId = guildId, WhenMs = lector.GetInt64(0), Kind = lector.GetInt32(1),
+                    CharacterId = lector.GetInt64(2), Name = lector.GetString(3),
+                });
+            }
+            return fuera;
+        }
+
+        // ─── La ficha pública ───────────────────────────────────────────────────
+
+        /// <summary>La ficha del anuario de un gremio, o null si nadie la ha escrito.</summary>
+        public static Profile ProfileOf(long guildId)
+        {
+            using var conexion = Open();
+            var query = conexion.CreateCommand();
+            query.CommandText = "SELECT WhenMs, Description, MinLevel, MaxLevel, Tags, F5, F6, Title FROM GuildProfiles WHERE GuildId = $g;";
+            query.Parameters.AddWithValue("$g", guildId);
+            using var lector = query.ExecuteReader();
+            if (!lector.Read()) return null;
+            return new Profile
+            {
+                GuildId = guildId, WhenMs = lector.GetInt64(0), Description = lector.GetString(1),
+                MinLevel = lector.GetInt32(2), MaxLevel = lector.GetInt32(3),
+                Tags = lector.IsDBNull(4) ? Array.Empty<byte>() : (byte[])lector[4],
+                F5 = lector.GetInt32(5),
+                F6 = lector.IsDBNull(6) ? Array.Empty<byte>() : (byte[])lector[6],
+                Title = lector.GetString(7),
+            };
+        }
+
+        public static void SaveProfile(Profile profile)
+        {
+            using var conexion = Open();
+            var upsert = conexion.CreateCommand();
+            upsert.CommandText = @"
+                INSERT INTO GuildProfiles (GuildId, WhenMs, Description, MinLevel, MaxLevel, Tags, F5, F6, Title)
+                VALUES ($g, $ms, $d, $min, $max, $tags, $f5, $f6, $t)
+                ON CONFLICT(GuildId) DO UPDATE SET
+                    WhenMs = $ms, Description = $d, MinLevel = $min, MaxLevel = $max,
+                    Tags = $tags, F5 = $f5, F6 = $f6, Title = $t;";
+            upsert.Parameters.AddWithValue("$g", profile.GuildId);
+            upsert.Parameters.AddWithValue("$ms", profile.WhenMs);
+            upsert.Parameters.AddWithValue("$d", profile.Description ?? "");
+            upsert.Parameters.AddWithValue("$min", profile.MinLevel);
+            upsert.Parameters.AddWithValue("$max", profile.MaxLevel);
+            upsert.Parameters.AddWithValue("$tags", profile.Tags ?? Array.Empty<byte>());
+            upsert.Parameters.AddWithValue("$f5", profile.F5);
+            upsert.Parameters.AddWithValue("$f6", profile.F6 ?? Array.Empty<byte>());
+            upsert.Parameters.AddWithValue("$t", profile.Title ?? "");
+            upsert.ExecuteNonQuery();
+        }
+
+        /// <summary>Todos los gremios, para el anuario.</summary>
+        public static List<Guild> AllGuilds()
+        {
+            using var conexion = Open();
+            var query = conexion.CreateCommand();
+            query.CommandText = @"
+                SELECT Id, Name, Level, Experience, EmblemSymbol, EmblemSymbolColor,
+                       EmblemBackground, EmblemSymbolRgb, FoundedUtc, GuildKamas
+                FROM Guilds ORDER BY Id;";
+            using var lector = query.ExecuteReader();
+            var fuera = new List<Guild>();
+            while (lector.Read())
+            {
+                fuera.Add(new Guild
+                {
+                    Id = lector.GetInt64(0), Name = lector.GetString(1), Level = lector.GetInt32(2),
+                    Experience = lector.GetInt64(3), EmblemSymbol = lector.GetInt32(4),
+                    EmblemSymbolColor = lector.GetInt32(5), EmblemBackground = lector.GetInt32(6),
+                    EmblemSymbolRgb = lector.GetInt32(7), FoundedUtc = lector.GetString(8),
+                    GuildKamas = lector.GetInt64(9),
+                });
+            }
+            return fuera;
+        }
+
+        /// <summary>El jefe de un gremio: el de rango 1, o el primero que haya.</summary>
+        public static Member LeaderOf(long guildId)
+        {
+            Member first = null;
+            foreach (var member in Members(guildId))
+            {
+                if (member.Rank == RankLeader) return member;
+                first ??= member;
+            }
+            return first;
         }
 
         // ─── Candidaturas ───────────────────────────────────────────────────────

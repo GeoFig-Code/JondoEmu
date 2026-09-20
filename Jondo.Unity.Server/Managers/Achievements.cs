@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -81,6 +81,23 @@ namespace Jondo.Unity.Server.Managers
         /// version of the rules stays earned: taking somebody's badge away because this emulator
         /// got better at judging is worse than leaving one that should not have been given.
         /// </remarks>
+        /// <summary>
+        /// Los puntos de logro de un personaje cualquiera, conectado o no: lo que la lista de
+        /// miembros del gremio enseña en su columna «Logros».
+        /// </summary>
+        public static int PointsOf(long characterId)
+        {
+            if (_book == null || !_book.Ready) return 0;
+
+            int total = 0;
+            foreach (var (achievement, _) in DatabaseManager.LoadAchievements(characterId))
+            {
+                total += _book.Of(achievement)?.Points ?? 0;
+            }
+
+            return total;
+        }
+
         public static void LoadFrom(long characterId)
         {
             var quests = SessionContext.State.Quests;

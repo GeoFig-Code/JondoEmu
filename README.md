@@ -267,9 +267,26 @@ and its header (`jhh`).
 - ✅ **The guild block rides in every map actor** as its first option, `f5 { f4 { emblem, id, name,
   level } }`, measured on the founder's `jsn`. Without it a guilded character carried no guild on
   the map, for himself or for anybody else
-- ✅ Leave the guild, open the window; and the guild comes with you into the world on login,
-  rebuilt from our own database rather than replayed from the capture
-- ✅ Member list (`jgu`), the member-gone frame, and the guild tag over your head on the map (`jhe`)
+- ✅ Gremia outside the temple sells the guildalogem for one kama — 30,000 in the capture — through a
+  hand-written shop layer (`content/npcs/shops.json`) on top of the 51 measured catalogues
+- ✅ Leave the guild from the window (`jho` → `khj`, `jhc` and your actor redrawn without it) or with
+  `.gremio salir`; kick with `.gremio expulsar`, the kicked one getting exactly what a leaver gets. The
+  kick request itself is in no capture
+- ✅ **The member row, byte for byte.** Class, achievement points, gremichas and the leader's note all
+  live in the `jgu`, and every one was being copied from the founder of the capture: everybody was a
+  Sacrieur with 8,094 points. Measured on the seven members of two guilds, the founder's row and his
+  row after a note and a contribution now come out identical to the captures
+- ✅ **Ranks** — open, rename, set rights, create (`jcs`, `jct`, `jck`, `jcv`), each answered with the
+  whole `jco` as the real server does; the rank list after three edits matches the capture's 192
+  bytes. Rights are stored as they arrive: what each number grants is not reconstructed, and does
+  not need to be to keep them. `.gremio rango` assigns one, the request for that being uncaptured
+- ✅ **Member notes** (`jjj` → `jgz`), **the guild log** (`jim` → `jil`: founding and every join,
+  the capture's three lines reproduced), **the directory profile** (`jcc` → `jci`, the description,
+  level range, tags and title the leader writes) and **the directory search** (`jjm` → `jme` + `jiv`,
+  every guild with its leader, size and emblem)
+- ✅ The window opens after a relog. The client does not always send `jml`: with a guild already
+  founded it sent `jlk` and `jii` and waited, and the window came up black. `jii` now gets the same
+  answer, `jiy` gets the profile or the contributions left, `jfp` the empty benefits frame
 - ✅ Applications and invitations both ways — apply, list, read one, accept. Which frame accepts a
   candidate was settled on the timeline, not guessed: the joined-member timestamp the server sends
   back lands exactly on it
@@ -365,7 +382,9 @@ and its header (`jhh`).
   `lqu` and the `lva` of the tactical map (97 across 69), so a fight starts on the life the ticks
   earned instead of one the client keeps counting up. The `lqg`+`lqt` pair is not part of it: it
   is the server's 240-second probe, answered with `lqc`+`lqf`
-- ✅ Commands — `.teleport`, `.kamas`, `.shop`, `.size`, `.level`, `.item`, `.itemset`
+- ✅ Commands — `.teleport`, `.kamas`, `.shop`, `.size`, `.level`, `.item`, `.itemset`, `.gremio`, `.raid`.
+  `.teleport` reads what the client actually sends: typing `[0,-8]` in the chat arrives as the map link
+  `{{map,0,-8,1}}`, which used to bounce with a usage message; a bare number teleports to that map id
 - ✅ **Live administration over HTTP** — `POST /api/personaje` sets characteristics, kamas and level, grants items or a mount, and teleports a connected character without a reconnect. `POST /api/rol` changes account roles. Administrator only, loopback only, and serialized with the target session
 - 🟡 `.level` repaints the in-fight spell bar, but the fighter's own level is not updated, so the engine still resolves spells at the level the fight started with
 

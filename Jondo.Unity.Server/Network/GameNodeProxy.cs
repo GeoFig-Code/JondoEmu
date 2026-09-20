@@ -663,6 +663,55 @@ namespace Jondo.Unity.Server.Network
                     // Abrir la ventana de gremio: pedir rangos, miembros y cabecera.
                     await Handlers.GuildHandler.OpenWindowAsync(stream, payload);
                 }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jii)))
+                {
+                    // La pestaña de la ventana. Se contesta con lo mismo que al jml, porque el
+                    // cliente NO siempre manda el jml: tras volver a entrar con un gremio ya hecho
+                    // mandaba jlk y jii y se quedaba esperando, y la ventana salía negra. Con
+                    // esto la ventana tiene su cabecera y sus miembros venga o no el jml.
+                    await Handlers.GuildHandler.OpenWindowAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jiy)))
+                {
+                    // La ficha del anuario o las contribuciones que quedan, según la pestaña.
+                    await Handlers.GuildHandler.TabAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jfp)))
+                {
+                    await Handlers.GuildHandler.BenefitsAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jcs)))
+                {
+                    await Handlers.GuildHandler.RanksAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jct)))
+                {
+                    await Handlers.GuildHandler.EditRankAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jck)))
+                {
+                    await Handlers.GuildHandler.SetRightsAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jcv)))
+                {
+                    await Handlers.GuildHandler.CreateRankAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jjj)))
+                {
+                    await Handlers.GuildHandler.NoteAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jim)))
+                {
+                    await Handlers.GuildHandler.LogAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jcc)))
+                {
+                    await Handlers.GuildHandler.SetProfileAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jjm)))
+                {
+                    await Handlers.GuildHandler.SearchAsync(stream, payload);
+                }
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jlt)))
                 {
                     // Ver una candidatura.
@@ -1133,7 +1182,7 @@ namespace Jondo.Unity.Server.Network
                     string cleanPayload = payloadStr.Replace("?", "").Trim();
                     if (cleanPayload.Contains(Op.Kmw) || cleanPayload.Contains("klw") || cleanPayload.Contains("knb") || 
                         cleanPayload.Contains("klo") || cleanPayload.Contains("kmt") || cleanPayload.Contains(Op.Jgv) || 
-                        cleanPayload.Contains(Op.Jct) || cleanPayload.Contains(Op.Jfc) || cleanPayload.Contains(Op.Kqk) || 
+                        cleanPayload.Contains(Op.Jfc) || cleanPayload.Contains(Op.Kqk) || 
                         cleanPayload.Contains(Op.Itr) || cleanPayload.Contains(Op.Knc) || cleanPayload.Contains("kna") || 
                         cleanPayload.Contains(Op.Hmt) || cleanPayload.Contains("lxi") || cleanPayload.Contains(Op.Jqf) ||
                         // kmv comes with jrh on every map load and expects nothing back; hnn is the

@@ -456,15 +456,43 @@ namespace Jondo.Unity.Server.Handlers
 
         private static async Task TeleportAsync(NetworkStream stream, string rest, int channel, long accountId)
         {
-            if (!ParseCoordinates(rest, out int x, out int y))
+            // Un solo número es un id de mapa, y va directo: es la forma de llegar a un interior
+            // concreto cuando hay cuatro mapas en la misma coordenada, como en el Templo de los
+            // Gremios. Sólo si el mapa existe; un número que no es un mapa es un error de uso.
+            bool byId = long.TryParse((rest ?? "").Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long mapId)
+                        && mapId > 0;
+            var info = byId ? MapManager.GetMapInfo(mapId) : null;
+
+            int x = 0, y = 0;
+            if (!byId && !ParseCoordinates(rest, out x, out y))
             {
                 await NotifyAsync(stream, Usage(".teleport"), channel, accountId);
+                return;
+            }
+
+            if (byId && info == null)
+            {
+                await NotifyAsync(stream, T("teleport.no_such_map", mapId), channel, accountId);
                 return;
             }
 
             if (GameState.IsInFight)
             {
                 await NotifyAsync(stream, T("teleport.in_fight"), channel, accountId);
+                return;
+            }
+
+            if (byId)
+            {
+                int landed = await TeleportHandler.ToMapAsync(stream, mapId);
+                if (landed < 0)
+                {
+                    await NotifyAsync(stream, T("teleport.load_failed", mapId, info!.PosX, info.PosY), channel, accountId);
+                    return;
+                }
+
+                await NotifyAsync(stream, T("teleport.result", info!.PosX, info.PosY, mapId,
+                                             SubAreaName(info.SubAreaId), landed, ""), channel, accountId);
                 return;
             }
 
@@ -963,15 +991,47 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             string[] partes = entrada.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+            long who = Jondo.Unity.Server.Network.SessionContext.State.CharacterId;
+
+            // Salir por el chat es lo mismo que salir por la ventana: el jho, sin el jho.
+            if (partes.Length == 1 && partes[0].Equals("salir", StringComparison.OrdinalIgnoreCase))
+            {
+                var dejado = Managers.GuildStore.GuildOf(who);
+                if (dejado == null)
+                {
+                    await NotifyAsync(stream, T("guild.invite.noguild"), channel, accountId);
+                    return;
+                }
+
+                await Handlers.GuildHandler.LeaveAsync(stream, who);
+                await NotifyAsync(stream, T("guild.left", dejado.Name), channel, accountId);
+                return;
+            }
+
             if (partes.Length < 2)
             {
                 await NotifyAsync(stream, Usage(".gremio"), channel, accountId);
                 return;
             }
 
-            long who = Jondo.Unity.Server.Network.SessionContext.State.CharacterId;
             string que = partes[0].ToLowerInvariant();
             string quien = partes[1];
+
+            if (que == "rango" && partes.Length > 2 && int.TryParse(partes[2].Trim(), out int rango))
+            {
+                string fallo = await Handlers.GuildHandler.SetMemberRankAsync(who, quien, rango);
+                await NotifyAsync(stream, fallo == null ? T("guild.rank.done", quien, rango.ToString()) : T(fallo, quien),
+                                  channel, accountId);
+                return;
+            }
+
+            if (que == "expulsar")
+            {
+                string fallo = await Handlers.GuildHandler.KickAsync(who, quien);
+                await NotifyAsync(stream, fallo == null ? T("guild.kick.done", quien) : T(fallo, quien),
+                                  channel, accountId);
+                return;
+            }
 
             if (que == "invitar")
             {
@@ -1052,7 +1112,18 @@ namespace Jondo.Unity.Server.Handlers
         /// Las coordenadas, escritas como sea: [-1,0], -1 0, -1,0 o (-1;0). Los corchetes y los
         /// separadores se cambian por espacios y lo que queda tienen que ser dos números.
         /// </summary>
-        private static bool ParseCoordinates(string rest, out int x, out int y)
+        /// <summary>
+        /// Las coordenadas de un comando, tal como el cliente las manda.
+        /// </summary>
+        /// <remarks>
+        /// Y no es como el jugador las escribe. Al teclear <c>[0,-8]</c> en el chat, el cliente lo
+        /// convierte en un enlace de mapa antes de enviarlo, y lo que llega al servidor es
+        /// <c>.teleport {{map,0,-8,1}}</c> -medido en el registro, tres veces seguidas-. Con el
+        /// parser de antes eso eran cuatro trozos y no dos, así que el comando contestaba con su
+        /// uso a quien lo había escrito bien. Ahora se lee el enlace: la palabra «map» y el mundo
+        /// de detrás se descartan y quedan las dos cifras.
+        /// </remarks>
+        internal static bool ParseCoordinates(string rest, out int x, out int y)
         {
             x = 0;
             y = 0;
@@ -1061,12 +1132,20 @@ namespace Jondo.Unity.Server.Handlers
             var cleaned = new System.Text.StringBuilder(rest.Length);
             foreach (char c in rest)
             {
-                cleaned.Append(c == '[' || c == ']' || c == '(' || c == ')' || c == ',' || c == ';'
+                cleaned.Append(c == '[' || c == ']' || c == '(' || c == ')' || c == '{' || c == '}'
+                               || c == ',' || c == ';'
                     ? ' ' : c);
             }
 
-            var parts = cleaned.ToString().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length != 2) return false;
+            var parts = new List<string>(cleaned.ToString().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+            if (parts.Count > 0 && parts[0].Equals("map", StringComparison.OrdinalIgnoreCase))
+            {
+                // {{map,x,y,mundo}}: fuera la palabra, y el mundo del final sobra.
+                parts.RemoveAt(0);
+                if (parts.Count == 3) parts.RemoveAt(2);
+            }
+
+            if (parts.Count != 2) return false;
 
             return int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out x)
                 && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out y);
