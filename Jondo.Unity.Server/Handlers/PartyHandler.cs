@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -519,7 +519,7 @@ namespace Jondo.Unity.Server.Handlers
                 initiative = StatsHandler.GetPlayerInitiative();
                 Managers.Equipment.Bonuses().TryGetValue(
                     ConnectionProtocol.Stat.Prospecting, out long delEquipo);
-                prospecting = BaseProspecting + state.StatChance / 10 + (int)delEquipo;
+                prospecting = BaseProspecting + state.TotalChance / 10 + (int)delEquipo;
             }
 
             var info = Pb.New().Msg(2, Pb.New().Var(1, 1));

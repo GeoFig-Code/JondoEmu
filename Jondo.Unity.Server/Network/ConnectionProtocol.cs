@@ -504,12 +504,12 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         private static readonly Dictionary<int, Func<long>> Derived = new Dictionary<int, Func<long>>
         {
-            { Stat.DodgeActionPoints,    () => Jondo.Unity.Server.Network.SessionContext.State.StatWisdom / 10 },
-            { Stat.DodgeMovementPoints,  () => Jondo.Unity.Server.Network.SessionContext.State.StatWisdom / 10 },
-            { Stat.WithdrawActionPoints, () => Jondo.Unity.Server.Network.SessionContext.State.StatWisdom / 10 },
-            { Stat.WithdrawMovementPoints, () => Jondo.Unity.Server.Network.SessionContext.State.StatWisdom / 10 },
-            { Stat.Escape,               () => Jondo.Unity.Server.Network.SessionContext.State.StatAgility / 10 },
-            { Stat.Lock,                 () => Jondo.Unity.Server.Network.SessionContext.State.StatAgility / 10 },
+            { Stat.DodgeActionPoints,    () => Jondo.Unity.Server.Network.SessionContext.State.TotalWisdom / 10 },
+            { Stat.DodgeMovementPoints,  () => Jondo.Unity.Server.Network.SessionContext.State.TotalWisdom / 10 },
+            { Stat.WithdrawActionPoints, () => Jondo.Unity.Server.Network.SessionContext.State.TotalWisdom / 10 },
+            { Stat.WithdrawMovementPoints, () => Jondo.Unity.Server.Network.SessionContext.State.TotalWisdom / 10 },
+            { Stat.Escape,               () => Jondo.Unity.Server.Network.SessionContext.State.TotalAgility / 10 },
+            { Stat.Lock,                 () => Jondo.Unity.Server.Network.SessionContext.State.TotalAgility / 10 },
         };
 
         /// <summary>Points a character starts with, before anything is spent or equipped.</summary>
@@ -610,7 +610,9 @@ namespace Jondo.Unity.Server.Network
                 .Bytes(9, FreshUnknownF9())
                 .VarIfNotZero(10, Jondo.Unity.Server.Network.SessionContext.State.Kamas);
 
-            // The six the player spends points on.
+            // The six the player spends points on: the base, which is the points, and beside it
+            // what the scrolls gave. The two travel in different fields and the client draws them
+            // as two lines, "Base" and "Adicional".
             var primary = new Dictionary<int, long>
             {
                 { Stat.Strength, Jondo.Unity.Server.Network.SessionContext.State.StatStrength },
@@ -619,6 +621,15 @@ namespace Jondo.Unity.Server.Network
                 { Stat.Chance, Jondo.Unity.Server.Network.SessionContext.State.StatChance },
                 { Stat.Agility, Jondo.Unity.Server.Network.SessionContext.State.StatAgility },
                 { Stat.Intelligence, Jondo.Unity.Server.Network.SessionContext.State.StatIntelligence },
+            };
+            var scrolled = new Dictionary<int, long>
+            {
+                { Stat.Strength, Jondo.Unity.Server.Network.SessionContext.State.ScrolledStrength },
+                { Stat.Vitality, Jondo.Unity.Server.Network.SessionContext.State.ScrolledVitality },
+                { Stat.Wisdom, Jondo.Unity.Server.Network.SessionContext.State.ScrolledWisdom },
+                { Stat.Chance, Jondo.Unity.Server.Network.SessionContext.State.ScrolledChance },
+                { Stat.Agility, Jondo.Unity.Server.Network.SessionContext.State.ScrolledAgility },
+                { Stat.Intelligence, Jondo.Unity.Server.Network.SessionContext.State.ScrolledIntelligence },
             };
 
             IReadOnlyList<int> ids = WorldEntry.CharacteristicIds;
@@ -642,6 +653,7 @@ namespace Jondo.Unity.Server.Network
             {
                 long value = primary.TryGetValue(id, out long spent) ? spent : ValueOf(id, level);
                 fromEquipment.TryGetValue(id, out long equipped);
+                scrolled.TryGetValue(id, out long fromScrolls);
 
                 switch (WorldEntry.ContainerOf(id))
                 {
@@ -657,7 +669,7 @@ namespace Jondo.Unity.Server.Network
                         break;
 
                     default:
-                        AddStat(body, id, value, equipped);
+                        AddStat(body, id, value, equipped, fromScrolls);
                         break;
                 }
             }
@@ -674,7 +686,7 @@ namespace Jondo.Unity.Server.Network
             if (id == Stat.Energy) return BaseEnergy;
             // Five pods a point of strength on top of the base, which is what the capture shows:
             // five points of strength moved this characteristic by twenty-five.
-            if (id == Stat.Pods) return BasePods + 5L * Jondo.Unity.Server.Network.SessionContext.State.StatStrength;
+            if (id == Stat.Pods) return BasePods + 5L * Jondo.Unity.Server.Network.SessionContext.State.TotalStrength;
             if (id == Stat.RemainingPoints) return Jondo.Unity.Server.Network.SessionContext.State.CharacterRemainingPoints;
             if (Derived.TryGetValue(id, out var from)) return from();
             return FreshCharacter.TryGetValue(id, out long value) ? value : 0;
@@ -696,14 +708,22 @@ namespace Jondo.Unity.Server.Network
         private static byte[] FreshUnknownF9() =>
             Pb.New().Var(2, 2).Msg(3, Pb.New().Var(3, 500)).Var(5, 1).Build();
 
-        private static void AddStat(Pb body, int id, long value, long fromEquipment = 0)
+        /// <summary>
+        /// One characteristic: f2 the base, f3 what the scrolls gave, f7 what the equipment adds.
+        /// </summary>
+        /// <remarks>
+        /// f3 is MEASURED: every scrolled character in the captures carries its scrolls there --
+        /// <c>f4 { f2: 398, f3: 100, f7: 499 }</c> is a real strength -- and a characteristic the
+        /// player never scrolled leaves it out, as proto3 does with a zero.
+        /// </remarks>
+        private static void AddStat(Pb body, int id, long value, long fromEquipment = 0, long fromScrolls = 0)
         {
             // Characteristic 0 is life, and it is the one entry of the real message that carries
             // no id at all: proto3 leaves the field out when the value is zero, and zero is its
             // id. Writing Var(1, 0) here would put a field the real one does not have.
             var entry = Pb.New();
             if (id != 0) entry.Var(1, id);
-            entry.Msg(4, Pb.New().VarIfNotZero(2, value).VarIfNotZero(7, fromEquipment));
+            entry.Msg(4, Pb.New().VarIfNotZero(2, value).VarIfNotZero(3, fromScrolls).VarIfNotZero(7, fromEquipment));
             body.Msg(11, entry);
         }
 
@@ -883,7 +903,7 @@ namespace Jondo.Unity.Server.Network
                     .VarIfNotZero(4, GradeOf(leader)));
 
                 jss.Msg(5, Pb.New()
-                    .Msg(1, Pb.New().Var(1, group.CellId).Var(2, 1))
+                    .Msg(1, Pb.New().Var(1, group.CellId).Var(2, group.Orientation))
                     .Msg(2, Pb.New()
                         .Msg(1, Pb.New().Msg(4, Pb.New()
                             .Var(1, 1)
@@ -1254,9 +1274,9 @@ namespace Jondo.Unity.Server.Network
         private const int LookKind = 3;
 
         /// <summary>
-        /// El grado de un monstruo, de 1 a 5.
+        /// El grado de un monstruo, de 1 a 5, o hasta 6 si el monstruo declara seis.
         ///
-        /// Y ahí está el tope, que es lo que importa: en trescientos y pico monstruos de las
+        /// El tope de cinco es lo que importa: en trescientos y pico monstruos silvestres de las
         /// capturas reales el grado sale 1, 2, 3, 4 o 5 y nunca más. Nuestros datos no se portan
         /// igual —4.098 monstruos tienen cinco grados, pero 479 tienen seis, 169 tienen diez y uno
         /// tiene veinte— y el generador elegía cualquiera, así que salían grados 6 y más arriba.
@@ -1264,11 +1284,21 @@ namespace Jondo.Unity.Server.Network
         /// Al cliente eso le sienta mal en silencio: el grupo se dibuja, pero pasarle el ratón por
         /// encima no enseña nada y la tecla W lo salta. Por eso solo se veía la información de uno
         /// o dos grupos de los cuatro del mapa.
+        ///
+        /// Y el sexto, medido después: el Puch Ingball de nivel 200 del kanojedo viaja como
+        /// <c>f2=200 f4=6</c> en dos capturas, y el cliente lo pinta y lo deja mirar, porque sus
+        /// propios datos le dan seis grados. El sexto sólo sale cuando el monstruo lo tiene, y a
+        /// los generados nadie se lo reparte; lo que se ve más arriba de eso sigue sin medir.
         /// </summary>
         private const int MaxGrade = 5;
+        private const int MaxDeclaredGrade = 6;
 
         private static long GradeOf(Managers.MobSpawnManager.MobMember member)
-            => Math.Clamp(member.GradeIndex + 1, 1, MaxGrade);
+        {
+            int declared = member.Monster?.Grades?.Count ?? 0;
+            int top = declared >= MaxDeclaredGrade ? MaxDeclaredGrade : MaxGrade;
+            return Math.Clamp(member.GradeIndex + 1, 1, top);
+        }
 
         /// <summary>
         /// The bonesId out of the look the database stores for a monster, which comes in the

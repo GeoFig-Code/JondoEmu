@@ -461,6 +461,16 @@ namespace Jondo.Unity.Server
                     // Already exists.
                 }
 
+                // Migración: lo que dieron los pergaminos, aparte de los puntos repartidos.
+                //
+                // Nace a 100 para todo el que ya existía, que es la política de este servidor -todo
+                // personaje se crea con los pergaminos hechos- y lo que las capturas enseñan de los
+                // personajes reales: el f3 de cada característica vale 100 en 156 capturas y 4.815
+                // veces, y 101 no sale ni una. Y luego se sacan de la base los 101 que la creación
+                // metía ahí, que es lo que dejaba a un nivel 200 recién hecho con 183 puntos en vez
+                // de 995: contaba los pergaminos como puntos gastados.
+                MoveScrollsOutOfTheBase(worldConnection);
+
                 FillMissingHeads(worldConnection);
 
                 // A character with no date leaves the server-selection screen empty, so no row is
@@ -1958,6 +1968,70 @@ namespace Jondo.Unity.Server
         }
 
         /// <summary>
+        /// The six scroll columns, and the one-off that takes the scrolls back out of the base.
+        /// </summary>
+        /// <remarks>
+        /// The columns default to 100 -- every character on this server is born scrolled, and 100
+        /// is what the captures show on every real one -- so a row that existed before them is
+        /// scrolled the moment they appear. What has to be undone by hand is what creation did
+        /// before: it wrote 101 into all six base characteristics to stand in for the scrolls,
+        /// and the base is where spent points live. A row with exactly 101 in all six is one of
+        /// those and nothing else -- no spread of points a player chose lands on 101 six times --
+        /// so it goes back to zero, and its points to spend go back to being its whole capital.
+        /// The columns already being there means the second half has already run: it is keyed
+        /// on the ALTER succeeding, so it runs once.
+        /// </remarks>
+        internal static void MoveScrollsOutOfTheBase(SqliteConnection connection)
+        {
+            string[] columns =
+            {
+                "ScrolledVitality", "ScrolledWisdom", "ScrolledStrength",
+                "ScrolledIntelligence", "ScrolledChance", "ScrolledAgility",
+            };
+
+            bool added = false;
+            foreach (string column in columns)
+            {
+                try
+                {
+                    var add = connection.CreateCommand();
+                    add.CommandText = $"ALTER TABLE Characters ADD COLUMN {column} INTEGER NOT NULL DEFAULT " +
+                                      $"{Handlers.CharacterCreationHandler.ScrolledStat};";
+                    add.ExecuteNonQuery();
+                    added = true;
+                }
+                catch (SqliteException)
+                {
+                    // Already there.
+                }
+            }
+
+            if (!added) return;
+            Console.WriteLine("[SQLite] Migration: Added the six Scrolled columns to Characters.");
+
+            try
+            {
+                var fix = connection.CreateCommand();
+                fix.CommandText = @"
+                    UPDATE Characters
+                    SET Vitality = 0, Wisdom = 0, Strength = 0, Intelligence = 0, Chance = 0, Agility = 0,
+                        RemainingPoints = 5 * (MIN(Level, 200) - 1)
+                    WHERE Vitality = 101 AND Wisdom = 101 AND Strength = 101
+                      AND Intelligence = 101 AND Chance = 101 AND Agility = 101;";
+                int moved = fix.ExecuteNonQuery();
+                if (moved > 0)
+                {
+                    Console.WriteLine($"[SQLite] Migration: {moved} character(s) had the scrolls inside " +
+                                      "the base; moved out, with their capital back to spend.");
+                }
+            }
+            catch (SqliteException ex)
+            {
+                Console.WriteLine($"[SQLite] Could not move the scrolls out of the base: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Gives a head to the characters that have none. They predate the column, so the one
         /// their player picked is not recorded anywhere: each gets the first head the creation
         /// screen offers for its breed and sex, which is what the real client defaults to.
@@ -2264,7 +2338,8 @@ namespace Jondo.Unity.Server
 
             var command = connection.CreateCommand();
             command.CommandText = @"
-                SELECT Name, Level, MapId, CellId, RemainingPoints, Vitality, Wisdom, Strength, Intelligence, Chance, Agility, Look, Breed, Sex, Orientation, Kamas, Experience
+                SELECT Name, Level, MapId, CellId, RemainingPoints, Vitality, Wisdom, Strength, Intelligence, Chance, Agility, Look, Breed, Sex, Orientation, Kamas, Experience,
+                       ScrolledVitality, ScrolledWisdom, ScrolledStrength, ScrolledIntelligence, ScrolledChance, ScrolledAgility
                 FROM Characters
                 WHERE Id = $charId;
             ";
@@ -2326,6 +2401,12 @@ namespace Jondo.Unity.Server
                 Jondo.Unity.Server.Network.SessionContext.State.StatIntelligence = reader.GetInt32(8);
                 Jondo.Unity.Server.Network.SessionContext.State.StatChance = reader.GetInt32(9);
                 Jondo.Unity.Server.Network.SessionContext.State.StatAgility = reader.GetInt32(10);
+                Jondo.Unity.Server.Network.SessionContext.State.ScrolledVitality = reader.GetInt32(17);
+                Jondo.Unity.Server.Network.SessionContext.State.ScrolledWisdom = reader.GetInt32(18);
+                Jondo.Unity.Server.Network.SessionContext.State.ScrolledStrength = reader.GetInt32(19);
+                Jondo.Unity.Server.Network.SessionContext.State.ScrolledIntelligence = reader.GetInt32(20);
+                Jondo.Unity.Server.Network.SessionContext.State.ScrolledChance = reader.GetInt32(21);
+                Jondo.Unity.Server.Network.SessionContext.State.ScrolledAgility = reader.GetInt32(22);
                 Jondo.Unity.Server.Network.SessionContext.State.Breed = reader.GetInt32(12);
                 Jondo.Unity.Server.Network.SessionContext.State.Sex = reader.GetInt32(13);
 
@@ -2369,6 +2450,8 @@ namespace Jondo.Unity.Server
                 SET MapId = $mapId, CellId = $cellId, Orientation = $orientation,
                     RemainingPoints = $pts, Vitality = $vit, Wisdom = $wis,
                     Strength = $str, Intelligence = $int, Chance = $cha, Agility = $agi,
+                    ScrolledVitality = $svit, ScrolledWisdom = $swis, ScrolledStrength = $sstr,
+                    ScrolledIntelligence = $sint, ScrolledChance = $scha, ScrolledAgility = $sagi,
                     Level = $lvl, Kamas = $kamas, Experience = $xp
                 WHERE Id = $charId;
             ";
@@ -2383,6 +2466,12 @@ namespace Jondo.Unity.Server
             command.Parameters.AddWithValue("$int", Jondo.Unity.Server.Network.SessionContext.State.StatIntelligence);
             command.Parameters.AddWithValue("$cha", Jondo.Unity.Server.Network.SessionContext.State.StatChance);
             command.Parameters.AddWithValue("$agi", Jondo.Unity.Server.Network.SessionContext.State.StatAgility);
+            command.Parameters.AddWithValue("$svit", Jondo.Unity.Server.Network.SessionContext.State.ScrolledVitality);
+            command.Parameters.AddWithValue("$swis", Jondo.Unity.Server.Network.SessionContext.State.ScrolledWisdom);
+            command.Parameters.AddWithValue("$sstr", Jondo.Unity.Server.Network.SessionContext.State.ScrolledStrength);
+            command.Parameters.AddWithValue("$sint", Jondo.Unity.Server.Network.SessionContext.State.ScrolledIntelligence);
+            command.Parameters.AddWithValue("$scha", Jondo.Unity.Server.Network.SessionContext.State.ScrolledChance);
+            command.Parameters.AddWithValue("$sagi", Jondo.Unity.Server.Network.SessionContext.State.ScrolledAgility);
             command.Parameters.AddWithValue("$lvl", Jondo.Unity.Server.Network.SessionContext.State.CharacterLevel);
             command.Parameters.AddWithValue("$kamas", Jondo.Unity.Server.Network.SessionContext.State.Kamas);
             command.Parameters.AddWithValue("$xp", Jondo.Unity.Server.Network.SessionContext.State.Experience);
@@ -2570,14 +2659,20 @@ namespace Jondo.Unity.Server
 
                 using var transaction = connection.BeginTransaction();
 
+                // Los pergaminos van en SUS columnas y la base nace a cero: la base son los puntos
+                // que el jugador reparte, y un personaje recién hecho no ha repartido ninguno.
                 var insertar = connection.CreateCommand();
                 insertar.CommandText = @"
                     INSERT INTO Characters
                         (Id, AccountId, Name, Breed, Sex, Level, MapId, CellId, RemainingPoints,
-                         Vitality, Wisdom, Strength, Intelligence, Chance, Agility, Look,
-                         Orientation, Kamas)
+                         Vitality, Wisdom, Strength, Intelligence, Chance, Agility,
+                         ScrolledVitality, ScrolledWisdom, ScrolledStrength,
+                         ScrolledIntelligence, ScrolledChance, ScrolledAgility,
+                         Look, Orientation, Kamas)
                     VALUES ($id, $acc, $name, $breed, $sex, $level, $map, $cell, 0,
-                            $stat, $stat, $stat, $stat, $stat, $stat, $look, 1, $kamas);";
+                            0, 0, 0, 0, 0, 0,
+                            $stat, $stat, $stat, $stat, $stat, $stat,
+                            $look, 1, $kamas);";
                 insertar.Parameters.AddWithValue("$id", id);
                 insertar.Parameters.AddWithValue("$acc", accountId);
                 insertar.Parameters.AddWithValue("$name", name);

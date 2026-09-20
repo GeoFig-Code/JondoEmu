@@ -102,8 +102,19 @@ namespace Jondo.Unity.Server.Managers
             public MonsterData Monster { get; set; }
             public int GradeIndex { get; set; }
 
-            /// <summary>Cuántos grados acepta el cliente: del 1 al 5, ni uno más.</summary>
+            /// <summary>Cuántos grados se reparten a los grupos generados: del 1 al 5, ni uno más.</summary>
             public const int MaxGradesPerMonster = 5;
+
+            /// <summary>
+            /// Y hasta el sexto para un grupo escrito o compuesto a mano, si el monstruo lo tiene.
+            /// </summary>
+            /// <remarks>
+            /// Medido: el Puch Ingball de nivel 200 del kanojedo viaja como <c>f2=200 f4=6</c> en
+            /// dos capturas y el cliente lo dibuja y lo deja mirar. El tope de cinco se midió en
+            /// grupos silvestres, que nunca pasaban de ahí; no es que el sexto no exista, es que
+            /// no se había visto.
+            /// </remarks>
+            public const int MaxWrittenGrades = 6;
             public int Level { get; set; }
         }
 
@@ -111,6 +122,10 @@ namespace Jondo.Unity.Server.Managers
         {
             public long MobId { get; set; }
             public int CellId { get; set; }
+
+            /// <summary>Hacia dónde mira, de 1 a 7. Los generados miran al sureste.</summary>
+            public int Orientation { get; set; } = 1;
+
             public List<MobMember> Members { get; set; } = new List<MobMember>();
         }
 
@@ -519,7 +534,12 @@ namespace Jondo.Unity.Server.Managers
 
                 foreach (var escrito in escritos.Values)
                 {
-                    var grupo = new MobGroup { MobId = escrito.GroupId, CellId = escrito.Cell };
+                    var grupo = new MobGroup
+                    {
+                        MobId = escrito.GroupId,
+                        CellId = escrito.Cell,
+                        Orientation = escrito.Orientation,
+                    };
 
                     foreach (var miembro in escrito.Members)
                     {
@@ -530,7 +550,11 @@ namespace Jondo.Unity.Server.Managers
                             continue;
                         }
 
-                        int grado = Math.Clamp(miembro.Grade, 0, MobMember.MaxGradesPerMonster - 1);
+                        // Hasta el sexto grado si el monstruo lo declara: el Puch Ingball de nivel
+                        // 200 viaja como grado 6 en las capturas del kanojedo y el cliente lo
+                        // pinta. El tope de cinco se queda para lo generado, que es donde se midió.
+                        int grado = Math.Clamp(miembro.Grade, 0,
+                                               Math.Min(datos.Grades.Count, MobMember.MaxWrittenGrades) - 1);
                         grupo.Members.Add(new MobMember
                         {
                             Monster = datos,
@@ -901,23 +925,7 @@ namespace Jondo.Unity.Server.Managers
         /// </remarks>
         public static MobGroup? SpawnComposed(long mapId, IEnumerable<(int Monstruo, int Grado)> miembros)
         {
-            var quienes = new List<MobMember>();
-
-            foreach (var (monstruo, grado) in miembros)
-            {
-                if (!_monsters.TryGetValue(monstruo, out var datos)) continue;
-                if (datos.Grades.Count == 0) continue;
-
-                int cual = Math.Clamp(grado, 0, Math.Min(datos.Grades.Count,
-                                                         MobMember.MaxGradesPerMonster) - 1);
-                quienes.Add(new MobMember
-                {
-                    Monster = datos,
-                    GradeIndex = cual,
-                    Level = datos.Grades[cual].Level,
-                });
-            }
-
+            var quienes = Componer(miembros);
             if (quienes.Count == 0) return null;
 
             lock (_candado)
@@ -950,6 +958,54 @@ namespace Jondo.Unity.Server.Managers
 
                 mobs.Add(grupo);
                 return grupo;
+            }
+        }
+
+        /// <summary>Los miembros de un grupo compuesto a mano, hasta el sexto grado.</summary>
+        private static List<MobMember> Componer(IEnumerable<(int Monstruo, int Grado)> miembros)
+        {
+            var quienes = new List<MobMember>();
+            foreach (var (monstruo, grado) in miembros)
+            {
+                if (!_monsters.TryGetValue(monstruo, out var datos)) continue;
+                if (datos.Grades.Count == 0) continue;
+
+                int cual = Math.Clamp(grado, 0, Math.Min(datos.Grades.Count,
+                                                         MobMember.MaxWrittenGrades) - 1);
+                quienes.Add(new MobMember
+                {
+                    Monster = datos,
+                    GradeIndex = cual,
+                    Level = datos.Grades[cual].Level,
+                });
+            }
+
+            return quienes;
+        }
+
+        /// <summary>
+        /// Un grupo compuesto a mano que NO se pone en ningún mapa: sólo existe para el combate
+        /// que se va a abrir con él.
+        /// </summary>
+        /// <remarks>
+        /// Es lo que hace el puch maestro del kanojedo: en la captura el combate empieza con un
+        /// grupo de id nuevo -el kmu lleva un -23597 que no estaba en el jss- y ningún jsn lo
+        /// pinta antes en el mapa. Ponerlo en el mapa como hace <see cref="SpawnComposed"/> lo
+        /// dejaría a la vista y clicable para los demás mientras dura la pelea.
+        /// </remarks>
+        public static MobGroup? ComposeOffMap(IEnumerable<(int Monstruo, int Grado)> miembros)
+        {
+            var quienes = Componer(miembros);
+            if (quienes.Count == 0) return null;
+
+            lock (_candado)
+            {
+                return new MobGroup
+                {
+                    MobId = PrimerGrupoDeMision - _siguienteDeMision++,
+                    CellId = 0,
+                    Members = quienes,
+                };
             }
         }
 

@@ -16,15 +16,15 @@
     /// del koliseo toca una clase en vez de cinco métodos.
     ///
     /// <code>
-    ///                       ContraMonstruos   Desafío   Koliseo
-    ///   HayRetos                    sí          no        no
-    ///   RelojDeColocación        45,0 s          —      59,2 s
-    ///   TipoDelKam                   4           0         7
-    ///   KaaConCuentaAtrás           sí          no        sí
-    ///   ReparteBotín                sí          no        no
-    ///   PagaElKoliseo               no          no        sí
-    ///   BorraElGrupoAlGanar         sí          no        no
-    ///   AvanzaDeSala                sí          no        no
+    ///                       ContraMonstruos   Desafío   Koliseo   Entrenamiento
+    ///   HayRetos                    sí          no        no          no
+    ///   RelojDeColocación        45,0 s          —      59,2 s      45,0 s
+    ///   TipoDelKam                   4           0         7           4
+    ///   KaaConCuentaAtrás           sí          no        sí          sí
+    ///   ReparteBotín                sí          no        no          no
+    ///   PagaElKoliseo               no          no        sí          no
+    ///   BorraElGrupoAlGanar         sí          no        no          no
+    ///   AvanzaDeSala                sí          no        no          no
     /// </code>
     ///
     /// Los números no son elegidos: el 4, el 0 y el 7 son el f2 del kam en las capturas, y el 592
@@ -78,6 +78,9 @@
         /// <summary>El koliseo: PvP, pero con reloj de colocación como un combate normal.</summary>
         public static readonly FightRules Koliseo = new Arena();
 
+        /// <summary>El kanojedo: pegarle a un puch, que es un combate contra monstruos sin nada en juego.</summary>
+        public static readonly FightRules Entrenamiento = new Kanojedo();
+
         private sealed class Monstruos : FightRules
         {
             public override bool HayRetos => true;
@@ -117,6 +120,26 @@
             public override bool BorraElGrupoAlGanar => false;
             public override bool AvanzaDeSala => false;
             public override string Nombre => "desafío";
+        }
+
+        /// <summary>
+        /// Los puchs del kanojedo. Medido en la captura del Hipermago sobre el kanojedo de Amakna:
+        /// el kam es de tipo 4 y el kaa lleva su cuenta atrás —445 décimas, la misma de siempre
+        /// salvo el latido— igual que contra monstruos, pero en sesenta segundos de pelea no sale
+        /// ni un opcode de reto, y el jyg del final lleva las recompensas VACÍAS. Y el puch se
+        /// queda donde estaba: es un saco de entrenar, no un bicho que se mata.
+        /// </summary>
+        private sealed class Kanojedo : FightRules
+        {
+            public override bool HayRetos => false;
+            public override int RelojDeColocacion => 450;
+            public override int TipoDelKam => 4;
+            public override bool EnfrenteHayMonstruos => true;
+            public override bool ReparteBotin => false;
+            public override bool PagaElKoliseo => false;
+            public override bool BorraElGrupoAlGanar => false;
+            public override bool AvanzaDeSala => false;
+            public override string Nombre => "entrenamiento";
         }
 
         private sealed class Arena : FightRules

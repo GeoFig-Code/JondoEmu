@@ -142,6 +142,33 @@ namespace Jondo.Unity.Server
         public int StatChance { get; set; }
         public int StatAgility { get; set; }
 
+        /// <summary>
+        /// What the scrolls gave, per characteristic, kept apart from the points the player spent.
+        /// </summary>
+        /// <remarks>
+        /// The two are different things to the client and to the cost of the next point: the
+        /// sheet draws them as "Base" and "Adicional", the next point of strength is priced off the
+        /// base alone, and the capital the player has left is the capital minus the base. Measured:
+        /// every scrolled character in the captures carries its scrolls in f3 of the
+        /// characteristic and its spent points in f2, and never the sum in either. Keeping the
+        /// scrolls inside the base was what made a fresh level 200 show 183 points to spend
+        /// instead of 995.
+        /// </remarks>
+        public int ScrolledVitality { get; set; }
+        public int ScrolledWisdom { get; set; }
+        public int ScrolledStrength { get; set; }
+        public int ScrolledIntelligence { get; set; }
+        public int ScrolledChance { get; set; }
+        public int ScrolledAgility { get; set; }
+
+        /// <summary>The characteristic as the game uses it: points spent plus scrolls.</summary>
+        public int TotalVitality => StatVitality + ScrolledVitality;
+        public int TotalWisdom => StatWisdom + ScrolledWisdom;
+        public int TotalStrength => StatStrength + ScrolledStrength;
+        public int TotalIntelligence => StatIntelligence + ScrolledIntelligence;
+        public int TotalChance => StatChance + ScrolledChance;
+        public int TotalAgility => StatAgility + ScrolledAgility;
+
         // Session-local UI/dialog state. These used to be static fields in handlers.
         public long OpenZaapMapId { get; set; }
 

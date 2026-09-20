@@ -335,6 +335,12 @@ and its header (`jhh`).
 <img width="2560" height="1506" alt="image" src="https://github.com/user-attachments/assets/581b105c-9569-4f54-ab77-01e122b8ce06" />
 
 - ✅ Characteristic assignment, dynamic capital, points in sync across every client panel
+- ✅ **Scrolled characteristics kept apart from spent points.** Every character is born with 100 in
+  each of the six — 100 and not 101: it is what the f3 of every real character carries, 4,815 times
+  across 156 captures, never once 101 — and it travels in its own field beside the base and the
+  gear, which is how the client draws "Base" and "Adicional" on two lines. Creation used to write
+  it into the base, and the base is what the capital counts as spent: a fresh level 200 showed 183
+  points to distribute instead of 995. A one-shot migration moves the old rows over
 <img width="708" height="1048" alt="image" src="https://github.com/user-attachments/assets/b07f0ac2-f701-4f3a-82e2-c04f884d696d" />
 
 - ✅ **17,113 spells** across **34,823 spell levels**; **638 character heads**
@@ -409,6 +415,20 @@ Dofus does not ship the item-to-look table: the server sends it. **2,371 of the 
 <img width="1082" height="692" alt="image" src="https://github.com/user-attachments/assets/39cdf857-b506-4968-b2f9-c0c5f80b64c3" />
 
 - ✅ **Monster groups placed by hand**, and Ankama's own removable, without touching the 240 MB database that gets regenerated
+- ✅ **The kanojedo.** The Amakna village hall, its door measured off the jss of the map outside
+  (element 472901, skill 184, one cell from the guardian), six Puch Ingball inside on the cells and
+  facings the class captures show — one per grade from level 1 to level 200, never moving and
+  never replaced — and the master, NPC 7416, whose two screens set a session up: six levels, then
+  one to four puchs, and the fight opens on the spot on the arena the captures name. Themed puchs
+  — Vil Smis, Sombra, Hiperescampo, Sylargh, Cráneo Rosa — take turns with the Ingball, drawn at
+  random among those with a grade at that level; at 200 only the Ingball has one. A fourth
+  rulebook, *training*: a monster fight with no challenges, no rewards and no group removed,
+  which is what the capture's empty `jyg` and missing challenge opcodes say. The puchs are safe by
+  their own data — 0 AP and -1 MP at every grade — and the level-200 one travels as **grade 6**,
+  which the client accepts for a monster whose data gives it six
+- ✅ **Measured arenas** win over the arena rule: `content/fights/arenas.json` pairs a roleplay map
+  with the arena its captures fight on, and the four kanojedos are there — the Amakna one fights
+  131,072 ids away, which no small-offset rule finds
 
 ### 📜 Quests
 

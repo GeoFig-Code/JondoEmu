@@ -195,6 +195,13 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // El puch maestro del kanojedo: los seis niveles, y luego cuántos.
+            if (npc.NpcId == Kanojedo.MasterNpc)
+            {
+                await OpenMasterAsync(stream, npc, mapId);
+                return;
+            }
+
             var template = Npcs.TemplateOf(npc.NpcId);
             var escrito = NpcDialogues.For(npc.NpcId, mapId);
             var primera = escrito?.First();
@@ -460,6 +467,87 @@ namespace Jondo.Unity.Server.Handlers
                     ConnectionProtocol.NpcDialogCloseReason)));
         }
 
+        /// <summary>
+        /// El puch maestro: la primera pantalla, con los seis niveles.
+        /// </summary>
+        /// <remarks>
+        /// Medido en la captura del Hipermago sobre el kanojedo de Amakna: ioc, y un ios con la
+        /// 54965 y las seis respuestas de nivel, de la 200 a la 1, en ese orden.
+        /// </remarks>
+        private static async Task OpenMasterAsync(NetworkStream stream, Npcs.Spawn npc, long mapId)
+        {
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Ioc, ConnectionProtocol.BuildNpcDialog(mapId, npc.ContextualId)));
+
+            SessionContext.State.OpenDialogueNpcId = npc.NpcId;
+            SessionContext.State.OpenDialogueMapId = mapId;
+            SessionContext.State.OpenDialogueMessage = Kanojedo.FirstMessage;
+
+            await PreguntarAsync(stream, Kanojedo.FirstMessage, Lista(Kanojedo.LevelReplies));
+            Console.WriteLine($"[Kanojedo] El maestro del mapa {mapId} ofrece sus seis niveles.");
+        }
+
+        /// <summary>
+        /// Lo que hace cada respuesta del puch maestro.
+        /// </summary>
+        /// <remarks>
+        /// Un nivel lleva a la segunda pantalla, cuyas cuatro respuestas de «Entrenarte con N»
+        /// llevan el parámetro 905 que llevan en la captura -y la de volver, no-. Una cuenta abre
+        /// el combate en el acto: en la captura, tras el ioy vienen el kld y la misma ráfaga que
+        /// al pisar un grupo, con un id de grupo que en el mapa no estaba. Y así se hace: el grupo
+        /// se compone y no se pone en el mapa.
+        /// </remarks>
+        private static async Task MasterReplyAsync(NetworkStream stream, long reply)
+        {
+            long mapa = SessionContext.State.OpenDialogueMapId;
+            if (mapa == 0) mapa = SessionContext.State.MapId;
+
+            int nivel = Kanojedo.LevelIndexOf(reply);
+            if (nivel >= 0)
+            {
+                var parametros = new Dictionary<long, IReadOnlyList<long>>();
+                var cuentas = Kanojedo.CountReplies(nivel);
+                for (int i = 0; i < Kanojedo.MostPuchs; i++)
+                {
+                    parametros[cuentas[i]] = new[] { Kanojedo.ReplyParameter };
+                }
+
+                SessionContext.State.OpenDialogueMessage = Kanojedo.MessageFor(nivel);
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Ios,
+                        ConnectionProtocol.BuildNpcQuestion(Kanojedo.MessageFor(nivel), Lista(cuentas), parametros)));
+                return;
+            }
+
+            if (Kanojedo.IsBack(reply))
+            {
+                SessionContext.State.OpenDialogueMessage = Kanojedo.FirstMessage;
+                await PreguntarAsync(stream, Kanojedo.FirstMessage, Lista(Kanojedo.LevelReplies));
+                return;
+            }
+
+            CerrarConversacion();
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Kld, ConnectionProtocol.BuildDialogClosed(
+                    ConnectionProtocol.NpcDialogCloseReason)));
+
+            var pedido = Kanojedo.ReadCount(reply);
+            if (pedido == null) return;
+
+            int level = Kanojedo.LevelAt(pedido.Value.LevelIndex);
+            var elegidos = Kanojedo.Pick(level, pedido.Value.Count);
+            var grupo = Managers.MobSpawnManager.ComposeOffMap(elegidos);
+            if (grupo == null)
+            {
+                Console.WriteLine($"[Kanojedo] No hay puchs con grado al nivel {level}.");
+                return;
+            }
+
+            Console.WriteLine($"[Kanojedo] Sesión al nivel {level} con {elegidos.Count} puch(s): " +
+                              string.Join(", ", elegidos.Select(e => e.Monster)) + ".");
+            await FightHandler.InitiateFightFromMobCollision(stream, grupo, mapa);
+        }
+
         /// <summary>El cofre que hay puesto en un mapa, para volver a preguntarle.</summary>
         private static Npcs.Spawn CofreDelMapa(long mapId)
         {
@@ -702,6 +790,13 @@ namespace Jondo.Unity.Server.Handlers
             if (SessionContext.State.OpenDialogueNpcId == RaidChest.NpcId && RaidChest.Owns(reply))
             {
                 await ChestReplyAsync(stream, reply);
+                return;
+            }
+
+            // Y el puch maestro del kanojedo.
+            if (SessionContext.State.OpenDialogueNpcId == Kanojedo.MasterNpc && Kanojedo.Owns(reply))
+            {
+                await MasterReplyAsync(stream, reply);
                 return;
             }
 
@@ -1010,7 +1105,7 @@ namespace Jondo.Unity.Server.Handlers
             // El orden es el medido, y las dos tandas de ivf/iun también: el servidor real las manda
             // idénticas antes y después del kdg. Como las dos llevan el total y no un incremento,
             // repetirlas no descuadra nada.
-            long capacity = 1000 + 5L * GameState.StatStrength;
+            long capacity = 1000 + 5L * GameState.TotalStrength;
 
             if (tokenShop == null)
             {

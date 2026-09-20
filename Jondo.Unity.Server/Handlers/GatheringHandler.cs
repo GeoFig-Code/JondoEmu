@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -195,7 +195,7 @@ namespace Jondo.Unity.Server.Handlers
 
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Iun, ConnectionProtocol.BuildPods(
-                        0, 1000 + 5L * SessionContext.State.StatStrength)));
+                        0, 1000 + 5L * SessionContext.State.TotalStrength)));
 
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Itn, ConnectionProtocol.BuildGathered(

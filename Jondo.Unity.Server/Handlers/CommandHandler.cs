@@ -327,7 +327,7 @@ namespace Jondo.Unity.Server.Handlers
             // manda CharacteristicsHandler al repartir puntos.
             await NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Iun,
-                    ConnectionProtocol.BuildPods(0, 1000 + 5L * GameState.StatStrength)));
+                    ConnectionProtocol.BuildPods(0, 1000 + 5L * GameState.TotalStrength)));
             await NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Kub, ConnectionProtocol.BuildCharacteristics()));
 
@@ -785,7 +785,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             await NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Iun, ConnectionProtocol.BuildPods(
-                    0, 1000 + 5L * GameState.StatStrength)));
+                    0, 1000 + 5L * GameState.TotalStrength)));
         }
 
         // ─── Piezas sueltas ─────────────────────────────────────────────────────

@@ -60,6 +60,12 @@ namespace Jondo.Unity.Server.Handlers
             long arenaMapId = MapManager.ResolveArenaMapId(mapId);
             var fight = new FightInstance(fightId, mapId, arenaMapId);
 
+            // En un kanojedo se pelea con el libro del entrenamiento: sin retos, sin botín y sin
+            // que el puch desaparezca al ganar. Lo decide el mapa -donde está el puch maestro- y
+            // no el monstruo, porque el saco al que se le pega y el que el maestro compone son
+            // los mismos bichos y da igual por dónde se entre.
+            if (Managers.Kanojedo.IsDojo(mapId)) fight.Reglas = FightRules.Entrenamiento;
+
             // El id contextual del grupo ES su MobId, el mismo que viaja en el jss y en el jpv y el
             // mismo que el cliente devuelve al clicarlo. El parámetro mobContextId sobra desde que
             // los dos paquetes reparten el mismo número; se queda por las llamadas de fuera.
@@ -648,10 +654,10 @@ namespace Jondo.Unity.Server.Handlers
         /// </remarks>
         public static Fighter BuildPlayerFighter(FightInstance fight)
         {
-            int fuerza = GameState.StatStrength + StatsHandler.GetEquipBonus(10);
-            int inteligencia = GameState.StatIntelligence + StatsHandler.GetEquipBonus(15);
-            int suerte = GameState.StatChance + StatsHandler.GetEquipBonus(13);
-            int agilidad = GameState.StatAgility + StatsHandler.GetEquipBonus(14);
+            int fuerza = GameState.TotalStrength + StatsHandler.GetEquipBonus(10);
+            int inteligencia = GameState.TotalIntelligence + StatsHandler.GetEquipBonus(15);
+            int suerte = GameState.TotalChance + StatsHandler.GetEquipBonus(13);
+            int agilidad = GameState.TotalAgility + StatsHandler.GetEquipBonus(14);
 
             // Build Player Fighter from GameState (Fighter ID = player CharacterId)
             var playerFighter = new Fighter
@@ -714,7 +720,7 @@ namespace Jondo.Unity.Server.Handlers
                 NeutralResPct = StatsHandler.GetEquipBonus(37),
                 // Empuje (84 en el equipo, que el cliente pinta en la 85) y alcance (19).
                 PushDamage = StatsHandler.GetEquipBonus(84),
-                Vitality = GameState.StatVitality + StatsHandler.GetEquipBonus(11),
+                Vitality = GameState.TotalVitality + StatsHandler.GetEquipBonus(11),
                 Range = StatsHandler.GetEquipBonus(19),
                 LookBoneId = 744,
                 IsMonster = false
@@ -1208,7 +1214,7 @@ namespace Jondo.Unity.Server.Handlers
 
             const int PorCadaDiez = 10;
             int agilidad = quien.Agility;
-            int sabiduria = GameState.StatWisdom + StatsHandler.GetEquipBonus(12);
+            int sabiduria = GameState.TotalWisdom + StatsHandler.GetEquipBonus(12);
 
             Poner(78, agilidad / PorCadaDiez);    // huida
             Poner(79, agilidad / PorCadaDiez);    // placaje
@@ -1216,7 +1222,7 @@ namespace Jondo.Unity.Server.Handlers
             Poner(28, sabiduria / PorCadaDiez);   // esquiva de puntos de movimiento
             Poner(82, sabiduria / PorCadaDiez);   // retira PA: a tenth of wisdom, plus the gear's 410/411
             Poner(83, sabiduria / PorCadaDiez);   // retira PM: idem, 412/413
-            Poner(12, GameState.StatWisdom);      // sabiduría
+            Poner(12, GameState.TotalWisdom);     // sabiduría
             Poner(49, 0);                         // flat heals
             Poner(26, 0);                         // invocaciones
             Poner(50, 0);                         // reenvío
@@ -7651,7 +7657,7 @@ namespace Jondo.Unity.Server.Handlers
             else AddSimpleVal(null, fighter.MaxHP);
 
             // 23. 11 (Vitality: player bonus; monster empty)
-            if (!fighter.IsMonster) AddBaseBonusVal(11, 0, GameState.StatVitality + StatsHandler.GetEquipBonus(11));
+            if (!fighter.IsMonster) AddBaseBonusVal(11, 0, GameState.TotalVitality + StatsHandler.GetEquipBonus(11));
             else AddStatEntry(11, new ProtoMessage());
 
             // 25. 97 (empty)
