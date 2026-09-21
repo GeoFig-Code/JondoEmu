@@ -75,7 +75,19 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public bool Apila { get; set; }
 
-        /// <summary>Maximum equivalent rows that may coexist; zero means no explicit cap.</summary>
+        /// <summary>
+        /// How many equivalent rows may coexist on the bearer: the spell level's
+        /// <c>maxStack</c>. Minus one is no limit, zero and one are "the new one replaces the
+        /// old", and a larger number is the cap, the oldest giving way.
+        /// </summary>
+        /// <remarks>
+        /// Measured on the Yopuka captures: Fervor (-1) cast twice in a turn keeps both
+        /// shields, rows 10 and 11; Pugilato (-1) its two "+18 de daños básicos"; Tumulto (-1)
+        /// puts one "+20" per enemy hit, rows 103 and 104 in one cast. Espada del Juicio (1)
+        /// cast again drops its shield -- jya 9, jwe 514 -- and puts row 13; Sentencia (1) the
+        /// same with its state. Presión and Espada Destructora are 2, which is what "erosiona"
+        /// twice on one target adds up to.
+        /// </remarks>
         public int MaxStacks { get; set; }
 
         /// <summary>
@@ -106,6 +118,13 @@ namespace Jondo.Unity.World.Fights
 
         /// <summary>How many rounds a pending row lasts once it goes off.</summary>
         public int Duracion { get; set; }
+
+        /// <summary>
+        /// Whether the row is a critical list's, for the f9 of its frames: a waiting row keeps
+        /// it and hands it to the live row it turns into (Espada del Destino's "+40" waits
+        /// flagged and goes off flagged, row 29 off row 28 in its capture).
+        /// </summary>
+        public bool Critico { get; set; }
 
         /// <summary>
         /// The pending row this one came out of, for the client to link the two: the activated
@@ -184,11 +203,26 @@ namespace Jondo.Unity.World.Fights
             /// </summary>
             public long Lanzador { get; set; }
 
+            /// <summary>
+            /// The round the hook was put in. A hooked row with a delay does not go off before
+            /// this round plus its delay: Furor's decay is a "1160 under TE" with a delay of
+            /// one, and it fires at the end of a turn of the round AFTER the cast.
+            /// </summary>
+            public int PuestoEnRonda { get; set; }
+
+            /// <summary>
+            /// Whether the cast that put it was critical: the hook fires with the critical
+            /// lists. Pugilato's turn-end 406 goes out flagged, from the critical list's own
+            /// entry (uid 371557), when the cast was.
+            /// </summary>
+            public bool Critico { get; set; }
+
             public bool Vivo(int ronda) => CaducaEnRonda < 0 || ronda < CaducaEnRonda;
         }
 
         /// <summary>Deja apuntado que este hechizo sigue puesto, o alarga el que ya estaba.</summary>
-        public void Enganchar(int hechizo, int grado, int caducaEnRonda, long lanzador = 0)
+        public void Enganchar(int hechizo, int grado, int caducaEnRonda, long lanzador = 0, int puestoEnRonda = 0,
+                              bool critico = false)
         {
             var ya = _enganchesPorHechizo(hechizo);
             if (ya != null)
@@ -196,11 +230,14 @@ namespace Jondo.Unity.World.Fights
                 ya.Grado = grado;
                 ya.CaducaEnRonda = caducaEnRonda;
                 ya.Lanzador = lanzador;
+                ya.PuestoEnRonda = puestoEnRonda;
+                ya.Critico = critico;
                 return;
             }
             ActiveSpells.Add(new ActiveSpell
             {
                 Hechizo = hechizo, Grado = grado, CaducaEnRonda = caducaEnRonda, Lanzador = lanzador,
+                PuestoEnRonda = puestoEnRonda, Critico = critico,
             });
         }
 
@@ -258,11 +295,17 @@ namespace Jondo.Unity.World.Fights
             return quitados;
         }
 
-        /// <summary>Retira todo lo que dejó un hechizo, incluidos sus estados.</summary>
+        /// <summary>Retira todo lo que dejó un hechizo, incluidos sus estados y sus enganches.</summary>
+        /// <remarks>
+        /// The hooks go with the rows: Furor's 406 on 28604 takes the hooked "1160 under TE"
+        /// away with the state and the +N -- jya 36, 37 AND 38 in the capture -- and a hook
+        /// left behind would fire the decay on the rows the recast has just put.
+        /// </remarks>
         public List<Buff> QuitarDelHechizo(int hechizo)
         {
             var quitados = _puestos.FindAll(e => e.HechizoOrigen == hechizo);
             _puestos.RemoveAll(e => e.HechizoOrigen == hechizo);
+            ActiveSpells.RemoveAll(e => e.Hechizo == hechizo);
 
             foreach (var quitado in quitados)
             {
@@ -274,66 +317,58 @@ namespace Jondo.Unity.World.Fights
         }
 
         /// <summary>
+        /// The rows the last <see cref="Poner"/> took off to make room for the new one: the
+        /// refreshed row of a spell that does not stack, the oldest of one that stacks up to a
+        /// cap. The real server announces each as gone -- jya and jwe 514 -- before the new
+        /// row; the caller reads them right after the put.
+        /// </summary>
+        public List<Buff> Relevados { get; } = new List<Buff>();
+
+        /// <summary>
         /// Añade un embrujo con el número que le toque. El número NO es de cada luchador: es
         /// correlativo del combate entero, y el que se usa luego para quitarlo con el jya. En la
         /// captura los del jugador van del 19 al 25 y los del monstruo siguen del 26 al 32, misma
         /// serie.
         /// </summary>
+        /// <remarks>
+        /// How many equivalent rows may live together is the spell level's <c>maxStack</c>, in
+        /// <see cref="Buff.MaxStacks"/>: the new row replaces the old at zero and one, joins it
+        /// without limit at minus one, and pushes the oldest out at a cap. Two rows are
+        /// equivalent when they are the same catalogue entry of the same spell by the same
+        /// caster -- the entry, not just the effect: Flecha Castigadora carries two 293 that
+        /// only differ by their effectUid, and both stay. A replaced row is never refreshed in
+        /// place: the real server never reuses a number (in "tymador-explobomba resiliente"
+        /// the same bomb carries state 2484 as buff 19 and again as buff 23), it takes the old
+        /// one off and puts a new one, and the ones taken off are left in
+        /// <see cref="Relevados"/> for the caller to announce.
+        ///
+        /// <see cref="Buff.Apila"/> is the old "stack without limit" of the rows a spell puts
+        /// each time something happens -- a combo rung, a hooked "-N de daños recibidos", a
+        /// per-step malus -- and stays so unless the level writes a cap above one.
+        /// </remarks>
         public Buff Poner(Buff embrujo, Func<int> siguienteNumero)
         {
-            // Un mismo efecto del mismo hechizo no se apila: se refresca. Es lo que hace Flecha
-            // Helada al lanzarse dos veces seguidas, que renueva sus tres turnos en vez de sumar
-            // otros ocho de daños básicos.
-            //
-            // Con una excepción: los que APILAN, que son los que un hechizo va poniendo cada vez
-            // que pasa algo. El Centinela se come uno de alcance por cada paso, y a los tres pasos
-            // hay que llevar tres menos, no uno. En la captura se ve claro: el servidor manda un
-            // embrujo NUEVO por cada paso, apuntando al primero.
-            if (embrujo.Apila)
+            Relevados.Clear();
+
+            int tope = embrujo.MaxStacks;
+            if (embrujo.Apila && tope <= 1) tope = -1;
+
+            if (tope >= 0)
             {
-                if (embrujo.MaxStacks > 0)
-                {
-                    var equivalent = _puestos.Where(e => e.EffectId == embrujo.EffectId
+                int cabe = Math.Max(1, tope);
+                var equivalentes = _puestos.FindAll(e => e.EffectId == embrujo.EffectId
                                                       && e.EffectUid == embrujo.EffectUid
                                                       && e.HechizoOrigen == embrujo.HechizoOrigen
                                                       && e.HechizoAfectado == embrujo.HechizoAfectado
-                                                      && e.Quien == embrujo.Quien).ToList();
-                    if (equivalent.Count >= embrujo.MaxStacks)
-                    {
-                        var oldest = equivalent[0];
-                        oldest.Cuanto = embrujo.Cuanto;
-                        oldest.CaducaEnRonda = embrujo.CaducaEnRonda;
-                        oldest.EmpiezaEnRonda = embrujo.EmpiezaEnRonda;
-                        return oldest;
-                    }
-                }
-                embrujo.Numero = siguienteNumero();
-                _puestos.Add(embrujo);
-                return embrujo;
-            }
-
-            // La ENTRADA DEL CATÁLOGO forma parte de la llave, y faltaba.
-            //
-            // Un hechizo puede traer dos efectos iguales en todo menos en su número de entrada:
-            // la Flecha Castigadora lleva dos veces el efecto 293 —«+24 de daños básicos» y «+32»—
-            // que comparten efecto, hechizo de origen, hechizo afectado y destinatario, y sólo se
-            // distinguen por el effectUid (424781 y 424782). Sin él en la llave, el segundo pisaba
-            // al primero y de los dos acumulados sólo quedaba uno.
-            var yaEstaba = _puestos.FirstOrDefault(e => e.EffectId == embrujo.EffectId
-                                                     && e.EffectUid == embrujo.EffectUid
-                                                     && e.HechizoOrigen == embrujo.HechizoOrigen
-                                                     && e.HechizoAfectado == embrujo.HechizoAfectado
-                                                     && e.Quien == embrujo.Quien);
-            if (yaEstaba != null)
-            {
-                yaEstaba.Cuanto = embrujo.Cuanto;
-                yaEstaba.CaducaEnRonda = embrujo.CaducaEnRonda;
-                if (embrujo.PendingHealPoints > 0)
+                                                      && e.Quien == embrujo.Quien
+                                                      && e.Pendiente == embrujo.Pendiente);
+                while (equivalentes.Count >= cabe)
                 {
-                    yaEstaba.PendingHealPoints = embrujo.PendingHealPoints;
-                    yaEstaba.EmpiezaEnRonda = embrujo.EmpiezaEnRonda;
+                    var relevado = equivalentes[0];
+                    equivalentes.RemoveAt(0);
+                    _puestos.Remove(relevado);
+                    Relevados.Add(relevado);
                 }
-                return yaEstaba;
             }
 
             embrujo.Numero = siguienteNumero();
@@ -394,7 +429,15 @@ namespace Jondo.Unity.World.Fights
         public const int DanoRecibidoMenos = 265;
         public const int DanoRecibidoMenosFijo = 105;
 
-        public int Multiplicador(int efecto, int ronda)
+        /// <summary>"Daños sufridos x#1%", the multiplier of Represalias, Tiro Penetrante and Salto.</summary>
+        public const int DanoSufridoPorCiento = 1163;
+
+        /// <param name="clasesDelGolpe">
+        /// The kinds of the blow being read, for the rows registered under a damage kind
+        /// (Salto's "1163 under D"): a row with a kind counts only for a blow of that kind.
+        /// Without the list every live row counts.
+        /// </param>
+        public int Multiplicador(int efecto, int ronda, IReadOnlyCollection<string> clasesDelGolpe = null)
         {
             double total = 1.0;
             bool alguno = false;
@@ -402,6 +445,15 @@ namespace Jondo.Unity.World.Fights
             {
                 if (e.EffectId != efecto || !e.Vivo(ronda)) continue;
                 if (e.Cuanto == 0) continue;
+                if (clasesDelGolpe != null && !string.IsNullOrEmpty(e.Disparador) && e.Disparador != "I")
+                {
+                    bool aplica = false;
+                    foreach (var d in e.Disparador.Split('|'))
+                    {
+                        if (clasesDelGolpe.Contains(d.Trim())) { aplica = true; break; }
+                    }
+                    if (!aplica) continue;
+                }
                 total *= e.Cuanto / 100.0;
                 alguno = true;
             }

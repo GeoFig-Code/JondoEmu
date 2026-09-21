@@ -185,3 +185,71 @@ Everything past the start of the fight proper. In particular:
 - `jti` and `jwh`, which is what the client sends to cast a spell and to move.
 - `jxy`, empty, which is almost certainly "pass turn".
 - The turn timers, the end of the fight and the reward panel.
+
+## What a row of `EffectsJson` means
+
+Measured on the class captures (Yopuka, Ocra, Tymador) and the client's own
+metadata (`Core.DataCenter.Metadata.Effect.EffectInstanceFlags`).
+
+- `m_flags`: 1 visible in the tooltip, 2 in the buff panel, 4 in the fight
+  log, 8 on the terrain, **16 for the client only**. A row with the 16 is the
+  sheet's copy of what the spell does through a sub-cast, and the real server
+  never sends it: Furor's "+20" (the real one is 28604's), Vitalidad's "+N%"
+  (25215's), Manticolmillo's "+15 huida" (24012's), Virtud's shield and "-50"
+  (29723's), Remisión's push under DM (13430's), Ojo por Ojo's "+6" (no row at
+  all in three casts), the water bomb's "-2 PA" (25589's, by combo). The
+  engine drops them when it reads the spell (`SpellEffect.ForClientOnly`).
+- `random` and `group`: one draw per spell level. The shares of the random
+  rows of a level add up to 100 in 1,602 of the 1,603 levels that carry any;
+  the draw picks one row and every row of its `group` comes with it; group 0
+  is no group. Bumerán Pérfido: eight rows of 12.5 in four groups, a life
+  steal and the characteristic of the same element each.
+- `maxStack` of the level: how many equivalent rows (same entry, same spell,
+  same caster) live together on a target. `-1` no limit (Fervor cast twice in
+  a turn keeps both shields, Tumulto one "+20" per enemy), `0`/`1` the new row
+  replaces the old — dropped as `jya` + `jwe 514` before the new `jxm`, never
+  refreshed under its number —, `N` a cap the oldest gives way to. Presión and
+  Espada Destructora are 2.
+- Targets are picked before anything moves: Fricción pulls the enemy and its
+  state still lands on him, cast at the cell he left.
+- A hooked row with a `delay` fires that many rounds after the cast: Furor's
+  "1160 under TE" goes out with the round after the cast in its `f12`.
+- Rows read by the blow, registered at the cast with their kind as a
+  condition: `-N de daños recibidos` (105, 265) and `daños sufridos x#1%`
+  (1163) under `D`, `DR`, `DM`/`DCAC`, `DTB`/`DTE`.
+- Mask letters, by side (lower case the caster's, upper case the other): `c`
+  the caster when he stands in the zone (Acumulación's "en el lanzador",
+  Flecha Asaltante's `950 mask c` on the Ocra one cell from the centre),
+  `l`/`L` the players (Caja de Herramientas, Ghulificación), `m`/`M` the
+  monsters that are nobody's summon, `i`/`I` and `j`/`J` the summons (Látigo's
+  "si es una invocación aliada" is a bare `i`; what tells `j` from `i` is not
+  written anywhere). `H`/`h` and `D`/`d` sit next to these in monster spells
+  ("H,M,D", "h,m,d") and are not read.
+- Zone letters measured on impacts with known positions: `Q` is a straight
+  cross like `X` with `param2` as inner radius (Palabra Turbulenta Q1 pushes
+  the four cells around, Llave de Contacto "en una cruz de 1 casilla"); `T` is
+  the bar across the cast, the centre and `param1` cells to each side
+  perpendicular to the nearest of the eight directions from the caster (seven
+  impacts: Cencerro, Magmacha Calcinada, Flecha de Pelea ×2, Impacto
+  Aplastante, Espora Dyka ×2, none behind or in front); `O` is the ring.
+- Spell states: the client's `SpellStateData` flags 103 of 6,375 states —
+  `invulnerable`, `invulnerableMelee`/`Range`, `cantBeMoved`, `cantBePushed`,
+  `incurable`, `cantDealDamage`, `preventsSpellCast`... — in
+  `datos/spell_states.json`. A blow on an invulnerable target goes out as
+  `jwe <effect> f40{f2: victim, f4: element}`, no amount (Influencia's
+  capture), and nothing of the blow happens.
+- A `406` is announced after the rows it takes: `jwe 406 f33{f2: spell, f4:
+  from whom}` behind their `jya`.
+- A critical cast runs the whole chain on the critical lists. A chained spell
+  with a critical list of its own uses it and its rows go out with `f9=1` and
+  the critical entry's uid (Virtud's shield: `1040 dice 1100 uid 383796`,
+  29723's critical row, next to the ordinary `1000 uid 383778`); one without
+  runs its ordinary list and its rows go out unflagged (Tumulto's 13154). A
+  waiting row keeps the flag and hands it to the live row it turns into. The
+  chained cast's own `jwe 300` carries no `f5`.
+- What a turn trigger fires goes inside one action sequence of the bearer's,
+  after his `jyt`: `jyt -6, jto{-6,3}, jwe 300 13155, ..., jya 67, jwi`
+  (Sentencia). Sent bare, the client applies none of it.
+- `+N% vitalidad` (1078) and `-N%` (1033) are of the maximum life, base and
+  gear included: the naked level-200 test characters of the captures stand at
+  1,150 and get +230 and -575. Announced as the flat rows 125 and 153.

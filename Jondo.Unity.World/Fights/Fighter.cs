@@ -342,6 +342,18 @@ namespace Jondo.Unity.World.Fights
         }
 
         /// <summary>
+        /// Takes points off the shield: what a replaced shield row was worth, when a spell that
+        /// does not stack is cast again and its old row goes. Never below zero -- a shield
+        /// already eaten by blows has nothing left to give back.
+        /// </summary>
+        public void Desescudar(int cuanto)
+        {
+            if (cuanto <= 0) return;
+            PuntosDeEscudo = Math.Max(0, PuntosDeEscudo - cuanto);
+            if (PuntosDeEscudo == 0) EscudoCaducaEnRonda = 0;
+        }
+
+        /// <summary>
         /// Le mete un golpe al escudo primero y devuelve lo que llega a la vida.
         /// </summary>
         public int PasarPorElEscudo(int dano)

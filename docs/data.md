@@ -49,6 +49,7 @@ nothing — they are working references, and `.gitignore` keeps them local.
 | `character_xp.json` | 38,990 | 1,889 levels → accumulated experience | `ExperienceTable` via `Paths.CharacterXpJson` | `extract_character_xp.py` |
 | `mounts.json` | 35,924 | 520 mounts, indexed by the certificate item that grants them: bones, colors, scale | `Mounts` via `Paths.MountsJson` | `extract_monturas.py` |
 | `characteristics.json` | 14,927 | 122 characteristic ids → name, upgradable, visible, order, category | nothing | `extract_characteristics.py` |
+| `spell_states.json` | 9,486 | The 103 spell states the client flags: invulnerable (23), cannot be moved (22) or pushed (25), incurable (10), cannot deal damage (5)... with the state's name. The other 6,272 states carry no flag and are not written | `SpellStates` via `Paths.SpellStatesJson` | `extract_spell_states.py` |
 | `breed_stats.json` | 12,781 | 19 breeds × 6 characteristics → what a point costs in each band | `BreedStatCost` via `Paths.BreedStatsJson` | `extract_breed_stats.py` |
 | `dofus3_mappings.json` | 9,524 | 93 `type.ankama.com/<opcode>` → a name someone assigned while reversing; 3 also carry field renames | nothing | no script |
 | `breed_looks.json` | 4,314 | 19 breeds × male/female → bones, skins, scales, six default colors | `BreedLookTable` via `Paths.BreedLooksJson` | `extract_breed_looks.py` |
@@ -273,6 +274,7 @@ below.
 py tools/extract_breed_looks.py          -> breed_looks.json
 py tools/extract_breed_stats.py          -> breed_stats.json
 py tools/extract_characteristics.py      -> characteristics.json
+py tools/extract_spell_states.py         -> spell_states.json
 py tools/extract_heads.py                -> heads.json, but in the repository root; move it
 py tools/extract_dungeons.py             -> dungeons.json
 py tools/extract_merkasako.py            -> havenbag.json

@@ -16,12 +16,24 @@ namespace Jondo.Unity.World.Maps
     ///   'P' x534   un punto: sólo la casilla apuntada. Es la de casi todo.
     ///   'C' x49    círculo de radio param1. El Ojo de Topo es 'C' de 2.
     ///   'X' x18    cruz: los cuatro rayos rectos, medido contra las capturas.
-    ///   'T' x9     cruz recta de radio param1 sin las diagonales.
+    ///   'T' x9     la barra: el centro y param1 casillas a cada lado, ATRAVESADA al
+    ///              lanzamiento. Medida en siete impactos con posiciones: Cencerro (T2),
+    ///              Magmacha Calcinada (T1), Flecha de Pelea (T2, dos veces), Impacto
+    ///              Aplastante (T1), Espora Dyka (T5, dos veces): todas las víctimas en la
+    ///              perpendicular del eje del lanzamiento o en el centro, ninguna detrás
+    ///              ni delante. Era una cruz, y Espada Destructora le pegaba al Yopuka que
+    ///              la lanzaba desde al lado.
     ///   'a' x8     TODO el mapa.
     ///   'L' x9     línea recta desde el lanzador.
     ///   'V' x6     media línea.
     ///   'F' x6     la casilla y sus vecinas en la dirección.
-    ///   'Q' x10    rombo hueco.
+    ///   'Q' x10    cruz recta, como la 'X', con param2 de radio interior. Las fichas la
+    ///              llaman cruz -- "en una cruz de 2 casillas" Transposición Amenazadora,
+    ///              "en una cruz de 1 casilla" Llave de Contacto -- y en las capturas Palabra
+    ///              Turbulenta (Q1) empuja a (0,-1), (1,0) y (-1,0) del centro, Palabra
+    ///              Entretenida (Q3) atrae desde (1,0), (2,0) y (3,0), y Flecha Asaltante y
+    ///              Flecha Evasiva ponen su "950 mask c" (Q1) en el Ocra a una casilla recta
+    ///              del centro. Era un anillo, que es la 'O'.
     ///   'U' x3     'G' x3   '+' x2   '#' x2
     ///
     /// Lo que no está medido NO se inventa: una forma desconocida devuelve la casilla apuntada y
@@ -32,12 +44,12 @@ namespace Jondo.Unity.World.Maps
         public const int Punto = 'P';
         public const int Circulo = 'C';
         public const int Aspa = 'X';
-        public const int Cruz = 'T';
+        public const int Barra = 'T';
         public const int TodoElMapa = 'a';
         public const int WholeMap = 'A';
         public const int Linea = 'L';
         public const int MediaLinea = 'V';
-        public const int Rombo = 'Q';
+        public const int CruzRecta = 'Q';
         public const int CruzCompleta = '+';
         public const int Cuadrado = '#';
         public const int MedioCirculo = 'U';
@@ -81,7 +93,7 @@ namespace Jondo.Unity.World.Maps
         public static List<int> Casillas(int forma, int tamano, int desde, int centro, int minimo = 0)
         {
             var fuera = Formas(forma, tamano, desde, centro, minimo);
-            if (minimo <= 0 || !(forma is Circulo or Aspa or Cruz or CruzCompleta or Cuadrado or MedioCirculo))
+            if (minimo <= 0 || !(forma is Circulo or Aspa or CruzRecta or CruzCompleta or Cuadrado or MedioCirculo))
             {
                 return fuera;
             }
@@ -112,8 +124,23 @@ namespace Jondo.Unity.World.Maps
                         if (MapGeometry.Distance(centro, c) <= tamano) fuera.Add(c);
                     return fuera;
 
-                case Cruz:
-                    // Las cuatro direcciones rectas, hasta `tamano`, más el centro.
+                case Barra:
+                {
+                    // The bar across the cast: the centre and `tamano` cells to each side of
+                    // it, along the axis perpendicular to the nearest of the eight directions
+                    // from the caster to the centre. The same bar as '-'; where the two differ
+                    // is not measured (the client's text keeps '-' for line casts only).
+                    fuera.Add(centro);
+                    var d = DireccionEntre(desde, centro);
+                    if (!d.HasValue) return fuera;
+                    Estirar(fuera, centro, -d.Value.Dy, d.Value.Dx, tamano);
+                    Estirar(fuera, centro, d.Value.Dy, -d.Value.Dx, tamano);
+                    return fuera;
+                }
+
+                case CruzRecta:
+                    // The straight cross, like the 'X': the centre and the four rays you walk
+                    // along, `tamano` long. Its param2 is the inner radius, taken off above.
                     fuera.Add(centro);
                     foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) })
                         Estirar(fuera, centro, dx, dy, tamano);
@@ -153,21 +180,6 @@ namespace Jondo.Unity.World.Maps
                             if (c >= 0) fuera.Add(c);
                         }
                     return fuera;
-
-                case Rombo:
-                {
-                    // The ring: the circle of radius param1 without the circle of radius param2.
-                    // It was "the edge only", which is what every Q with param1 = param2 is --
-                    // 72 of Q1/1, 63 of Q2/2 -- and wrong for the 48 of Q3/2 and the 10 of Q3/1,
-                    // which are two and three cells thick. Without a param2 it is the edge.
-                    int borde = minimo > 0 ? minimo : tamano;
-                    for (int c = 0; c < MapGeometry.MaxCells; c++)
-                    {
-                        int d = MapGeometry.Distance(centro, c);
-                        if (d >= borde && d <= tamano) fuera.Add(c);
-                    }
-                    return fuera;
-                }
 
                 case Segmento:
                 {

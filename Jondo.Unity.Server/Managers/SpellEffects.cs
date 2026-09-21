@@ -99,6 +99,33 @@ namespace Jondo.Unity.Server.Managers
         public double Probabilidad { get; init; }
         public int Sorteo { get; init; }
 
+        /// <summary>
+        /// The client's <c>EffectInstanceFlags</c> of the row: 1 visible in the tooltip, 2 in
+        /// the buff panel, 4 in the fight log, 8 on the terrain, 16 for the client only.
+        /// </summary>
+        public int Flags { get; init; }
+
+        /// <summary>The bit of <see cref="Flags"/> that marks a row the server never runs.</summary>
+        public const int ForClientOnlyFlag = 16;
+
+        /// <summary>
+        /// A row that is the SHEET'S COPY of something the spell really does elsewhere, and
+        /// that the server never runs.
+        /// </summary>
+        /// <remarks>
+        /// The client's enum names the bit ForClientOnly, and the catalogue is written on it:
+        /// Furor carries a "+20 de daños básicos" with the bit next to a 1160 that casts 28604,
+        /// where the real +20 lives; Vitalidad its two "+N% vitalidad" next to the 1160s that
+        /// cast 25215; Manticolmillo its "+15 huida" next to the 1160 that casts 24012 on each
+        /// enemy; Virtud its shield and its "-50 potencia" next to 29723. In the Furor capture
+        /// the rows that go out are 28604's alone -- the state, the +20, the hooked 1160 --
+        /// and never 13156's; in the Vitalidad capture only 25215's +230; in the Virtud
+        /// capture only 29723's. Run, the copy doubled every one of them: Furor gave +60.
+        /// Remisión's push "under DM" is the same thing, which is what the engine had already
+        /// read off its capture case by case.
+        /// </remarks>
+        public bool ForClientOnly => (Flags & ForClientOnlyFlag) != 0;
+
         public IEnumerable<string> Disparadores()
         {
             if (string.IsNullOrEmpty(Triggers)) { yield return "I"; yield break; }
@@ -184,6 +211,11 @@ namespace Jondo.Unity.Server.Managers
 
                 foreach (var e in doc.RootElement.EnumerateArray())
                 {
+                    // The sheet's copies stay on the sheet: a row for the client only is not
+                    // read into the list at all, so nothing downstream can run it by mistake.
+                    int flags = Entero(e, "m_flags");
+                    if ((flags & SpellEffect.ForClientOnlyFlag) != 0) continue;
+
                     int forma = 'P', tamano = 1, minimo = 0, paso = 0, tope = 0;
                     bool para = false;
                     if (e.TryGetProperty("zoneDescr", out var z) && z.ValueKind == JsonValueKind.Object)
@@ -220,6 +252,7 @@ namespace Jondo.Unity.Server.Managers
                         Probabilidad = e.TryGetProperty("random", out var rnd) &&
                                        rnd.TryGetDouble(out double p) ? p : 0,
                         Sorteo = Entero(e, "group"),
+                        Flags = flags,
                     });
                 }
             }

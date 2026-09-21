@@ -121,6 +121,12 @@ namespace Jondo.Unity.World.Combat
         public const int VitalityPercentBonus = 1078;
         public const int VitalityFlatMalus = 153;
 
+        /// <summary>
+        /// The bonus goes out as its own flat effect, 125 "+#1 vitalidad": Vitalidad's 20% on
+        /// 1,150 vitality is "jxm 125 dice 230" in its capture, from 25215 at grade 5.
+        /// </summary>
+        public const int VitalityFlatBonus = 125;
+
         /// <summary>The caster steps back.</summary>
         public const int StepBack = 1041;
 

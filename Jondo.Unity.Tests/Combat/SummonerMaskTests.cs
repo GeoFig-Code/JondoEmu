@@ -120,10 +120,52 @@ namespace Jondo.Unity.Tests.Combat
             Assert.DoesNotContain(centre, around);
             Assert.Equal(12, around.Count);
 
-            var thick = Zone.Casillas(Zone.Rombo, 3, 260, centre, minimo: 2);
-            Assert.All(thick, c => Assert.InRange(MapGeometry.Distance(centre, c), 2, 3));
-            var edge = Zone.Casillas(Zone.Rombo, 2, 260, centre);
+            // The Q is a straight cross too, its param2 the inner radius: Salto's Q1/1 is the
+            // four cells around the arrival, and a bare Q2 keeps its centre.
+            var salto = Zone.Casillas(Zone.CruzRecta, 1, 260, centre, minimo: 1);
+            Assert.DoesNotContain(centre, salto);
+            Assert.Equal(4, salto.Count);
+            Assert.All(salto, c => Assert.Equal(1, MapGeometry.Distance(centre, c)));
+            var cruz = Zone.Casillas(Zone.CruzRecta, 2, 260, centre);
+            Assert.Contains(centre, cruz);
+            Assert.Equal(9, cruz.Count);
+            Assert.Equal(Zone.Casillas(Zone.Aspa, 2, 260, centre).OrderBy(c => c), cruz.OrderBy(c => c));
+
+            // The ring is the O: exactly param1 away.
+            var edge = Zone.Casillas(Zone.Anillo, 2, 260, centre);
             Assert.All(edge, c => Assert.Equal(2, MapGeometry.Distance(centre, c)));
+        }
+
+        /// <summary>
+        /// The T is the bar across the cast: measured on seven impacts with positions
+        /// (Cencerro, Magmacha Calcinada, Flecha de Pelea, Impacto Aplastante, Espora Dyka),
+        /// every victim on the perpendicular of the cast or on the centre. Espada Destructora
+        /// cast from next door never reaches the caster's own cell.
+        /// </summary>
+        [Fact]
+        public void The_T_is_the_bar_across_the_cast()
+        {
+            // Flecha de Pelea in "entrar a sueño mediante invitacion": cast from 342 at 269,
+            // the victim at 256, one cell across.
+            var bar = Zone.Casillas(Zone.Barra, 2, 342, 269);
+            Assert.Contains(269, bar);
+            Assert.Contains(256, bar);
+            Assert.Equal(5, bar.Count);
+            var (cx, cy) = MapGeometry.CellToPoint(269);
+            Assert.All(bar, c =>
+            {
+                var (x, y) = MapGeometry.CellToPoint(c);
+                Assert.Equal(cx, x);           // the cast runs along x, so the bar runs along y
+            });
+
+            // Espada Destructora from the cell next to the target: a T1 with the target on the
+            // caster's axis holds the target and the two cells beside it, not the caster.
+            int caster = MapGeometry.PointToCell(cx - 1, cy);
+            var t1 = Zone.Casillas(Zone.Barra, 1, caster, 269);
+            Assert.Equal(3, t1.Count);
+            Assert.DoesNotContain(caster, t1);
+            Assert.Contains(MapGeometry.PointToCell(cx, cy + 1), t1);
+            Assert.Contains(MapGeometry.PointToCell(cx, cy - 1), t1);
         }
 
         /// <summary>The half circle keeps the half away from the caster.</summary>
@@ -139,19 +181,24 @@ namespace Jondo.Unity.Tests.Combat
             Assert.True(half.Count < Zone.Casillas(Zone.Circulo, 2, caster, centre).Count);
         }
 
-        /// <summary>Último Aliento: -50% of 1150 vitality is -575, off the maximum, shown as 153.</summary>
+        /// <summary>
+        /// Último Aliento: -50% of the 1,150 of maximum life of the capture's naked Tymador is
+        /// -575, off the maximum, shown as 153. Of the life, not of the vitality characteristic:
+        /// that character had 100 of it, the scrolls' worth.
+        /// </summary>
         [Fact]
         public void A_vitality_percentage_moves_the_maximum_by_the_flat_points()
         {
             var fight = new FightInstance(1, 1);
             var me = Rogue(10, 0, 300);
+            me.MaxHP = 1150; me.CurrentHP = 1150; me.Vitality = 100;
             fight.AddPlayer(me);
 
             var outcomes = EffectEngine.Resolver(fight, me, UltimoAliento, 2, me, EffectEngine.AlLanzar,
                                                  fight.RoundNumber, celdaApuntada: 300);
 
-            Assert.Equal(2000 - 575, me.MaxHP);
-            Assert.Equal(2000 - 575, me.CurrentHP);
+            Assert.Equal(1150 - 575, me.MaxHP);
+            Assert.Equal(1150 - 575, me.CurrentHP);
             var row = Assert.Single(me.Buffs.Puestos, b => b.EffectId == EffectSupport.VitalityFlatMalus);
             Assert.Equal(-575, row.Cuanto);
             Assert.Equal(11, row.Caracteristica);

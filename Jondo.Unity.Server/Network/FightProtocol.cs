@@ -821,6 +821,21 @@ namespace Jondo.Unity.Server.Network
         public const int EmbrujoCaido = 514;
 
         /// <summary>
+        /// A spell's rows taken off by a 406 (jwe with f14 = 406):
+        ///
+        ///   f3: who cast the 406     f33 { f2: the spell whose rows went, f4: off whom }
+        ///
+        /// Behind the jya of each row. Measured on the Furor capture -- "jwe f3=53721170019
+        /// f14=406 f33{f2=28604 f4=53721170019}" after jya 36, 37 and 38 -- and eleven times
+        /// on Tempestad de Potencia's, on the enemies.
+        /// </summary>
+        public static byte[] BuildSpellEffectsRemoved(long author, int spell, long fromWhom)
+            => BuildAction(author, SpellEffectsRemoved,
+                           Pb.New().Var(2, spell).Var(4, fromWhom), detailField: 33);
+
+        public const int SpellEffectsRemoved = 406;
+
+        /// <summary>
         /// Qué secuencia acusa el cliente (jti): <c>f2</c> lleva el mismo número de acción con el
         /// que se cerró, el del <c>f1</c> del jwi. Devuelve cero si no viene.
         /// </summary>
@@ -1263,7 +1278,9 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildDamage(long author, int efecto, long victim, int amount,
                                          int elemento = -1, int erosion = 0)
         {
-            var detalle = Pb.New().Var(2, victim).Var(3, amount);
+            // No amount is no field: the blow on an invulnerable target travels as f40 with the
+            // victim and the element only (Influencia's capture), the way proto3 leaves a zero.
+            var detalle = Pb.New().Var(2, victim).VarIfNotZero(3, amount);
             if (elemento >= 0) detalle.Var(4, elemento);
 
             // La EROSIÓN, que faltaba. Va en el f5 y es lo que el golpe se lleva del TOPE de vida,

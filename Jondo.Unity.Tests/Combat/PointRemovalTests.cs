@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Jondo.Unity.Server.Managers;
 using Jondo.Unity.Server.Network;
@@ -16,7 +16,7 @@ namespace Jondo.Unity.Tests.Combat
     {
         public void Dispose() => EffectEngine.DadoDeRetiradaPorDefecto();
 
-        private const int WaterBombStorm = 13462;   // -2 PA (1079) on enemies in a circle of two
+        private const int WaterBombStorm = 13462;   // its 25589 removes AP from everybody in a circle of two
         private const int PalabraJuguetona = 25877; // -2 PM (1080)
 
         private static Fighter Person(long id, int team, int cell, int wisdom = 0) => new()
@@ -121,6 +121,13 @@ namespace Jondo.Unity.Tests.Combat
                 MaxAP = 0, MaxMP = 0,
             };
             fight.Invocar(bomb, me);
+
+            // The "-2 PA" written on the explosion itself is the sheet's copy (for the client
+            // only); the removal the real server makes is 25589's, one 20680 per fighter in
+            // the circle, at the grade the bomb's combo says: two points from Combo VI up
+            // (state 2493), as the capture "tymador-bomba de agua y sismobomba resiliente"
+            // shows with its jwe 308 after the 20680s.
+            bomb.Buffs.PonerEstado(2493);
 
             Assert.Equal(7, EffectEngine.PuntosQueCuentan(fight, ocra, Fighter.CaracteristicaDePuntosDeAccion, fight.RoundNumber));
 

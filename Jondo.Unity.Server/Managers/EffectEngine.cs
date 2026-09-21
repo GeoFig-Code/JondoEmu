@@ -29,6 +29,13 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The caster's turn ends once this cast has gone out (effect 1031).</summary>
         public bool AcabaElTurno { get; init; }
 
+        /// <summary>
+        /// Whether this row comes out of a spell's CRITICAL list: the jxm carries it as its f9.
+        /// A critical cast runs the whole chain on the critical lists, and a spell with none
+        /// runs its ordinary one unflagged.
+        /// </summary>
+        public bool Critico { get; set; }
+
         /// <summary>The caster picked <see cref="Sobre"/> up (effect 50): it rides on him from now on.</summary>
         public bool Carga { get; init; }
 
@@ -171,6 +178,13 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Embrujos retirados par un effet 406 ou par le retrait d'un état.</summary>
         public IReadOnlyList<Buff> BuffsQuitados { get; init; } = Array.Empty<Buff>();
 
+        /// <summary>
+        /// The rows the new row REPLACED on the bearer -- the old copy of a spell that does not
+        /// stack, the oldest of one that stacks to a cap. Announced gone, jya and jwe 514, before
+        /// the new row, as the real server does when Espada del Juicio is cast again.
+        /// </summary>
+        public IReadOnlyList<Buff> Relevados { get; set; } = Array.Empty<Buff>();
+
         /// <summary>Apariencia temporal solicitada por el efecto 335, o cero.</summary>
         public int Apariencia { get; init; }
     }
@@ -261,12 +275,16 @@ namespace Jondo.Unity.Server.Managers
         /// Si el hechizo no tiene ni un efecto de daño, no devuelve nada: Tiro de Repliegue sólo
         /// aparta al que lanza y no debe quitarle un solo punto de vida a nadie.
         /// </summary>
+        /// <param name="efectos">
+        /// The cast's own draw of the rows (<see cref="EfectosSorteados"/>), so that the blows
+        /// and the rows of one cast agree on what the dice said. Without it, drawn here.
+        /// </param>
         public static List<(SpellEffect Efecto, int Elemento, Fighter Sobre, int Lejos)> Golpes(
             FightInstance combate, Fighter quienLanza, int hechizo, int grado, Fighter objetivo,
-            int celdaApuntada = -1, bool critico = false)
+            int celdaApuntada = -1, bool critico = false, IReadOnlyList<SpellEffect> efectos = null)
         {
             var fuera = new List<(SpellEffect, int, Fighter, int)>();
-            foreach (var efecto in EfectosDeLaTirada(hechizo, grado, critico))
+            foreach (var efecto in efectos ?? EfectosSorteados(hechizo, grado, critico))
             {
                 if (!EsDeDano(efecto.EffectId)) continue;
 
@@ -626,6 +644,17 @@ namespace Jondo.Unity.Server.Managers
         internal static bool EsReduccionDeDanoRecibido(int efecto)
             => efecto == Buffs.DanoRecibidoMenos || efecto == Buffs.DanoRecibidoMenosFijo;
 
+        /// <summary>
+        /// The rows a BLOW reads rather than a trigger fires: the flat cuts above and the
+        /// "daños sufridos x#1%" (1163). Under a damage kind they are registered at the cast
+        /// with the kind as their condition. Salto's 1163 is "trig D": in its capture it goes
+        /// out at the cast on the enemy next to the arrival, hidden, until the next round,
+        /// and the D says which blows read it -- any. Left as a trigger, nothing fired it and
+        /// the enemy took his 100%.
+        /// </summary>
+        internal static bool EsFilaQueLeeElGolpe(int efecto)
+            => EsReduccionDeDanoRecibido(efecto) || efecto == Buffs.DanoSufridoPorCiento;
+
         /// <summary>«-N% PdV» (9 hechizos). El dado es el TANTO POR CIENTO de la vida máxima.</summary>
         private const int QuitaPorcentajeDeVida = 1048;
 
@@ -920,6 +949,9 @@ namespace Jondo.Unity.Server.Managers
         /// </remarks>
         internal const int MataAlObjetivo = 141;
 
+        /// <summary>"Sin efecto adicional": the sheet's marker for a grade that does nothing more.</summary>
+        internal const int SinEfectoAdicional = 666;
+
         private const int PuntosDeAccion = 1;
         private const int PuntosDeMovimiento = 23;
 
@@ -975,23 +1007,35 @@ namespace Jondo.Unity.Server.Managers
         /// <paramref name="disparador"/> filtra: al lanzar se piden los "I", al empezar el turno los
         /// "TB", y así. Los efectos con otro disparador se quedan quietos hasta que les toque.
         /// </summary>
+        /// <param name="efectosSorteados">
+        /// The cast's own draw of the random rows, when the blows of the same cast were dealt
+        /// from it: without one, the rows are drawn here.
+        /// </param>
+        /// <param name="rondaDelEnganche">
+        /// For a trigger fired off a hooked spell, the round the hook was put in: a hooked row
+        /// with a delay does not go off before that round plus its delay. Negative at a cast.
+        /// </param>
         public static List<Outcome> Resolver(FightInstance combate, Fighter quienLanza,
                                                   int hechizo, int grado, Fighter objetivo,
                                                   string disparador, int ronda, int hondo = 0,
                                                   int celdaApuntada = -1, bool critico = false,
                                                   int nearestChainBudget = -1,
                                                   Fighter animationCaster = null,
-                                                  HashSet<long> bombasYaEstalladas = null)
+                                                  HashSet<long> bombasYaEstalladas = null,
+                                                  IReadOnlyList<SpellEffect> efectosSorteados = null,
+                                                  int rondaDelEnganche = -1)
         {
             if (hondo > HondoMaximo) return new List<Outcome>();
             if (nearestChainBudget < 0)
                 nearestChainBudget = Todos(combate).Count(fighter => fighter != null && fighter.IsAlive);
             return ResolveEffects(combate, quienLanza, hechizo, grado, objetivo, disparador, ronda,
-                                  EfectosDeLaTirada(hechizo, grado, critico), hondo,
+                                  efectosSorteados ?? EfectosDeLaTirada(hechizo, grado, critico), hondo,
                                   celdaApuntada, critical: critico,
                                   nearestChainBudget: nearestChainBudget,
                                   animationCaster: animationCaster,
-                                  bombasYaEstalladas: bombasYaEstalladas);
+                                  bombasYaEstalladas: bombasYaEstalladas,
+                                  yaSorteado: efectosSorteados != null,
+                                  rondaDelEnganche: rondaDelEnganche);
         }
 
         /// <summary>
@@ -1013,13 +1057,26 @@ namespace Jondo.Unity.Server.Managers
             int aimedCell = -1, Func<SpellEffect, int> rollEffect = null,
             bool critical = false, int nearestChainBudget = -1,
             Fighter animationCaster = null,
-            HashSet<long> bombasYaEstalladas = null)
+            HashSet<long> bombasYaEstalladas = null,
+            bool yaSorteado = false, int rondaDelEnganche = -1)
         {
             var fuera = new List<Outcome>();
             bombasYaEstalladas ??= new HashSet<long>();
             if (depth > HondoMaximo) return fuera;
             if (nearestChainBudget < 0)
                 nearestChainBudget = Todos(combat).Count(fighter => fighter != null && fighter.IsAlive);
+
+            // WHERE EVERYBODY STANDS AS THE SPELL LANDS, judged once for all its rows. The
+            // real server picks the targets of every row before it moves anybody: in the
+            // Fricción capture the pull carries the enemy from 202 to 216 and the state that
+            // follows it still lands on him, cast at 202. Read live, the row after a pull
+            // found the cell empty and the state went nowhere, and with it the hook that
+            // makes the spell keep pulling.
+            var celdasAlEmpezar = new Dictionary<Fighter, int>();
+            foreach (var luchador in Todos(combat))
+            {
+                if (luchador != null) celdasAlEmpezar[luchador] = luchador.CellId;
+            }
 
             // Every state condition of one spell is judged against the SAME snapshot, and Rage is
             // why that matters: grade 1 of spell 13745 carries all three branches -- 0->I, I->II
@@ -1034,8 +1091,12 @@ namespace Jondo.Unity.Server.Managers
             }
 
             // Los efectos que van a suertes: se sortean ANTES de recorrer nada, y los que no salen
-            // se quedan fuera de esta resolución.
-            var descartados = Sortear(effects);
+            // se quedan fuera de esta resolución. A cast draws once for its blows and its rows.
+            var descartados = yaSorteado ? new HashSet<SpellEffect>() : Sortear(effects);
+
+            // Whether these rows are the critical list's: only when the cast was critical AND
+            // this spell has one at this grade, which is what the f9 of the jxm says.
+            bool deLaListaCritica = critical && SpellEffects.Criticos(spell, grade).Count > 0;
 
             foreach (var efecto in effects)
             {
@@ -1051,15 +1112,16 @@ namespace Jondo.Unity.Server.Managers
                 // read when the blow lands (Buffs.ReduccionDeDanoRecibido). Registered here,
                 // on whoever the mask and the zone name, with its trigger kept as it is.
                 if (!leToca && string.Equals(trigger, AlLanzar, StringComparison.OrdinalIgnoreCase)
-                    && EsReduccionDeDanoRecibido(efecto.EffectId))
+                    && EsFilaQueLeeElGolpe(efecto.EffectId))
                 {
-                    foreach (var recipient in AQuien(combat, caster, target, efecto, aimedCell, estadosAlEmpezar))
+                    foreach (var recipient in AQuien(combat, caster, target, efecto, aimedCell, estadosAlEmpezar, celdasAlEmpezar))
                     {
                         if (recipient == null || !recipient.IsAlive) continue;
                         var fila = recipient.Buffs.Poner(new Buff
                         {
                             EffectId = efecto.EffectId,
                             EffectUid = efecto.EffectUid,
+                            MaxStacks = efecto.MaxStack,
                             Cuanto = DelDado(efecto.DiceNum, efecto.DiceSide, efecto.Value),
                             HechizoOrigen = spell,
                             NivelOrigen = grade,
@@ -1072,16 +1134,30 @@ namespace Jondo.Unity.Server.Managers
                         {
                             Sobre = recipient, Efecto = efecto, Buff = fila,
                             HechizoOrigen = spell, NivelOrigen = grade, FilaEnganchada = true,
+                            Relevados = new List<Buff>(recipient.Buffs.Relevados),
                         });
+                        recipient.Buffs.Relevados.Clear();
                     }
                     continue;
                 }
 
                 if (!leToca) continue;
 
+                // A hooked row with a delay waits: Furor's 28604 carries its "1160 under TE" with
+                // a delay of one, and in the capture that row goes out with the round after the
+                // cast as its activation (f12) -- put in round 19, it fires at the end of a turn
+                // of round 20, when the spell was not cast again. Fired at the end of the very
+                // turn of the cast, it took the +20 away the moment it was given.
+                if (rondaDelEnganche >= 0 && efecto.Delay > 0
+                    && !string.Equals(trigger, AlLanzar, StringComparison.OrdinalIgnoreCase)
+                    && round < rondaDelEnganche + efecto.Delay)
+                {
+                    continue;
+                }
+
                 // And it never FIRES: the row registered at the cast is read by the blow. Fired
                 // on the blow's own trigger it would put a second, unconditional row.
-                if (EsReduccionDeDanoRecibido(efecto.EffectId)
+                if (EsFilaQueLeeElGolpe(efecto.EffectId)
                     && !string.Equals(trigger, AlLanzar, StringComparison.OrdinalIgnoreCase)) continue;
 
                 // A push or a pull under a trigger is the SHEET's copy of a displacement the
@@ -1109,7 +1185,7 @@ namespace Jondo.Unity.Server.Managers
                     int spellBonus = caster.Buffs.DelHechizo(
                         spell, SpellAspect.DanoBase, round);
                     foreach (var recipient in AQuien(
-                                 combat, caster, target, efecto, aimedCell, estadosAlEmpezar))
+                                 combat, caster, target, efecto, aimedCell, estadosAlEmpezar, celdasAlEmpezar))
                     {
                         if (recipient == null || !recipient.IsAlive) continue;
                         fuera.Add(new Outcome
@@ -1276,7 +1352,7 @@ namespace Jondo.Unity.Server.Managers
                     // un bucle: cada bomba que estalla mete dentro a sus companeras de muro.
                     var cola = new Queue<Fighter>();
                     foreach (var apuntada in AQuien(combat, caster, target, efecto, aimedCell,
-                                                    estadosAlEmpezar))
+                                                    estadosAlEmpezar, celdasAlEmpezar))
                     {
                         if (apuntada != null && apuntada.IsAlive) cola.Enqueue(apuntada);
                     }
@@ -1342,7 +1418,7 @@ namespace Jondo.Unity.Server.Managers
 
                     var candidatos = new List<Fighter>();
                     foreach (var quien in AQuien(combat, caster, target, efecto, aimedCell,
-                                                 estadosAlEmpezar))
+                                                 estadosAlEmpezar, celdasAlEmpezar))
                     {
                         if (quien != null && quien.IsAlive) candidatos.Add(quien);
                     }
@@ -1405,10 +1481,12 @@ namespace Jondo.Unity.Server.Managers
                                 break;
                         }
 
+                        // A critical cast runs its chain on the critical lists: Virtud's
+                        // critical shield is 29723's own critical row, 550% for 1100.
                         fuera.AddRange(Resolver(combat, lanzaElHijo, efecto.DiceNum,
                                                 Math.Max(1, efecto.DiceSide),
                                                 aQuien, AlLanzar, round, depth + 1,
-                                                aQueCasilla, critico: false,
+                                                aQueCasilla, critico: critical,
                                                 nearestChainBudget: nearestChainBudget,
                                                 bombasYaEstalladas: bombasYaEstalladas));
                     }
@@ -1422,7 +1500,7 @@ namespace Jondo.Unity.Server.Managers
                 bool unaSolaVez = efecto.EffectId == Retroceder || efecto.EffectId == Avanzar;
 
                 foreach (var sobre in AQuien(combat, caster, target, efecto, aimedCell,
-                                             estadosAlEmpezar))
+                                             estadosAlEmpezar, celdasAlEmpezar))
                 {
                     var hecho = Aplicar(combat, caster, sobre, spell, grade, efecto, round,
                                         aimedCell, sharedHealRoll);
@@ -1464,6 +1542,15 @@ namespace Jondo.Unity.Server.Managers
                                                 nearestChainBudget,
                                                 bombasYaEstalladas: bombasYaEstalladas));
                     }
+                }
+            }
+            // The rows of THIS spell and grade carry the flag; a chained spell's rows were
+            // flagged by its own resolution, on its own list.
+            if (deLaListaCritica)
+            {
+                foreach (var o in fuera)
+                {
+                    if (o.HechizoOrigen == spell && o.NivelOrigen == grade) o.Critico = true;
                 }
             }
             return fuera;
@@ -1512,23 +1599,41 @@ namespace Jondo.Unity.Server.Managers
         /// A quién le toca un efecto, según su máscara.
         ///
         ///   C          a quien lo lanza
+        ///   c          a quien lo lanza, si está en la zona
         ///   a, A       los del propio bando -- el lanzador incluido -- y los de enfrente
+        ///   g          los del propio bando sin el lanzador
+        ///   i, I  j, J las invocaciones, del propio bando y de enfrente
+        ///   l, L       los jugadores, del propio bando y de enfrente
+        ///   m, M       los monstruos que no son invocación, ídem
+        ///   P, p       (sobre una invocación) del lanzador, de otro
+        ///   h          el invocador del lanzador
         ///   O          the one whose blow set the spell off, wherever he stands
         ///   e&lt;N&gt;      sólo si NO lleva el estado N
         ///   E&lt;N&gt;      sólo si SÍ lo lleva
+        ///   F&lt;N&gt; f&lt;N&gt;  sólo si es, o no es, el monstruo N
+        ///   V&lt;N&gt; v&lt;N&gt;  sólo con menos, o no menos, del N % de vida
         ///
-        /// Lo demás de la máscara —"P", "g", "F434", "*e2131"— son afinados que este motor todavía
-        /// no distingue; con ellos se cae al objetivo del lanzamiento, que es lo razonable.
+        /// Lo demás de la máscara —"H", "D", "U", "T", "R", "b1"— son afinados que este motor
+        /// todavía no distingue; con ellos no se cae al objetivo: se deja pasar.
         /// </summary>
         private static IEnumerable<Fighter> AQuien(FightInstance combate, Fighter quienLanza,
                                                    Fighter objetivo, SpellEffect efecto,
                                                    int celdaApuntada = -1,
-                                                   IReadOnlyDictionary<Fighter, HashSet<int>> estados = null)
+                                                   IReadOnlyDictionary<Fighter, HashSet<int>> estados = null,
+                                                   IReadOnlyDictionary<Fighter, int> celdas = null)
         {
             var mascara = efecto.TargetMask ?? "";
             bool alLanzador = false, aLosMios = false, aLosDeEnfrente = false, aLosOtrosAliados = false;
-            bool ownSummonsOnly = false, notOwnSummons = false, alInvocador = false, aTodasLasInvocaciones = false;
+            bool ownSummonsOnly = false, notOwnSummons = false, alInvocador = false;
             bool alAtacante = false;
+
+            // The kinds of fighter a letter names, by side: the lower case is the caster's side
+            // and the upper case the other one. c is the caster himself, when he stands in the
+            // zone.
+            bool alLanzadorEnLaZona = false;
+            bool aInvocacionesAliadas = false, aInvocacionesEnemigas = false;
+            bool aJugadoresAliados = false, aJugadoresEnemigos = false;
+            bool aMonstruosAliados = false, aMonstruosEnemigos = false;
             var pideEstado = new List<int>();
             var pideNoEstado = new List<int>();
             var requiredMonsterTemplates = new List<int>();
@@ -1605,9 +1710,43 @@ namespace Jondo.Unity.Server.Managers
 
                 // h: the caster's summoner, which is how a bomb's Encendimiento reaches the
                 // Tymador -- the capture's jxm of effect 296 is cast by bomb -9 on the player.
-                // i: the summons, whichever side, which P then narrows to the caster's own.
                 if (t == "h") { alInvocador = true; continue; }
-                if (t == "i") { aTodasLasInvocaciones = true; continue; }
+
+                // THE KINDS, IN TWO CASES. The catalogue pairs a lower-case letter with an
+                // upper-case one and the sheets say which side each is:
+                //
+                //   i / I   the summons. "i,P" is "una invocación del lanzador" (Chute), and
+                //           Látigo's "aumenta los PM del objetivo si es una invocación aliada"
+                //           carries a bare "i": the lower case is the caster's side. It was
+                //           read as both sides, which P happened to narrow in every measured
+                //           case.
+                //   j / J   also summons: Concentración pays its "daños mayores sobre las
+                //           invocaciones" on "J,j", Coraza halves its shield "en las
+                //           invocaciones" on "j", Desinvocación "dobla los daños con las
+                //           invocaciones" on "J,...,j". What tells j from i is not written
+                //           anywhere in the sheets, so they are read alike.
+                //   l / L   the players. Caja de Herramientas casts on "l" what it does "al
+                //           aliado objetivo" and his summons, Ghulificación puts its state on
+                //           "L", and the damage rows that are NOT for summons -- Concentración's
+                //           "L,M,l,m,c", Obsolescencia's "l,m,L,M" -- name them next to the
+                //           monsters.
+                //   m / M   the monsters that are nobody's summon, the other half of those rows.
+                //   c       the caster, only when he stands in the zone -- Acumulación's "en el
+                //           lanzador" and Vitalidad's "la vitalidad es mayor en el lanzador"
+                //           are rows with "c" that the caster gets by casting on himself, and
+                //           Flecha Asaltante's "950 mask c" lands on the Ocra in its capture
+                //           when he is one cell from the aimed cell, inside its Q1. C reaches
+                //           him wherever he is.
+                //
+                // H, D and their lower cases go with these in the monster spells ("H,M,D",
+                // "h,m,d") and are not read: what tells H from L is not written down.
+                if (t == "i" || t == "j") { aInvocacionesAliadas = true; continue; }
+                if (t == "I" || t == "J") { aInvocacionesEnemigas = true; continue; }
+                if (t == "l") { aJugadoresAliados = true; continue; }
+                if (t == "L") { aJugadoresEnemigos = true; continue; }
+                if (t == "m") { aMonstruosAliados = true; continue; }
+                if (t == "M") { aMonstruosEnemigos = true; continue; }
+                if (t == "c") { alLanzadorEnLaZona = true; continue; }
 
                 // O: whoever dealt the blow that set the spell off, wherever he stands, and
                 // NOBODY ELSE -- the other letters then say which sides and states of his the
@@ -1658,11 +1797,32 @@ namespace Jondo.Unity.Server.Managers
                 bool leVale = (aLosMios && deLosSuyos) || (aLosDeEnfrente && !deLosSuyos)
                            || (alLanzador && atacante == quienLanza)
                            || (aLosOtrosAliados && deLosSuyos && atacante != quienLanza)
-                           || (aTodasLasInvocaciones && atacante.EsInvocado);
+                           || EsDeLaClase(atacante, deLosSuyos);
                 if (!leVale) yield break;
                 candidatos.Add(atacante);
-                aLosMios = aLosDeEnfrente = aLosOtrosAliados = aTodasLasInvocaciones = alLanzador = alInvocador = false;
+                aLosMios = aLosDeEnfrente = aLosOtrosAliados = alLanzador = alInvocador = false;
+                alLanzadorEnLaZona = aInvocacionesAliadas = aInvocacionesEnemigas = false;
+                aJugadoresAliados = aJugadoresEnemigos = aMonstruosAliados = aMonstruosEnemigos = false;
             }
+
+            // Whether one of the kind letters names this fighter, on his side.
+            bool EsDeLaClase(Fighter quien, bool suyo)
+            {
+                bool esInvocado = quien.EsInvocado;
+                bool esMonstruo = quien.IsMonster && !esInvocado;
+                bool esJugador = !quien.IsMonster && !esInvocado;
+                return (alLanzadorEnLaZona && quien == quienLanza)
+                    || (aInvocacionesAliadas && esInvocado && suyo)
+                    || (aInvocacionesEnemigas && esInvocado && !suyo)
+                    || (aJugadoresAliados && esJugador && suyo)
+                    || (aJugadoresEnemigos && esJugador && !suyo)
+                    || (aMonstruosAliados && esMonstruo && suyo)
+                    || (aMonstruosEnemigos && esMonstruo && !suyo);
+            }
+
+            bool algunaClase = alLanzadorEnLaZona || aInvocacionesAliadas || aInvocacionesEnemigas
+                            || aJugadoresAliados || aJugadoresEnemigos
+                            || aMonstruosAliados || aMonstruosEnemigos;
 
             if (alLanzador) candidatos.Add(quienLanza);
             if (alInvocador && quienLanza.EsInvocado)
@@ -1671,20 +1831,19 @@ namespace Jondo.Unity.Server.Managers
                 if (invocador != null && invocador.IsAlive && !candidatos.Contains(invocador)) candidatos.Add(invocador);
             }
 
-            if (aLosMios || aLosDeEnfrente || aLosOtrosAliados || aTodasLasInvocaciones)
+            if (aLosMios || aLosDeEnfrente || aLosOtrosAliados || algunaClase)
             {
                 // La zona: el efecto dice de qué FORMA coge el terreno alrededor de la casilla
                 // apuntada —un punto, un círculo de radio dos, una cruz— y le toca a todo el que
                 // esté encima Y cumpla la máscara.
-                foreach (var quien in EnLaZona(combate, quienLanza, objetivo, efecto, celdaApuntada))
+                foreach (var quien in EnLaZona(combate, quienLanza, objetivo, efecto, celdaApuntada, celdas))
                 {
                     bool suyo = quien.TeamId == quienLanza.TeamId;
-                    bool esInvocado = quien.EsInvocado;
 
                     bool leToca = (aLosMios && suyo)
                                || (aLosDeEnfrente && !suyo)
                                || (aLosOtrosAliados && suyo && quien != quienLanza)
-                               || (aTodasLasInvocaciones && esInvocado);
+                               || EsDeLaClase(quien, suyo);
                     if (!leToca) continue;
 
                     if (!candidatos.Contains(quien)) candidatos.Add(quien);
@@ -1767,9 +1926,14 @@ namespace Jondo.Unity.Server.Managers
             return null;
         }
 
+        /// <param name="celdas">
+        /// Where everybody stood as the spell landed, when the caller took note: a row after a
+        /// push or a pull still reaches whoever was in the zone at the cast.
+        /// </param>
         private static IEnumerable<Fighter> EnLaZona(FightInstance combate, Fighter quienLanza,
                                                      Fighter objetivo, SpellEffect efecto,
-                                                     int celdaApuntada)
+                                                     int celdaApuntada,
+                                                     IReadOnlyDictionary<Fighter, int> celdas = null)
         {
             if (celdaApuntada < 0)
             {
@@ -1777,8 +1941,11 @@ namespace Jondo.Unity.Server.Managers
                 yield break;
             }
 
+            int CeldaDe(Fighter quien)
+                => celdas != null && celdas.TryGetValue(quien, out int celda) ? celda : quien.CellId;
+
             var casillas = Jondo.Unity.World.Maps.Zone.Casillas(
-                efecto.Forma, efecto.Tamano, quienLanza.CellId, celdaApuntada, efecto.TamanoMinimo);
+                efecto.Forma, efecto.Tamano, CeldaDe(quienLanza), celdaApuntada, efecto.TamanoMinimo);
             if (casillas.Count == 0)
             {
                 if (objetivo != null) yield return objetivo;
@@ -1789,7 +1956,7 @@ namespace Jondo.Unity.Server.Managers
             foreach (var quien in Todos(combate))
             {
                 if (quien == null || !quien.IsAlive || quien.EstaCargado) continue;
-                if (dentro.Contains(quien.CellId)) yield return quien;
+                if (dentro.Contains(CeldaDe(quien))) yield return quien;
             }
         }
 
@@ -1833,6 +2000,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 EffectId = efecto.EffectId,
                 EffectUid = efecto.EffectUid,
+                MaxStacks = efecto.MaxStack,
                 Pendiente = true,
                 Caracteristica = caracteristica,
                 Cuanto = cuanto,
@@ -1860,10 +2028,30 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The trigger a waiting row is announced with.</summary>
         public const string Esperando = "Y";
 
+        /// <summary>
+        /// Applies one row to one fighter and picks up the rows the put replaced, so that the
+        /// caller announces them gone -- jya and jwe 514 -- before the new row, the way the
+        /// real server does when Espada del Juicio is cast again.
+        /// </summary>
         private static Outcome Aplicar(FightInstance combate, Fighter quienLanza, Fighter sobre,
-                                            int hechizo, int grado, SpellEffect efecto, int ronda,
-                                            int celdaApuntada = -1,
-                                            int sharedHealRoll = int.MinValue)
+                                       int hechizo, int grado, SpellEffect efecto, int ronda,
+                                       int celdaApuntada = -1,
+                                       int sharedHealRoll = int.MinValue)
+        {
+            var hecho = AplicarSinRelevo(combate, quienLanza, sobre, hechizo, grado, efecto, ronda,
+                                         celdaApuntada, sharedHealRoll);
+            if (hecho?.Buff != null && hecho.Sobre != null && hecho.Sobre.Buffs.Relevados.Count > 0)
+            {
+                hecho.Relevados = new List<Buff>(hecho.Sobre.Buffs.Relevados);
+                hecho.Sobre.Buffs.Relevados.Clear();
+            }
+            return hecho;
+        }
+
+        private static Outcome AplicarSinRelevo(FightInstance combate, Fighter quienLanza, Fighter sobre,
+                                                int hechizo, int grado, SpellEffect efecto, int ronda,
+                                                int celdaApuntada = -1,
+                                                int sharedHealRoll = int.MinValue)
         {
             // El daño lo lleva quien ya lo llevaba; aquí no se toca.
             if (efecto.EffectId >= DanoPrimero && efecto.EffectId <= DanoUltimo) return null;
@@ -1889,6 +2077,11 @@ namespace Jondo.Unity.Server.Managers
                     Fulmina = true,
                 };
             }
+
+            // "Sin efecto adicional" (666) is a marker on the sheet and nothing on the wire: no
+            // jxm 666 in any capture, while the panel path sent one that the client had to
+            // draw as a row of nothing.
+            if (efecto.EffectId == SinEfectoAdicional) return null;
 
             if (efecto.EffectId == MarcadorDeGuion)
             {
@@ -2144,22 +2337,28 @@ namespace Jondo.Unity.Server.Managers
                 int porciento = efecto.DiceNum != 0 ? efecto.DiceNum : efecto.Value;
                 if (porciento <= 0) return null;
 
-                // Of the vitality, not of the life: 1150 vitality and -50% is -575 in the
-                // capture, and 575 is what the maximum loses. The panel gets the flat effect,
-                // 153, with the points on it; the sheet gets the vitality hole; the buff carries
-                // the points on characteristic 11 so that the sheet refresh finds them, and the
-                // handler moves the maximum with it and moves it back when the buff falls.
-                int puntos = sobre.Vitality * porciento / 100;
+                // Of the MAXIMUM LIFE, base and gear included: the test characters of the
+                // captures are naked level-200s at 1,150 life (1,050 of level and the 100 of
+                // scrolls), and Vitalidad's 20% goes out as +230 and Último Aliento's -50% as
+                // -575. Of the vitality characteristic alone -- 100 -- neither number comes
+                // out, and a Yopuka at 1,650 got 120 for his 600 of vitality instead of 330.
+                // The panel gets the flat effect, 125 or 153, with the points on it; the sheet
+                // gets the vitality hole; the buff carries the points on characteristic 11 so
+                // that the sheet refresh finds them, and the handler moves the maximum with it
+                // and moves it back when the buff falls.
+                int puntos = sobre.MaxHP * porciento / 100;
                 if (puntos <= 0) return null;
                 if (efecto.EffectId == EffectSupport.VitalityPercentMalus) puntos = -puntos;
 
                 sobre.MaxHP = Math.Max(1, sobre.MaxHP + puntos);
                 if (sobre.CurrentHP > sobre.MaxHP) sobre.CurrentHP = sobre.MaxHP;
 
+                int comoSePinta = puntos < 0 ? EffectSupport.VitalityFlatMalus : EffectSupport.VitalityFlatBonus;
                 var embrujoDeVida = sobre.Buffs.Poner(new Buff
                 {
-                    EffectId = EffectSupport.VitalityFlatMalus,
+                    EffectId = comoSePinta,
                     EffectUid = efecto.EffectUid,
+                    MaxStacks = efecto.MaxStack,
                     Caracteristica = VitalityCharacteristic,
                     Cuanto = puntos,
                     HechizoOrigen = hechizo,
@@ -2173,7 +2372,7 @@ namespace Jondo.Unity.Server.Managers
                 return new Outcome
                 {
                     Sobre = sobre, Caster = quienLanza,
-                    Efecto = ComoSePinta(efecto, EffectSupport.VitalityFlatMalus, Math.Abs(puntos)),
+                    Efecto = ComoSePinta(efecto, comoSePinta, Math.Abs(puntos)),
                     Buff = embrujoDeVida,
                     Caracteristica = VitalityCharacteristic, Cuanto = puntos,
                     HechizoOrigen = hechizo, NivelOrigen = grado,
@@ -2200,10 +2399,16 @@ namespace Jondo.Unity.Server.Managers
                 // effect 1040 worth the points -- 350, 175% of level 200 -- with the grade and
                 // the round it falls, and its sheet gets characteristic 96 at the total. The
                 // buff carries no characteristic: the sheet reads the points off the fighter.
+                //
+                // How many rows live together is the level's maxStack, like any row: Patada is
+                // 2 and its second cast adds row 64 next to row 55, both worth 350, sheet at
+                // 700; Espada del Juicio is 1 and its second cast drops row 9 for row 13, and
+                // the points of the row that went go with it.
                 var embrujoDeEscudo = sobre.Buffs.Poner(new Buff
                 {
                     EffectId = ShieldPanelEffect,
                     EffectUid = efecto.EffectUid,
+                    MaxStacks = efecto.MaxStack,
                     Cuanto = cuanto,
                     HechizoOrigen = hechizo,
                     NivelOrigen = grado,
@@ -2211,10 +2416,8 @@ namespace Jondo.Unity.Server.Managers
                     Disparador = AlLanzar,
                     CaducaEnRonda = caduca,
                     EmpiezaEnRonda = Empieza(efecto, ronda),
-                    // One row per shield, not one refreshed row: the second Patada of the
-                    // capture adds row 64 next to row 55, both worth 350, with the sheet at 700.
-                    Apila = true,
                 }, combate.SiguienteEmbrujo);
+                foreach (var relevado in sobre.Buffs.Relevados) sobre.Desescudar(relevado.Cuanto);
 
                 return new Outcome
                 {
@@ -2378,7 +2581,10 @@ namespace Jondo.Unity.Server.Managers
                 //
                 // Ojo: el ESTADO 97 no tiene nada que ver con la CARACTERÍSTICA 97, que es la vida
                 // que le falta al jugador. Mismo número, dos espacios distintos.
-                if (sobre.Buffs.TieneEstado(Indesplazable)) return null;
+                // And the catalogue names the 97 among 22 states with cantBeMoved and 25 with
+                // cantBePushed -- Arraigado, Pesadilla, Cénit... -- which the client's own
+                // SpellStateData flags; those are read from datos/spell_states.json.
+                if (sobre.Buffs.TieneEstado(Indesplazable) || SpellStates.PinsInPlace(sobre)) return null;
 
                 var ocupadas = new HashSet<int>();
                 foreach (var otro in Todos(combate))
@@ -2586,6 +2792,7 @@ namespace Jondo.Unity.Server.Managers
                         {
                             EffectId = efecto.EffectId,
                             EffectUid = efecto.EffectUid,
+                            MaxStacks = efecto.MaxStack,
                             Estado = estado,
                             HechizoOrigen = hechizo,
                             NivelOrigen = grado,
@@ -2651,6 +2858,7 @@ namespace Jondo.Unity.Server.Managers
                 {
                     EffectId = efecto.EffectId,
                     EffectUid = efecto.EffectUid,
+                    MaxStacks = efecto.MaxStack,
                     Apariencia = apariencia,
                     HechizoOrigen = hechizo,
                     NivelOrigen = grado,
@@ -2683,11 +2891,10 @@ namespace Jondo.Unity.Server.Managers
                 {
                     EffectId = efecto.EffectId,
                     EffectUid = efecto.EffectUid,
+                    MaxStacks = efecto.MaxStack,
                     Sobre = que,
                     HechizoAfectado = efecto.DiceNum,
                     Cuanto = cuanto,
-                    Apila = efecto.MaxStack > 1,
-                    MaxStacks = Math.Max(0, efecto.MaxStack),
                     HechizoOrigen = hechizo,
                     NivelOrigen = grado,
                     Quien = quienLanza.Id,
@@ -2713,6 +2920,7 @@ namespace Jondo.Unity.Server.Managers
                 {
                     EffectId = efecto.EffectId,
                     EffectUid = efecto.EffectUid,
+                    MaxStacks = efecto.MaxStack,
                     Cuanto = corte,
                     HechizoOrigen = hechizo,
                     NivelOrigen = grado,
@@ -2763,6 +2971,7 @@ namespace Jondo.Unity.Server.Managers
                 {
                     EffectId = efecto.EffectId,
                     EffectUid = efecto.EffectUid,
+                    MaxStacks = efecto.MaxStack,
                     Caracteristica = robado,
                     Cuanto = -cuantos,
                     HechizoOrigen = hechizo,
@@ -2849,6 +3058,7 @@ namespace Jondo.Unity.Server.Managers
                 {
                     EffectId = efecto.EffectId,
                     EffectUid = efecto.EffectUid,
+                    MaxStacks = efecto.MaxStack,
                     Cuanto = cuanto,
                     HechizoOrigen = hechizo,
                     NivelOrigen = grado,
@@ -2887,18 +3097,16 @@ namespace Jondo.Unity.Server.Managers
             // landed. Nothing rolled, nothing dodged, every removal took every point: that is
             // how it was, and how it is not in the game.
             int esquivados = 0, efectoEnElCable = 0;
-            if (cantidad < 0 && (caracteristica == PuntosDeAccion || caracteristica == PuntosDeMovimiento))
+            if (cantidad < 0 && (caracteristica == PuntosDeAccion || caracteristica == PuntosDeMovimiento)
+                && EsRetiradaEsquivable(efecto.EffectId))
             {
                 int cuentan = PuntosQueCuentan(combate, sobre, caracteristica, ronda);
                 int pedidos = Math.Min(-cantidad, cuentan);
-                if (EsRetiradaEsquivable(efecto.EffectId))
-                {
-                    int maximo = caracteristica == PuntosDeAccion ? sobre.MaxAP : sobre.MaxMP;
-                    int perdidos = PuntosQuePierde(quienLanza, sobre, caracteristica, pedidos, cuentan, maximo, ronda);
-                    esquivados = pedidos - perdidos;
-                    pedidos = perdidos;
-                    efectoEnElCable = PerdidaEnElCable(caracteristica);
-                }
+                int maximo = caracteristica == PuntosDeAccion ? sobre.MaxAP : sobre.MaxMP;
+                int perdidos = PuntosQuePierde(quienLanza, sobre, caracteristica, pedidos, cuentan, maximo, ronda);
+                esquivados = pedidos - perdidos;
+                pedidos = perdidos;
+                efectoEnElCable = PerdidaEnElCable(caracteristica);
                 cantidad = -pedidos;
                 if (pedidos == 0)
                 {
@@ -2910,6 +3118,10 @@ namespace Jondo.Unity.Server.Managers
                     };
                 }
             }
+            // A flat "-N PA/PM" (168, 169) is a row with the catalogue's own N, not a removal
+            // rolled against dodge nor cut to what the target has: Influencia's "-100 PM" goes
+            // out as a row of 100 on a monster with three in its capture, and the points in
+            // hand simply stop at zero. Cut to what he had, a puch with no MP got no row at all.
 
             // Y si NO toca ninguna característica, tampoco se tira.
             //
@@ -2938,6 +3150,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 EffectId = efecto.EffectId,
                 EffectUid = efecto.EffectUid,
+                MaxStacks = efecto.MaxStack,
                 Caracteristica = soloPanel ? 0 : caracteristica,
                 Cuanto = soloPanel ? 0 : cantidad,
                 HechizoOrigen = hechizo,
@@ -2981,6 +3194,7 @@ namespace Jondo.Unity.Server.Managers
                 {
                     EffectId = effect.EffectId,
                     EffectUid = effect.EffectUid,
+                    MaxStacks = effect.MaxStack,
                     Cuanto = points,
                     PendingHealPoints = points,
                     HechizoOrigen = spell,
@@ -3069,6 +3283,7 @@ namespace Jondo.Unity.Server.Managers
                         {
                             EffectId = waiting.EffectId,
                             EffectUid = waiting.EffectUid,
+                            MaxStacks = waiting.MaxStacks,
                             Caracteristica = waiting.Caracteristica,
                             Cuanto = waiting.Cuanto,
                             Dado = waiting.Dado,
@@ -3124,50 +3339,73 @@ namespace Jondo.Unity.Server.Managers
         /// Contado sobre la base entera: hay 1.335 niveles de hechizo con efectos de este tipo, y
         /// en 1.129 de sus grupos la suma es exactamente cien.
         /// </summary>
+        /// <summary>
+        /// The effects of a cast that really run: the rows of the grade with the random ones
+        /// drawn ONCE. The blows and the rows of one cast come out of the same draw, so that
+        /// Bumerán Pérfido steals in one element and boosts the characteristic of that same
+        /// element, which is what its sheet says.
+        /// </summary>
+        public static IReadOnlyList<SpellEffect> EfectosSorteados(int hechizo, int grado, bool critico)
+        {
+            var todos = EfectosDeLaTirada(hechizo, grado, critico);
+            var fuera = Sortear(todos);
+            if (fuera.Count == 0) return todos;
+            var quedan = new List<SpellEffect>(todos.Count);
+            foreach (var e in todos) if (!fuera.Contains(e)) quedan.Add(e);
+            return quedan;
+        }
+
+        /// <summary>
+        /// The draw of the random effects of a spell: which ones stay OUT of this cast.
+        /// </summary>
+        /// <remarks>
+        /// The catalogue writes one draw per spell level, not one per group: the <c>random</c>
+        /// of every random row of a level adds up to 100 in 1,602 of the 1,603 levels that
+        /// carry any (Molestia Búlbuca's two rows of 50, Escarainvoc's four of 25, Cara
+        /// Oculta's 96 of 4.17; Guerrillero's grade 2 stops at 55.6 and is drawn over what it
+        /// has), and the <c>group</c> says which rows come TOGETHER once one of them is
+        /// drawn -- the rows of a group always carry the same share.
+        /// Bumerán Pérfido is eight rows of 12.5 in four groups -- a life steal and the matching
+        /// characteristic, per element -- so each element has a quarter of the draw and brings
+        /// its characteristic with it. Group zero is no group: each of its rows stands alone,
+        /// which is what Invocación de Arakna's 80/20 needs. Drawn per group, the eight rows of
+        /// 12.5 summed to 25 per group and fell through to eight independent rolls, and the
+        /// spell mostly did nothing.
+        /// </remarks>
         private static HashSet<SpellEffect> Sortear(IReadOnlyList<SpellEffect> efectos)
         {
             var fuera = new HashSet<SpellEffect>();
-
-            var porSorteo = new Dictionary<int, List<SpellEffect>>();
+            var alAzar = new List<SpellEffect>();
+            double suma = 0;
             foreach (var efecto in efectos)
             {
                 if (efecto.Probabilidad <= 0) continue;
-                if (!porSorteo.TryGetValue(efecto.Sorteo, out var lista))
-                {
-                    lista = new List<SpellEffect>();
-                    porSorteo[efecto.Sorteo] = lista;
-                }
-                lista.Add(efecto);
+                alAzar.Add(efecto);
+                suma += efecto.Probabilidad;
             }
+            if (alAzar.Count == 0) return fuera;
 
-            foreach (var (_, lista) in porSorteo)
+            if (Math.Abs(suma - 100.0) < 0.5 || alAzar.Count > 1)
             {
-                double suma = 0;
-                foreach (var e in lista) suma += e.Probabilidad;
-
-                if (Math.Abs(suma - 100.0) < 0.5 && lista.Count > 1)
+                // One draw over the whole level, weighted by each row's share.
+                double tirada = SiguienteAzar() * suma;
+                double acumulado = 0;
+                SpellEffect elegido = alAzar[alAzar.Count - 1];
+                foreach (var e in alAzar)
                 {
-                    // Sale uno: se tira una vez y se recorre el reparto.
-                    double tirada = SiguienteAzar() * suma;
-                    double acumulado = 0;
-                    SpellEffect elegido = lista[lista.Count - 1];
-                    foreach (var e in lista)
-                    {
-                        acumulado += e.Probabilidad;
-                        if (tirada <= acumulado) { elegido = e; break; }
-                    }
-                    foreach (var e in lista) if (e != elegido) fuera.Add(e);
+                    acumulado += e.Probabilidad;
+                    if (tirada <= acumulado) { elegido = e; break; }
                 }
-                else
+                foreach (var e in alAzar)
                 {
-                    // Cada uno por su cuenta.
-                    foreach (var e in lista)
-                    {
-                        if (SiguienteAzar() * 100.0 > e.Probabilidad) fuera.Add(e);
-                    }
+                    bool conElElegido = e == elegido || (elegido.Sorteo != 0 && e.Sorteo == elegido.Sorteo);
+                    if (!conElElegido) fuera.Add(e);
                 }
+                return fuera;
             }
 
+            // A single random row that is not the whole draw: its own roll.
+            if (SiguienteAzar() * 100.0 > alAzar[0].Probabilidad) fuera.Add(alAzar[0]);
             return fuera;
         }
 

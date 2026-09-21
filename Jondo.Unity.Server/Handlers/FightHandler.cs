@@ -2286,7 +2286,7 @@ namespace Jondo.Unity.Server.Handlers
                         quien.Id, buff.Quien, buff.Numero, buff.EffectId, buff.EffectUid,
                         buff.Cuanto, 0, 0, buff.HechizoOrigen, buff.Disparador, buff.CaducaEnRonda,
                         0, Network.FightProtocol.FamiliaDelEmbrujo(buff.EffectId, categoria, boost),
-                        buff.NivelOrigen);
+                        buff.NivelOrigen, buff.Critico);
                 }
             }
         }
@@ -2786,7 +2786,8 @@ namespace Jondo.Unity.Server.Handlers
                     }
 
                     // A vitality percentage moved the maximum when it went on; it moves back.
-                    if (caido.EffectId == Jondo.Unity.World.Combat.EffectSupport.VitalityFlatMalus
+                    if (caido.EffectId is Jondo.Unity.World.Combat.EffectSupport.VitalityFlatMalus
+                                         or Jondo.Unity.World.Combat.EffectSupport.VitalityFlatBonus
                         && caido.Caracteristica == VitalityCharacteristicId)
                     {
                         quien.MaxHP = Math.Max(1, quien.MaxHP - caido.Cuanto);
@@ -3046,7 +3047,7 @@ namespace Jondo.Unity.Server.Handlers
                             result.Target.Id, caster.Id, result.Live.Numero, waiting.EffectId, waiting.EffectUid,
                             waiting.Valor, waiting.Dado, waiting.Cara, waiting.HechizoOrigen,
                             Managers.EffectEngine.Esperando, result.Live.CaducaEnRonda, waiting.Dispellable,
-                            familia, waiting.NivelOrigen, padre: waiting.Numero)));
+                            familia, waiting.NivelOrigen, critico: waiting.Critico, padre: waiting.Numero)));
                     Program.LogDebug($"[Combate] Se cumple el plazo del embrujo {waiting.Numero} sobre {result.Target.Id}: " +
                                      $"efecto {waiting.EffectId}" +
                                      (waiting.Caracteristica != 0 ? $", característica {waiting.Caracteristica} {waiting.Cuanto:+#;-#;0}" : "") +
@@ -3357,8 +3358,9 @@ namespace Jondo.Unity.Server.Handlers
             fight.CurrentDamageSource = Jondo.Unity.World.Fights.DamageSource.Glyph;
             try
             {
+                var tirada = Managers.EffectEngine.EfectosSorteados(glifo.Hechizo, glifo.Grado, false);
                 await HurtAsync(stream, fight, dueno, glifo.Hechizo, glifo.Grado, quien,
-                                celdaApuntada: celda);
+                                celdaApuntada: celda, tirada: tirada);
 
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                     Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), quien.Id,
@@ -3367,7 +3369,7 @@ namespace Jondo.Unity.Server.Handlers
 
                 await AplicarEfectosAsync(stream, fight, dueno, glifo.Hechizo, glifo.Grado,
                                           quien, Managers.EffectEngine.AlLanzar,
-                                          celdaApuntada: celda);
+                                          celdaApuntada: celda, tirada: tirada);
             }
             finally
             {
@@ -3750,12 +3752,15 @@ namespace Jondo.Unity.Server.Handlers
             int daboAntes = cuenta?.OwnDamage ?? 0;
             if (cuenta != null) cuenta.ActionPointsSpent += cost;
 
-            await HurtAsync(stream, fight, caster, spell, grade, victim, cell, critico);
+            // ONE DRAW FOR THE WHOLE CAST: Bumerán Pérfido steals in one element and boosts
+            // that element's characteristic, out of the same throw of the dice.
+            var tirada = spell != 0 ? Managers.EffectEngine.EfectosSorteados(spell, grade, critico) : null;
+            await HurtAsync(stream, fight, caster, spell, grade, victim, cell, critico, tirada);
 
             // Y lo que el hechizo deja puesto, que no es sólo daño: los PA que roba Flecha Helada,
             // sus tres turnos de daños básicos, el alcance de Disparos Lejanos...
             await AplicarEfectosAsync(stream, fight, caster, spell, grade, victim,
-                                      Managers.EffectEngine.AlLanzar, cell, critico);
+                                      Managers.EffectEngine.AlLanzar, cell, critico, tirada);
 
             // The AP that bought damage, for the "per AP" of the end screen.
             if (cuenta != null && cuenta.OwnDamage > daboAntes) cuenta.ActionPointsOnDamage += cost;
@@ -4043,38 +4048,67 @@ namespace Jondo.Unity.Server.Handlers
         /// hasta la ronda en la que caduca el embrujo que más dure de los que ha puesto, que es lo
         /// que decide hasta cuándo sigue vivo el hechizo.
         /// </summary>
-        private static void EngancharLoPendiente(List<Managers.Outcome> consecuencias,
-                                                 int hechizo, int grado, long lanzador)
+        /// <remarks>
+        /// The chained spells hook too, each at its own grade: Furor's cast leaves nothing of
+        /// 13156 to fire later, it is 28604 at grade 3 -- reached through two 1160s -- that
+        /// carries the "1160 under TE" of the decay, and the capture registers that row on the
+        /// Yopuka (jxm 38, trigger TE, activation the round after). Read off the root spell
+        /// alone, the decay never existed. A hook is put on whoever the spell left a row on, for
+        /// as long as its longest row, from the round of the cast.
+        /// </remarks>
+        /// <param name="incluirElPropio">Whether the spell fired itself is hooked, or only what it chained.</param>
+        /// <param name="critico">Whether the cast was critical: the hook fires with the critical lists.</param>
+        internal static void EngancharLoPendiente(List<Managers.Outcome> consecuencias,
+                                                  int hechizo, int grado, long lanzador, int ronda,
+                                                  bool incluirElPropio = true, bool critico = false)
         {
-            bool haySuspendidos = false;
-            foreach (var efecto in Managers.SpellEffects.De(hechizo, grado))
+            // Every spell this cast ran that still has rows under a trigger, at its grade.
+            var conAlgoPendiente = new Dictionary<int, int>();
+            void Anotar(int cual, int enGrado)
             {
-                foreach (var d in efecto.Disparadores())
+                if (cual == 0 || conAlgoPendiente.ContainsKey(cual)) return;
+                foreach (var efecto in Managers.SpellEffects.De(cual, enGrado))
                 {
-                    if (!string.Equals(d, Managers.EffectEngine.AlLanzar, StringComparison.OrdinalIgnoreCase))
+                    foreach (var d in efecto.Disparadores())
                     {
-                        haySuspendidos = true;
-                        break;
+                        if (!string.Equals(d, Managers.EffectEngine.AlLanzar, StringComparison.OrdinalIgnoreCase))
+                        {
+                            conAlgoPendiente[cual] = enGrado;
+                            return;
+                        }
                     }
                 }
-                if (haySuspendidos) break;
             }
-            if (!haySuspendidos) return;
-
-            var hasta = new Dictionary<Fighter, int>();
+            if (incluirElPropio) Anotar(hechizo, grado);
             foreach (var c in consecuencias)
             {
-                if (c.Buff == null || c.Sobre == null) continue;
-                int cuando = c.Buff.CaducaEnRonda;
-                if (!hasta.TryGetValue(c.Sobre, out int ya) || cuando < 0 || (ya >= 0 && cuando > ya))
-                {
-                    hasta[c.Sobre] = cuando;
-                }
+                if (!incluirElPropio && (c.HechizoOrigen, c.NivelOrigen) == (hechizo, grado)) continue;
+                Anotar(c.HechizoOrigen, c.NivelOrigen);
             }
+            if (conAlgoPendiente.Count == 0) return;
 
-            foreach (var (quien, cuando) in hasta)
+            foreach (var (cual, enGrado) in conAlgoPendiente)
             {
-                quien.Buffs.Enganchar(hechizo, grado, cuando, lanzador);
+                var hasta = new Dictionary<Fighter, int>();
+                foreach (var c in consecuencias)
+                {
+                    if (c.Buff == null || c.Sobre == null || c.HechizoOrigen != cual) continue;
+                    int cuando = c.Buff.CaducaEnRonda;
+                    if (!hasta.TryGetValue(c.Sobre, out int ya) || cuando < 0 || (ya >= 0 && cuando > ya))
+                    {
+                        hasta[c.Sobre] = cuando;
+                    }
+                }
+
+                foreach (var (quien, cuando) in hasta)
+                {
+                    long quienLoLanzo = lanzador;
+                    foreach (var c in consecuencias)
+                    {
+                        if (c.HechizoOrigen == cual && c.Caster != null) { quienLoLanzo = c.Caster.Id; break; }
+                    }
+                    quien.Buffs.Enganchar(cual, enGrado, cuando, quienLoLanzo, ronda, critico);
+                }
             }
         }
 
@@ -4095,11 +4129,57 @@ namespace Jondo.Unity.Server.Handlers
             if (quien == null) return;
             quien.Buffs.BarrerEnganches(fight.RoundNumber);
 
-            foreach (var enganche in new List<Jondo.Unity.World.Fights.Buffs.ActiveSpell>(quien.Buffs.ActiveSpells))
+            // Inside ONE sequence of the bearer's, opened when the first frame goes out, the
+            // way the attitudes do: the client applies nothing that arrives outside an open
+            // jto. Furor's decay went out bare after the jyt -- jya, jwe 406, jxm -- and the
+            // client kept Furor II on the panel for good. The real server wraps a turn
+            // trigger's casts so: "jyt -6, jto{-6,3}, jwe 300 13155, ..., jya, jwi" in the
+            // Sentencia capture.
+            await DentroDeUnaSecuenciaAsync(fight, quien, async () =>
             {
-                var lanzador = (enganche.Lanzador != 0 ? fight.Buscar(enganche.Lanzador) : null) ?? quien;
-                await AplicarEfectosAsync(stream, fight, lanzador, enganche.Hechizo, enganche.Grado,
-                                          quien, disparador, quien.CellId);
+                foreach (var enganche in new List<Jondo.Unity.World.Fights.Buffs.ActiveSpell>(quien.Buffs.ActiveSpells))
+                {
+                    var lanzador = (enganche.Lanzador != 0 ? fight.Buscar(enganche.Lanzador) : null) ?? quien;
+                    await AplicarEfectosAsync(stream, fight, lanzador, enganche.Hechizo, enganche.Grado,
+                                              quien, disparador, quien.CellId, critico: enganche.Critico,
+                                              rondaDelEnganche: enganche.PuestoEnRonda);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Runs <paramref name="cuerpo"/> with a sequence of <paramref name="quien"/>'s owed to
+        /// the clients: the jto goes out right before the first frame the body sends and the
+        /// jwi after the body, and nothing at all when the body sends nothing. Nested: a
+        /// sequence already owed opens first and closes last.
+        /// </summary>
+        private static async Task DentroDeUnaSecuenciaAsync(FightInstance fight, Fighter quien, Func<Task> cuerpo)
+        {
+            bool abierta = false;
+            var debidaAntes = fight.SequenceToOpen;
+            Func<Task> abrir = null;
+            abrir = async () =>
+            {
+                if (abierta) return;
+                abierta = true;
+                if (debidaAntes != null) await debidaAntes();
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
+                    Network.FightProtocol.BuildSequenceStart(quien.Id, Network.FightProtocol.ActionSequence)));
+            };
+            fight.SequenceToOpen = abrir;
+
+            await cuerpo();
+
+            if (abierta)
+            {
+                if (fight.SequenceToOpen == abrir) fight.SequenceToOpen = null;
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
+                    Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), quien.Id,
+                                                           Network.FightProtocol.ActionSequence)));
+            }
+            else if (fight.SequenceToOpen == abrir)
+            {
+                fight.SequenceToOpen = debidaAntes;
             }
         }
 
@@ -4696,10 +4776,20 @@ namespace Jondo.Unity.Server.Handlers
         /// Los puntos de acción y de movimiento se tocan además EN EL ACTO, porque un "+1 PA" o un
         /// "-2 PA" no es un adorno del panel: cambia lo que te queda para jugar ese turno.
         /// </summary>
+        /// <param name="tirada">
+        /// The cast's draw of the random rows, the same one the blows were dealt from. Null
+        /// for anything that is not a cast with blows of its own.
+        /// </param>
+        /// <param name="rondaDelEnganche">
+        /// For a trigger fired off a hooked spell, the round the hook was put in; negative at
+        /// a cast.
+        /// </param>
         private static async Task AplicarEfectosAsync(NetworkStream stream, FightInstance fight,
                                                       Fighter quienLanza, int hechizo, int grado,
                                                       Fighter objetivo, string disparador,
-                                                      int celdaApuntada = -1, bool critico = false)
+                                                      int celdaApuntada = -1, bool critico = false,
+                                                      IReadOnlyList<Managers.SpellEffect> tirada = null,
+                                                      int rondaDelEnganche = -1)
         {
             if (hechizo == 0) return;
 
@@ -4721,7 +4811,9 @@ namespace Jondo.Unity.Server.Handlers
                                                                  objetivo, disparador, fight.RoundNumber,
                                                                  hondo: 0,
                                                                  celdaApuntada: celdaApuntada,
-                                                                 critico: critico);
+                                                                 critico: critico,
+                                                                 efectosSorteados: tirada,
+                                                                 rondaDelEnganche: rondaDelEnganche);
             }
             catch (Exception ex)
             {
@@ -4735,10 +4827,12 @@ namespace Jondo.Unity.Server.Handlers
             // no es "al lanzar"— se deja apuntado sobre quien lo lleva, para poder dispararlo
             // cuando toque. Es lo que hace falta para el Centinela: sus bajadas de alcance sólo
             // ocurren al andar, y sin acordarse de que el hechizo sigue puesto no hay manera.
-            if (string.Equals(disparador, Managers.EffectEngine.AlLanzar, StringComparison.OrdinalIgnoreCase))
-            {
-                EngancharLoPendiente(consecuencias, hechizo, grado, quienLanza.Id);
-            }
+            // At a cast, the spell and everything it chained; off a trigger, only what it
+            // chained -- the fired spell keeps the hook it has. Furor's decay casts 28604 at
+            // grade 3, whose own "1160 under TE" is what takes Furor I away a turn later.
+            bool alLanzar = string.Equals(disparador, Managers.EffectEngine.AlLanzar, StringComparison.OrdinalIgnoreCase);
+            EngancharLoPendiente(consecuencias, hechizo, grado, quienLanza.Id, fight.RoundNumber,
+                                 incluirElPropio: alLanzar, critico: critico);
 
             var fichas = new HashSet<(long Quien, int Caracteristica)>();
             var vidasCambiadas = new Dictionary<long, Fighter>();
@@ -4748,12 +4842,15 @@ namespace Jondo.Unity.Server.Handlers
             // Tymador, 20497 by the bomb, 20500 by the bomb" at every combo -- and the client
             // draws the combo off that cast, not off the buff. Damage chains announce their own
             // per target (the rebound's animation, below) and are left alone here.
-            var conDano = new HashSet<(int, long)>();
+            // Per spell AND grade: Furor's cast announces 28604 twice, grade 1 (level 76314)
+            // and then grade 3 (76316), and its decay announces the grade it falls to.
+            var conDano = new HashSet<(int, int, long)>();
             foreach (var c in consecuencias)
             {
-                if (c.NestedDamage && c.HechizoOrigen != hechizo) conDano.Add((c.HechizoOrigen, (c.Caster ?? quienLanza).Id));
+                if (c.NestedDamage && (c.HechizoOrigen, c.NivelOrigen) != (hechizo, grado))
+                    conDano.Add((c.HechizoOrigen, c.NivelOrigen, (c.Caster ?? quienLanza).Id));
             }
-            var anunciados = new HashSet<(int, long)>();
+            var anunciados = new HashSet<(int, int, long)>();
 
             // lo pisa, y entonces el orden deja de tener sentido.
             // ya en su sitio. No dentro del recorrido: un glifo puede volver a mover a quien
@@ -4762,10 +4859,10 @@ namespace Jondo.Unity.Server.Handlers
 
             foreach (var c in consecuencias)
             {
-                if (c.HechizoOrigen != 0 && c.HechizoOrigen != hechizo)
+                if (c.HechizoOrigen != 0 && (c.HechizoOrigen, c.NivelOrigen) != (hechizo, grado))
                 {
                     var quienEncadena = c.Caster ?? quienLanza;
-                    var clave = (c.HechizoOrigen, quienEncadena.Id);
+                    var clave = (c.HechizoOrigen, c.NivelOrigen, quienEncadena.Id);
                     if (!conDano.Contains(clave) && anunciados.Add(clave))
                     {
                         await AnunciarElEncadenadoAsync(fight, quienEncadena, c.Sobre ?? quienEncadena,
@@ -5132,6 +5229,34 @@ namespace Jondo.Unity.Server.Handlers
                         c.Sobre.Buffs.AparienciaEn(fight.RoundNumber));
                 }
 
+                // A 406 says so after the rows it took: "jwe 406 f33{f2: the spell, f4: on
+                // whom}" behind the three jya of Furor's recast in its capture, and behind
+                // Tempestad de Potencia's in hers.
+                if (c.Efecto.EffectId == Jondo.Unity.World.Combat.EffectSupport.RemoveSpellEffects
+                    && c.BuffsQuitados.Count > 0)
+                {
+                    int hechizoQuitado = c.Efecto.Value != 0 ? c.Efecto.Value : c.Efecto.DiceNum;
+                    await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                        Network.FightProtocol.BuildSpellEffectsRemoved(quienLanza.Id, hechizoQuitado, c.Sobre.Id)));
+                }
+
+                // The rows the new one replaced go first, gone and expired: Espada del Juicio
+                // cast again is "jya 9, jwe 514 {9}, jxm 13" in its capture, never a jxm that
+                // reuses the number.
+                foreach (var relevado in c.Relevados)
+                {
+                    await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jya,
+                        Network.FightProtocol.BuildBuffGone(c.Sobre.Id, relevado.Numero)));
+                    await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                        Network.FightProtocol.BuildBuffExpired(c.Sobre.Id, relevado.Numero)));
+                    if (relevado.Caracteristica != 0 &&
+                        relevado.Caracteristica != ActionPointsCharacteristic &&
+                        relevado.Caracteristica != MovementPointsCharacteristic)
+                    {
+                        fichas.Add((c.Sobre.Id, relevado.Caracteristica));
+                    }
+                }
+
                 if (c.Buff == null) continue;
 
                 // A row that waits: one jxm with trigger "Y", the activation round as its
@@ -5139,13 +5264,14 @@ namespace Jondo.Unity.Server.Handlers
                 // its round comes, from ApplyDuePendingAsync.
                 if (c.Buff.Pendiente)
                 {
+                    c.Buff.Critico = c.Critico;
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jxm,
                         Network.FightProtocol.BuildBuff(
                             c.Sobre.Id, quienLanza.Id, c.Buff.Numero, c.Efecto.EffectId,
                             c.Efecto.EffectUid, c.Efecto.Value, c.Efecto.DiceNum, c.Efecto.DiceSide,
                             c.HechizoOrigen, Managers.EffectEngine.Esperando, c.Buff.EmpiezaEnRonda,
                             c.Efecto.Dispellable, Network.FightProtocol.HiddenFamily, c.NivelOrigen,
-                            activacion: c.Buff.EmpiezaEnRonda)));
+                            critico: c.Critico, activacion: c.Buff.EmpiezaEnRonda)));
                     Program.LogDebug($"[Combate] Embrujo {c.Buff.Numero} sobre {c.Sobre.Id} a la espera: efecto " +
                                      $"{c.Efecto.EffectId} del hechizo {c.HechizoOrigen}, salta en la ronda " +
                                      $"{c.Buff.EmpiezaEnRonda}.");
@@ -5180,6 +5306,11 @@ namespace Jondo.Unity.Server.Handlers
                     familia = Network.FightProtocol.FamiliaDelEmbrujo(efectoAnunciado, categoriaCable, boostCable);
                 }
 
+                // The critical flag is the ROW's: a row out of a spell's critical list, at
+                // whatever depth of the chain. Virtud's critical shield is "1040 dice 1100 f9=1
+                // uid 383796", 29723's own critical row; Tumulto's critical cast puts 13154's
+                // ordinary "+20", which has no critical list, without the flag.
+                c.Buff.Critico = c.Critico;
                 foreach (var d in c.Efecto.Disparadores())
                 {
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jxm,
@@ -5187,7 +5318,7 @@ namespace Jondo.Unity.Server.Handlers
                             c.Sobre.Id, quienLanza.Id, c.Buff.Numero, efectoAnunciado,
                             c.Efecto.EffectUid, c.Efecto.Value, dadoAnunciado, caraAnunciada,
                             c.HechizoOrigen, d, rondas, c.Efecto.Dispellable, familia,
-                            c.NivelOrigen, critico)));
+                            c.NivelOrigen, c.Critico)));
                 }
 
                 if (c.Apariencia != 0)
@@ -5487,9 +5618,11 @@ namespace Jondo.Unity.Server.Handlers
         /// La cuenta la hace <see cref="Jondo.Unity.World.Fights.DamageCalculator"/>, que ya estaba
         /// escrita y es la de Dofus; aquí sólo se elige a quién le toca y se manda el resultado.
         /// </summary>
+        /// <param name="tirada">The cast's draw of the random rows; drawn here when null.</param>
         private static async Task HurtAsync(NetworkStream stream, FightInstance fight,
                                             Fighter caster, int spell, int grade, Fighter target,
-                                            int celdaApuntada = -1, bool critico = false)
+                                            int celdaApuntada = -1, bool critico = false,
+                                            IReadOnlyList<Managers.SpellEffect> tirada = null)
         {
             // Un hechizo de zona pega aunque no haya nadie EXACTAMENTE en la casilla apuntada, así
             // que ya no se puede salir de aquí por no tener objetivo directo.
@@ -5505,7 +5638,7 @@ namespace Jondo.Unity.Server.Handlers
             // Ahora se pregunta al motor qué golpes da este hechizo sobre este objetivo. Si no da
             // ninguno, aquí no se toca a nadie.
             var golpes = spell != 0
-                ? Managers.EffectEngine.Golpes(fight, caster, spell, grade, target, celdaApuntada, critico)
+                ? Managers.EffectEngine.Golpes(fight, caster, spell, grade, target, celdaApuntada, critico, tirada)
                 : (target != null ? GolpeDelArma(caster, target)
                                   : new List<(Managers.SpellEffect, int, Fighter, int)>());
             if (golpes.Count == 0) return;
@@ -5514,7 +5647,7 @@ namespace Jondo.Unity.Server.Handlers
             // saca un 26, en el centro de la zona entran 26 y a los de alrededor les entra ese
             // mismo 26 ya rebajado por la distancia. Tirando por cabeza, dos bichos pegados al
             // centro recibirían números distintos y el jugador vería una zona que no cuadra.
-            var tirada = new Dictionary<int, int>();
+            var dados = new Dictionary<int, int>();
 
             // Life reaches the client as an ABSOLUTE sheet. On a spell with several lines, sending
             // one between each damage figure puts the sheet and the animations in a race and can
@@ -5530,10 +5663,10 @@ namespace Jondo.Unity.Server.Handlers
 
             foreach (var (efecto, elementoDelGolpe, aQuien, lejos) in golpes)
             {
-                if (!tirada.TryGetValue(efecto.EffectUid, out int sacado))
+                if (!dados.TryGetValue(efecto.EffectUid, out int sacado))
                 {
                     sacado = TirarElDado(efecto);
-                    tirada[efecto.EffectUid] = sacado;
+                    dados[efecto.EffectUid] = sacado;
                 }
                 await UnGolpeAsync(stream, fight, caster, spell, efecto, elementoDelGolpe, aQuien,
                                    sacado, lejos, critico);
@@ -5680,6 +5813,22 @@ namespace Jondo.Unity.Server.Handlers
             // (28 to 86). Explosions and walls scale alike, and walls scale with the Rogue.
             var fuente = StatSourceOf(fight, caster);
 
+            // INVULNERABLE: a state the client's catalogue flags -- Influencia's 269 is
+            // "Invulnerable" and nothing else -- takes the whole blow away, and the blow still
+            // goes out: in the Influencia capture the Presión that follows lands as "jwe 97
+            // f40{f2: the victim, f4: the element}", no amount, no erosion, and the target
+            // keeps every point. Nothing of the blow happens: no erosion, no life steal, no
+            // trigger of "when hit".
+            int lejos = Jondo.Unity.World.Maps.MapGeometry.Distance(caster.CellId, target.CellId);
+            if (!fulmina && Managers.SpellStates.ShieldsFromBlow(target, lejos))
+            {
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                    Network.FightProtocol.BuildDamage(caster.Id, efecto.EffectId, target.Id, 0, elemento)));
+                Program.LogDebug($"[Combate] {target.Id} es invulnerable: el efecto {efecto.EffectId} " +
+                                 $"del hechizo {spell} no le quita nada.");
+                return;
+            }
+
             // Lo que ha salido del dado, tirado una vez para todo el lanzamiento.
             int baseDamage = sacadoDelDado;
 
@@ -5792,9 +5941,18 @@ namespace Jondo.Unity.Server.Handlers
                                  $"{antesDelCombo} pasa a {damage}.");
             }
 
+            // THE KINDS OF THIS BLOW, for the rows that name one: "D" any, "DM"/"DCAC" from
+            // next door, "DR" from further away, "DTB"/"DTE" a turn's poison.
+            bool deCerca = Jondo.Unity.World.Maps.MapGeometry.Distance(caster.CellId, target.CellId) <= 1;
+            var clases = new List<string> { "D", deCerca ? Managers.EffectEngine.CuandoMePeganDeCerca
+                                                         : Managers.EffectEngine.CuandoMePeganDeLejos };
+            if (deCerca) clases.Add("DCAC");
+            if (fromTurnTrigger) { clases.Add("DTB"); clases.Add("DTE"); }
+
             // Los MULTIPLICADORES de quien lo recibe: "daños sufridos x110%" es el efecto 1163, el
-            // que pone Represalias. Van al final, sobre el daño ya calculado.
-            int multiplica = target.Buffs.Multiplicador(DanoSufridoPorCiento, fight.RoundNumber);
+            // que pone Represalias. Van al final, sobre el daño ya calculado. Salto's is a row
+            // under "D", read by any blow of the round.
+            int multiplica = target.Buffs.Multiplicador(DanoSufridoPorCiento, fight.RoundNumber, clases);
             if (multiplica != 100)
             {
                 int antes = damage;
@@ -5806,13 +5964,8 @@ namespace Jondo.Unity.Server.Handlers
             // "-N de daños recibidos" (105, 265): a flat cut at the end of the sum, from the
             // rows the target holds for blows of this KIND -- Remisión's on a bomb is ranged
             // blows only. A kill is not a blow.
-            bool deCerca = Jondo.Unity.World.Maps.MapGeometry.Distance(caster.CellId, target.CellId) <= 1;
             if (!fulmina && damage > 0)
             {
-                var clases = new List<string> { "D", deCerca ? Managers.EffectEngine.CuandoMePeganDeCerca
-                                                             : Managers.EffectEngine.CuandoMePeganDeLejos };
-                if (deCerca) clases.Add("DCAC");
-                if (fromTurnTrigger) { clases.Add("DTB"); clases.Add("DTE"); }
                 int reduccion = target.Buffs.ReduccionDeDanoRecibido(fight.RoundNumber, clases);
                 if (reduccion > 0)
                 {
@@ -6244,15 +6397,17 @@ namespace Jondo.Unity.Server.Handlers
                                                           Network.FightProtocol.Spent(monster.Id, data.APCost),
                                                           Network.FightProtocol.PointsDetail)));
 
+                    var tirada = Managers.EffectEngine.EfectosSorteados(spell, monsterGrade, false);
                     await HurtAsync(stream, fight, monster, spell, monsterGrade, objetivo,
-                                    objetivo.CellId);
+                                    objetivo.CellId, tirada: tirada);
 
                     // Y sus efectos, igual que cuando lanza el jugador. Esto faltaba: el turno del
                     // monstruo sólo calculaba daño, así que los malus que dejan sus hechizos —el
                     // alcance que quita el Picoteo, por ejemplo— no se aplicaban ni se anunciaban, y
                     // en el panel del jugador no aparecía nunca nada puesto por un bicho.
                     await AplicarEfectosAsync(stream, fight, monster, spell, monsterGrade, objetivo,
-                                              Managers.EffectEngine.AlLanzar, objetivo.CellId);
+                                              Managers.EffectEngine.AlLanzar, objetivo.CellId,
+                                              tirada: tirada);
 
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                         Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), monster.Id,
