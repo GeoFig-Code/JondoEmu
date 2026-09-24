@@ -180,7 +180,7 @@ namespace Jondo.Unity.Server.Managers
             SembrarLasLuminomaquinas();
             NpcDialogues.Load();
 
-            var wanted = new HashSet<int>();
+            var wanted = new HashSet<int>(PlacedLater);
             foreach (var here in _byMap.Values)
             {
                 foreach (var spawn in here) wanted.Add(spawn.NpcId);
@@ -409,7 +409,7 @@ namespace Jondo.Unity.Server.Managers
                 }
 
                 var plantilla = TemplateOf(npcId);
-                aqui.Add(new Spawn
+                var spawn = new Spawn
                 {
                     MapId = mapId,
                     NpcId = npcId,
@@ -417,7 +417,15 @@ namespace Jondo.Unity.Server.Managers
                     Orientation = orientation,
                     ContextualId = ActorIds.NpcDelMapa(aqui.Count),
                     RawLook = plantilla?.Look ?? "",
-                });
+                };
+
+                // The look cut into bones, skins, colours and scale, as every other spawn has it.
+                // Only the raw text was copied, and an NPC with bone 0 is the question mark the
+                // client draws for a look it cannot find: the Rey Gob came out as one. The real
+                // one is bone 6243, skin 1665, six colours and 110 of scale -- the template's.
+                ReadLook(spawn.RawLook, spawn);
+                spawn.BoneId = (int)spawn.Bones;
+                aqui.Add(spawn);
             }
 
             Console.WriteLine($"[Sueños] Rey Gob {npcId} puesto en el mapa {mapId}, casilla {cell}.");
@@ -438,6 +446,13 @@ namespace Jondo.Unity.Server.Managers
             if (!_byMap.TryGetValue(mapId, out var here)) return null;
             return here.Find(s => s.ContextualId == contextualId);
         }
+
+        /// <summary>
+        /// NPCs that stand on no map when the server starts and are placed later -- the dream's
+        /// Rey Gob -- whose templates are read all the same. Only the placed ones' were, and the
+        /// Rey Gob came out with no template, no look, and the question mark for a face.
+        /// </summary>
+        private static readonly int[] PlacedLater = { Dreams.ReyGob };
 
         public static Template? TemplateOf(int npcId)
             => _templates.TryGetValue(npcId, out var template) ? template : null;

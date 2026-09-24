@@ -97,11 +97,10 @@ namespace Jondo.Unity.Server.Handlers
             if (fallo != null)
             {
                 // No hay trama medida con la que decirle al editor que no: la captura sólo tiene
-                // el caso bueno. Se cuenta por el chat, que es lo que hay.
+                // el caso bueno. It is told as an information line, which only they see.
                 Console.WriteLine($"[Gremio] Fundación de «{name}» rechazada: {fallo}.");
-                await WriteAsync(stream, ConnectionProtocol.Push(Op.Kti, ConnectionProtocol.BuildChatLine(
-                    SessionContext.State.CharacterName, SessionContext.State.CharacterId,
-                    SessionContext.Current.AccountId, "[INFO] " + CommandTexts.Get(fallo, name), 0)));
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildNotice(CommandTexts.Get(fallo, name))));
             }
         }
 

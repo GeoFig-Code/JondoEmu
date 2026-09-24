@@ -34,8 +34,9 @@ namespace Jondo.Unity.Server.Managers
     /// sale por el CANAL GENERAL y la lee todo el mundo, que es un fallo que ya hubo que quitar
     /// de la recolección.
     ///
-    /// La excepción es el texto libre que no esté en la tabla —la respuesta de un comando como
-    /// <c>.teleport</c>—: eso no se puede mandar por aquí y no queda más remedio que el chat.
+    /// Free text that is in no row of the table -- what a command answers, like <c>.teleport</c>
+    /// -- goes this way too, through <see cref="FreeText"/>. None of the 452 lqn of the captures
+    /// uses that row: the real server has no free text to say.
     /// </summary>
     public static class InfoMessages
     {

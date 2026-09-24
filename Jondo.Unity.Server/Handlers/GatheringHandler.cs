@@ -205,6 +205,10 @@ namespace Jondo.Unity.Server.Handlers
                     resource.JobId, JobExperience.PerGather, out long total, out int nivel);
                 DatabaseManager.SaveJobExperience(characterId, resource.JobId, total);
 
+                // The new level goes before the experience, as the wheat that took the farmer to
+                // level 2 sends it: isz, then irq.
+                if (subeNivel) await WorkshopHandler.SendLevelUpAsync(stream, resource.JobId, nivel);
+
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Irq, ConnectionProtocol.BuildJobExperience(
                         resource.JobId, JobExperience.Next(nivel), nivel,

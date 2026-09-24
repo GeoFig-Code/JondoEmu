@@ -517,7 +517,11 @@ public static class Op
     /// <summary>Sin identificar. 2 usos en el emulador.</summary>
     public const string Ise = "ise";
 
-    /// <summary>Solo alcanzable desde krc y desde isi, que no llegan nunca. 7 mensajes en 2 ficheros.</summary>
+    /// <summary>
+    /// One job's artisans, the answer to isr: { f1 (repeated) { f1 { f2: job, f3: minimum level,
+    /// f4: free, f5: job level }, f2 { f1 { f1: 1 }, f2: name, f3: breed, f4: id, f5: sex,
+    /// f7 { f1: map } } } }.
+    /// </summary>
     public const string Isf = "isf";
 
     /// <summary>Movimiento de objeto antiguo (3.6.4.3), sustituido por iuk. No aparece en ninguna captura.</summary>
@@ -541,8 +545,23 @@ public static class Op
     /// <summary>Parte de la rafaga de inicializacion de 3.6.4.3 que dispara kkn. No aparece en ninguna de las 242 capturas.</summary>
     public const string Itp = "itp";
 
-    /// <summary>Sin identificar. 1 uso en el emulador.</summary>
+    /// <summary>
+    /// The client asks for its inventory again: { f3: 2 } after a workshop opens, { f3: 1 }
+    /// elsewhere. Answered with ivx and an empty hlm in the twelve times it is captured.
+    /// </summary>
     public const string Itr = "itr";
+
+    /// <summary>
+    /// Items arrive in the bag, a list of them: { f1 (repeated) { f1: 63, f5: item } }. The
+    /// crafted ring of the tutorial arrives this way, not by iua.
+    /// </summary>
+    public const string Itf = "itf";
+
+    /// <summary>
+    /// Stacks change size, a list of them: { f1 (repeated) { f2: uid, f3: total } }. A craft whose
+    /// result joins a stack already in the bag (the runes fused in the grinder's capture).
+    /// </summary>
+    public const string Itu = "itu";
 
     /// <summary>Editar un hueco de una barra de atajos; se escribe tambien en la base de datos o se pierde al salir.</summary>
     public const string Itz = "itz";
@@ -637,6 +656,38 @@ public static class Op
     /// contesta con el izg del estado, un jru de cambio de mapa y un izj «1001».
     /// </remarks>
     public const string Izh = "izh";
+
+    /// <summary>
+    /// Client to server, INFERRED as buying at a dream's fountain: { f1: int32, f2: a message of
+    /// repeated int64, strings and booleans }. No capture has one. It is the only one of the
+    /// client's six dream requests that carries a choice; see DreamHandler.BuyAsync.
+    /// </summary>
+    public const string Iym = "iym";
+
+    /// <summary>
+    /// Client to server, empty: the loot table of the dream's room (InfiniteDreamDropTableRequest).
+    /// Answered by <see cref="Izo"/>, in five captures.
+    /// </summary>
+    public const string Ixq = "ixq";
+
+    /// <summary>
+    /// Server to client, by root 3: the loot table of the dream's room, one f2 per item --
+    /// { f1: criterion, f2: item, f3: quantity, f5: percent as a float }.
+    /// </summary>
+    public const string Izo = "izo";
+
+    /// <summary>
+    /// Client to server, empty: where a fight on this map would place everybody -- the dream's
+    /// bestiary preview and its "show the positions". Answered by <see cref="Jxj"/>.
+    /// </summary>
+    public const string Kaz = "kaz";
+
+    /// <summary>
+    /// Server to client, by root 3: { f1: the fight's map, f2: the map, f3 { f1: the attackers'
+    /// cells, f2: the defenders' cells, packed } }. Measured in "Pesadilla III-...-mostrar
+    /// posiciones combate" and the long capture.
+    /// </summary>
+    public const string Jxj = "jxj";
 
     // ─── Los Suenos Infinitos ───────────────────────────────────────────────────────────
     //
@@ -1160,8 +1211,176 @@ public static class Op
     /// <summary>Sin identificar. 1 uso en el emulador.</summary>
     public const string Kdw = "kdw";
 
-    /// <summary>Lo envia el cliente (10 veces en 1 fichero) pero el emulador lo construye como mensaje de servidor y nunca lo llama. El fichero de mapeos lo llama AccountCapabilitiesMessage, y eso es falso.</summary>
+    /// <summary>
+    /// How many times to craft the recipe in the workshop: { f1: count }, and the server says it
+    /// back in kgl. Nine in a row in the grinder's capture, 2 to 10. The mappings file calls it
+    /// AccountCapabilitiesMessage, and that is false.
+    /// </summary>
     public const string Kdx = "kdx";
+
+    /// <summary>
+    /// A workshop opens: { f1: the skill }. It comes after iwn, the inventory and an empty hlm;
+    /// the same message opens a craft station and a magus table.
+    /// </summary>
+    public const string Kgq = "kgq";
+
+    /// <summary>
+    /// Always empty around a workshop: after the inventory when it opens, when it closes, and in
+    /// answer to itr.
+    /// </summary>
+    public const string Hlm = "hlm";
+
+    /// <summary>The client picks a recipe in the workshop's list: { f2: the result }.</summary>
+    public const string Kew = "kew";
+
+    /// <summary>
+    /// Ready, in an exchange or a workshop: { f1: true, f2: step }. In a workshop it is the craft
+    /// button. The step counts the moves so far (25 in the tutorial, 1 to 5 in the grinder); it
+    /// is not a quantity -- that one is kdx.
+    /// </summary>
+    public const string Kep = "kep";
+
+    /// <summary>
+    /// How many times the recipe is to be crafted, the server saying back what kdx asked:
+    /// { f1: count }. After a craft of several it goes back to { f1: 1 }.
+    /// </summary>
+    public const string Kgl = "kgl";
+
+    /// <summary>
+    /// Something enters the workshop: { f1 { f1: 63, f5: item with its quantity in it }, f3: 0.0 }.
+    /// The float goes written even at zero.
+    /// </summary>
+    public const string Kfb = "kfb";
+
+    /// <summary>Something leaves the workshop: { f1: uid }.</summary>
+    public const string Kfs = "kfs";
+
+    /// <summary>Something in the workshop changes: { f2 { f1: 63, f5: item } }.</summary>
+    public const string Kex = "kex";
+
+    /// <summary>
+    /// The result of a craft or of a rune: { f2 { f1: pool change, f3: pool, f4: item }, f3: 1 on
+    /// a failure, 2 on a success }, and empty when the ingredients make no recipe.
+    /// </summary>
+    public const string Kdr = "kdr";
+
+    /// <summary>A rune applied on the magus table: { f1: rune uid, f3: 1, f6: true }.</summary>
+    public const string Kcj = "kcj";
+
+    /// <summary>Closes every rune: { f2: true }.</summary>
+    public const string Kdb = "kdb";
+
+    // ─── A commission: a magus working on someone else's item ───────────────────────────
+    // Measured from the magus' side in two sessions (Oficios/"envio invitacion a maguear ..."),
+    // and from the customer's up to the moment they accept ("recibo invitacion ...").
+
+    /// <summary>
+    /// An invitation to a commission: { f1: the other character, f2: skill, f3: 10 when the one
+    /// who sends it is the magus, 11 when it is the customer }.
+    /// </summary>
+    public const string Kbl = "kbl";
+
+    /// <summary>
+    /// A commission waiting for an answer: { f1: the other character, f2: 10 magus / 11 customer,
+    /// the role of whoever receives it, f3: who sent the invitation }. Followed by an empty hlm.
+    /// </summary>
+    public const string Kgu = "kgu";
+
+    /// <summary>The invitation cannot be: { f1: 3 } when the magus is too far from the workshop.</summary>
+    public const string Kdv = "kdv";
+
+    /// <summary>Accepting what was offered: a commission, a trade. Empty.</summary>
+    public const string Kgi = "kgi";
+
+    /// <summary>The magus' window opens: { f2: skill }.</summary>
+    public const string Keg = "keg";
+
+    /// <summary>The customer's window opens: { f1: the magus' job level, f2: skill }.</summary>
+    public const string Kgw = "kgw";
+
+    /// <summary>
+    /// Somebody else's job experience: { f1 { job, next, level, floor, experience }, f2: whose }.
+    /// The customer gets the magus' on accepting.
+    /// </summary>
+    public const string Iss = "iss";
+
+    /// <summary>
+    /// The customer's offer gains an item: { f3 { f1: 63, f5: item }, f4: true when the other one
+    /// did it }.
+    /// </summary>
+    public const string Ked = "ked";
+
+    /// <summary>The customer's offer loses an item: { f1: uid }. It went onto the table.</summary>
+    public const string Keo = "keo";
+
+    /// <summary>The magus moves an offered item onto the table or back: { f1: ±1, f4: uid }.</summary>
+    public const string Kgd = "kgd";
+
+    /// <summary>Somebody is ready, or no longer: { f3: true, f4: who }; without f3 it is "no".</summary>
+    public const string Kgt = "kgt";
+
+    /// <summary>What the customer pays: { f1: kamas }; empty once it has been paid.</summary>
+    public const string Kcl = "kcl";
+
+    /// <summary>Kamas put into an exchange: { f1: kamas }.</summary>
+    public const string Kee = "kee";
+
+    /// <summary>
+    /// A line of the chat log: { f3: kind, f4: parameters }. The payment of a commission writes
+    /// { f3: 64, f4: "+", f4: amount } beside lqn 594, "Pago: {0} kamas.".
+    /// </summary>
+    public const string Lqs = "lqs";
+
+    // ─── The grinder: breaking items into runes ─────────────────────────────────────────
+
+    /// <summary>The grinder's breaking window opens. Empty.</summary>
+    public const string Kbv = "kbv";
+
+    /// <summary>Break what is on the grinder: { f2: true, f3: step }.</summary>
+    public const string Kbj = "kbj";
+
+    /// <summary>
+    /// What came out of each broken item: { f1 (repeated) { f1: uid, f3 (repeated) { f1: rune,
+    /// f2: how many }, f4: coefficient, f5: coefficient } }.
+    /// </summary>
+    public const string Kfp = "kfp";
+
+    // ─── The artisans' directory ────────────────────────────────────────────────────────
+    // Four captures (Oficios/"abrir interfaz oficios-constar en la lista publica ...",
+    // "... estar visible en lista artesanos ...", "consultar lista de artesanos en el
+    // interactivo del libro", "dejar de constar en lista artesanos ...").
+
+    /// <summary>
+    /// A job's settings as a crafter: { f1 { f3: job, f4: free, f5: minimum level } }. The client
+    /// sends one per job when the jobs window opens, and one each time a setting changes.
+    /// </summary>
+    public const string Irl = "irl";
+
+    /// <summary>
+    /// The settings of every job: { f1 (repeated) { f3: job, f4: free, f5: minimum level } }. The
+    /// answer to every irl, and part of the entry into the world.
+    /// </summary>
+    public const string Isd = "isd";
+
+    /// <summary>Show me in the public list, or stop: { f2: [jobs], packed }. A toggle.</summary>
+    public const string Kef = "kef";
+
+    /// <summary>Whether a job is in the public list: { f1 { f1: job, f2: listed } }.</summary>
+    public const string Iro = "iro";
+
+    /// <summary>The artisans' book opens its window: { f2: [the workshop's jobs], packed }.</summary>
+    public const string Kfj = "kfj";
+
+    /// <summary>The list of one job's artisans: { f2: job }.</summary>
+    public const string Isr = "isr";
+
+    /// <summary>
+    /// One more artisan in the list, or one who changed: { f1: entry }, the entry as isf's.
+    /// </summary>
+    public const string Isv = "isv";
+
+    /// <summary>An artisan gone from a job's list: { f1: who, f2: job }.</summary>
+    public const string Isq = "isq";
 
     /// <summary>Sin identificar. 2 usos en el emulador.</summary>
     public const string Kea = "kea";

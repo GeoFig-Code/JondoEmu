@@ -42,6 +42,18 @@ namespace Jondo.Unity.World.Fights
         public int CriticalBonus { get; set; }
 
         /// <summary>
+        /// The damage it deals, in percent, applied last to every blow: 105 with a dream's "5%
+        /// damage". "All the bonuses add up first and are multiplied last by the % of damage."
+        /// </summary>
+        public int DamageDealtPercent { get; set; } = 100;
+
+        /// <summary>Rounds taken off the cooldown of every spell it casts: a dream's "-1 reactivation".</summary>
+        public int CooldownReduction { get; set; }
+
+        /// <summary>Casts more on the same target for every spell that caps them: a dream's "+1 cast per target".</summary>
+        public int ExtraCastsPerTarget { get; set; }
+
+        /// <summary>
         /// Daños fijos generales (característica 16). Se suman al final del cálculo, después de
         /// multiplicar por la característica elemental y la potencia.
         /// </summary>

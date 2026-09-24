@@ -59,9 +59,15 @@ namespace Jondo.Unity.Server.Handlers
                 [".size"] = "usage.size",
                 [".item"] = "usage.item",
                 [".itemset"] = "usage.itemset",
+                [".receta"] = "usage.recipe",
                 [".packets"] = "usage.packets",
                 [".gremio"] = "usage.guild",
                 [".raid"] = "usage.raid",
+                [".oficio"] = "usage.job",
+                [".oficios"] = "usage.jobs",
+                [".forjadios"] = "usage.forgegod",
+                [".forgegod"] = "usage.forgegod",
+                [".forgedieu"] = "usage.forgegod",
             };
 
         /// <summary>
@@ -80,10 +86,24 @@ namespace Jondo.Unity.Server.Handlers
                 [".relative"] = Roles.Administrador,
                 [".kamas"] = Roles.GameMaster,
                 [".level"] = Roles.GameMaster,
+                [".oficio"] = Roles.GameMaster,
+                [".oficios"] = Roles.GameMaster,
+                // Written out rather than left to the default, which is the same: forgegod is for
+                // the highest role there is and nobody else, whatever the default becomes.
+                [".forjadios"] = Roles.Administrador,
+                [".forgegod"] = Roles.Administrador,
+                [".forgedieu"] = Roles.Administrador,
                 [".size"] = Roles.GameMaster,
                 [".shop"] = Roles.GameMaster,
                 [".gremio"] = Roles.Jugador,
             };
+
+        /// <summary>
+        /// The role a command asks for: its row in the table, or Administrator for one without --
+        /// the safe side to be wrong on.
+        /// </summary>
+        internal static int RequiredRole(string command)
+            => HaceFalta.TryGetValue(command, out int role) ? role : Roles.Administrador;
 
         /// <summary>El nivel al que se acaba el juego normal; de ahí para arriba es Omega.</summary>
         private const int MaxNormalLevel = 200;
@@ -127,7 +147,7 @@ namespace Jondo.Unity.Server.Handlers
             // La cuenta sale de la sesión de este socket, no de nada que mande el cliente.
             long quien = accountId > 0 ? accountId : Network.SessionContext.Current.AccountId;
             int rol = DatabaseManager.GetAccountRole(quien);
-            int haceFalta = HaceFalta.TryGetValue(command, out int pide) ? pide : Roles.Administrador;
+            int haceFalta = RequiredRole(command);
 
             if (!Roles.AlMenos(rol, haceFalta))
             {
@@ -157,9 +177,15 @@ namespace Jondo.Unity.Server.Handlers
                     case ".size": await SizeAsync(stream, rest, channel, accountId); break;
                     case ".item": await ItemAsync(stream, rest, channel, accountId); break;
                     case ".itemset": await ItemSetAsync(stream, rest, channel, accountId); break;
+                    case ".receta": await RecipeAsync(stream, rest, channel, accountId); break;
                     case ".packets": await PacketsAsync(stream, rest, channel, accountId); break;
                     case ".gremio": await GremioAsync(stream, rest, channel, accountId); break;
                     case ".raid": await RaidAsync(stream, rest, channel, accountId); break;
+                    case ".oficio": await JobAsync(stream, rest, channel, accountId); break;
+                    case ".oficios": await AllJobsAsync(stream, rest, channel, accountId); break;
+                    case ".forjadios":
+                    case ".forgegod":
+                    case ".forgedieu": await ForgeGodAsync(stream, rest, channel, accountId); break;
                 }
             }
             catch (Exception ex)
@@ -241,6 +267,116 @@ namespace Jondo.Unity.Server.Handlers
             await NotifyAsync(stream, T("level.result", result.Level, capped, result.PreviousLevel,
                                          result.Experience, result.RemainingPoints,
                                          result.Capital, result.SpellNote, omega), channel, accountId);
+        }
+
+        // ─── .oficio ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Puts a job at a level, to try the recipes of that level without gathering for hours.
+        /// The experience goes to the floor of the level, and the client hears it the way a real
+        /// level-up says it: isz, then irq.
+        /// </summary>
+        private static async Task JobAsync(NetworkStream stream, string rest, int channel, long accountId)
+        {
+            var parts = rest.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 2 && AllWords.Contains(parts[0].ToLowerInvariant()))
+            {
+                await AllJobsAsync(stream, parts[1], channel, accountId);
+                return;
+            }
+            if (parts.Length != 2
+                || !int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int job)
+                || !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int wanted)
+                || !JobManager.TryGet(job, out _))
+            {
+                await NotifyAsync(stream, Usage(".oficio"), channel, accountId);
+                return;
+            }
+
+            int level = Math.Clamp(wanted, 1, JobExperience.MaxLevel);
+            var state = Network.SessionContext.State;
+            int before = state.JobLevel(job);
+            long experience = JobExperience.Floor(level);
+            state.Jobs[job] = new JobExperience.Progress { JobId = job, Experience = experience };
+            DatabaseManager.SaveJobExperience(state.CharacterId, job, experience);
+
+            if (level != before) await WorkshopHandler.SendLevelUpAsync(stream, job, level);
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Irq, ConnectionProtocol.BuildJobExperience(
+                    job, JobExperience.Next(level), level, JobExperience.Floor(level), experience)));
+
+            await NotifyAsync(stream, T("job.result", job, level, before), channel, accountId);
+        }
+
+        /// <summary>"Every job", in the three languages the replies speak.</summary>
+        private static readonly HashSet<string> AllWords = new HashSet<string> { "todos", "all", "tous" };
+
+        /// <summary>The level .oficios puts every job at when it is given none.</summary>
+        private const int AllJobsDefault = 200;
+
+        /// <summary>
+        /// Every job at one level: ".oficios" for 200, ".oficios 150", or ".oficio todos 150". The
+        /// jobs are the directory's -- the twenty with a recipe, a resource or a magus table, the base one aside,
+        /// which has no level. The client is told with one irq carrying all of them, the way the
+        /// entry into the world does it, and no level-up window: twenty of them in a row would be
+        /// twenty windows to close.
+        /// </summary>
+        private static async Task AllJobsAsync(NetworkStream stream, string rest, int channel, long accountId)
+        {
+            string word = rest.Trim();
+            int wanted = AllJobsDefault;
+            if (word.Length > 0 && !int.TryParse(word, NumberStyles.Integer, CultureInfo.InvariantCulture, out wanted))
+            {
+                await NotifyAsync(stream, Usage(".oficios"), channel, accountId);
+                return;
+            }
+
+            int level = Math.Clamp(wanted, 1, JobExperience.MaxLevel);
+            long experience = JobExperience.Floor(level);
+            var state = Network.SessionContext.State;
+            var jobs = ArtisanHandler.Jobs().Where(j => j != WorkshopHandler.BaseJob).ToList();
+            foreach (int job in jobs)
+            {
+                state.Jobs[job] = new JobExperience.Progress { JobId = job, Experience = experience };
+                DatabaseManager.SaveJobExperience(state.CharacterId, job, experience);
+            }
+
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Irq,
+                ConnectionProtocol.BuildJobsExperience(jobs.Select(job =>
+                    (job, JobExperience.Next(level), level, JobExperience.Floor(level), experience)))));
+
+            await NotifyAsync(stream, T("jobs.result", jobs.Count, level), channel, accountId);
+            Console.WriteLine($"[Comandos] {jobs.Count} jobs of {state.CharacterName} at level {level}.");
+        }
+
+        // ─── .forjadios / .forgegod / .forgedieu ───────────────────────────────
+
+        /// <summary>
+        /// Forgegod mode, on or off: at the forge no rune fails, no weight cap holds on an over or
+        /// an exo (two AP of exo, a thousand vitality), a transcendence goes on anything, an item
+        /// "sin forjamagia futura" takes runes again, a magus table takes any item and a recipe
+        /// asks no job level. For this session only.
+        /// </summary>
+        private static async Task ForgeGodAsync(NetworkStream stream, string rest, int channel, long accountId)
+        {
+            string word = rest.Trim().ToLowerInvariant();
+            bool? on = word switch
+            {
+                "on" or "1" or "si" or "sí" or "yes" or "oui" => true,
+                "off" or "0" or "no" or "non" => false,
+                _ => null,
+            };
+            var state = Network.SessionContext.State;
+            if (on == null)
+            {
+                await NotifyAsync(stream, Usage(".forjadios") + " " + T(state.ForgeGod ? "forgegod.on" : "forgegod.off"),
+                                  channel, accountId);
+                return;
+            }
+
+            state.ForgeGod = on.Value;
+            await NotifyAsync(stream, T(on.Value ? "forgegod.on" : "forgegod.off"), channel, accountId);
+            Console.WriteLine($"[Comandos] Forgegod {(on.Value ? "on" : "off")} for {state.CharacterName}.");
         }
 
         public sealed class LevelChange
@@ -758,6 +894,82 @@ namespace Jondo.Unity.Server.Handlers
                               channel, accountId);
         }
 
+        // ─── .receta ───────────────────────────────────────────────────────────
+
+        /// <summary>The most times .receta multiplies a recipe by: a guard on the command, not a rule of the game.</summary>
+        internal const int MaxRecipeTimes = 100;
+
+        /// <summary>
+        /// ".receta &lt;item&gt; [times]": every ingredient of the item's recipe into the bag, as many
+        /// as the recipe asks for, times as many times as given. Each joins the stack of the same
+        /// thing the character already has, so the workshop finds it in one piece. Administrators
+        /// only, like .item: it makes items out of nothing, and it is left out of the table on
+        /// purpose, for the default to close it.
+        /// </summary>
+        private static async Task RecipeAsync(NetworkStream stream, string rest, int channel, long accountId)
+        {
+            if (!TryParseRecipe(rest, out int gid, out int times))
+            {
+                await NotifyAsync(stream, Usage(".receta"), channel, accountId);
+                return;
+            }
+            if (!RecipeManager.TryGetByResult(gid, out var recipe))
+            {
+                await NotifyAsync(stream, T("recipe.missing", gid), channel, accountId);
+                return;
+            }
+
+            var ingredients = IngredientsOf(recipe, times);
+            var given = new List<(int Item, int Quantity)>();
+            var missing = new List<int>();
+            foreach (var (item, quantity) in ingredients)
+            {
+                if (await WorkshopHandler.GiveAsync(stream, item, quantity)) given.Add((item, quantity));
+                else missing.Add(item);
+            }
+
+            await RefreshPodsAsync(stream);
+            ActivityJournal.Current.Write("recipe.granted",
+                accountId > 0 ? accountId : SessionContext.Current.AccountId,
+                GameState.CharacterId,
+                new
+                {
+                    source = "command", result = gid, times,
+                    ingredients = given.Select(g => new { gid = g.Item, quantity = g.Quantity }).ToList(),
+                    missing,
+                });
+
+            string list = given.Count == 0 ? "-" : string.Join(", ", given.Select(g => $"{g.Quantity} x {g.Item}"));
+            string warning = missing.Count == 0 ? "" : T("itemset.templates_missing", string.Join(", ", missing));
+            await NotifyAsync(stream, T("recipe.added", gid, times, recipe.JobId, recipe.ResultLevel, list, warning),
+                              channel, accountId);
+            Console.WriteLine($"[Comandos] Recipe {gid} x{times} for {GameState.CharacterName}: {list}" +
+                              (missing.Count == 0 ? "." : $", missing {string.Join(", ", missing)}."));
+        }
+
+        /// <summary>".receta 44" or ".receta 44 5": the item, and how many times its recipe, 1 to <see cref="MaxRecipeTimes"/>.</summary>
+        internal static bool TryParseRecipe(string rest, out int gid, out int times)
+        {
+            gid = 0;
+            times = 1;
+            var parts = (rest ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 1 || parts.Length > 2) return false;
+            if (!int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out gid) || gid <= 0) return false;
+            if (parts.Length == 2 &&
+                !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out times)) return false;
+            return times >= 1 && times <= MaxRecipeTimes;
+        }
+
+        /// <summary>
+        /// What a recipe asks for, times over: one line per item, in the recipe's order, an item
+        /// that appeared twice added up into its first line.
+        /// </summary>
+        internal static IReadOnlyList<(int Item, int Quantity)> IngredientsOf(RecipeDefinition recipe, int times)
+            => recipe.Ingredients
+                .GroupBy(i => i.ItemId)
+                .Select(g => (g.Key, g.Sum(i => i.Quantity) * times))
+                .ToList();
+
         // ─── .packets ──────────────────────────────────────────────────────────
 
         /// <summary>
@@ -1064,12 +1276,15 @@ namespace Jondo.Unity.Server.Handlers
         /// cliente, y porque el jugador acaba de escribir en esa misma pestaña y espera la
         /// respuesta ahí.
         /// </summary>
+        /// <summary>
+        /// A command's answer: an information line only its author sees. The channel and the
+        /// account are what the chat line it used to be needed; the information message needs
+        /// neither, and they stay so the sixty-odd callers do not all change.
+        /// </summary>
         private static async Task NotifyAsync(NetworkStream stream, string text, int channel, long accountId)
         {
             await NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.Push(Op.Kti, ConnectionProtocol.BuildChatLine(
-                    GameState.CharacterName, GameState.CharacterId, accountId,
-                    "[INFO] " + text, channel)));
+                ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildNotice(text)));
         }
 
         /// <summary>La primera palabra en minúsculas, o null si la línea no empieza por punto.</summary>

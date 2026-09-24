@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
+using Jondo.Unity.World.Fights;
 
 namespace Jondo.Unity.Server.Managers
 {
@@ -19,8 +21,7 @@ namespace Jondo.Unity.Server.Managers
     /// <code>
     ///   las salas    f1 = "0".."10"
     ///                  f6   la fila del grafo
-    ///                  f9   MapMobs.Id, un grupo de monstruos REAL del mundo
-    ///                  f10  el efecto que modifica la sala      f11  su valor
+    ///                  f4   what the room gives: a Reward, whose f9 is its InfiniteDreamRewardData row
     ///   el grafo     0 -> 1,2   1 -> 3,4   2 -> 4,5   3 -> 6,7
     ///                4 -> 7,8   5 -> 8,9   6..9 -> 10
     /// </code>
@@ -29,10 +30,11 @@ namespace Jondo.Unity.Server.Managers
     /// se llega desde la 1 y desde la 2.
     ///
     ///   MEDIDO en la captura de Paradoja I, sala por sala: la fila que dice el f6 de cada una
-    ///   coincide exactamente con la que le toca en el grafo. Los cinco f9 de esa partida
-    ///   —14931, 14812, 15026, 14798, 14797— son filas de MapMobs con su mapa, su casilla y sus
-    ///   miembros; y los f10 —118, 119, 125, 126— son efectos de nuestro propio catálogo: fuerza,
-    ///   agilidad, vitalidad e inteligencia.
+    ///   coincide exactamente con la que le toca en el grafo. The f9 of those rooms -- 14931,
+    ///   14812, 15026, 14798, 14797 -- were read here as MapMobs groups, and they are rewards:
+    ///   14798 is +20% vitality in every room it appears in, while the bestiary lists different
+    ///   monsters each time. The group a room is fought against is chosen here from MapMobs and
+    ///   does not travel in the graph.
     ///
     /// La dificultad va de 1 a 10 y la numeración también está medida, comparando el ixf de nueve
     /// capturas contra el nombre que el jugador eligió en cada una:
@@ -56,30 +58,56 @@ namespace Jondo.Unity.Server.Managers
         private const int MaximoDeEnMedio = 9;
 
         /// <summary>
-        /// Con cuántos puntos de sueño se empieza, por dificultad.
+        /// The bonus of each difficulty to experience and loot, in percent: the f22 of the izg,
+        /// and the f8 it starts from.
         /// </summary>
         /// <remarks>
-        /// Medido en el f22 de los 39 izg de las capturas, y sale limpio: una dificultad, un
-        /// valor, sin una sola discrepancia.
+        /// Measured in the f22 of the izg of the captures, one difficulty, one value:
         ///
         ///   1: 50   2: 75   3: 100   4: 120   5: 140
         ///   6: 160  7: 190  8: 220   9: 250  10: 300
         ///
-        /// El f22 es la dotación de salida y no se mueve; el f8 es el total de ahora y SÍ sube.
-        /// Se ve en Pesadilla III: los dos valen 300 en la sala 0 y el f8 pasa a 315 en la 2,
-        /// justo los quince de una sala de clase 15. Y en la captura de la invitación, donde el
-        /// jugador lleva 58 salas hechas, el f8 va por 168 con el f22 todavía en 120.
+        /// These were read for a time as the dream points a dream starts with, and they are not:
+        /// the client paints f8 and f22 as the two percentages under the dream's name -- "220%
+        /// 220%" in a Pesadilla I -- and the dream points are the f11. What gave it away is the
+        /// Rey Gob: "multiply the dream points by 1.5" takes f11 from 25 to 38 in the long capture
+        /// and leaves f8 where it was.
+        ///
+        /// f22 never moves. f8 does, twice in the captures -- 300 to 315 entering a marked room
+        /// of Pesadilla III, 50 to 55 in the second band of the long one -- and no rule covers
+        /// both, so here it stays where it starts rather than growing by a rule of mine.
         /// </remarks>
-        private static readonly int[] PuntosPorDificultad =
+        private static readonly int[] BonusByDifficulty =
         {
             0, 50, 75, 100, 120, 140, 160, 190, 220, 250, 300,
         };
 
-        /// <summary>La dotación de salida de una dificultad. Es el f22 del izg.</summary>
-        public static int PuntosDeSalida(int dificultad)
-            => dificultad >= 1 && dificultad < PuntosPorDificultad.Length
-                ? PuntosPorDificultad[dificultad]
-                : PuntosPorDificultad[1];
+        /// <summary>A difficulty's bonus to experience and loot, in percent: the f22 of the izg.</summary>
+        public static int BonusOf(int difficulty)
+            => difficulty >= 1 && difficulty < BonusByDifficulty.Length
+                ? BonusByDifficulty[difficulty]
+                : BonusByDifficulty[1];
+
+        /// <summary>
+        /// The dream points a dream starts with: the f11 of the izg at the entrance. Ten in the
+        /// five captured dreams of Sueño I to III, five in the four of Paradoja, none in the three
+        /// of Pesadilla, where f11 is left out.
+        /// </summary>
+        public static int StartingDreamPoints(int difficulty)
+            => difficulty <= LastSueno ? 10 : difficulty <= LastParadoja ? 5 : 0;
+
+        /// <summary>
+        /// The Draconiros arenas a dream starts with, the retries: the f17. One in the Sueño
+        /// dreams -- the five izg of the captures that start one carry it -- and none in
+        /// Paradoja or Pesadilla, whose izg never do. Dying spends it: it is gone from the izg
+        /// that follows a death in "Sueño III-pelear-morir", and from the Sueño I that the player
+        /// of "Sueño II-descartar" had going.
+        /// </summary>
+        public static int StartingArenas(int difficulty) => difficulty <= LastSueno ? 1 : 0;
+
+        /// <summary>The last Sueño (3) and the last Paradoja (7) of the ladder.</summary>
+        private const int LastSueno = 3;
+        private const int LastParadoja = 7;
 
         /// <summary>La dificultad más alta, Pesadilla III.</summary>
         public const int MaximaDificultad = 10;
@@ -207,32 +235,86 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// Los veinte potenciadores medidos, con sus valores tal cual salen.
+        /// A reward of the dreams: what a room gives on entering, or what the fountain sells. The
+        /// iww of the wire -- the f4 of a room in the graph, an f6 of the izg at a fountain.
         /// </summary>
         /// <remarks>
-        /// No es una lista inventada ni una escala calculada: son las veinte parejas
-        /// (efecto, valor) distintas que aparecen en los 196 f15 de las capturas, ni una más ni
-        /// una menos. Antes se repartían los efectos 118, 119, 125 y 126 —fuerza, agilidad,
-        /// vitalidad e inteligencia—, que salieron de una lectura mía y no aparecen en ninguno de
-        /// los 196.
+        /// Measured field by field in the Paradoja III capture and the long one, zeros written:
+        ///
+        ///   { f1: kind, f2: 0, f3 (repeated) { a bonus }, f4: 0, f5: points, f7: rarity,
+        ///     f8: price, f9: reward id, f10: ?, f11: 0 }
+        ///
+        /// f9 is a row of the client's own InfiniteDreamRewardData -- what the shop's entries are
+        /// built on -- and not a group of monsters, which is what it was taken for: the same 14798
+        /// is +20% vitality in every room of every capture, whatever monsters the bestiary lists
+        /// there. f10 comes with the reward and is not known. f7 is 1, 2 or 3 where it is written,
+        /// the rarity classes the shop paints (common, rare, epic, legendary). Kind 1 is a room
+        /// that gives dream points instead of a bonus, f5 of them: entering the Paradoja II one
+        /// takes f11 up by ten, the room's own five and these five.
         /// </remarks>
-        private static readonly Bono[] Potenciadores =
+        public sealed class Reward
         {
-            new Bono(111, 1),      new Bono(111, 3),      // PA
-            new Bono(115, 25),                            // % crítico
-            new Bono(117, 2),                             // alcance
-            new Bono(128, 1),      new Bono(128, 3),      // PM
-            new Bono(295, 1),                             // menos alcance mínimo
-            new Bono(1076, 10),                           // % resistencia
-            new Bono(2808, 20),                           // % daños de armas
-            new Bono(2844, 20),    new Bono(2844, 70),    new Bono(2844, 90),   // % vitalidad
-            new Bono(4041, 5),     new Bono(4041, 10),    // % de daños
+            /// <summary>The InfiniteDreamRewardData row: the f9.</summary>
+            public int Id { get; init; }
 
-            new Bono(281, 1, true), new Bono(281, 2, true),   // alcance máximo, de todos
-            new Bono(286, 1, true),                           // menos reactivación
-            new Bono(792, 0, true),
-            new Bono(3281, 1, true),
-            new Bono(3290, 1, true),                          // un lanzamiento más por turno
+            /// <summary>The f10, which comes with the reward and whose meaning is unknown.</summary>
+            public int Tag { get; init; }
+
+            /// <summary>The f7: left out when zero.</summary>
+            public int Rarity { get; init; }
+
+            /// <summary>The f1: <see cref="RewardKindBonus"/> or <see cref="RewardKindPoints"/>.</summary>
+            public int Kind { get; init; }
+
+            /// <summary>The dream points a kind-1 reward gives: the f5.</summary>
+            public int Points { get; init; }
+
+            /// <summary>What it costs in dream points at the fountain: the f8. Nothing in a room.</summary>
+            public int Price { get; init; }
+
+            /// <summary>The bonuses it gives: the f3, one or two.</summary>
+            public IReadOnlyList<Bono> Bonuses { get; init; } = Array.Empty<Bono>();
+        }
+
+        public const int RewardKindBonus = 0;
+        public const int RewardKindPoints = 1;
+
+        /// <summary>
+        /// What rooms give: the nine rewards the rooms of the captures' graphs offer, each with the
+        /// id, the f10 and the rarity it always carries there.
+        /// </summary>
+        /// <remarks>
+        /// Counted over every room of every graph of the fifteen captures -- 14798 in 270 rooms,
+        /// 14804 in 194, 14931 in 152 and so on down to 14808 in 16. Three more rooms appear
+        /// with no bonus and a points field of 15 or 30 (14811, 14812, 14895); what they give is
+        /// not in the captures, so they are not handed out. The rooms used to draw from the twenty
+        /// (effect, value) pairs of the f15 lists, which also hold what the shop sells, and sent a
+        /// MapMobs group in the f9.
+        /// </remarks>
+        internal static readonly Reward[] RoomRewards =
+        {
+            new Reward { Id = 14797, Tag = 125, Rarity = 2, Bonuses = new[] { new Bono(111, 1) } },     // AP
+            new Reward { Id = 14798, Tag = 119, Bonuses = new[] { new Bono(2844, 20) } },               // % vitality
+            new Reward { Id = 14804, Tag = 133, Bonuses = new[] { new Bono(4041, 5) } },                // % damage
+            new Reward { Id = 14805, Tag = 127, Rarity = 1, Bonuses = new[] { new Bono(117, 2) } },     // range
+            new Reward { Id = 14808, Tag = 140, Rarity = 3, Bonuses = new[] { new Bono(286, 1, true) } },
+            new Reward { Id = 14808, Tag = 157, Rarity = 2, Bonuses = new[] { new Bono(291, 1, true) } },
+            new Reward { Id = 14850, Tag = 111, Rarity = 2, Bonuses = new[] { new Bono(281, 1, true) } }, // max range
+            new Reward { Id = 15026, Tag = 126, Rarity = 2, Bonuses = new[] { new Bono(128, 1) } },     // MP
+            new Reward { Id = 14931, Tag = 118, Rarity = 1, Kind = RewardKindPoints, Points = 5 },
+        };
+
+        /// <summary>
+        /// What the fountain sells: the five offers of the one fountain of the captures, in their
+        /// order, 15 dream points each. The long capture's room 9, twice with the same five.
+        /// </summary>
+        internal static readonly Reward[] ShopOffers =
+        {
+            new Reward { Id = 14798, Tag = 65, Price = 15, Bonuses = new[] { new Bono(2971, 20), new Bono(2844, 40) } },
+            new Reward { Id = 15389, Tag = 149, Rarity = 2, Price = 15, Bonuses = new[] { new Bono(3405, 85231) } },
+            new Reward { Id = 14799, Tag = 103, Price = 15, Bonuses = new[] { new Bono(2850, 100), new Bono(2852, 100) } },
+            new Reward { Id = 15382, Tag = 89, Rarity = 2, Price = 15, Bonuses = new[] { new Bono(3405, 83685) } },
+            new Reward { Id = 14813, Tag = 124, Rarity = 2, Price = 15, Bonuses = new[] { new Bono(115, 25) } },  // % critical
         };
 
         public sealed class Sala
@@ -268,8 +350,23 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>La casilla donde está plantado el grupo.</summary>
             public int Casilla { get; set; }
 
-            /// <summary>El potenciador que regala esta sala. Nulo en la entrada y en la fuente.</summary>
-            public Bono? Regalo { get; set; }
+            /// <summary>What the room gives on entering. Null at the entrance and at a fountain.</summary>
+            public Reward? Reward { get; set; }
+
+            /// <summary>The room's bonus, when its reward is one. Null at the entrance and at a fountain.</summary>
+            public Bono? Regalo => Reward != null && Reward.Bonuses.Count > 0 ? Reward.Bonuses[0] : null;
+
+            /// <summary>
+            /// What a fountain has left to sell: the shop's offers, stocked the first time it is
+            /// entered, each gone once bought. Null anywhere else.
+            /// </summary>
+            public List<Reward>? Offers { get; set; }
+
+            /// <summary>Whether the Rey Gob stands in this fountain. See <see cref="ReyGobOneIn"/>.</summary>
+            public bool HasReyGob { get; set; }
+
+            /// <summary>Whether his favor -- the dream points times one and a half -- was taken here.</summary>
+            public bool FavorTaken { get; set; }
 
             /// <summary>El efecto que modifica la sala, y cuánto. Cero: sin modificación.</summary>
             public int Efecto => Regalo?.Efecto ?? 0;
@@ -281,16 +378,22 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>Si ya se cobró su potenciador. Se vuelve a entrar al continuar un sueño.</summary>
             public bool Cobrada { get; set; }
 
-            /// <summary>Los puntos de sueño que da limpiarla: el f1 de la sala en el iyj.</summary>
+            /// <summary>The room's score: its f1 in the graph.</summary>
             /// <remarks>
-            /// Medido entre 4 y 40 sobre las 89 salas de las nueve capturas, sin una regla clara
-            /// que lo ate al nivel ni a la fila. Aquí se reparte por fila, que es lo único que se
-            /// ve subir con ella.
+            /// Measured from 4 to 41 over the rooms of the captures, low in a Sueño and high in a
+            /// Pesadilla, with no rule tying it to the row. It is not the dream points: those are
+            /// the f3, which is what the door's tooltip says. Handed out by row here.
             /// </remarks>
-            public int Puntos { get; set; }
+            public int Score { get; set; }
 
-            /// <summary>La clase de recompensa: el f3. Medido 5 en 63 salas y 15 en 8.</summary>
-            public int Clase { get; set; }
+            /// <summary>
+            /// The dream points the room gives when it is entered: its f3, the "5 Puntos de sueño"
+            /// of the door's tooltip. 5 in most rooms, 15 in the marked ones, 10 deep in a dream.
+            /// </summary>
+            public int DreamPoints { get; set; }
+
+            /// <summary>The band the room was made in, from 1. A fountain closes its band and opens the next.</summary>
+            public int Franja { get; set; } = 1;
 
             /// <summary>Sala señalada. El f7, que vale 1 en 8 de las 89 y siempre con Clase 15.</summary>
             public bool Senalada { get; set; }
@@ -323,22 +426,38 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>En qué sala está. Empieza en la cero, que es la entrada.</summary>
             public int Actual { get; set; }
 
-            /// <summary>Los puntos de AHORA: la dotación de salida más lo ganado. Es el f8.</summary>
-            public int Puntos { get; set; }
+            /// <summary>The breed of the dreamer: the f4 of the izg's f1, the portrait.</summary>
+            public int Breed { get; init; }
 
-            /// <summary>La dotación de salida, que no se mueve en todo el sueño. Es el f22.</summary>
-            public int PuntosDeSalida { get; init; }
+            /// <summary>
+            /// The dream points: the f11. What the rooms give on entering, what the Rey Gob
+            /// multiplies, what the fountain's shop is paid with.
+            /// </summary>
+            public int DreamPoints { get; set; }
+
+            /// <summary>The bonus to experience and loot now, in percent: the f8.</summary>
+            public int Bonus { get; set; }
+
+            /// <summary>The difficulty's bonus, which never moves: the f22.</summary>
+            public int BaseBonus { get; init; }
+
+            /// <summary>
+            /// The rooms behind: the f3 of every graph, newest first. The entrance and a fountain
+            /// count from the moment they are entered, a fight room from the moment it is left:
+            /// "0" at the entrance and still "0" in the first fight room, "4", "2", "0" once in
+            /// the third -- and the fountain on the list while one stands in it.
+            /// </summary>
+            public List<int> Visited { get; } = new List<int>();
 
             /// <summary>Tormentas astrales que quedan. Es el f7, y el número del botón.</summary>
             public int Tormentas { get; set; } = 1;
 
-            /// <summary>Arenas de Draconiros: los reintentos. Es el f19.</summary>
+            /// <summary>Draconiros arenas, the retries: the f17. See <see cref="StartingArenas"/>.</summary>
             /// <remarks>
-            /// La guía dice que en dificultad Sueño se empieza con una, y la ventana de la captura
-            /// de pantalla lo confirma —«Arena de Draconiros: 1» en un Sueño I nuevo y 0 en el que
-            /// estaba en curso—. Que se gaste al morir no está implementado.
+            /// It was sent as the f19 for a time, and the f19 is something else: whether the room
+            /// one stands in is clear. Spending it on a death is not implemented.
             /// </remarks>
-            public int Arena { get; set; } = 1;
+            public int Arena { get; set; }
 
             /// <summary>Los potenciadores ya cobrados, en el orden en que cayeron.</summary>
             /// <remarks>
@@ -526,7 +645,7 @@ namespace Jondo.Unity.Server.Managers
         /// campo y la «10» sin f9 —, así que sólo se puebla lo de en medio.
         /// </remarks>
         public static Sueno Crear(long characterId, string nombre, int nivel, int dificultad,
-                                  long mapaDeVuelta, int casillaDeVuelta)
+                                  long mapaDeVuelta, int casillaDeVuelta, int breed = 0)
         {
             Cargar();
 
@@ -544,8 +663,11 @@ namespace Jondo.Unity.Server.Managers
                 Nivel = nivel,
                 Dificultad = Math.Clamp(dificultad, 1, MaximaDificultad),
                 Cuenta = cuenta,
-                PuntosDeSalida = PuntosDeSalida(Math.Clamp(dificultad, 1, MaximaDificultad)),
-                Puntos = PuntosDeSalida(Math.Clamp(dificultad, 1, MaximaDificultad)),
+                Breed = breed,
+                BaseBonus = BonusOf(Math.Clamp(dificultad, 1, MaximaDificultad)),
+                Bonus = BonusOf(Math.Clamp(dificultad, 1, MaximaDificultad)),
+                DreamPoints = StartingDreamPoints(Math.Clamp(dificultad, 1, MaximaDificultad)),
+                Arena = StartingArenas(Math.Clamp(dificultad, 1, MaximaDificultad)),
                 MapaDeVuelta = mapaDeVuelta,
                 CasillaDeVuelta = casillaDeVuelta,
             };
@@ -628,12 +750,13 @@ namespace Jondo.Unity.Server.Managers
             }
             else
             {
-                // La fuente de la franja anterior es la puerta de ésta.
+                // La fuente de la franja anterior es la puerta de ésta. It stays a fountain: in the
+                // long capture room 9 is still of type 3 in both graphs once the second band is
+                // open. The newest fountain is the last one on the list, which is why this finds it.
                 Sala? fuente = null;
                 foreach (var puesta in sueno.Salas) if (puesta.EsFuente) fuente = puesta;
                 if (fuente == null) return;
                 porFila.Add(new List<Sala> { fuente });
-                fuente.EsFuente = false;
             }
 
             for (int i = 0; i < anchos.Length; i++)
@@ -641,7 +764,7 @@ namespace Jondo.Unity.Server.Managers
                 var deLaFila = new List<Sala>();
                 for (int j = 0; j < anchos[i]; j++)
                 {
-                    var sala = new Sala { Id = siguiente++, Fila = filaBase };
+                    var sala = new Sala { Id = siguiente++, Fila = filaBase, Franja = sueno.Franja };
                     deLaFila.Add(sala);
                     sueno.Salas.Add(sala);
                 }
@@ -649,7 +772,8 @@ namespace Jondo.Unity.Server.Managers
                 porFila.Add(deLaFila);
             }
 
-            var laFuente = new Sala { Id = siguiente++, Fila = filaBase, EsFuente = true };
+            var laFuente = new Sala { Id = siguiente++, Fila = filaBase, EsFuente = true, Franja = sueno.Franja };
+            lock (_azar) laFuente.HasReyGob = _azar.Next(ReyGobOneIn) == 0;
             sueno.Salas.Add(laFuente);
             porFila.Add(new List<Sala> { laFuente });
 
@@ -706,10 +830,189 @@ namespace Jondo.Unity.Server.Managers
                     Poblar(sala, nivel, sueno.Dificultad);
 
                     sala.Senalada = i == porFila.Count - 2 && sala.Id % 3 == 0;
-                    sala.Clase = sala.Senalada ? ClaseSenalada : ClaseNormal;
-                    sala.Puntos = i * 5 + (sala.Senalada ? 15 : 5);
+                    sala.DreamPoints = sala.Senalada ? ClaseSenalada : ClaseNormal;
+                    sala.Score = i * 5 + (sala.Senalada ? 15 : 5);
                 }
             }
+        }
+
+        /// <summary>
+        /// The dream moves into a room: the room left behind goes on the path, and a room pays
+        /// out the first time it is entered -- its bonus and its dream points, before the fight,
+        /// which is when the captures show f15 and f11 growing and not after the win. Null for a
+        /// room the dream does not have; the bonus it paid, when it paid one.
+        /// </summary>
+        public static Sala? Enter(Sueno dream, int roomId, out Bono? gained)
+        {
+            gained = null;
+            var room = dream.Buscar(roomId);
+            if (room == null) return null;
+
+            if (dream.Actual != roomId && dream.Buscar(dream.Actual) != null) Visit(dream, dream.Actual);
+            dream.Actual = roomId;
+            if (room.Miembros.Count == 0) Visit(dream, roomId);
+
+            if (!room.Cobrada)
+            {
+                room.Cobrada = true;
+                dream.DreamPoints += room.DreamPoints;
+                if (room.Reward != null)
+                {
+                    if (room.Reward.Kind == RewardKindPoints) dream.DreamPoints += room.Reward.Points;
+                    foreach (var bonus in room.Reward.Bonuses) Gain(dream, bonus);
+                    gained = room.Regalo;
+                }
+            }
+            if (room.EsFuente && room.Offers == null) room.Offers = new List<Reward>(ShopOffers);
+            return room;
+        }
+
+        /// <summary>
+        /// Buys at the fountain one stands at: the offer named by its reward id, or by its place
+        /// in the shop. Its price comes off the dream points, its bonuses join the ones gained, and
+        /// it leaves the shop. Null when it cannot be bought, and why in <paramref name="refusal"/>.
+        /// </summary>
+        public static Reward? Buy(Sueno dream, int which, out string refusal)
+        {
+            refusal = "";
+            var room = dream.SalaActual;
+            if (room == null || !room.EsFuente || room.Offers == null)
+            {
+                refusal = "not at a fountain";
+                return null;
+            }
+
+            var offer = room.Offers.Find(o => o.Id == which)
+                        ?? (which >= 0 && which < room.Offers.Count ? room.Offers[which] : null);
+            if (offer == null)
+            {
+                refusal = $"no offer {which}";
+                return null;
+            }
+            if (dream.DreamPoints < offer.Price)
+            {
+                refusal = $"{dream.DreamPoints} dream points for a price of {offer.Price}";
+                return null;
+            }
+
+            dream.DreamPoints -= offer.Price;
+            foreach (var bonus in offer.Bonuses) Gain(dream, bonus);
+            room.Offers.Remove(offer);
+            return offer;
+        }
+
+        /// <summary>
+        /// A bonus joins the ones gained, added to the one of the same effect when there is one:
+        /// the captures never list an effect twice but for 792, whose two carry different spells,
+        /// and they do list 3 AP, 3 MP and 2 of maximum range, sums of the rooms' ones.
+        /// </summary>
+        public static void Gain(Sueno dream, Bono bonus)
+        {
+            int same = Adds(bonus.Efecto)
+                ? dream.Ganados.FindIndex(b => b.Efecto == bonus.Efecto && b.Anidado == bonus.Anidado)
+                : -1;
+            if (same < 0)
+            {
+                dream.Ganados.Add(bonus);
+                return;
+            }
+            dream.Ganados[same] = new Bono(bonus.Efecto, dream.Ganados[same].Valor + bonus.Valor, bonus.Anidado);
+        }
+
+        /// <summary>
+        /// Whether two of an effect add up: not 792, whose value is not a quantity, nor 3405,
+        /// the shop's spells, whose "value" is which one.
+        /// </summary>
+        private static bool Adds(int effect) => effect != 792 && effect != 3405;
+
+        // The effects of the rooms' and the shop's bonuses that a fight knows how to apply.
+        private const int ActionPointsEffect = 111;
+        private const int MovementPointsEffect = 128;
+        private const int RangeEffect = 117;
+        private const int SpellsMaxRangeEffect = 281;
+        private const int SpellsCooldownEffect = 286;
+        private const int SpellsCastsPerTargetEffect = 291;
+        private const int CriticalEffect = 115;
+        private const int VitalityPercentEffect = 2844;
+        private const int DamagePercentEffect = 4041;
+
+        /// <summary>
+        /// The dream's bonuses on a fighter of one of its rooms: they are fight bonuses, and the
+        /// dream's guide says so -- "bonuses apply during combat". Returns what was applied, and
+        /// leaves out what a fight here cannot do yet: the spells of the shop (3405), and the
+        /// few f15 effects no room of ours gives.
+        /// </summary>
+        /// <remarks>
+        /// "+N maximum range" with no spell named (281) is the range of every spell, which is what
+        /// the fighter's own range is. "% vitality" is of the life the fighter starts with.
+        /// </remarks>
+        public static List<string> ApplyTo(Fighter fighter, Sueno dream)
+        {
+            var applied = new List<string>();
+            foreach (var bonus in dream.Ganados)
+            {
+                int v = bonus.Valor;
+                switch (bonus.Efecto)
+                {
+                    case ActionPointsEffect:
+                        fighter.MaxAP += v; fighter.CurrentAP += v; break;
+                    case MovementPointsEffect:
+                        fighter.MaxMP += v; fighter.CurrentMP += v; break;
+                    case RangeEffect:
+                    case SpellsMaxRangeEffect:
+                        fighter.Range += v; break;
+                    case CriticalEffect:
+                        fighter.CriticalBonus += v; break;
+                    case VitalityPercentEffect:
+                        int extra = (int)Math.Round(fighter.MaxHP * v / 100.0);
+                        fighter.MaxHP += extra; fighter.CurrentHP += extra; break;
+                    case DamagePercentEffect:
+                        fighter.DamageDealtPercent += v; break;
+                    case SpellsCooldownEffect:
+                        fighter.CooldownReduction += v; break;
+                    case SpellsCastsPerTargetEffect:
+                        fighter.ExtraCastsPerTarget += v; break;
+                    default:
+                        continue;
+                }
+                applied.Add($"{bonus.Efecto}:{v}");
+            }
+            return applied;
+        }
+
+        private static readonly ConcurrentDictionary<int, bool> _bosses = new();
+
+        /// <summary>
+        /// Whether a monster is a boss: the value-4 bit of its template's m_flags. All 137 bosses
+        /// of the dungeons carry it and 209 monsters of 5,134 do; it is the f4 of a monster of the
+        /// bestiary, measured on the three that carry one.
+        /// </summary>
+        public static bool IsBoss(int monsterId)
+            => _bosses.GetOrAdd(monsterId, id =>
+            {
+                try
+                {
+                    using var connection = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.WorldConnectionString);
+                    connection.Open();
+                    using var command = connection.CreateCommand();
+                    command.CommandText = "SELECT Data FROM MonsterTemplates WHERE Id = $id;";
+                    command.Parameters.AddWithValue("$id", id);
+                    if (command.ExecuteScalar() is not string data) return false;
+                    using var doc = JsonDocument.Parse(data);
+                    return doc.RootElement.TryGetProperty("m_flags", out var flags)
+                           && flags.TryGetInt64(out long bits) && (bits & BossFlag) != 0;
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            });
+
+        private const long BossFlag = 4;
+
+        private static void Visit(Sueno dream, int roomId)
+        {
+            if (!dream.Visited.Contains(roomId)) dream.Visited.Insert(0, roomId);
         }
 
         /// <summary>
@@ -727,6 +1030,7 @@ namespace Jondo.Unity.Server.Managers
             if (libres.Count == 0) return;
 
             var dado = new Random(HashCode.Combine(sueno.CharacterId, sueno.Cuenta, sueno.Franja));
+            var fuentes = MapasDeFuente();
 
             foreach (var sala in sueno.Salas)
             {
@@ -734,6 +1038,15 @@ namespace Jondo.Unity.Server.Managers
                 if (sala.Fila == 0)
                 {
                     sala.MapaDeLaSala = MapaDeEntrada;
+                    continue;
+                }
+
+                // A fountain on one of the five maps that have the fountain itself: the real one
+                // is 237783053, whose fourth element is the Fontaine onirique. On any other map
+                // there is nothing to open the shop with.
+                if (sala.EsFuente && fuentes.Count > 0)
+                {
+                    sala.MapaDeLaSala = fuentes[dado.Next(fuentes.Count)];
                     continue;
                 }
 
@@ -758,12 +1071,60 @@ namespace Jondo.Unity.Server.Managers
         {
             yield return MapaDeEntrada;
             foreach (long mapa in MapasDeSala()) yield return mapa;
+            foreach (long mapa in MapasDeFuente()) yield return mapa;
         }
 
-        private static List<long> MapasDeSala()
-        {
-            if (_mapasDeSala != null) return _mapasDeSala;
+        /// <summary>
+        /// The graphics of a room's doors: 90166, the pools of 69 maps, and 65148, the jets of 22
+        /// -- blue or red, the colour of what is behind them.
+        /// </summary>
+        private static readonly HashSet<int> DoorGfx = new HashSet<int> { 90166, 65148 };
 
+        /// <summary>
+        /// The Fontaine onirique of a fountain room: graphic 94001, the fourth element of the five
+        /// fountain maps -- 539708 on the long capture's 237783053, declared with skill 355,
+        /// "Consultar", where the doors have 184.
+        /// </summary>
+        public const int FountainGfx = 94001;
+        public const int FountainSkill = 355;
+
+        /// <summary>The doors of a map, in its own order: its elements of a door's graphic.</summary>
+        public static List<Interactives.Element> DoorsOf(long mapId)
+            => Interactives.ElementsOf(mapId).Where(e => DoorGfx.Contains(e.Gfx)).ToList();
+
+        /// <summary>The Fontaine onirique of a room, or zero.</summary>
+        public static int FountainOf(Sala sala)
+        {
+            if (sala.MapaDeLaSala == 0) return 0;
+            foreach (var element in Interactives.ElementsOf(sala.MapaDeLaSala))
+                if (element.Gfx == FountainGfx) return element.Id;
+            return 0;
+        }
+
+        private static List<long>? _mapasDeFuente;
+
+        /// <summary>The five maps of subarea 904 with the fountain and its three doors.</summary>
+        private static List<long> MapasDeFuente()
+        {
+            if (_mapasDeFuente != null) return _mapasDeFuente;
+            var salen = MapasDeLaSubarea()
+                .Where(m => DoorsOf(m).Count >= PuertasPorSala
+                            && Interactives.ElementsOf(m).Any(e => e.Gfx == FountainGfx))
+                .OrderBy(m => m).ToList();
+            if (salen.Count > 0) _mapasDeFuente = salen;
+            return salen;
+        }
+
+        /// <summary>
+        /// The Rey Gob stands in one fountain in this many. Not measured: the guide only says he
+        /// is "much rarer than the other" goblins, and the one capture that meets him meets him
+        /// at a fountain. He used to stand in every one, where the shop is what belongs.
+        /// </summary>
+        public const int ReyGobOneIn = 4;
+
+        /// <summary>The maps of subarea 904, the dream's.</summary>
+        private static HashSet<long> MapasDeLaSubarea()
+        {
             var deLaSubarea = new HashSet<long>();
             try
             {
@@ -782,12 +1143,23 @@ namespace Jondo.Unity.Server.Managers
             {
                 Console.WriteLine($"[Sueños] No se han podido leer los mapas de sala: {ex.Message}");
             }
+            return deLaSubarea;
+        }
 
+        private static List<long> MapasDeSala()
+        {
+            if (_mapasDeSala != null) return _mapasDeSala;
+
+            var deLaSubarea = MapasDeLaSubarea();
             var salen = new List<long>();
             foreach (long mapId in deLaSubarea)
             {
                 if (mapId == MapaDeEntrada) continue;
-                if (Interactives.ElementsOf(mapId).Count < PuertasPorSala) continue;
+                var elementos = Interactives.ElementsOf(mapId);
+                if (elementos.Count < PuertasPorSala) continue;
+                // A fight room is doors and nothing else: the fountain maps and 237787188, whose
+                // fourth element (306053) is something else again, are not fight rooms.
+                if (elementos.Any(e => !DoorGfx.Contains(e.Gfx))) continue;
                 salen.Add(mapId);
             }
 
@@ -807,9 +1179,9 @@ namespace Jondo.Unity.Server.Managers
         {
             if (sala.MapaDeLaSala == 0) return 0;
 
-            var elementos = Interactives.ElementsOf(sala.MapaDeLaSala);
-            if (cual < 0 || cual >= elementos.Count) return 0;
-            return elementos[cual].Id;
+            var puertas = DoorsOf(sala.MapaDeLaSala);
+            if (cual < 0 || cual >= puertas.Count) return 0;
+            return puertas[cual].Id;
         }
 
         /// <summary>El Rey Gob del Favor Onírico, y dónde se pone.</summary>
@@ -850,12 +1222,10 @@ namespace Jondo.Unity.Server.Managers
             sala.Miembros.Clear();
             sala.Miembros.AddRange(MiembrosDe(elegido.Miembros));
 
-            // Y el potenciador que regala la sala, de los veinte medidos. No se escala con la
-            // dificultad: los valores vienen tal cual de las capturas, y son ellos los que ya
-            // traen el reparto —el «% vitalidad» sale con 20, 70 y 90 según el sueño—.
+            // Y lo que regala la sala, de las nueve recompensas que ofrecen las salas medidas.
             lock (_azar)
             {
-                sala.Regalo = Potenciadores[_azar.Next(Potenciadores.Length)];
+                sala.Reward = RoomRewards[_azar.Next(RoomRewards.Length)];
             }
         }
 

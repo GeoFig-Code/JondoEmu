@@ -111,6 +111,8 @@ namespace Jondo.Unity.Server
             // puerta de casa, y para eso las casas tienen que estar ya cargadas.
             Managers.TeleportManager.Initialize();
             Managers.Resources.Initialize();
+            Managers.Workshops.Initialize();
+            Managers.Forgemagic.Initialize();
             Managers.InfoMessages.Initialize();
             Managers.Challenges.Initialize();
             Managers.Challenges.OnlyOffer(Handlers.ChallengeWatcher.Watched);

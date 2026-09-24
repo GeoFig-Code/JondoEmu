@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Jondo.Unity.Protocol;
 using Jondo.Unity.Server.Managers;
 using Jondo.Unity.Server.Network;
+using Jondo.Unity.World.Fights;
 
 namespace Jondo.Unity.Server.Handlers
 {
@@ -83,7 +85,7 @@ namespace Jondo.Unity.Server.Handlers
 
             // Sin sueño en curso se enseña uno nuevo, que es lo que hace la ventana: ofrece.
             sueno ??= Dreams.Crear(yo, GameState.CharacterName, GameState.CharacterLevel, 1,
-                                   GameState.MapId, GameState.CellId);
+                                   GameState.MapId, GameState.CellId, GameState.Breed);
 
             // Primero soltar el elemento. En la captura de Pesadilla II el orden es exacto:
             //
@@ -183,7 +185,7 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             var sueno = Dreams.Crear(yo, GameState.CharacterName, GameState.CharacterLevel,
-                                     dificultad, GameState.MapId, GameState.CellId);
+                                     dificultad, GameState.MapId, GameState.CellId, GameState.Breed);
 
             Console.WriteLine($"[Sueños] {yo} empieza en dificultad {dificultad}: " +
                               $"{sueno.Salas.Count} salas.");
@@ -214,6 +216,13 @@ namespace Jondo.Unity.Server.Handlers
 
             var actual = sueno.SalaActual;
             if (actual == null) return false;
+
+            // The Fontaine onirique of a fountain room: the shop, not a way out.
+            if (actual.EsFuente && elementId == Dreams.FountainOf(actual))
+            {
+                await ShopAsync(stream, sueno, elementId);
+                return true;
+            }
 
             // Y no se sale de una sala sin haberla limpiado. La guía lo dice de la única manera
             // que importa: «es absolutamente imposible volver atrás» una vez entras, y se avanza
@@ -276,18 +285,17 @@ namespace Jondo.Unity.Server.Handlers
         private static async Task EntrarEnSalaAsync(NetworkStream stream, Dreams.Sueno sueno,
                                                     int salaId)
         {
-            var sala = sueno.Buscar(salaId);
+            int pointsBefore = sueno.DreamPoints;
+            var sala = Dreams.Enter(sueno, salaId, out var gained);
             if (sala == null) return;
 
-            sueno.Actual = salaId;
-
-            // El potenciador se cobra AL ENTRAR, antes de pelear, y una sola vez por sala.
-            if (sala.Regalo != null && !sala.Cobrada)
+            // El potenciador y los puntos se cobran AL ENTRAR, antes de pelear, y una sola vez por sala.
+            if (gained != null || sueno.DreamPoints != pointsBefore)
             {
-                sala.Cobrada = true;
-                sueno.Ganados.Add(sala.Regalo);
-                Console.WriteLine($"[Sueños] Sala {sala.Id}: potenciador {sala.Regalo.Efecto} " +
-                                  $"de {sala.Regalo.Valor}. Lleva {sueno.Ganados.Count}.");
+                Console.WriteLine($"[Sueños] Sala {sala.Id}: +{sueno.DreamPoints - pointsBefore} dream points, " +
+                                  $"{sueno.DreamPoints} in all" +
+                                  (gained != null ? $"; bonus {gained.Efecto} of {gained.Valor}, " +
+                                                    $"{sueno.Ganados.Count} so far." : "."));
             }
 
             // Pisar la Fuente abre la franja siguiente, porque la fuente es a la vez la última
@@ -302,7 +310,7 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.Push(Op.Izg, DreamProtocol.BuildDreamState(sueno)));
+                ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
 
             // Y el cambio de mapa: al mapa DE LA SALA, que es uno de los 484 de la subárea 904
             // hechos para esto, no al del grupo de monstruos. Mandarle al del grupo es lo que le
@@ -317,7 +325,7 @@ namespace Jondo.Unity.Server.Handlers
             // El grupo se planta ANTES del cambio de mapa: el jss que el cliente pide justo
             // después es el que lleva los actores, y un grupo plantado un instante tarde no
             // aparece hasta que se vuelve a entrar.
-            if (sala.EsFuente) PlantarLaTienda(sala); else PlantarElGrupo(sala);
+            if (sala.EsFuente) { if (sala.HasReyGob) PlantarLaTienda(sala); } else PlantarElGrupo(sala);
 
             int aterriza = await TeleportHandler.ToMapAsync(stream, mapa, 0);
 
@@ -373,16 +381,16 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Se ha ganado la pelea de una sala: la marca hecha y suma sus puntos.
+        /// Se ha ganado la pelea de una sala: la marca hecha.
         /// </summary>
         /// <remarks>
         /// Devuelve verdadero si el grupo derrotado era el de una sala, que es lo que le dice al
         /// motor de combate que NO reponga otro en su sitio.
         ///
-        /// Los puntos son el f1 de la sala en el iyj —lo que la ventana enseña debajo de cada
-        /// una—, medido entre 4 y 40 en las 89 salas de las nueve capturas. Sumarlos aquí es lo
-        /// que hace que la moneda del sueño exista: sin esto la ventana promete cinco puntos por
-        /// sala y limpiarla no da ninguno.
+        /// Winning pays nothing: the room paid its dream points when it was entered. In the long
+        /// capture the izg that follows a win carries the same f11 as the one of the entrance,
+        /// and only the f18 and f19 change. This used to add the room's score to the f8, which is
+        /// the bonus to experience and loot: 220% became 275% in three rooms.
         /// </remarks>
         public static bool SalaLimpiada(long grupoDerrotado)
         {
@@ -399,10 +407,8 @@ namespace Jondo.Unity.Server.Handlers
                 if (sala.Hecha) return true;
 
                 sala.Hecha = true;
-                sueno.Puntos += sala.Puntos;
 
-                Console.WriteLine($"[Sueños] Sala {sala.Id} limpiada: +{sala.Puntos} puntos, " +
-                                  $"{sueno.Puntos} en total.");
+                Console.WriteLine($"[Sueños] Sala {sala.Id} limpiada; {sueno.DreamPoints} dream points.");
                 return true;
             }
 
@@ -416,7 +422,226 @@ namespace Jondo.Unity.Server.Handlers
             if (sueno == null) return;
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.Push(Op.Izg, DreamProtocol.BuildDreamState(sueno)));
+                ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
+        }
+
+        /// <summary>The izg of a dream, with the bestiary of the room one stands in.</summary>
+        private static byte[] StateOf(Dreams.Sueno sueno)
+            => DreamProtocol.BuildDreamState(sueno, BestiaryOf(sueno.SalaActual));
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  The bestiary
+        // ═══════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// The monsters of a room as the fight will have them: each built by the fight's own
+        /// <see cref="FightHandler.BuildMonsterFighter"/>, on the cell the fight will place it on.
+        /// Empty when the room has no fight left to win.
+        /// </summary>
+        /// <remarks>
+        /// What the real server lists are its dream's monsters, scaled to the dream's level --
+        /// monster 209, 580 life points at its fifth grade, has 5,510 in the bestiary. The monsters
+        /// here are the world group the room plants, at their own grades, and the bestiary shows
+        /// them as they are: showing scaled figures for unscaled monsters would be a lie.
+        /// </remarks>
+        internal static List<DreamProtocol.Beast> BestiaryOf(Dreams.Sala? sala)
+        {
+            var beasts = new List<DreamProtocol.Beast>();
+            if (sala == null || sala.Miembros.Count == 0 || sala.Hecha) return beasts;
+
+            var group = MobSpawnManager.ComposeOffMap(sala.Miembros);
+            if (group == null) return beasts;
+
+            var cells = FightHandler.DefenderPlacement(sala.MapaDeLaSala);
+            for (int i = 0; i < group.Members.Count; i++)
+            {
+                var member = group.Members[i];
+                int cell = i < cells.Count ? cells[i] : cells.FirstOrDefault();
+                var fighter = FightHandler.BuildMonsterFighter(member, -(i + 1), cell);
+                beasts.Add(new DreamProtocol.Beast(cell, fighter.MonsterId, fighter.Level,
+                                                   Dreams.IsBoss(fighter.MonsterId), StatsOf(fighter)));
+            }
+            return beasts;
+        }
+
+        /// <summary>
+        /// A monster's characteristics as the bestiary lists them, in the order of the captures:
+        /// life, AP, the five resistances that are not zero, initiative, evasion and lock, MP when
+        /// it has some, and the two dodges. Evasion and lock are what the fight gives a monster --
+        /// nothing, today -- and not a figure of their own.
+        /// </summary>
+        internal static List<(int Characteristic, int Value)> StatsOf(Fighter monster)
+        {
+            var stats = new List<(int, int)> { (LifePoints, monster.MaxHP), (ActionPoints, monster.MaxAP) };
+            foreach (var (id, value) in new[]
+                     {
+                         (EarthResistance, monster.EarthResPct), (FireResistance, monster.FireResPct),
+                         (WaterResistance, monster.WaterResPct), (AirResistance, monster.AirResPct),
+                         (NeutralResistance, monster.NeutralResPct),
+                     })
+            {
+                if (value != 0) stats.Add((id, value));
+            }
+            stats.Add((Initiative, monster.Initiative));
+            stats.Add((Evasion, monster.Otras.GetValueOrDefault(Evasion)));
+            stats.Add((Lock, monster.Otras.GetValueOrDefault(Lock)));
+            if (monster.MaxMP != 0) stats.Add((MovementPoints, monster.MaxMP));
+            stats.Add((EffectEngine.EsquivaPA, monster.Otras.GetValueOrDefault(EffectEngine.EsquivaPA)));
+            stats.Add((EffectEngine.EsquivaPM, monster.Otras.GetValueOrDefault(EffectEngine.EsquivaPM)));
+            return stats;
+        }
+
+        // The characteristics of datos/characteristics.json the bestiary lists.
+        private const int LifePoints = 0;
+        private const int ActionPoints = 1;
+        private const int MovementPoints = 23;
+        private const int EarthResistance = 33;
+        private const int FireResistance = 34;
+        private const int WaterResistance = 35;
+        private const int AirResistance = 36;
+        private const int NeutralResistance = 37;
+        private const int Initiative = 44;
+        private const int Evasion = 78;
+        private const int Lock = 79;
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  The fountain's shop
+        // ═══════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// The Fontaine onirique used: its element let go (iwn, skill 355) and the state again,
+        /// which carries the shop's offers in its f6.
+        /// </summary>
+        /// <remarks>
+        /// What the real server answers is not captured -- the one capture at a fountain never
+        /// touches it -- and the client has the offers from the izg of the room already. The
+        /// element is let go the way every door and the well are, so the client does not keep it
+        /// taken; the shop's window is the client's.
+        /// </remarks>
+        private static async Task ShopAsync(NetworkStream stream, Dreams.Sueno sueno, int elementId)
+        {
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Iwn, ConnectionProtocol.BuildElementInUse(
+                    elementId, Dreams.FountainSkill, GameState.CharacterId)));
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
+            Console.WriteLine($"[Sueños] The fountain of room {sueno.Actual}: " +
+                              $"{sueno.SalaActual?.Offers?.Count ?? 0} offer(s), {sueno.DreamPoints} dream points.");
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  The loot table and the positions
+        // ═══════════════════════════════════════════════════════════════════
+
+        /// <summary>ixq: the loot table of the room one stands in, answered by izo.</summary>
+        public static async Task DropTableAsync(NetworkStream stream, byte[] payload)
+        {
+            var sueno = Dreams.De(GameState.CharacterId);
+            var drops = DropsOf(sueno?.SalaActual);
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Answer(Op.Izo, DreamProtocol.BuildDropTable(drops),
+                                          ConnectionProtocol.RequestId(payload)));
+            Console.WriteLine($"[Sueños] Loot table of room {sueno?.Actual}: {drops.Count} line(s).");
+        }
+
+        /// <summary>
+        /// What the room's fight can drop, as the fight rolls it: the Jondo coin of every monster,
+        /// always and added up, then each item of the monsters' own tables and of their global
+        /// ones, at the best chance any of them gives, with its criterion when it has one.
+        /// </summary>
+        /// <remarks>
+        /// The real table is the dream's own -- 61 lines of dream loot under dream criteria in
+        /// the capture. The monsters here are the world's and drop what they drop in the world,
+        /// and the table says so rather than promising the dream's.
+        /// </remarks>
+        internal static List<(string Criterion, int Item, int Quantity, double Percent)> DropsOf(Dreams.Sala? sala)
+        {
+            var lines = new List<(string Criterion, int Item, int Quantity, double Percent)>();
+            if (sala == null || sala.Miembros.Count == 0) return lines;
+
+            var group = MobSpawnManager.ComposeOffMap(sala.Miembros);
+            if (group == null) return lines;
+
+            int coins = 0;
+            var best = new Dictionary<(string, int), double>();
+            void Keep(string criterion, int item, double percent)
+            {
+                var key = (criterion ?? "", item);
+                if (!best.TryGetValue(key, out double had) || percent > had) best[key] = percent;
+            }
+
+            foreach (var member in group.Members)
+            {
+                int monster = member.Monster?.Id ?? 0;
+                coins += JondoCoin.RewardFor(member.Level);
+                foreach (var drop in DatabaseManager.GetMonsterDrops(monster, member.GradeIndex))
+                    Keep("", drop.ObjectId, drop.PercentDrop);
+                foreach (var drop in DatabaseManager.GetMonsterGlobalDrops(monster))
+                    Keep(drop.ReceiverCriterion, drop.ObjectId, drop.PercentDrop);
+            }
+
+            if (coins > 0) lines.Add(("", JondoCoin.TemplateId, coins, 100.0));
+            foreach (var ((criterion, item), percent) in best.OrderByDescending(kv => kv.Value))
+                lines.Add((criterion, item, 1, percent));
+            return lines;
+        }
+
+        /// <summary>
+        /// kaz: where a fight on this map would place everybody, answered by jxj -- the cells a
+        /// fight here is placed from, computed as the fight computes them.
+        /// </summary>
+        public static async Task PositionsAsync(NetworkStream stream, byte[] payload)
+        {
+            long map = GameState.MapId;
+            long arena = MapManager.ResolveArenaMapId(map);
+            var (attackers, defenders) = FightHandler.Placement(map);
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Answer(Op.Jxj, DreamProtocol.BuildPositions(arena, map, attackers, defenders),
+                                          ConnectionProtocol.RequestId(payload)));
+            Console.WriteLine($"[Sueños] Positions of map {map}: {attackers.Count} and {defenders.Count} cells.");
+        }
+
+        /// <summary>
+        /// iym: buying at the fountain. Its price off the dream points, its bonuses gained, and the
+        /// izg again with what the shop has left.
+        /// </summary>
+        /// <remarks>
+        /// INFERRED, NOT MEASURED: no capture buys anything -- the long one reaches a fountain
+        /// and only talks to the Rey Gob. iym is the one request of the client's dream requests
+        /// that carries a choice: the class that sends them (efs) sends six, four of them
+        /// measured -- ixf entering, ixq the loot table, izh the storm, iyx leaving -- the fifth,
+        /// iwt, is empty, and iym carries an int32 in f1 and a message in f2. The int is taken as
+        /// the offer, by its reward id or by its place in the shop, and the frame is logged whole
+        /// so the first real purchase says what it is. The answer to it is not known either: the
+        /// izg that follows is what tells the client.
+        /// </remarks>
+        public static async Task BuyAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? iym = ConnectionProtocol.ReadPayload(payload, Op.Iym);
+            if (iym == null) return;
+            Console.WriteLine($"[Sueños] iym (buy, inferred): {Convert.ToHexString(iym).ToLowerInvariant()}");
+
+            var sueno = Dreams.De(GameState.CharacterId);
+            if (sueno == null)
+            {
+                Console.WriteLine("[Sueños] iym with no dream going.");
+                return;
+            }
+
+            int which = 0;
+            foreach (var f in ProtoMessage.Parse(iym).Fields)
+                if (f.FieldNumber == 1 && f.WireType == 0) which = (int)f.VarIntValue;
+
+            var bought = Dreams.Buy(sueno, which, out string refusal);
+            if (bought == null)
+                Console.WriteLine($"[Sueños] Nothing bought with {which}: {refusal}.");
+            else
+                Console.WriteLine($"[Sueños] Bought reward {bought.Id} for {bought.Price}: " +
+                                  $"{string.Join(", ", bought.Bonuses.Select(b => $"{b.Efecto} of {b.Valor}"))}; " +
+                                  $"{sueno.DreamPoints} dream points left.");
+
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -479,7 +704,7 @@ namespace Jondo.Unity.Server.Handlers
                                           ConnectionProtocol.RequestId(payload)));
 
             Console.WriteLine($"[Sueños] {sueno.CharacterId} sale del sueño en la sala " +
-                              $"{sueno.Actual} con {sueno.Puntos} punto(s).");
+                              $"{sueno.Actual} con {sueno.DreamPoints} dream point(s).");
 
             Dreams.Olvidar(sueno.CharacterId);
         }

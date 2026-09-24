@@ -132,6 +132,9 @@ namespace Jondo.Unity.Server.Handlers
                 case InteractiveActionKind.Gather:
                     await GatheringHandler.GatherAsync(stream, interactive.Element.Id, action.SkillId);
                     break;
+                case InteractiveActionKind.Workshop:
+                    await WorkshopHandler.OpenAsync(stream, interactive.Element.Id, action.SkillId);
+                    break;
                 case InteractiveActionKind.GuildFounding:
                     await GuildHandler.OpenFoundingAsync(stream, interactive.Element.Id, action.SkillId);
                     break;

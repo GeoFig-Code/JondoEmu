@@ -320,7 +320,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Life regeneration, run by the client and switched by the server: started on every return to a
   roleplay map (`ktz`) and stopped on the way into a fight (`kuq`), so a fight starts on the life
   the ticks earned
-- ✅ Commands — `.teleport [x,y]` or `.teleport <map id>`, `.kamas`, `.shop`, `.size`, `.level`, `.item`, `.itemset`, `.gremio`, `.raid`
+- ✅ Commands — `.teleport [x,y]` or `.teleport <map id>`, `.kamas`, `.shop`, `.size`, `.level`, `.item`, `.itemset`, `.receta`, `.gremio`, `.raid`; they answer with an information line only their author sees
 - ✅ Live administration over HTTP — `POST /api/personaje` sets characteristics, kamas and level, grants items or a mount, and teleports a connected character without a reconnect. `POST /api/rol` changes account roles. Administrator only, loopback only
 - 🟡 `.level` repaints the in-fight spell bar, but the fighter's own level is not updated until the next fight
 
@@ -356,7 +356,22 @@ Dofus does not ship the item-to-look table: the server sends it. **2,371 of the 
 
 - ✅ What you gather lands in the inventory, and the amount grows with job level
 - ✅ Too low a job level blocks gathering
-- ❌ Crafting professions: workshops, the craft window, and the **4,858 recipes** already in the database
+- ✅ **577 workshop stations** on the world's maps, recognised by their graphic: 21 declared in the captures' `jss`, 2 seen used, 15 from PR #44's Incarnam captures and 16 found inside the workshops of a one-skill job (tailor, shoemaker, sculptor, smith, jeweller, handyman, hunter, fisherman...)
+- ✅ The craft window of every job with any of the **4,858 recipes**: pick a recipe or lay the ingredients by hand, craft one or many, the job's level asked for
+- ✅ Crafted equipment rolls each characteristic in its own range; what rolls nothing joins a stack
+- ✅ Craft experience `⌊20 · recipe level / (1 + 0.1 · gap^1.1)⌋` — the tutorial's +20 — and the level-up window (`isz`), now for gathering too
+- ✅ Smithmagic on the six magus tables: clean success, partial success (it enters and costs weight elsewhere) and failure, with the client's own rune weights, the pool, over and exo up to a weight of 101, exo AP/MP/range at 1%
+- ✅ Signature runes: "Fabricado por" on a craft, "Modificado por" on a magus table, stored in the item itself
+- 🟡 The odds of a rune are the community's model (66/34/0 on a weak item, 43/50/7 at the perfect jet, a 15% floor, a rune's reach of 30·√weight); Ankama never published theirs
+- ✅ Maging for someone else: invite a customer or a magus from a magus table, the customer lays their item, runes and signature, pays when a rune went on their item; the magus' side measured whole, the customer's mirrored
+- ✅ Breaking items at the grinder into their base runes, `(3 · value · weight · level / 200 + 1) · coefficient`, checked on the seven captured lines
+- ✅ The breaking focus: the focused characteristic takes half the weight of every other
+- ✅ The artisans' directory: each job's settings (free, minimum level) kept per character, the public list, and the book of every workshop opening its jobs
+- ✅ Transcendence runes: 100% of success within the density rule of their own data, never over an over or an exo, and the item closed to smithmagic afterwards
+- ➖ Corruption runes: not in the 3.6.10 game data (Ankama withdrew them in 2.51); only their help text remains
+- ✅ `.oficios [level]` puts every job at a level (200 by default), `.oficio <job> <level>` one of them
+- ✅ `.receta <item> [times]` puts the ingredients of an item's recipe in the bag, each onto the stack already there
+- ✅ Forgegod mode for administrators (`.forjadios on|off`, `.forgegod`, `.forgedieu`): no rune fails, no weight cap, two AP of exo, transcendence on anything, no job level on recipes
 
 ### 👹 NPCs and monsters
 <img width="954" height="836" alt="image" src="https://github.com/user-attachments/assets/78779a18-0cd2-4f5c-b403-0c39cd291bcb" />
@@ -1540,7 +1555,6 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 
 ### ❌ Not implemented at all
 
-- Crafting professions
 - Achievements
 - Party fights
 
@@ -1618,7 +1632,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,186 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,287 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 

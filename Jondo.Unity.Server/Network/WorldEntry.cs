@@ -434,6 +434,13 @@ namespace Jondo.Unity.Server.Network
                 return ConnectionProtocol.Push(Op.Irq, SendJobs(frame));
             }
 
+            // The artisan settings of every job. The captured ones were the capturer's -- a
+            // minimum level of 150 for the miner, 69 for the farmer -- handed to everybody.
+            if (ConnectionProtocol.ReadPayload(frame, Op.Isd) != null)
+            {
+                return ConnectionProtocol.Push(Op.Isd, Handlers.ArtisanHandler.BuildSettings(SessionContext.State));
+            }
+
             if (ConnectionProtocol.ReadPayload(frame, Op.Hms) != null)
             {
                 return ConnectionProtocol.Push(Op.Hms,
@@ -750,6 +757,12 @@ namespace Jondo.Unity.Server.Network
                 sent++;
             }
             if (skipped > 0) Console.WriteLine($"[World] {skipped} messages left out: they belong to another account.");
+
+            // The jobs this character keeps in the public artisans' list, so that the window's
+            // box says so after a relog and the next toggle takes them off rather than on.
+            var listed = SessionContext.State.CrafterSettings.Where(s => s.Value.Listed).Select(s => (s.Key, true)).ToList();
+            if (listed.Count > 0)
+                await EnviarAsync(stream, ConnectionProtocol.Push(Op.Iro, Handlers.ArtisanHandler.BuildListing(listed)));
 
             // The guild frames the captured jhe/jhh/jhk were dropped for: built from our own
             // database now, so a character who has a guild sees it. Nothing goes out for one who

@@ -573,6 +573,21 @@ namespace Jondo.Unity.Server
                 ";
                 createJobs.ExecuteNonQuery();
 
+                // What each character says of itself as an artisan, job by job: the minimum
+                // level of a customer, crafting for free, and being in the public directory.
+                var createCrafter = worldConnection.CreateCommand();
+                createCrafter.CommandText = @"
+                    CREATE TABLE IF NOT EXISTS CharacterCrafterSettings (
+                        CharacterId INTEGER NOT NULL,
+                        JobId INTEGER NOT NULL,
+                        MinLevel INTEGER NOT NULL DEFAULT 1,
+                        Free INTEGER NOT NULL DEFAULT 1,
+                        Listed INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY (CharacterId, JobId)
+                    );
+                ";
+                createCrafter.ExecuteNonQuery();
+
                 // Los retos de mazmorra que ya se han logrado. Van con logro detrás, y un logro
                 // se hace UNA vez: cumplido el reto, no se le vuelve a ofrecer a ese personaje
                 // nunca más. Los retos normales no pasan por aquí, que ésos salen siempre.
@@ -2224,7 +2239,7 @@ namespace Jondo.Unity.Server
         {
             "CharacterItems", "CharacterSpellChoices", "CharacterSpellBar",
             "HavenBag", "HavenBagFurniture", "HavenBagChest",
-            "CharacterWardrobe", "CharacterAppearance", "CharacterJobs",
+            "CharacterWardrobe", "CharacterAppearance", "CharacterJobs", "CharacterCrafterSettings",
             "CharacterChallenges", "CharacterQuests", "CharacterAchievements",
             "CharacterKeyring", "CharacterElements",
         };
@@ -2432,6 +2447,10 @@ namespace Jondo.Unity.Server
                         Experience = par.Value,
                     };
                 }
+
+                estado.CrafterSettings.Clear();
+                foreach (var setting in LoadCrafterSettings(estado.CharacterId))
+                    estado.CrafterSettings[setting.Key] = setting.Value;
 
                 Console.WriteLine($"[SQLite] Successfully loaded character: {Jondo.Unity.Server.Network.SessionContext.State.CharacterName} (Level {Jondo.Unity.Server.Network.SessionContext.State.CharacterLevel}), {estado.Jobs.Count} oficios.");
                 return true;
@@ -2877,6 +2896,33 @@ namespace Jondo.Unity.Server
             catch (Exception ex)
             {
                 Console.WriteLine($"[SQLite] No se pudo crear el objeto {uid}: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Rewrites how many there are of an item and what it carries: a crafted stack that grows,
+        /// a rune that changes an item, a signature. Only on the owner's row, like every write here.
+        /// </summary>
+        public static bool UpdateCharacterItem(long characterId, long uid, int quantity, string effects)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+
+                var command = connection.CreateCommand();
+                command.CommandText = "UPDATE CharacterItems SET Quantity = $n, Effects = $e " +
+                                      "WHERE Uid = $uid AND CharacterId = $id;";
+                command.Parameters.AddWithValue("$n", Math.Max(1, quantity));
+                command.Parameters.AddWithValue("$e", effects);
+                command.Parameters.AddWithValue("$uid", uid);
+                command.Parameters.AddWithValue("$id", characterId);
+                return command.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] Could not rewrite item {uid}: {ex.Message}");
                 return false;
             }
         }
@@ -4338,6 +4384,54 @@ namespace Jondo.Unity.Server
             {
                 Console.WriteLine($"[SQLite] No se ha podido guardar el oficio {jobId}: {ex.Message}");
             }
+        }
+
+        /// <summary>One job's artisan settings, written as they change.</summary>
+        public static void SaveCrafterSetting(long characterId, int jobId, Handlers.ArtisanHandler.Setting setting)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = @"
+                    INSERT INTO CharacterCrafterSettings (CharacterId, JobId, MinLevel, Free, Listed)
+                    VALUES ($c, $j, $m, $f, $l)
+                    ON CONFLICT(CharacterId, JobId) DO UPDATE SET MinLevel = $m, Free = $f, Listed = $l;";
+                command.Parameters.AddWithValue("$c", characterId);
+                command.Parameters.AddWithValue("$j", jobId);
+                command.Parameters.AddWithValue("$m", setting.MinLevel);
+                command.Parameters.AddWithValue("$f", setting.Free ? 1 : 0);
+                command.Parameters.AddWithValue("$l", setting.Listed ? 1 : 0);
+                command.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] Could not save the artisan settings of job {jobId}: {ex.Message}");
+            }
+        }
+
+        /// <summary>A character's artisan settings, job by job.</summary>
+        public static Dictionary<int, Handlers.ArtisanHandler.Setting> LoadCrafterSettings(long characterId)
+        {
+            var settings = new Dictionary<int, Handlers.ArtisanHandler.Setting>();
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT JobId, MinLevel, Free, Listed FROM CharacterCrafterSettings WHERE CharacterId = $c;";
+                command.Parameters.AddWithValue("$c", characterId);
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                    settings[reader.GetInt32(0)] = new Handlers.ArtisanHandler.Setting(
+                        reader.GetInt32(1), reader.GetInt32(2) != 0, reader.GetInt32(3) != 0);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] Could not read the artisan settings: {ex.Message}");
+            }
+            return settings;
         }
 
         /// <summary>One quest's progress as the database holds it.</summary>

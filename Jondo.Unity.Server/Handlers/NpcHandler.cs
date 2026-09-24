@@ -567,12 +567,10 @@ namespace Jondo.Unity.Server.Handlers
             return fuera;
         }
 
-        /// <summary>Una línea de servidor en el chat, que es donde se cuenta lo que no tiene ventana.</summary>
+        /// <summary>An information line, which is where what has no window of its own is told.</summary>
         private static Task DecirleAsync(NetworkStream stream, string text)
             => Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.Push(Op.Kti, ConnectionProtocol.BuildChatLine(
-                    GameState.CharacterName, GameState.CharacterId,
-                    SessionContext.Current.AccountId, "[INFO] " + text, 0)));
+                ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildNotice(text)));
 
         /// <summary>
         /// Manda una pregunta con sus respuestas, y se asegura de que haya al menos una.
@@ -841,13 +839,23 @@ namespace Jondo.Unity.Server.Handlers
             if (elegidaAhora != null && elegidaAhora.DreamPointsPercent != 0)
             {
                 var sueno = Managers.Dreams.De(GameState.CharacterId);
-                if (sueno != null)
+                var aqui = sueno?.SalaActual;
+                if (sueno != null && aqui != null && aqui.FavorTaken)
                 {
-                    int antes = sueno.Puntos;
-                    sueno.Puntos = (int)Math.Round(sueno.Puntos * elegidaAhora.DreamPointsPercent / 100.0);
+                    // Once per fountain: his favor was taken here already. It could be asked for
+                    // again and again, and 25 points became as many as one had patience for.
+                    Console.WriteLine($"[Sueños] The Rey Gob's favor was already taken in room {aqui.Id}.");
+                }
+                else if (sueno != null)
+                {
+                    if (aqui != null) aqui.FavorTaken = true;
+                    // The dream points, the f11: 25 become 38 in the long capture, 25 x 1.5 rounded up.
+                    int antes = sueno.DreamPoints;
+                    sueno.DreamPoints = (int)Math.Round(sueno.DreamPoints * elegidaAhora.DreamPointsPercent / 100.0,
+                                                        MidpointRounding.AwayFromZero);
 
                     Console.WriteLine($"[Sueños] La respuesta {reply} deja los puntos de " +
-                                      $"{antes} en {sueno.Puntos} " +
+                                      $"{antes} en {sueno.DreamPoints} " +
                                       $"({elegidaAhora.DreamPointsPercent}%).");
 
                     await DreamHandler.RefrescarEstadoAsync(stream);

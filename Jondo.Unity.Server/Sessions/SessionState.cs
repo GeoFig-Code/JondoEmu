@@ -203,6 +203,27 @@ namespace Jondo.Unity.Server
         /// <summary>La casilla del mundo desde la que se entró al merkasako.</summary>
         public int HavenBagEntryCell { get; set; }
         public bool IsChestOpen { get; set; }
+
+        /// <summary>The workshop this character has open -- craft station, magus table, grinder -- if any.</summary>
+        public Handlers.WorkshopHandler.Bench? Workshop { get; set; }
+
+        /// <summary>The commission this character is in, as the magus or as the customer, if any.</summary>
+        public Handlers.Commission? Commission { get; set; }
+
+        /// <summary>
+        /// This character's settings as an artisan, job by job: the minimum level asked of a
+        /// customer, whether they craft for free, and whether they are in the public list.
+        /// </summary>
+        public Dictionary<int, Handlers.ArtisanHandler.Setting> CrafterSettings { get; } = new();
+
+        /// <summary>Whose list this character is reading in the artisans' directory; zero when none.</summary>
+        public int DirectoryJob { get; set; }
+
+        /// <summary>
+        /// Forgegod mode (".forjadios on"): no rune fails, no cap nor restriction applies at the
+        /// forge. Administrators only, and for this session only -- it is off again at the next login.
+        /// </summary>
+        public bool ForgeGod { get; set; }
         public bool IsHavenBagEditing { get; set; }
         public List<Managers.HavenBagStore.Furniture> PendingHavenBagFurniture { get; }
             = new List<Managers.HavenBagStore.Furniture>();

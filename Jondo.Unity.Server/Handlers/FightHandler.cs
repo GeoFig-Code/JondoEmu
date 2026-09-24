@@ -91,11 +91,7 @@ namespace Jondo.Unity.Server.Handlers
             //
             // La copia con ToList no es cosmetica: GetFightWalkable devuelve el HashSet vivo de
             // MapManager, y GeneratePlacementCells recibiria los datos del mapa para siempre.
-            var enCombate = MapManager.GetFightWalkable(arenaMapId);
-            var walkableCells = enCombate != null && enCombate.Count > 0
-                ? new List<int>(enCombate)
-                : MobSpawnManager.GetInnerWalkableCells(arenaMapId);
-            fight.GeneratePlacementCells(walkableCells);
+            fight.GeneratePlacementCells(PlacementGround(arenaMapId));
 
             // Las cuatro elementales COMPLETAS: lo que el jugador se ha puesto de puntos más lo que
             // le dé el equipo. Se calculan aquí arriba porque la iniciativa las necesita enteras.
@@ -114,68 +110,7 @@ namespace Jondo.Unity.Server.Handlers
                     ? fight.RedPlacementCells[redIdx++]
                     : fight.RedPlacementCells.FirstOrDefault();
 
-                int boneId = 1;
-                string look = member.Monster?.Look ?? "";
-                if (!string.IsNullOrEmpty(look))
-                {
-                    string stripped = look.Trim('{', '}');
-                    string[] parts = stripped.Split('|');
-                    if (parts.Length > 0 && int.TryParse(parts[0], out int parsedBone))
-                    {
-                        boneId = parsedBone;
-                    }
-                }
-
-                int monLevel = member.Level > 0 ? member.Level : 1;
-                int monsterId = member.Monster?.Id ?? 0;
-                int gradeIdx = member.GradeIndex;
-
-                var dbStats = DatabaseManager.GetMonsterGradeStats(monsterId, gradeIdx);
-
-                var monsterFighter = new Fighter
-                {
-                    Id = monFighterId,
-                    Name = $"Monster_{monsterId}",
-                    TeamId = 1,
-                    CellId = monCellId,
-                    IsMonster = true,
-                    MonsterId = monsterId,
-                    GradeIndex = gradeIdx,
-                    Level = dbStats?.Level ?? monLevel,
-                    MaxHP = dbStats?.LifePoints ?? (40 + (monLevel * 8)),
-                    MaxAP = dbStats?.ActionPoints ?? 6,
-                    MaxMP = dbStats?.MovementPoints ?? 3,
-                    Initiative = dbStats != null ? (dbStats.Agility + dbStats.Strength + dbStats.Intelligence + dbStats.Chance + dbStats.Wisdom) : (50 + monLevel),
-                    Strength = dbStats?.Strength ?? (5 + monLevel),
-                    Intelligence = dbStats?.Intelligence ?? (5 + monLevel / 2),
-                    Chance = dbStats?.Chance ?? (5 + monLevel / 2),
-                    Agility = dbStats?.Agility ?? (5 + monLevel / 2),
-                    NeutralResPct = dbStats?.NeutralResistance ?? Math.Min(50, monLevel / 3),
-                    EarthResPct = dbStats?.EarthResistance ?? Math.Min(50, monLevel / 4),
-                    FireResPct = dbStats?.FireResistance ?? Math.Min(50, monLevel / 4),
-                    WaterResPct = dbStats?.WaterResistance ?? Math.Min(50, monLevel / 4),
-                    AirResPct = dbStats?.AirResistance ?? Math.Min(50, monLevel / 4),
-                    LookBoneId = boneId,
-                    SpellIds = dbStats?.SpellIds ?? new List<int>(),
-                    SpellGrades = dbStats?.SpellGrades ?? new Dictionary<int, int>(),
-                    // gradeXp from the monster template: the experience it awards on death, the
-                    // same figure the client shows when hovering over the group.
-                    XpReward = dbStats?.GradeXp ?? 0
-                };
-                monsterFighter.CurrentHP = monsterFighter.MaxHP;
-                monsterFighter.Otras[Fighter.CaracteristicaDeErosion] = Fighter.ErosionBase;
-                monsterFighter.CurrentAP = monsterFighter.MaxAP;
-                monsterFighter.CurrentMP = monsterFighter.MaxMP;
-
-                // What it dodges and what it removes: the grade's own dodge plus a tenth of its
-                // wisdom for the one, a tenth of its wisdom for the other.
-                int sabiduriaDelBicho = dbStats?.Wisdom ?? 0;
-                monsterFighter.Otras[Managers.EffectEngine.EsquivaPA] = (dbStats?.PaDodge ?? 0) + sabiduriaDelBicho / 10;
-                monsterFighter.Otras[Managers.EffectEngine.EsquivaPM] = (dbStats?.PmDodge ?? 0) + sabiduriaDelBicho / 10;
-                monsterFighter.Otras[Managers.EffectEngine.RetiraPA] = sabiduriaDelBicho / 10;
-                monsterFighter.Otras[Managers.EffectEngine.RetiraPM] = sabiduriaDelBicho / 10;
-
-                fight.AddMonster(monsterFighter);
+                fight.AddMonster(BuildMonsterFighter(member, monFighterId, monCellId));
             }
 
             _activeFights[fightId] = fight;
@@ -730,6 +665,16 @@ namespace Jondo.Unity.Server.Handlers
             playerFighter.CurrentMP = playerFighter.MaxMP;
             RellenarLaFicha(playerFighter);
 
+            // In a dream's room, the dream's bonuses: they are the dream's and they apply to its
+            // fights, not to the character outside them.
+            var dream = Managers.Dreams.De(GameState.CharacterId);
+            if (dream != null && dream.SalaActual?.MapaDeLaSala == fight.RoleplayMapId)
+            {
+                var applied = Managers.Dreams.ApplyTo(playerFighter, dream);
+                if (applied.Count > 0)
+                    Program.LogDebug($"[Sueños] Bonuses in the fight: {string.Join(", ", applied)}.");
+            }
+
             // Las actitudes que le dan sus objetos: los seis dofus y los trofeos regalan cada uno
             // un "hechizo" por su efecto 1175, y ésos son los que hacen cosas al empezar el turno o
             // al recibir un golpe. De ahí sale, sin escribir nada suyo, el punto de acción del
@@ -1173,6 +1118,104 @@ namespace Jondo.Unity.Server.Handlers
             if (porciento <= 0) return false;
             if (porciento >= 100) return true;
             lock (_dado) return _dado.Next(100) < porciento;
+        }
+
+        /// <summary>
+        /// A monster as it fights: its grade's life, points, characteristics, resistances and
+        /// dodges, standing on a cell. What a fight puts on the board -- and what a dream's
+        /// bestiary shows before the fight, from this same method so the two never disagree.
+        /// </summary>
+        internal static Fighter BuildMonsterFighter(MobSpawnManager.MobMember member, long monFighterId, int monCellId)
+        {
+            int boneId = 1;
+            string look = member.Monster?.Look ?? "";
+            if (!string.IsNullOrEmpty(look))
+            {
+                string stripped = look.Trim('{', '}');
+                string[] parts = stripped.Split('|');
+                if (parts.Length > 0 && int.TryParse(parts[0], out int parsedBone))
+                {
+                    boneId = parsedBone;
+                }
+            }
+
+            int monLevel = member.Level > 0 ? member.Level : 1;
+            int monsterId = member.Monster?.Id ?? 0;
+            int gradeIdx = member.GradeIndex;
+
+            var dbStats = DatabaseManager.GetMonsterGradeStats(monsterId, gradeIdx);
+
+            var monsterFighter = new Fighter
+            {
+                Id = monFighterId,
+                Name = $"Monster_{monsterId}",
+                TeamId = 1,
+                CellId = monCellId,
+                IsMonster = true,
+                MonsterId = monsterId,
+                GradeIndex = gradeIdx,
+                Level = dbStats?.Level ?? monLevel,
+                MaxHP = dbStats?.LifePoints ?? (40 + (monLevel * 8)),
+                MaxAP = dbStats?.ActionPoints ?? 6,
+                MaxMP = dbStats?.MovementPoints ?? 3,
+                Initiative = dbStats != null ? (dbStats.Agility + dbStats.Strength + dbStats.Intelligence + dbStats.Chance + dbStats.Wisdom) : (50 + monLevel),
+                Strength = dbStats?.Strength ?? (5 + monLevel),
+                Intelligence = dbStats?.Intelligence ?? (5 + monLevel / 2),
+                Chance = dbStats?.Chance ?? (5 + monLevel / 2),
+                Agility = dbStats?.Agility ?? (5 + monLevel / 2),
+                NeutralResPct = dbStats?.NeutralResistance ?? Math.Min(50, monLevel / 3),
+                EarthResPct = dbStats?.EarthResistance ?? Math.Min(50, monLevel / 4),
+                FireResPct = dbStats?.FireResistance ?? Math.Min(50, monLevel / 4),
+                WaterResPct = dbStats?.WaterResistance ?? Math.Min(50, monLevel / 4),
+                AirResPct = dbStats?.AirResistance ?? Math.Min(50, monLevel / 4),
+                LookBoneId = boneId,
+                SpellIds = dbStats?.SpellIds ?? new List<int>(),
+                SpellGrades = dbStats?.SpellGrades ?? new Dictionary<int, int>(),
+                // gradeXp from the monster template: the experience it awards on death, the
+                // same figure the client shows when hovering over the group.
+                XpReward = dbStats?.GradeXp ?? 0
+            };
+            monsterFighter.CurrentHP = monsterFighter.MaxHP;
+            monsterFighter.Otras[Fighter.CaracteristicaDeErosion] = Fighter.ErosionBase;
+            monsterFighter.CurrentAP = monsterFighter.MaxAP;
+            monsterFighter.CurrentMP = monsterFighter.MaxMP;
+
+            // What it dodges and what it removes: the grade's own dodge plus a tenth of its
+            // wisdom for the one, a tenth of its wisdom for the other.
+            int sabiduriaDelBicho = dbStats?.Wisdom ?? 0;
+            monsterFighter.Otras[Managers.EffectEngine.EsquivaPA] = (dbStats?.PaDodge ?? 0) + sabiduriaDelBicho / 10;
+            monsterFighter.Otras[Managers.EffectEngine.EsquivaPM] = (dbStats?.PmDodge ?? 0) + sabiduriaDelBicho / 10;
+            monsterFighter.Otras[Managers.EffectEngine.RetiraPA] = sabiduriaDelBicho / 10;
+            monsterFighter.Otras[Managers.EffectEngine.RetiraPM] = sabiduriaDelBicho / 10;
+
+            return monsterFighter;
+        }
+
+        /// <summary>
+        /// The cells a fight on this arena is placed from: the fight-walkable ones, or the inner
+        /// walkable ones of the map when it has none.
+        /// </summary>
+        private static List<int> PlacementGround(long arenaMapId)
+        {
+            var enCombate = MapManager.GetFightWalkable(arenaMapId);
+            return enCombate != null && enCombate.Count > 0
+                ? new List<int>(enCombate)
+                : MobSpawnManager.GetInnerWalkableCells(arenaMapId);
+        }
+
+        /// <summary>
+        /// Where the monsters of a fight on this map will stand, in the order of the group: the
+        /// red placement cells, computed the way a fight computes them.
+        /// </summary>
+        public static IReadOnlyList<int> DefenderPlacement(long mapId) => Placement(mapId).Defenders;
+
+        /// <summary>Both teams' placement cells for a fight on this map, the way a fight computes them.</summary>
+        public static (List<int> Attackers, List<int> Defenders) Placement(long mapId)
+        {
+            long arenaMapId = MapManager.ResolveArenaMapId(mapId);
+            var fight = new FightInstance(0, mapId, arenaMapId);
+            fight.GeneratePlacementCells(PlacementGround(arenaMapId));
+            return (fight.BluePlacementCells.ToList(), fight.RedPlacementCells.ToList());
         }
 
         /// <summary>Los mismos números que usa datos/characteristics.json.</summary>
@@ -3668,10 +3711,11 @@ namespace Jondo.Unity.Server.Handlers
             // hechizos de ZONA, que tocan a varios, cuentan aquí de menos: haría falta la lista de
             // afectados del motor, y eso todavía no está enganchado.
             caster.LanzadosPorObjetivo.TryGetValue((spell, aQuien), out int sobreEse);
-            if (aQuien != 0 && limites.PorObjetivo > 0 && sobreEse >= limites.PorObjetivo)
+            int topePorObjetivo = limites.PorObjetivo > 0 ? limites.PorObjetivo + caster.ExtraCastsPerTarget : 0;
+            if (aQuien != 0 && topePorObjetivo > 0 && sobreEse >= topePorObjetivo)
             {
                 Program.LogDebug($"[Combate] El hechizo {spell} ya se ha lanzado {sobreEse} " +
-                                 $"vez/veces sobre {aQuien}, y el tope es {limites.PorObjetivo}.");
+                                 $"vez/veces sobre {aQuien}, y el tope es {topePorObjetivo}.");
                 return;
             }
 
@@ -3713,7 +3757,8 @@ namespace Jondo.Unity.Server.Handlers
             // El Versatil (no repetir accion) y los dos de rematar antes de cambiar de objetivo.
             await ChallengeWatcher.CastAsync(stream, fight, caster, spell, victim,
                                              esteTurno + 1);
-            if (limites.Intervalo > 0) caster.Recarga[spell] = limites.Intervalo;
+            int intervalo = Math.Max(0, limites.Intervalo - caster.CooldownReduction);
+            if (intervalo > 0) caster.Recarga[spell] = intervalo;
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                 Network.FightProtocol.BuildSequenceStart(caster.Id,
@@ -3727,7 +3772,7 @@ namespace Jondo.Unity.Server.Handlers
                         caster.Id, aQuien, cell, spell, spellLevel, critico,
                         sobreEseObjetivo: limites.PorObjetivo > 0 ? sobreEse + 1 : 0,
                         esteTurno: limites.PorTurno > 0 ? esteTurno + 1 : 0,
-                        intervalo: limites.Intervalo,
+                        intervalo: intervalo,
                         // Sólo cuando el golpe es del arma. Un hechizo lleva el f10 a cero, igual
                         // que el puñetazo: lo que el cliente mira para poner el nombre es esto.
                         arma: spell == 0 ? ArmaEquipada(caster) : 0),
@@ -5939,6 +5984,16 @@ namespace Jondo.Unity.Server.Handlers
                 Program.LogDebug($"[Combo] {caster.Id} está en el nivel " +
                                  $"{Managers.Combo.LevelOf(caster)}, +{combo}%: " +
                                  $"{antesDelCombo} pasa a {damage}.");
+            }
+
+            // What the caster deals, in percent, multiplying everything above: a dream's "%
+            // damage". Its guide: every bonus adds up first, and the % of damage multiplies last.
+            if (caster.DamageDealtPercent != 100 && damage > 0)
+            {
+                int antesDelPorcentaje = damage;
+                damage = Math.Max(0, (int)Math.Round(damage * caster.DamageDealtPercent / 100.0));
+                Program.LogDebug($"[Combate] {caster.Id} hace el {caster.DamageDealtPercent}% de daño: " +
+                                 $"{antesDelPorcentaje} pasa a {damage}.");
             }
 
             // THE KINDS OF THIS BLOW, for the rows that name one: "D" any, "DM"/"DCAC" from

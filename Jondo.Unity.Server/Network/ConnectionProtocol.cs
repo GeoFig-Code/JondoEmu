@@ -1533,6 +1533,23 @@ namespace Jondo.Unity.Server.Network
                 .VarIfNotZero(4, floor)
                 .VarIfNotZero(5, experience)).Build();
 
+        /// <summary>
+        /// Several jobs in one irq, the way the entry into the world lists them all: one f1 entry
+        /// each, the same five fields as <see cref="BuildJobExperience"/>.
+        /// </summary>
+        public static byte[] BuildJobsExperience(IEnumerable<(int JobId, long Next, int Level, long Floor, long Experience)> jobs)
+        {
+            var irq = Pb.New();
+            foreach (var (jobId, next, level, floor, experience) in jobs)
+                irq.Msg(1, Pb.New()
+                    .Var(1, jobId)
+                    .VarIfNotZero(2, next)
+                    .VarIfNotZero(3, level)
+                    .VarIfNotZero(4, floor)
+                    .VarIfNotZero(5, experience));
+            return irq.Build();
+        }
+
         /// <summary>Cambia la cantidad de un objeto que ya estaba en la bolsa (ivj).</summary>
         public static byte[] BuildItemQuantity(long uid, int total)
             => Pb.New().Msg(3, Pb.New().Var(2, uid).Var(3, total)).Build();
@@ -2018,6 +2035,15 @@ namespace Jondo.Unity.Server.Network
             => BuildInfoMessage(Managers.InfoMessages.Info, messageId, parameters);
 
         /// <summary>
+        /// A line of free text as an information message (lqn), only to the one it is for: the
+        /// answer of a command, or what a window we have no measured frame for would have said.
+        /// Before this those went as a chat line in the player's own name, on the channel they
+        /// wrote in -- the general one, most of the time -- so it read as them talking.
+        /// </summary>
+        public static byte[] BuildNotice(string text)
+            => BuildInfoMessage(Managers.InfoMessages.Info, Managers.InfoMessages.FreeText, text ?? "");
+
+        /// <summary>
         /// "{0} acaba de volver a conectarse al combate." (lqn, type 1, text 184). The real
         /// server sends it right behind the lqu of the tactical map when somebody reconnects
         /// into his fight, in both reconnection captures, before the lva.
@@ -2028,7 +2054,7 @@ namespace Jondo.Unity.Server.Network
         /// <summary>El mismo, diciendo de qué tipo es.</summary>
         public static byte[] BuildInfoMessage(int type, int messageId, params string[] parameters)
         {
-            var lqn = Pb.New().VarIfNotZero(1, type).Var(2, messageId);
+            var lqn = Pb.New().VarIfNotZero(1, type).VarIfNotZero(2, messageId);
             foreach (string parameter in parameters) lqn.Str(4, parameter);
             return lqn.Build();
         }
@@ -2177,7 +2203,10 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         public static byte[] BuildInventory()
         {
-            var ivx = Pb.New();
+            // f1 is the kamas: every ivx of every capture carries them there, 66,381,547 on the way
+            // into the world, 61,898,327 when the oven opens. Without them a refresh of the bag
+            // reads as a character with none.
+            var ivx = Pb.New().VarIfNotZero(1, SessionContext.State.Kamas);
             foreach (var item in Managers.Equipment.All)
             {
                 var body = Pb.New().Var(1, item.Template);
@@ -2204,6 +2233,10 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         private static Pb? EffectEntry(Managers.Equipment.ItemEffect effect)
         {
+            // The smithmagic pool and any other line of ours that is no effect of the client's:
+            // it lives with the item and never goes on the wire.
+            if (effect.Effect <= 0) return null;
+
             // Los que no son un número van con su texto en f1: el 988 es "Fabricado por: #4" y el
             // #4 es esta cadena. Sin texto no van, porque la etiqueta saldría vacía.
             if (!string.IsNullOrEmpty(effect.Text))
@@ -2219,7 +2252,9 @@ namespace Jondo.Unity.Server.Network
             switch (field)
             {
                 case Managers.EffectFields.AsNumber:
-                    entry.VarIfNotZero(4, v1);
+                    // Written even at zero: "Ninguna forjamagia futura" (2825) travels as
+                    // 20 00 58 89 16 on the captured shield, its f4 there and empty.
+                    entry.Var(4, v1);
                     break;
                 case Managers.EffectFields.AsRange:
                     entry.Msg(5, Pb.New().VarIfNotZero(1, v1).VarIfNotZero(2, v2));
@@ -2376,6 +2411,22 @@ namespace Jondo.Unity.Server.Network
             return Pb.New()
                 .Msg(field, Pb.New().Var(1, Managers.Equipment.Bag).Msg(5, body))
                 .Build();
+        }
+
+        /// <summary>
+        /// An item the way every item message carries it: { f1: template, f2: effects, f3: how
+        /// many, f4: uid }. The uid is left out when it is zero, as the kdr of a craft of several
+        /// does.
+        /// </summary>
+        internal static Pb ItemBody(int gid, IEnumerable<Managers.Equipment.ItemEffect> effects, int quantity, long uid)
+        {
+            var body = Pb.New().Var(1, gid);
+            foreach (var effect in effects)
+            {
+                var entry = EffectEntry(effect);
+                if (entry != null) body.Msg(2, entry);
+            }
+            return body.Var(3, Math.Max(1, quantity)).VarIfNotZero(4, uid);
         }
 
         /// <summary>Un objeto que se va (itc del cofre, ium de la bolsa): solo su identificador.</summary>

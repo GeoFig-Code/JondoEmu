@@ -159,16 +159,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>How many maps are vetoed. Zero before the world is loaded.</summary>
         public static int VetoedCount => _vetados.Count;
 
-        public static void InitializeAndSpawnAll()
+        /// <summary>The monsters and their grades, from the Monsters table.</summary>
+        private static void LoadMonsterData(SqliteConnection connection)
         {
-            Console.WriteLine("[MobSpawnManager] Loading data from SQLite...");
-            
-            using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
-            connection.Open();
-
-            DatabaseManager.EnsureMobsSeeded(connection);
-
-            // Load Monsters
             var cmdMonsters = connection.CreateCommand();
             cmdMonsters.CommandText = "SELECT Id, NameId, Look, Grades FROM Monsters;";
             using (var reader = cmdMonsters.ExecuteReader())
@@ -200,6 +193,30 @@ namespace Jondo.Unity.Server.Managers
                     _monsters[id] = data;
                 }
             }
+        }
+
+        /// <summary>
+        /// For tests: the monsters without the world -- what composing a group needs, without
+        /// reading and spawning 38,744 groups.
+        /// </summary>
+        internal static void EnsureMonsterData()
+        {
+            if (_monsters.Count > 0) return;
+            using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+            connection.Open();
+            LoadMonsterData(connection);
+        }
+
+        public static void InitializeAndSpawnAll()
+        {
+            Console.WriteLine("[MobSpawnManager] Loading data from SQLite...");
+            
+            using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+            connection.Open();
+
+            DatabaseManager.EnsureMobsSeeded(connection);
+
+            LoadMonsterData(connection);
 
             _mapMobs.Clear();
 

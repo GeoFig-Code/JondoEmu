@@ -28,6 +28,12 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Un recurso de oficio: trigo, fresno, caladero, mineral.</summary>
         Gather,
 
+        /// <summary>
+        /// A workshop station: it opens the craft window, or the smithmagic one when the skill is
+        /// a magus'. Both are the same kgq with the skill in it.
+        /// </summary>
+        Workshop,
+
         /// <summary>El pozo de los Suenos Infinitos, que abre la ventana del sueno.</summary>
         Dream,
 
@@ -165,8 +171,10 @@ namespace Jondo.Unity.Server.Managers
             {
                 foreach (var puerta in Interactives.ElementsOf(sala))
                 {
-                    Register(sala, puerta, Dreams.TipoDelPozo,
-                             InteractiveActionKind.DreamDoor, Dreams.HabilidadDelPozo);
+                    // The Fontaine onirique of a fountain room is not a door: skill 355,
+                    // "Consultar", as the long capture declares element 539708.
+                    int skill = puerta.Gfx == Dreams.FountainGfx ? Dreams.FountainSkill : Dreams.HabilidadDelPozo;
+                    Register(sala, puerta, Dreams.TipoDelPozo, InteractiveActionKind.DreamDoor, skill);
                     puertas++;
                 }
             }
@@ -236,6 +244,37 @@ namespace Jondo.Unity.Server.Managers
                                                              resource.Gfx),
                              resource.Type, InteractiveActionKind.Gather, resource.SkillId);
             }
+
+            // And the workshop stations, by their graphic too. One element can offer several
+            // skills -- the magus table of Bonta offers three -- and each one is an action of its
+            // own, with its own skill instance, the way the jss declares them.
+            int stations = 0;
+            foreach (long mapId in Interactives.MapIds)
+            {
+                foreach (var (element, station) in Workshops.On(mapId))
+                {
+                    // Something already declared there -- a door, a teleport -- keeps its own
+                    // declaration: a second one with another type would not be the same element.
+                    if (_byElement.ContainsKey((mapId, element.Id))) continue;
+                    foreach (int skill in station.Skills)
+                        Register(mapId, element, station.Type, InteractiveActionKind.Workshop, skill);
+                    stations++;
+                }
+            }
+            if (stations > 0) Console.WriteLine($"[Workshops] {stations} stations declared.");
+
+            // The artisans' book of each workshop: it opens the directory of the workshop's jobs.
+            int books = 0;
+            foreach (long mapId in Interactives.MapIds)
+            {
+                foreach (var (element, type, skill) in Workshops.BooksOn(mapId))
+                {
+                    if (_byElement.ContainsKey((mapId, element.Id))) continue;
+                    Register(mapId, element, type, InteractiveActionKind.Workshop, skill);
+                    books++;
+                }
+            }
+            if (books > 0) Console.WriteLine($"[Workshops] {books} artisans' books declared.");
 
             // Le jss officiel de l'atelier 192937990 déclare les huit éléments présents dans les
             // données de carte, y compris ceux dont le serveur n'offre aucune route. Sans f11 le

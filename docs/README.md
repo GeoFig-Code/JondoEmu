@@ -97,8 +97,9 @@ rotated to five complete sets and restored as a matching pair.
 *Go there* before changing database initialization or recovering an installation after an update.
 
 **`item-commands.md`** — Administrator item creation commands.
-The exact syntax and behavior of `.item` and `.itemset`, including role checks, template and set
-data sources, maximum factory effects, persistence, inventory updates and partial-set failures.
+The exact syntax and behavior of `.item`, `.itemset` and `.receta`, including role checks, template,
+set and recipe data sources, maximum factory effects, stacking, persistence, inventory updates and
+partial failures.
 *Go there* when giving an item by template id, creating a complete set or diagnosing a rejected id.
 
 **`live-character-admin.md`** — Live character administration over the local control API.

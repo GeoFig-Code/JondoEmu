@@ -1,4 +1,7 @@
-﻿using System.Globalization;
+﻿using System.Collections.Generic;
+using System;
+using System.Globalization;
+using System.Linq;
 using Jondo.Unity.Protocol;
 using Jondo.Unity.Server.Managers;
 
@@ -29,9 +32,10 @@ namespace Jondo.Unity.Server.Network
         ///     f13  la cuenta de sueños              f14  1     f15  1     f16  "1" o "2"
         ///     f17 {
         ///       f1 (repetido)  una SALA:  f1 su número como cadena
-        ///                                 f2 { f1 puntos, f3 clase, f4 { el grupo },
+        ///                                 f2 { f1 score, f3 dream points, f4 { the reward },
         ///                                      f5 1, f6 la fila, f7 señalada }
-        ///       f3   la sala en la que se está, como cadena
+        ///       f2   the band, from 0, left out for the first
+        ///       f3 (repeated)  the rooms behind, as strings
         ///       f4 (repetido)  una ARISTA: f1 el origen, f2 { f1 cada destino }
         ///     }
         ///   }
@@ -57,65 +61,158 @@ namespace Jondo.Unity.Server.Network
                 .Var(15, 1)
                 .Str(16, "1");
 
-            return Pb.New().Msg(1, dentro.Msg(17, Partida(sueno))).Build();
+            return Pb.New().Msg(1, dentro.Msg(17, Graph(sueno, sueno.Franja))).Build();
         }
 
         /// <summary>
-        /// El grafo del sueño: las salas, en cuál se está y las aristas.
+        /// One band of the dream: its rooms, the rooms behind and its edges.
         /// </summary>
         /// <remarks>
         /// Viaja DOS veces y con la misma forma: como f17 del iyj —la ventana que ofrece el
         /// sueño— y como f16 del izg —el estado de dentro—. Que se repita no es un descuido de
         /// Ankama: son dos momentos distintos y el segundo es el que alimenta el mapa del sueño y
-        /// los paneles mientras se juega. Mandar el izg sin él deja al jugador dentro de la sala
-        /// sin mapa, sin lista de bonos y sin bestiario, que es lo que se veía.
+        /// los paneles mientras se juega.
+        ///
+        /// ONE PER BAND, measured in the long capture once its first fountain is reached: two f16,
+        /// the first with rooms 0 to 9 and the second with 9 to 24 and an f2 of 1. The fountain
+        /// is in both, closing the one and opening the other, and its edges go with the band it
+        /// opens. The f3 is not the room one stands in but the rooms behind -- "0" in the first
+        /// fight room, "4", "2", "0" in the third -- the same list in every band.
         /// </remarks>
-        private static Pb Partida(Dreams.Sueno sueno)
+        private static Pb Graph(Dreams.Sueno sueno, int franja)
         {
-            var partida = Pb.New();
-
+            var rooms = new List<Dreams.Sala>();
             foreach (var sala in sueno.Salas)
             {
-                var cuerpo = Pb.New();
+                bool opensThisBand = sala.EsFuente && sala.Franja == franja - 1;
+                if (sala.Franja == franja || opensThisBand) rooms.Add(sala);
+            }
+            // The fountain that opens the band goes first, as in the capture.
+            rooms.Sort((a, b) => a.Fila != b.Fila ? a.Fila.CompareTo(b.Fila) : a.Id.CompareTo(b.Id));
 
-                if (sala.Fila == 0)
-                {
-                    // La entrada. Va casi vacía en las nueve capturas: sólo el f7.
-                    cuerpo.Var(7, 0);
-                }
-                else if (sala.EsFuente)
-                {
-                    cuerpo.Var(5, TipoDeFuente).Var(6, sala.Fila).Var(7, 0);
-                }
-                else
-                {
-                    cuerpo.Var(1, sala.Puntos)
-                          .Var(3, sala.Clase)
-                          .Var(5, TipoDeCombate)
-                          .Var(6, sala.Fila)
-                          .Var(7, sala.Senalada ? 1 : 0);
-                }
-
-                partida.Msg(1, Pb.New()
+            var graph = Pb.New();
+            foreach (var sala in rooms)
+            {
+                graph.Msg(1, Pb.New()
                     .Str(1, Texto(sala.Id))
-                    .Msg(2, cuerpo));
+                    .Msg(2, RoomBody(sala)));
             }
 
-            partida.Str(3, Texto(sueno.Actual));
+            graph.VarIfNotZero(2, franja - 1);
+            foreach (int visited in sueno.Visited) graph.Str(3, Texto(visited));
 
-            foreach (var sala in sueno.Salas)
+            foreach (var sala in rooms)
             {
-                if (sala.Salidas.Count == 0) continue;
+                // The fountain that closes the band leads into the next one: its edges are there.
+                bool closesThisBand = sala.EsFuente && sala.Franja == franja;
+                if (sala.Salidas.Count == 0 || closesThisBand) continue;
 
                 var destinos = Pb.New();
                 foreach (int destino in sala.Salidas) destinos.Str(1, Texto(destino));
 
-                partida.Msg(4, Pb.New()
+                graph.Msg(4, Pb.New()
                     .Str(1, Texto(sala.Id))
                     .Msg(2, destinos));
             }
 
-            return partida;
+            return graph;
+        }
+
+        /// <summary>
+        /// What a room is, in the three shapes of the captures, byte for byte:
+        ///
+        ///   the entrance   { f7: 0 }
+        ///   a fountain     { f5: 3, f6: the row, f7: 0 }
+        ///   a fight        { f1: score, f3: dream points, f4 { the group }, f5: 1, f6: the row,
+        ///                    f7: marked }
+        /// </summary>
+        private static Pb RoomBody(Dreams.Sala sala)
+        {
+            if (sala.Fila == 0) return Pb.New().Var(7, 0);
+            if (sala.EsFuente) return Pb.New().Var(5, TipoDeFuente).Var(6, sala.Fila).Var(7, 0);
+
+            return Pb.New()
+                .Var(1, sala.Score)
+                .Var(3, sala.DreamPoints)
+                .Msg(4, Group(sala))
+                .Var(5, TipoDeCombate)
+                .Var(6, sala.Fila)
+                .Var(7, sala.Senalada ? 1 : 0);
+        }
+
+        /// <summary>For tests: a room's body as it goes in the graph.</summary>
+        internal static byte[] BuildRoom(Dreams.Sala sala) => RoomBody(sala).Build();
+
+        /// <summary>
+        /// What the room gives, the door's tooltip: its reward, in the shape of every reward.
+        /// A fight room with none -- it cannot happen, the rooms are all given one -- goes empty.
+        /// </summary>
+        private static Pb Group(Dreams.Sala sala)
+            => sala.Reward != null ? RewardEntry(sala.Reward) : Pb.New();
+
+        /// <summary>
+        /// A reward, room's or shop's: see <see cref="Dreams.Reward"/>. The zeros are written, the
+        /// fields being optional ones, and the rarity is left out when there is none -- all of it
+        /// as in the bytes of the captures.
+        /// </summary>
+        private static Pb RewardEntry(Dreams.Reward reward)
+        {
+            var entry = Pb.New().Var(1, reward.Kind).Var(2, 0);
+            foreach (var bonus in reward.Bonuses) entry.Msg(3, BonusEntry(bonus));
+            return entry.Var(4, 0)
+                        .Var(5, reward.Points)
+                        .VarIfNotZero(7, reward.Rarity)
+                        .Var(8, reward.Price)
+                        .Var(9, reward.Id)
+                        .Var(10, reward.Tag)
+                        .Var(11, 0);
+        }
+
+        /// <summary>For tests: a reward as it goes on the wire.</summary>
+        internal static byte[] BuildReward(Dreams.Reward reward) => RewardEntry(reward).Build();
+
+        /// <summary>
+        /// A monster of the bestiary: the cell it will stand on when the fight is placed, what it
+        /// is, its level, whether it is a boss, and its characteristics by id.
+        /// </summary>
+        public sealed record Beast(int Cell, int MonsterId, int Level, bool Boss,
+                                   IReadOnlyList<(int Characteristic, int Value)> Stats);
+
+        /// <summary>
+        /// The ize of the izg, one per monster of the room while its fight is to be won:
+        ///
+        ///   { f1: cell, f2: monster, f3: level, f4: boss, f5 (repeated) { f1: characteristic, f2: value } }
+        ///
+        /// The f1 is the fight's placement cell -- the two of the long capture's room 2, 258 and
+        /// 202, are the first two defender cells of the kba of the fight that follows -- which is
+        /// what the bestiary's map view draws them on. The pairs are a map, key and value always
+        /// written, the zero key of the life points included.
+        /// </summary>
+        private static Pb BeastEntry(Beast beast)
+        {
+            var entry = Pb.New()
+                .Var(1, beast.Cell)
+                .Var(2, beast.MonsterId)
+                .Var(3, beast.Level)
+                .VarIfNotZero(4, beast.Boss ? 1 : 0);
+            foreach (var (characteristic, value) in beast.Stats)
+                entry.Msg(5, Pb.New().Var(1, characteristic).Var(2, value));
+            return entry;
+        }
+
+        /// <summary>For tests: a monster of the bestiary as it goes on the wire.</summary>
+        internal static byte[] BuildBeast(Beast beast) => BeastEntry(beast).Build();
+
+        /// <summary>
+        /// A bonus: { f1 { f4: value, f11: effect }, f2: 1 }, or with the value inside an f6 for
+        /// the effects whose text names a spell. The f15 of the izg and the f3 of a room's group.
+        /// </summary>
+        private static Pb BonusEntry(Dreams.Bono bono)
+        {
+            var dentro = Pb.New();
+            if (bono.Anidado) dentro.Msg(6, Pb.New().VarIfNotZero(1, bono.Valor));
+            else dentro.Var(4, bono.Valor);
+            return Pb.New().Msg(1, dentro.Var(11, bono.Efecto)).Var(2, 1);
         }
 
         /// <summary>
@@ -148,27 +245,50 @@ namespace Jondo.Unity.Server.Network
         /// El izg: el estado del sueño en curso.
         /// </summary>
         /// <remarks>
-        /// Medido en la captura de Pesadilla II, donde el f2 vale 9 — la misma dificultad que se
-        /// mandó en el ixf, que es lo que ata los dos mensajes:
+        /// Measured over the 57 izg of the captures, field by field:
         ///
         /// <code>
-        ///   f1 { f1 el nombre, f3 el id del personaje }
+        ///   f1 { f1 el nombre, f3 el id del personaje, f4 its breed }
         ///   f2   la dificultad
         ///   f4 (repetido)  una PUERTA:  f1 la sala a la que lleva, como cadena
         ///                               f2 el elemento interactivo que el cliente pulsara
-        ///   f8   los puntos      f13  la sala en la que se está, como cadena
+        ///   f7   astral storms left          f8   the bonus to xp and loot, in percent
+        ///   f11  the dream points            f12  the band, from 0
+        ///   f13  la sala en la que se está, como cadena
+        ///   f15 (repeated)  the bonuses gained      f16 (repeated)  one graph per band
+        ///   f17  Draconiros arenas left      f18  1: the room's fight is still to be won
+        ///   f19  1: the room is clear        f20  the level     f22  the difficulty's bonus
         /// </code>
+        ///
+        /// f11, f12, f18 and the breed were missing, the f17 went as the f19 and the f19 was
+        /// always 1, and the f8 grew with every room won. The dream points, the score and the
+        /// bonuses are what the dream's panel shows, and that panel is what did not appear.
+        ///
+        /// f3 is the bestiary, sent while the room's fight is to be won; f6 the fountain's shop,
+        /// sent at a fountain. Not sent: f5 the party and f14.
         /// </remarks>
-        public static byte[] BuildDreamState(Dreams.Sueno sueno)
+        public static byte[] BuildDreamState(Dreams.Sueno sueno, IReadOnlyList<Beast>? bestiary = null)
         {
             var quien = Pb.New()
                 .Str(1, sueno.Nombre)
                 .Var(3, sueno.CharacterId)
-                .Var(4, 11);
+                .VarIfNotZero(4, sueno.Breed);
 
             var izg = Pb.New()
                 .Msg(1, quien)
                 .Var(2, sueno.Dificultad);
+
+            // The room one stands in: a fight still to win is f18, a clear room is f19 -- the
+            // entrance, a room won, a fountain. Measured over the 57: f18 alone on entering a
+            // fight room, f19 alone at the entrance and after the win, both at the fountain.
+            var room = sueno.SalaActual;
+            bool fightPending = room != null && room.Miembros.Count > 0 && !room.Hecha;
+            bool fountain = room != null && room.EsFuente;
+
+            // The bestiary goes while there is a fight to win, and not after: gone from the izg
+            // that follows the win in the long capture.
+            if (fightPending && bestiary != null)
+                foreach (var beast in bestiary) izg.Msg(3, BeastEntry(beast));
 
             // LAS TRES PUERTAS, no sólo las que llevan a algún sitio. En la captura de Pesadilla
             // II la sala de entrada lista las tres y la de en medio va sin destino:
@@ -200,37 +320,32 @@ namespace Jondo.Unity.Server.Network
                 }
             }
 
+            // The shop, at a fountain: what is left of its offers, after the doors and before the
+            // storms, as in the izg of the long capture's room 9.
+            if (fountain && room!.Offers != null)
+                foreach (var offer in room.Offers) izg.Msg(6, RewardEntry(offer));
+
             // El f7 es el número de TORMENTAS ASTRALES que quedan: en la captura larga va 1, luego
             // desaparece —cero no se escribe— y más tarde vuelve como 2, que es el número que el
-            // cliente pinta en su botón. El f19 es la Arena de Draconiros, con la que se reintenta
-            // una pelea perdida. Los dos siguen sin gastarse ni ganarse; van fijos, y queda dicho.
-            // LOS POTENCIADORES ACUMULADOS, uno por f15. Es la lista que el cliente pinta en su
-            // ventanita, y sin ella no tiene nada que enseñar ahí.
-            //
-            // Medidos 196 en las capturas, con dos formas y ninguna más:
-            //
-            //   f15 { f1 { f4: el valor,       f11: el efecto }, f2: 1 }
-            //   f15 { f1 { f6 { f1: el valor}, f11: el efecto }, f2: 1 }
-            //
-            // Se acumulan los de las salas ya pisadas, que es lo que dice la guía: el bono se
-            // cobra AL ENTRAR en la sala, antes de pelear.
-            foreach (var bono in sueno.Ganados)
-            {
-                var dentro = Pb.New();
-                if (bono.Anidado) dentro.Msg(6, Pb.New().VarIfNotZero(1, bono.Valor));
-                else dentro.Var(4, bono.Valor);
-
-                izg.Msg(15, Pb.New().Msg(1, dentro.Var(11, bono.Efecto)).Var(2, 1));
-            }
-
+            // cliente pinta en su botón. Sigue sin ganarse; se gasta al usarla.
             izg.VarIfNotZero(7, sueno.Tormentas)
-               .Var(8, sueno.Puntos)
-               .Str(13, Texto(sueno.Actual))
-               .Msg(16, Partida(sueno))
-               .Var(17, 1)
-               .VarIfNotZero(19, sueno.Arena)
+               .Var(8, sueno.Bonus)
+               .VarIfNotZero(11, sueno.DreamPoints)
+               .VarIfNotZero(12, sueno.Franja - 1)
+               .Str(13, Texto(sueno.Actual));
+
+            // LOS POTENCIADORES ACUMULADOS, uno por f15. Medidos 196 en las capturas, con dos
+            // formas y ninguna más -- see BonusEntry. Se acumulan los de las salas ya pisadas: el
+            // bono se cobra AL ENTRAR en la sala, antes de pelear.
+            foreach (var bono in sueno.Ganados) izg.Msg(15, BonusEntry(bono));
+
+            for (int franja = 1; franja <= sueno.Franja; franja++) izg.Msg(16, Graph(sueno, franja));
+
+            izg.VarIfNotZero(17, sueno.Arena)
+               .VarIfNotZero(18, fightPending || fountain ? 1 : 0)
+               .VarIfNotZero(19, fightPending ? 0 : 1)
                .Var(20, sueno.Nivel)
-               .Var(22, sueno.PuntosDeSalida);
+               .Var(22, sueno.BaseBonus);
 
             return izg.Build();
         }
@@ -246,6 +361,36 @@ namespace Jondo.Unity.Server.Network
         /// clase medida, no una medición de las tres.
         /// </remarks>
         private const int TipoDePortal = 3;
+
+        /// <summary>
+        /// izo: the loot table of the room, one f2 per item. Measured on the 61 lines of the
+        /// capture's: { f1: the criterion, left out when there is none, f2: the item, f3: how
+        /// many, f5: the percent as a float }.
+        /// </summary>
+        public static byte[] BuildDropTable(IEnumerable<(string Criterion, int Item, int Quantity, double Percent)> drops)
+        {
+            var izo = Pb.New();
+            foreach (var (criterion, item, quantity, percent) in drops)
+                izo.Msg(2, Pb.New()
+                    .StrIfNotEmpty(1, criterion)
+                    .Var(2, item)
+                    .Var(3, quantity)
+                    .Fixed32(5, BitConverter.GetBytes((float)percent)));
+            return izo.Build();
+        }
+
+        /// <summary>
+        /// jxj: where a fight on a map would place everybody. { f1: the fight's map, f2: the map,
+        /// f3 { f1: attackers' cells, f2: defenders' cells, packed } }, as in the capture.
+        /// </summary>
+        public static byte[] BuildPositions(long fightMap, long map, IEnumerable<int> attackers, IEnumerable<int> defenders)
+            => Pb.New()
+                .Var(1, fightMap)
+                .Var(2, map)
+                .Msg(3, Pb.New()
+                    .Packed(1, attackers.Select(c => (long)c))
+                    .Packed(2, defenders.Select(c => (long)c)))
+                .Build();
 
         /// <summary>El izj que acompaña a la tormenta astral: «1001» de la captura.</summary>
         public static byte[] BuildStorm() => Pb.New().Var(2, 1).Build();

@@ -118,6 +118,10 @@ namespace Jondo.Unity.Server.Network
                             sesion.LeaveWorld();
                         }
 
+                        // A commission half done ends for the one left behind too.
+                        try { await CommissionHandler.AbandonAsync(sesion); } catch { }
+                        try { await ArtisanHandler.LeftAsync(sesion); } catch { }
+
                         // Guardar al cerrar, que no se hacía en ninguna parte: hasta ahora el
                         // personaje sólo se escribía cuando algo lo provocaba de paso, así que
                         // cerrar el cliente sin más perdía la última posición y los kamas.
@@ -459,6 +463,7 @@ namespace Jondo.Unity.Server.Network
                         // Nothing open survives a map change either: otherwise the X of the new
                         // map's zaap is taken by a conversation the player left behind.
                         NpcHandler.Forget();
+                        WorkshopHandler.Forget();
                         await Managers.Quests.SendMarksAsync(stream, GameState.MapId);
 
                         // Y si esto es una sala de mazmorra, el grupo se pone al tamaño del equipo.
@@ -757,6 +762,21 @@ namespace Jondo.Unity.Server.Network
                     // Empezar un sueno, o descartar el que hubiera.
                     await DreamHandler.StartOrDiscardAsync(stream, payload);
                 }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Iym)))
+                {
+                    // Buying at the fountain (inferred).
+                    await DreamHandler.BuyAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Ixq)))
+                {
+                    // The loot table of the dream's room.
+                    await DreamHandler.DropTableAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kaz)))
+                {
+                    // Where a fight here would place everybody.
+                    await DreamHandler.PositionsAsync(stream, payload);
+                }
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Izh)))
                 {
                     // La tormenta astral.
@@ -804,8 +824,78 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kcr)))
                 {
-                    // Mover un objeto entre la bolsa y el cofre.
-                    await ChestHandler.MoveAsync(stream, payload);
+                    // Mover un objeto entre la bolsa y el cofre. The same kcr lays a stack on a
+                    // commission's offer, on a workshop's bench, or on a magus table.
+                    if (!await CommissionHandler.OfferAsync(stream, payload)
+                        && !await WorkshopHandler.MoveAsync(stream, payload))
+                        await ChestHandler.MoveAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kew)))
+                {
+                    // A recipe picked in the workshop's list.
+                    await WorkshopHandler.SelectRecipeAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kdx)))
+                {
+                    // How many times to craft it.
+                    await WorkshopHandler.CountAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kep)))
+                {
+                    // Ready: a commission's customer, or in a workshop the craft button.
+                    if (!await CommissionHandler.ReadyAsync(stream, payload))
+                        await WorkshopHandler.CraftAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kcj)))
+                {
+                    // A rune on the magus table.
+                    await WorkshopHandler.RuneAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kbj)))
+                {
+                    // Break what is on the grinder.
+                    await WorkshopHandler.BreakAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kbl)))
+                {
+                    // An invitation to a commission, from the magus or from the customer.
+                    await CommissionHandler.InviteAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kgi)))
+                {
+                    // Accepting it.
+                    await CommissionHandler.AcceptAsync(stream);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kgd)))
+                {
+                    // The magus moves one of the customer's stacks onto the table or back.
+                    await CommissionHandler.MoveAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Irl)))
+                {
+                    // A job's settings as an artisan.
+                    await ArtisanHandler.SettingsAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kef)))
+                {
+                    // In or out of the public artisans' list.
+                    await ArtisanHandler.ToggleListingAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Isr)))
+                {
+                    // One job's artisans.
+                    await ArtisanHandler.ListAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kee)))
+                {
+                    // Kamas in an exchange: a commission's payment.
+                    await CommissionHandler.PaymentAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Itr)))
+                {
+                    // The client asks for its inventory again. Silenced until now; the real
+                    // server answers ivx and hlm the twelve times it is captured.
+                    await WorkshopHandler.InventoryAsync(stream);
                 }
                 else if (payloadStr.Contains("type.ankama.com/lyk"))
                 {
@@ -876,7 +966,9 @@ namespace Jondo.Unity.Server.Network
                     // Va DELANTE del zaap porque el zaap es el caso por defecto y no tiene guarda
                     // propia: con la conversación abierta, cualquier orden que deje el zaap antes
                     // se queda con la X que era del diálogo.
-                    if (ChestHandler.IsOpen) await ChestHandler.CloseAsync(stream);
+                    if (await CommissionHandler.CloseAsync()) { }
+                    else if (WorkshopHandler.IsOpen) await WorkshopHandler.CloseAsync(stream);
+                    else if (ChestHandler.IsOpen) await ChestHandler.CloseAsync(stream);
                     else if (NpcHandler.IsShopOpen) await NpcHandler.CloseShopAsync(stream);
                     else if (NpcHandler.IsDialogueOpen) await NpcHandler.CloseAsync(stream, payload);
                     else await ZaapTravelHandler.CloseAsync(stream);

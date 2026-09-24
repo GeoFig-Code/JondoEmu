@@ -97,6 +97,10 @@ namespace Jondo.Unity.Server.Network
         public static bool TryGet(Guid sessionId, out GameSession? session)
             => _sessions.TryGetValue(sessionId, out session);
 
+        /// <summary>Every session with a character in the world, whatever the map.</summary>
+        public static IReadOnlyList<GameSession> InWorld()
+            => _sessions.Values.Where(s => s.IsInWorld && s.CharacterId != 0).ToList();
+
         public static GameSession? FindByCharacter(long characterId)
             => _sessions.Values.FirstOrDefault(s => s.CharacterId == characterId);
 
