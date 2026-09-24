@@ -114,6 +114,10 @@ Important arguments include:
 --langCode <es|en|fr>
 ```
 
+The texture-pack arguments (`--hdReady`, `--4kReady`) are not among them: the launcher forces
+DirectX 11 and tells the client of no HD or 4K pack, so the game offers only Default. See
+`client-graphics.md`.
+
 Equivalent `ZAAP_PORT`, `ZAAP_HASH`, `ZAAP_GAME`, `ZAAP_RELEASE`, `ZAAP_INSTANCE_ID` and
 `ZAAP_CAN_AUTH` environment variables are set for the child. Every client receives its own hash
 and instance id even though all clients use the same local listeners.
