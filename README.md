@@ -359,19 +359,24 @@ Dofus does not ship the item-to-look table: the server sends it. **2,371 of the 
 - ✅ **577 workshop stations** on the world's maps, recognised by their graphic: 21 declared in the captures' `jss`, 2 seen used, 15 from PR #44's Incarnam captures and 16 found inside the workshops of a one-skill job (tailor, shoemaker, sculptor, smith, jeweller, handyman, hunter, fisherman...)
 - ✅ The craft window of every job with any of the **4,858 recipes**: pick a recipe or lay the ingredients by hand, craft one or many, the job's level asked for
 - ✅ Crafted equipment rolls each characteristic in its own range; what rolls nothing joins a stack
+<img width="2488" height="1396" alt="image" src="https://github.com/user-attachments/assets/9651bea6-a649-4154-9389-f30c1da7ea58" />
+
 - ✅ Craft experience `⌊20 · recipe level / (1 + 0.1 · gap^1.1)⌋` — the tutorial's +20 — and the level-up window (`isz`), now for gathering too
 - ✅ Smithmagic on the six magus tables: clean success, partial success (it enters and costs weight elsewhere) and failure, with the client's own rune weights, the pool, over and exo up to a weight of 101, exo AP/MP/range at 1%
+<img width="2560" height="1508" alt="image" src="https://github.com/user-attachments/assets/b4b5f143-fe17-4e42-b656-407480a0414c" />
 - ✅ Signature runes: "Fabricado por" on a craft, "Modificado por" on a magus table, stored in the item itself
 - 🟡 The odds of a rune are the community's model (66/34/0 on a weak item, 43/50/7 at the perfect jet, a 15% floor, a rune's reach of 30·√weight); Ankama never published theirs
 - ✅ Maging for someone else: invite a customer or a magus from a magus table, the customer lays their item, runes and signature, pays when a rune went on their item; the magus' side measured whole, the customer's mirrored
-- ✅ Breaking items at the grinder into their base runes, `(3 · value · weight · level / 200 + 1) · coefficient`, checked on the seven captured lines
+- ✅ Breaking items at the grinder into their base runes, `(3 · value · weight · level / 200 + 1) · coefficient`
 - ✅ The breaking focus: the focused characteristic takes half the weight of every other
+<img width="1378" height="1218" alt="image" src="https://github.com/user-attachments/assets/acb6b847-1ab0-4966-83db-657fd0fa38c3" />
 - ✅ The artisans' directory: each job's settings (free, minimum level) kept per character, the public list, and the book of every workshop opening its jobs
 - ✅ Transcendence runes: 100% of success within the density rule of their own data, never over an over or an exo, and the item closed to smithmagic afterwards
 - ➖ Corruption runes: not in the 3.6.10 game data (Ankama withdrew them in 2.51); only their help text remains
 - ✅ `.oficios [level]` puts every job at a level (200 by default), `.oficio <job> <level>` one of them
 - ✅ `.receta <item> [times]` puts the ingredients of an item's recipe in the bag, each onto the stack already there
 - ✅ Forgegod mode for administrators (`.forjadios on|off`, `.forgegod`, `.forgedieu`): no rune fails, no weight cap, two AP of exo, transcendence on anything, no job level on recipes
+<img width="1370" height="1182" alt="image" src="https://github.com/user-attachments/assets/751cb412-d2de-4b21-b91e-498342754dce" />
 
 ### 👹 NPCs and monsters
 <img width="954" height="836" alt="image" src="https://github.com/user-attachments/assets/78779a18-0cd2-4f5c-b403-0c39cd291bcb" />
