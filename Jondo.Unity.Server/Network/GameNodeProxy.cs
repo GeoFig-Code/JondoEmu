@@ -466,20 +466,6 @@ namespace Jondo.Unity.Server.Network
                         WorkshopHandler.Forget();
                         await Managers.Quests.SendMarksAsync(stream, GameState.MapId);
 
-                        // Y si esto es una sala de mazmorra, el grupo se pone al tamaño del equipo.
-                        // Aquí, antes de construir los actores: el grupo se DIBUJA en el mapa, así
-                        // que verlo de tres y pelear contra siete sería peor que no ajustarlo.
-                        var equipo = Managers.Parties.Of(GameState.CharacterId);
-                        int atacantes = equipo == null
-                            ? 1
-                            : Managers.Parties.MembersOf(equipo).Count;
-                        int quedan = Managers.MobSpawnManager.SizeRoomToParty(GameState.MapId, atacantes);
-                        if (quedan > 0)
-                        {
-                            Console.WriteLine($"[Mazmorra] La sala {GameState.MapId} se pone a " +
-                                              $"{quedan} monstruo(s) para {atacantes} atacante(s).");
-                        }
-
                         byte[] actors = ConnectionProtocol.Push(Op.Jss,
                             ConnectionProtocol.BuildMapActors(GameState.MapId, here,
                                                               GameState.CellId, GameState.Orientation,

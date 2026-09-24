@@ -24,7 +24,7 @@ High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** writte
 
 - 🎒 &nbsp;**Character** &nbsp;— &nbsp;[Character and inventory](#-character-and-inventory) · [Appearances](#-appearances) · [Professions](#-professions)
 
-- 📚 &nbsp;**Content** &nbsp;— &nbsp;[NPCs and monsters](#-npcs-and-monsters) · [Quests](#-quests) · [Dungeons](#-dungeons) · [Jondo Coin](#-jondo-coin)
+- 📚 &nbsp;**Content** &nbsp;— &nbsp;[NPCs and monsters](#-npcs-and-monsters) · [Quests](#-quests) · [Dungeons](#-dungeons) · [Infinite Dreams](#-infinite-dreams) · [Jondo Coin](#-jondo-coin)
 
 - ⚔️ &nbsp;**Combat** &nbsp;— &nbsp;[One engine, four rulebooks](#-one-engine-four-rulebooks) · [PvM](#-pvm-combat) · [Duels](#-duels) · [Koliseo](#-koliseo) · [Spell effect engine](#-spell-effect-engine) · [Spell check-list](#-spell-check-list) · [Combat challenges](#-combat-challenges) · [Not implemented](#-not-implemented-at-all)
 
@@ -320,7 +320,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Life regeneration, run by the client and switched by the server: started on every return to a
   roleplay map (`ktz`) and stopped on the way into a fight (`kuq`), so a fight starts on the life
   the ticks earned
-- ✅ Commands — `.teleport [x,y]` or `.teleport <map id>`, `.kamas`, `.shop`, `.size`, `.level`, `.item`, `.itemset`, `.receta`, `.gremio`, `.raid`; they answer with an information line only their author sees
+- ✅ Commands — `.teleport [x,y]` or `.teleport <map id>`, `.kamas`, `.shop`, `.size`, `.level`, `.item`, `.itemset`, `.receta`, `.sueno`, `.gremio`, `.raid`; they answer with an information line only their author sees
 - ✅ Live administration over HTTP — `POST /api/personaje` sets characteristics, kamas and level, grants items or a mount, and teleports a connected character without a reconnect. `POST /api/rol` changes account roles. Administrator only, loopback only
 - 🟡 `.level` repaints the in-fight spell bar, but the fighter's own level is not updated until the next fight
 
@@ -434,6 +434,7 @@ Full workings in **`docs/quests.md`**.
 - ✅ Talk to the guardian, hand over the key, and you are in the first room; win a fight and you
   move on; beat the boss in the last one and you come out
 - ✅ The boss is placed at startup in **126** dungeons, in the room the data says, at its highest grade
+- ✅ Each room has one group of eight built from the dungeon's own monsters, and a fight takes the first `clamp(players, 4, 8)` — four for a player alone — at the room's grade, as the jalatós capture shows; the map carries the group's variants by team size byte for byte; a beaten room comes back as itself, boss included
 - ✅ The keyring and the required item come from the client's own data
 - ✅ Dungeon challenges are imposed at 0% and carry achievements
 
@@ -442,6 +443,22 @@ Full workings in **`docs/quests.md`**.
 > next room instead.
 
 Full workings in **`docs/dungeons.md`**.
+
+### 🌙 Infinite Dreams
+
+Entered from the Plano Astral's well: a dream of 26 rooms in depth, walked band by band.
+
+- ✅ Ten difficulties in three families (Sueño, Paradoja, Pesadilla), each with its measured starting bonus, dream points, astral storms and Draconiros arena
+- ✅ Five bands, as the invitation capture measures them: fountains at rows 4, 10, 16 and 25, band IV closed by one fight room alone, and the **Fin du rêve** at row 26
+- ✅ Every fight room pays its bonus and its dream points on entry — 5, 15 for the marked ones, 10 in band V — and the HUD shows the score, the points and the bonuses summed
+- ✅ The bestiary, the loot table and the placement map of the room one stands in
+- ✅ The fountains' shop (Rey Gob one fountain in four): bonuses, spells and dream points bought with dream points; the Rey Gob's favour once per fountain
+- ✅ Astral storms reroll the room's group and map; a dream is saved to the base and resumed after a disconnection or a restart
+- ✅ The Fin du rêve in waves of bosses, wanted monsters and high-level monsters: level 250 +5 a wave (1 to win, 5 at most) in a Sueño, 275 +10 (3 to win, 15 at most) in a Paradoja, 300 +15 (3 to win, no end) in a Pesadilla. Winning it, or falling after the waves it takes, ends the dream won
+- ✅ A lost fight spends the Draconiros arena and the room can be tried again; with no arena left the dream is lost
+- ✅ `.sueno [row]` (`.sueño`, `.dream`, `.reve`), administrators only: carries the dream in progress down its own graph to a room of that row, or to the Fin du rêve with no row — every room on the way entered and won as if fought, its bonus and dream points paid
+- 🟡 Monsters are brought to the Fin du rêve's level by scaling their life and characteristics; the game's own scaling is not known, and the other rooms fight at the world groups' own grades
+- ❌ Favour rooms, and the effects of the spells the shop sells
 
 ### 🪙 Jondo Coin
 
@@ -489,9 +506,9 @@ Three architecture tests enforce it: no lookups that assume one team is the play
 - ✅ Movement with per-tile MP cost and collision against occupied cells
 - ✅ Loot, victory and defeat screens, experience over **1,889 levels**, level-ups and group respawn
 - ✅ End-of-fight statistics — damage dealt by source (own casts, glyphs and walls, summons, turn triggers, pushes), taken, heals given and received, shields, enemies defeated, and the per-turn and per-AP averages, each player getting their own numbers
-- ✅ Monster AI: a target chosen per spell, range measured against that target, walking to the spell's own range band, `MaxCastPerTurn` honoured, breadth-first pathing around obstacles and line of sight
+- ✅ Monsters and bosses run their own spells' mechanics: the behaviour spell cast at the start, triggered rows armed on every fighter they name, 30+ triggers (damage by element, heals, states on and off, pushes and collisions, thresholds, deaths), state disabling (952), telefrags, delayed sub-casts, life thresholds, revives, glyphs shown in their own colours — Conde Kontatrás's clock works end to end. See **`docs/bosses.md`**
+- ✅ Monster AI that plans its turn: every spell it can pay for, against every target, from every cell its MP reach — the blow against the target's resistance, kills first and the weakest enemy focused, heals for the badly wounded, AP/MP removal, buffs and summons once a turn; cooldowns, casts per turn and per target honoured; then it places itself (ranged at its reach, melee against the weakest to lock him, fleeing when nearly dead)
 - 🟡 Weapon strikes apply damage and AP cost; the slash animation does not
-- 🟡 `MaxCastPerTarget`, minimum cast interval and cast-in-line are enforced for the player, not for monsters
 - ✅ Push and collision damage, `blockedCells × (level/2 + push − resistance + 32) / 4`, floored. The fighter acting as the wall takes half, and the **Unmovable** state cancels it
 - ✅ A dropped client does not stop the fight, and the player can come back into it — see
   [Connection and authentication](#-connection-and-authentication)
@@ -1637,7 +1654,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,287 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,396 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 

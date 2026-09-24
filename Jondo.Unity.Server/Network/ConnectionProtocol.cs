@@ -902,6 +902,8 @@ namespace Jondo.Unity.Server.Network
                     .VarIfNotZero(2, LevelOf(leader))
                     .VarIfNotZero(4, GradeOf(leader)));
 
+                if (group.Modular) AddAlternatives(creatures, group.Members);
+
                 jss.Msg(5, Pb.New()
                     .Msg(1, Pb.New().Var(1, group.CellId).Var(2, group.Orientation))
                     .Msg(2, Pb.New()
@@ -1261,6 +1263,34 @@ namespace Jondo.Unity.Server.Network
         /// Level of a spawned monster: the one the spawner rolled, or failing that the one its
         /// grade declares.
         /// </summary>
+        /// <summary>
+        /// The groups a dungeon room shows by team size, behind the leader in the same f2:
+        ///
+        ///   f3 { f1 (repeated): member { f1: id, f2: level, f4: grade }   f2: team size }
+        ///
+        /// Measured on the five rooms of the jalatós capture: one alternative for 1 player with
+        /// the first four of the eight, then 5, 6, 7 and 8 with the first five to eight -- none
+        /// for 2, 3 or 4, which fight the four of the first. Members with no look of their own,
+        /// like the leader.
+        /// </summary>
+        internal static void AddAlternatives(Pb creatures, IReadOnlyList<Managers.MobSpawnManager.MobMember> members)
+        {
+            for (int size = Managers.MobSpawnManager.DungeonMinimum;
+                 size <= Math.Min(members.Count, Managers.MobSpawnManager.DungeonGroupSize); size++)
+            {
+                var alternative = Pb.New();
+                for (int i = 0; i < size; i++)
+                {
+                    alternative.Msg(1, Pb.New()
+                        .Var(1, members[i].Monster.Id)
+                        .VarIfNotZero(2, LevelOf(members[i]))
+                        .VarIfNotZero(4, GradeOf(members[i])));
+                }
+                alternative.Var(2, size == Managers.MobSpawnManager.DungeonMinimum ? 1 : size);
+                creatures.Msg(3, alternative);
+            }
+        }
+
         private static long LevelOf(Managers.MobSpawnManager.MobMember member)
         {
             if (member.Level > 0) return member.Level;

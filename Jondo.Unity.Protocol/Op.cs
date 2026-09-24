@@ -671,6 +671,13 @@ public static class Op
     public const string Ixq = "ixq";
 
     /// <summary>
+    /// Server to client, empty: opens the fountain's shop. Read off the client, not a capture: its
+    /// handlers raise the event bxv, and the dream window manager's three bxv methods are the ones
+    /// that set up InfiniteDreamShopUi.
+    /// </summary>
+    public const string Ixm = "ixm";
+
+    /// <summary>
     /// Server to client, by root 3: the loot table of the dream's room, one f2 per item --
     /// { f1: criterion, f2: item, f3: quantity, f5: percent as a float }.
     /// </summary>

@@ -84,8 +84,20 @@ los nombres cantan: «Guawdia wabbit», «Guardián koalak», «Discípulo de Ug
 
 **Avanzar.** Ganar un combate en una sala mueve a la siguiente. En la última, a la salida.
 
-**El jefe.** Al arrancar, la última sala de cada mazmorra con jefe declarado se vacía y se le pone
-sólo a él, al grado más alto que tenga. 126 mazmorras.
+**Los grupos.** Cada sala tiene UN grupo de ocho, compuesto al arrancar con los monstruos propios
+de la subzona de la sala (`Subareas.Monsters`, sin los jefes de la mazmorra), y el combate coge los
+primeros `clamp(jugadores, 4, 8)`: cuatro para uno a cuatro jugadores, y uno más por cada jugador
+desde el quinto. Es lo que enseña la captura `Mazmorras/mazmorra de los jalatós completa`: el `jss`
+de cada sala lleva el grupo de ocho y sus alternativas por número de jugadores (1 → 4, 5 → 5 … 8 → 8),
+cada una los primeros N de los ocho, y el sacrógrito que entró solo peleó contra cuatro en las cinco
+salas. Los cuatro primeros son cuatro especies distintas; los monstruos de la sala k van al grado k
+(de 1 a 5 en esa mazmorra; en las demás, repartidos linealmente entre los grados). El mapa manda el
+grupo con sus alternativas, idénticas byte a byte a las de la captura (`DungeonGroupSizeTests`).
+
+**El jefe.** En la última sala de las 126 mazmorras con jefe declarado, el jefe encabeza el grupo, una
+sola vez y a su grado más alto, con siete de los monstruos de la mazmorra detrás.
+
+**Al ganar**, la sala se vuelve a componer igual —su jefe incluido— en vez de repoblarse al azar.
 
 ---
 
@@ -96,14 +108,15 @@ diseño, es lo único que la topología aguanta: **ninguna de las 187 mazmorras 
 sus pasajes internos**, ni en la tabla extraída ni en el propio grafo de mundo de Ankama. A un
 jugador puesto en la sala 0 no le quedaría por dónde salir.
 
-**Cualquier combate ganado en una sala avanza**, no hace falta limpiarla. Las salas traen 2-4 grupos
-del fondo genérico de la subzona, así que exigir limpiarlas sería exigir cinco combates por sala.
+**Cualquier combate ganado en una sala avanza.** Cada sala tiene un solo grupo, así que ganarlo es
+limpiarla.
 
 **Cualquier respuesta al guardián entra**, porque el árbol de diálogo de esos NPCs no está escrito.
 La frase de confirmación existe y es suya; ponerla es trabajo del editor.
 
-**El jefe no vuelve como jefe.** Al ganar, el servidor quita el grupo y repuebla uno al azar de la
-zona. La última sala, tras matar al jefe, se llena de bichos corrientes hasta el siguiente arranque.
+**El grupo no crece durante la colocación.** En el juego, si entran más jugadores al combate el grupo
+pasa de cuatro a su tamaño; aquí nadie puede unirse todavía a un combate contra monstruos, así que
+todo combate es de uno contra cuatro. El grupo del mapa ya lleva sus alternativas para cuando se pueda.
 
 ---
 
@@ -122,7 +135,8 @@ Ahora van en el orden correcto.
 - **Los pasajes internos.** Es lo que separa esto de la mazmorra de verdad. Son ~1.800 puertas y el
   editor de pasajes ya sabe ponerlas; lo que no hay es de dónde sacarlas automáticamente.
 - **El árbol de diálogo del guardián**, con la confirmación y un «no, gracias» que no entre.
-- **Que el jefe siga siendo el jefe** al repoblar.
+- **Unirse a un combate contra monstruos**, y con ello que el grupo de la sala crezca hasta ocho.
+- **Las oleadas** de algunas mazmorras nuevas (Despedazadora, Venerable, Bzupervibzor) y el altar de caza.
 - **Los retos de mazmorra**: 684 de los 842 están marcados `solo_mazmorra` y no se ofrecen nunca,
   porque nada le dice al combate que está dentro de una. Ahora `DungeonHandler.IsBossRoom` y
   `DungeonManager.OfRoom` sí lo saben.

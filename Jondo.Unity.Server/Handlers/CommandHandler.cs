@@ -68,6 +68,10 @@ namespace Jondo.Unity.Server.Handlers
                 [".forjadios"] = "usage.forgegod",
                 [".forgegod"] = "usage.forgegod",
                 [".forgedieu"] = "usage.forgegod",
+                [".sueno"] = "usage.dream",
+                [".sueño"] = "usage.dream",
+                [".dream"] = "usage.dream",
+                [".reve"] = "usage.dream",
             };
 
         /// <summary>
@@ -93,6 +97,11 @@ namespace Jondo.Unity.Server.Handlers
                 [".forjadios"] = Roles.Administrador,
                 [".forgegod"] = Roles.Administrador,
                 [".forgedieu"] = Roles.Administrador,
+                // The same for skipping a dream forward: it skips the game.
+                [".sueno"] = Roles.Administrador,
+                [".sueño"] = Roles.Administrador,
+                [".dream"] = Roles.Administrador,
+                [".reve"] = Roles.Administrador,
                 [".size"] = Roles.GameMaster,
                 [".shop"] = Roles.GameMaster,
                 [".gremio"] = Roles.Jugador,
@@ -186,6 +195,10 @@ namespace Jondo.Unity.Server.Handlers
                     case ".forjadios":
                     case ".forgegod":
                     case ".forgedieu": await ForgeGodAsync(stream, rest, channel, accountId); break;
+                    case ".sueno":
+                    case ".sueño":
+                    case ".dream":
+                    case ".reve": await DreamAsync(stream, rest, channel, accountId); break;
                 }
             }
             catch (Exception ex)
@@ -969,6 +982,63 @@ namespace Jondo.Unity.Server.Handlers
                 .GroupBy(i => i.ItemId)
                 .Select(g => (g.Key, g.Sum(i => i.Quantity) * times))
                 .ToList();
+
+        // ─── .sueno ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// ".sueno [row]" (".dream", ".reve"): the dream one has going carried forward to a room of
+        /// the row given, or to the Fin du rêve with none, the rooms on the way won as if fought.
+        /// For testing what lies deep in a dream -- band V's fountain, the end and its waves --
+        /// without twenty-five fights first. Administrators only: it skips the game.
+        /// </summary>
+        private static async Task DreamAsync(NetworkStream stream, string rest, int channel, long accountId)
+        {
+            if (!TryParseDreamRow(rest, out int? row))
+            {
+                await NotifyAsync(stream, Usage(".sueno"), channel, accountId);
+                return;
+            }
+            if (GameState.IsInFight)
+            {
+                await NotifyAsync(stream, T("dream.in_fight"), channel, accountId);
+                return;
+            }
+            var dream = Dreams.De(GameState.CharacterId);
+            if (dream == null)
+            {
+                await NotifyAsync(stream, T("dream.none"), channel, accountId);
+                return;
+            }
+
+            var (outcome, room, skipped) = await DreamHandler.SkipToAsync(stream, dream, row);
+            if (outcome == Dreams.SkipOutcome.Done && room != null)
+            {
+                ActivityJournal.Current.Write("dream.skipped",
+                    accountId > 0 ? accountId : SessionContext.Current.AccountId,
+                    GameState.CharacterId,
+                    new { source = "command", room = room.Id, row = room.Fila, skipped, dreamPoints = dream.DreamPoints });
+            }
+
+            string reply = outcome switch
+            {
+                Dreams.SkipOutcome.Done when room != null => T("dream.skipped", room.Id, room.Fila, skipped, dream.DreamPoints),
+                Dreams.SkipOutcome.Behind => T("dream.behind", dream.SalaActual?.Fila ?? 0),
+                Dreams.SkipOutcome.Past => T("dream.past", dream.Salas.Count == 0 ? 0 : dream.Salas.Max(r => r.Fila)),
+                _ => T("dream.none"),
+            };
+            await NotifyAsync(stream, reply, channel, accountId);
+        }
+
+        /// <summary>".sueno" alone for the end, or ".sueno 25": a row of rooms, 1 or deeper.</summary>
+        internal static bool TryParseDreamRow(string rest, out int? row)
+        {
+            row = null;
+            string text = (rest ?? "").Trim();
+            if (text.Length == 0) return true;
+            if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value) || value < 1) return false;
+            row = value;
+            return true;
+        }
 
         // ─── .packets ──────────────────────────────────────────────────────────
 

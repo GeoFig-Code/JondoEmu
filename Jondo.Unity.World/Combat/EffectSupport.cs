@@ -139,6 +139,13 @@ namespace Jondo.Unity.World.Combat
         /// <summary>Take a state off.</summary>
         public const int RemoveState = 951;
 
+        /// <summary>
+        /// "Desactiva el estado #3": the state stays on the bearer, switched off for the row's
+        /// duration -- Conde Kontatrás's Reloj de Bolsillo takes his Invulnerable (56) away for a
+        /// turn this way, and it is back the turn after with nothing putting it again.
+        /// </summary>
+        public const int DisableState = 952;
+
         /// <summary>Cast another spell. This is the one that makes triggers work.</summary>
         public const int CastSpell = 792;
 

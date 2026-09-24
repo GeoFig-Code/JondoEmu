@@ -311,6 +311,22 @@ namespace Jondo.Unity.World.Fights
         /// </remarks>
         public int CasillaAnterior { get; private set; } = -1;
 
+        /// <summary>
+        /// A monster's behaviour spell -- its grade's startingSpellId -- cast when the fight
+        /// begins, or when it joins one. Its triggered rows are armed for good on the fighters they
+        /// name. (0, 0) for everybody else.
+        /// </summary>
+        public (int Spell, int Grade) Conducta { get; set; }
+
+        /// <summary>
+        /// Where the fighter stood when his last turn began: effect 1099, "Teletransporta a la
+        /// posición de inicio de turno", sends him back there. Minus one before his first turn.
+        /// </summary>
+        public int CasillaAlEmpezarTurno { get; set; } = -1;
+
+        /// <summary>Where he stood when the fight began: effect 784 sends him back there.</summary>
+        public int CasillaAlEmpezarCombate { get; set; } = -1;
+
         /// <summary>Mueve al combatiente y se acuerda de dónde estaba.</summary>
         public void MoverA(int casilla)
         {

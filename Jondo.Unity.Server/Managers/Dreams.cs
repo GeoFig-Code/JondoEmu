@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Jondo.Unity.World.Fights;
 
 namespace Jondo.Unity.Server.Managers
@@ -191,6 +192,10 @@ namespace Jondo.Unity.Server.Managers
         private const int ClaseNormal = 5;
         private const int ClaseSenalada = 15;
 
+        /// <summary>From row 22 on the rooms give 10: every one of band V in the invitation capture.</summary>
+        private const int ClaseDeLaVenta = 10;
+        private const int FilaDeLaVenta = 22;
+
         /// <summary>Cuántos sueños se le han ofrecido a cada personaje, para el f13.</summary>
         private static readonly Dictionary<long, int> _cuenta = new Dictionary<long, int>();
 
@@ -257,7 +262,10 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>The InfiniteDreamRewardData row: the f9.</summary>
             public int Id { get; init; }
 
-            /// <summary>The f10, which comes with the reward and whose meaning is unknown.</summary>
+            /// <summary>
+            /// The f10: what the client buys it by. Clicking "Psst Psst" sends iym { f1: 149 },
+            /// the f10 of that offer and nothing else of it.
+            /// </summary>
             public int Tag { get; init; }
 
             /// <summary>The f7: left out when zero.</summary>
@@ -326,15 +334,19 @@ namespace Jondo.Unity.Server.Managers
             public int Fila { get; init; }
 
             /// <summary>A qué salas se puede ir desde aquí.</summary>
+            [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
             public List<int> Salidas { get; } = new List<int>();
 
             /// <summary>La fila de MapMobs que se pelea aquí. Cero en la entrada.</summary>
             public int Grupo { get; set; }
 
             /// <summary>Los monstruos de ese grupo, con su grado, para plantarlos en la sala.</summary>
+            [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
             public List<(int Monstruo, int Grado)> Miembros { get; } = new List<(int, int)>();
 
             /// <summary>El grupo ya plantado en el mapa de la sala, para poder quitarlo.</summary>
+            /// <remarks>Not saved: after a restart nothing is planted, and the room plants anew.</remarks>
+            [JsonIgnore]
             public long Plantado { get; set; }
 
             /// <summary>El mapa del mundo donde vive ese grupo. NO es a donde se va el jugador.</summary>
@@ -354,6 +366,7 @@ namespace Jondo.Unity.Server.Managers
             public Reward? Reward { get; set; }
 
             /// <summary>The room's bonus, when its reward is one. Null at the entrance and at a fountain.</summary>
+            [JsonIgnore]
             public Bono? Regalo => Reward != null && Reward.Bonuses.Count > 0 ? Reward.Bonuses[0] : null;
 
             /// <summary>
@@ -369,8 +382,8 @@ namespace Jondo.Unity.Server.Managers
             public bool FavorTaken { get; set; }
 
             /// <summary>El efecto que modifica la sala, y cuánto. Cero: sin modificación.</summary>
-            public int Efecto => Regalo?.Efecto ?? 0;
-            public int Valor => Regalo?.Valor ?? 0;
+            [JsonIgnore] public int Efecto => Regalo?.Efecto ?? 0;
+            [JsonIgnore] public int Valor => Regalo?.Valor ?? 0;
 
             /// <summary>Si ya se ha peleado aquí.</summary>
             public bool Hecha { get; set; }
@@ -412,6 +425,16 @@ namespace Jondo.Unity.Server.Managers
             /// hay captura.
             /// </remarks>
             public bool EsFuente { get; set; }
+
+            /// <summary>
+            /// The room that closes its band and opens the next: the fountains of bands I to III,
+            /// and the lone fight room of row 22 that closes band IV -- "56" in the invitation
+            /// capture, in the graphs of both bands as the fountains are.
+            /// </summary>
+            public bool Cierre { get; set; }
+
+            /// <summary>The last room of the dream, row 26: the Fin du rêve, fought in waves. Type 4.</summary>
+            public bool EsFinal { get; set; }
         }
 
         public sealed class Sueno
@@ -421,6 +444,7 @@ namespace Jondo.Unity.Server.Managers
             public int Nivel { get; init; }
             public int Dificultad { get; init; }
 
+            [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
             public List<Sala> Salas { get; } = new List<Sala>();
 
             /// <summary>En qué sala está. Empieza en la cero, que es la entrada.</summary>
@@ -447,6 +471,7 @@ namespace Jondo.Unity.Server.Managers
             /// "0" at the entrance and still "0" in the first fight room, "4", "2", "0" once in
             /// the third -- and the fountain on the list while one stands in it.
             /// </summary>
+            [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
             public List<int> Visited { get; } = new List<int>();
 
             /// <summary>Tormentas astrales que quedan. Es el f7, y el número del botón.</summary>
@@ -464,6 +489,7 @@ namespace Jondo.Unity.Server.Managers
             /// Se cobra al ENTRAR en la sala, no al ganarla: la guía dice que los bonos se
             /// recogen al entrar y que el combate empieza inmediatamente después.
             /// </remarks>
+            [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
             public List<Bono> Ganados { get; } = new List<Bono>();
 
             /// <summary>Por qué franja va, empezando por la I.</summary>
@@ -490,6 +516,7 @@ namespace Jondo.Unity.Server.Managers
             public long MapaDeVuelta { get; init; }
             public int CasillaDeVuelta { get; init; }
 
+            [JsonIgnore]
             public Sala? SalaActual => Buscar(Actual);
 
             public Sala? Buscar(int id)
@@ -512,8 +539,86 @@ namespace Jondo.Unity.Server.Managers
 
         public static int Activos => _enCurso.Count;
 
+        /// <summary>
+        /// A character's dream: the one in memory, or the one it saved -- a dream outlives a
+        /// disconnection and a restart, and it used to vanish with either, leaving the player in
+        /// a room with no dream around it and no way out.
+        /// </summary>
         public static Sueno? De(long characterId)
-            => _enCurso.TryGetValue(characterId, out var s) ? s : null;
+        {
+            if (_enCurso.TryGetValue(characterId, out var s)) return s;
+            if (characterId == 0 || !_leidos.TryAdd(characterId, true)) return null;
+
+            var saved = Deserialize(DatabaseManager.LoadDream(characterId));
+            if (saved == null) return null;
+            _enCurso[characterId] = saved;
+            return saved;
+        }
+
+        /// <summary>The characters whose saved dream was looked for already: one read each.</summary>
+        private static readonly ConcurrentDictionary<long, bool> _leidos = new();
+
+        /// <summary>Fields included: a room's members are (monster, grade) tuples.</summary>
+        private static readonly JsonSerializerOptions Json = new JsonSerializerOptions { IncludeFields = true };
+
+        /// <summary>A dream as JSON, for the base.</summary>
+        public static string Serialize(Sueno dream) => JsonSerializer.Serialize(dream, Json);
+
+        /// <summary>A dream from its JSON, or null when there is none or it cannot be read.</summary>
+        public static Sueno? Deserialize(string? json)
+        {
+            if (string.IsNullOrEmpty(json)) return null;
+            try { return JsonSerializer.Deserialize<Sueno>(json, Json); }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Sueños] A saved dream could not be read: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>Whether a map is one of the dream's: the entrance, a fight room or a fountain.</summary>
+        public static bool IsDreamMap(long mapId)
+        {
+            if (_mapasDelSueno == null) _mapasDelSueno = new HashSet<long>(TodosLosMapasDeSala());
+            return _mapasDelSueno.Contains(mapId);
+        }
+
+        private static HashSet<long>? _mapasDelSueno;
+
+        /// <summary>
+        /// Takes the dream's groups off their maps, and keeps the dream: leaving a dream does not
+        /// end it. The captures show it -- the well offers to continue the dream that was left.
+        /// </summary>
+        public static void Unplant(Sueno sueno)
+        {
+            foreach (var sala in sueno.Salas)
+            {
+                if (sala.Plantado == 0) continue;
+                MobSpawnManager.RemoveMobGroup(sala.MapaDeLaSala, sala.Plantado);
+                sala.Plantado = 0;
+            }
+        }
+
+        /// <summary>
+        /// The astral storm on a fight room: another group, on another map, the same room. In the
+        /// Paradoja II capture the room stays "1" across both storms, its bestiary changes and the
+        /// jru goes to another map; f7, the storms left, goes from 2 to 1 to nothing.
+        /// </summary>
+        public static void Reroll(Sueno sueno, Sala sala)
+        {
+            if (sala.Plantado != 0)
+            {
+                MobSpawnManager.RemoveMobGroup(sala.MapaDeLaSala, sala.Plantado);
+                sala.Plantado = 0;
+            }
+
+            Cargar();
+            sala.Miembros.Clear();
+            Poblar(sala, sueno.Nivel, sueno.Dificultad, keepReward: true);
+
+            var mapas = MapasDeSala().Where(m => m != sala.MapaDeLaSala).ToList();
+            if (mapas.Count > 0) lock (_azar) sala.MapaDeLaSala = mapas[_azar.Next(mapas.Count)];
+        }
 
         /// <summary>Se acabó el sueño: se olvida, y con él los grupos que dejó plantados.</summary>
         /// <remarks>
@@ -682,7 +787,7 @@ namespace Jondo.Unity.Server.Managers
             // tres tiradas libres de 2 a 4 dan de seis a doce. Se reparte un total. Y la primera
             // fila nunca pasa de tres: la entrada abre a TODAS sus salas y un mapa sólo trae tres
             // puertas, así que con cuatro una quedaría sin puerta que la abriese.
-            var anchos = AnchosDeLasFilas(dado);
+            var anchos = AnchosDeLasFilas(dado, FightRowsOf(1));
 
             MontarUnaFranja(sueno, anchos, nivel, primera: true);
 
@@ -702,18 +807,46 @@ namespace Jondo.Unity.Server.Managers
         {
             Cargar();
 
+            if (sueno.Franja >= Bands) return;
             var dado = new Random(HashCode.Combine(sueno.CharacterId, sueno.Cuenta, sueno.Franja));
-            var anchos = AnchosDeLasFilas(dado);
+            var anchos = AnchosDeLasFilas(dado, FightRowsOf(sueno.Franja + 1));
 
             sueno.Franja++;
             MontarUnaFranja(sueno, anchos, sueno.Nivel, primera: false);
         }
 
+        /// <summary>
+        /// The five bands of a dream, measured whole in the invitation capture, whose player is in
+        /// the fifth: 26 rows of rooms, the dofuspourlesnoobs guide's "un songe est constitué de 26
+        /// salles" in depth.
+        ///
+        ///   I     row 0 the entrance, rows 1-3 fights, row 4 a fountain
+        ///   II    the fountain of 4, rows 5-9 fights, row 10 a fountain
+        ///   III   the fountain of 10, rows 11-15 fights, row 16 a fountain
+        ///   IV    the fountain of 16, rows 17-21 fights, row 22 one fight room alone
+        ///   V     that room, rows 23-24 fights, row 25 a fountain, row 26 the Fin du rêve
+        ///
+        /// Fountains at depths 4, 10, 16 and 25, as the guide lists them.
+        /// </summary>
+        public const int Bands = 5;
+
+        /// <summary>How many rows of fights a band has between its entry and what closes it.</summary>
+        public static int FightRowsOf(int franja) => franja <= 1 ? 3 : franja >= Bands ? 2 : 5;
+
+        /// <summary>Whether a room closes its band -- saved dreams from before the mark count their fountains.</summary>
+        public static bool Closes(Sala sala) => sala.Cierre || (sala.EsFuente && sala.Franja < Bands);
+
         /// <summary>Las tres filas de en medio, con el total que sale medido.</summary>
-        private static int[] AnchosDeLasFilas(Random dado)
+        private static int[] AnchosDeLasFilas(Random dado, int filas = 3)
         {
-            var anchos = new int[] { MinimoPorFila, MinimoPorFila, MinimoPorFila };
-            int sobran = dado.Next(MinimoDeEnMedio, MaximoDeEnMedio + 1) - MinimoPorFila * 3;
+            // Two to four a row, the first no more than three -- its entry has three doors. The
+            // totals are the measured ones: 7 to 9 over the three rows of band I; 14, 15 and 16
+            // over the five of bands II to IV; 3 and 3 over the two of band V.
+            var anchos = Enumerable.Repeat(MinimoPorFila, filas).ToArray();
+            int total = filas == 3 ? dado.Next(MinimoDeEnMedio, MaximoDeEnMedio + 1)
+                      : filas == 5 ? dado.Next(13, 18)
+                      : dado.Next(filas * MinimoPorFila, filas * 3 + 1);
+            int sobran = total - MinimoPorFila * filas;
             while (sobran > 0)
             {
                 int donde = dado.Next(anchos.Length);
@@ -750,11 +883,11 @@ namespace Jondo.Unity.Server.Managers
             }
             else
             {
-                // La fuente de la franja anterior es la puerta de ésta. It stays a fountain: in the
-                // long capture room 9 is still of type 3 in both graphs once the second band is
-                // open. The newest fountain is the last one on the list, which is why this finds it.
+                // What closed the band before is the door of this one: a fountain -- which stays a
+                // fountain, room 9 of the long capture is of type 3 in both its graphs -- or, for
+                // band V, the lone fight room of row 22. The newest is the last on the list.
                 Sala? fuente = null;
-                foreach (var puesta in sueno.Salas) if (puesta.EsFuente) fuente = puesta;
+                foreach (var puesta in sueno.Salas) if (Closes(puesta) && puesta.Franja == sueno.Franja - 1) fuente = puesta;
                 if (fuente == null) return;
                 porFila.Add(new List<Sala> { fuente });
             }
@@ -772,10 +905,33 @@ namespace Jondo.Unity.Server.Managers
                 porFila.Add(deLaFila);
             }
 
-            var laFuente = new Sala { Id = siguiente++, Fila = filaBase, EsFuente = true, Franja = sueno.Franja };
-            lock (_azar) laFuente.HasReyGob = _azar.Next(ReyGobOneIn) == 0;
-            sueno.Salas.Add(laFuente);
-            porFila.Add(new List<Sala> { laFuente });
+            if (sueno.Franja == Bands - 1)
+            {
+                // Band IV closes on one fight room alone, which opens band V.
+                var sola = new Sala { Id = siguiente++, Fila = filaBase++, Cierre = true, Franja = sueno.Franja };
+                sueno.Salas.Add(sola);
+                porFila.Add(new List<Sala> { sola });
+            }
+            else
+            {
+                var laFuente = new Sala
+                {
+                    Id = siguiente++, Fila = filaBase++, EsFuente = true, Franja = sueno.Franja,
+                    Cierre = sueno.Franja < Bands,
+                };
+                lock (_azar) laFuente.HasReyGob = _azar.Next(ReyGobOneIn) == 0;
+                sueno.Salas.Add(laFuente);
+                porFila.Add(new List<Sala> { laFuente });
+            }
+
+            if (sueno.Franja == Bands)
+            {
+                // And after band V's fountain, the end of the dream.
+                var fin = new Sala { Id = siguiente++, Fila = filaBase++, EsFinal = true, Franja = sueno.Franja, Senalada = true };
+                fin.Miembros.AddRange(FinalWave(1));
+                sueno.Salas.Add(fin);
+                porFila.Add(new List<Sala> { fin });
+            }
 
             // Y las salidas. Cada sala se abre a la de su misma posición en la fila siguiente y a
             // la de al lado, que es lo que hace que la de en medio se alcance por dos caminos: en
@@ -820,20 +976,26 @@ namespace Jondo.Unity.Server.Managers
 
             RepartirMapas(sueno);
 
-            // Las de en medio pelean; la entrada y la fuente, no. Medido: filas 1, 2 y 3 con tipo
-            // 1 en las 529, fila 4 con tipo 3 en las 68.
-            for (int i = 1; i + 1 < porFila.Count; i++)
+            // Every room past the entry fights but a fountain and the end: the band's middle rows,
+            // and band IV's lone closing room. Medido: tipo 1 en las 529 de las filas de pelea.
+            // Band V's give 10 dream points, row 22's included -- "dp10" in all of them in the
+            // invitation capture -- where the others give 5, and 15 the marked ones.
+            for (int i = 1; i < porFila.Count; i++)
             {
                 foreach (var sala in porFila[i])
                 {
+                    if (sala.EsFuente || sala.EsFinal) continue;
                     if (sala.Miembros.Count > 0) continue;
                     Poblar(sala, nivel, sueno.Dificultad);
 
                     sala.Senalada = i == porFila.Count - 2 && sala.Id % 3 == 0;
-                    sala.DreamPoints = sala.Senalada ? ClaseSenalada : ClaseNormal;
-                    sala.Score = i * 5 + (sala.Senalada ? 15 : 5);
+                    sala.DreamPoints = sala.Senalada ? ClaseSenalada : sala.Fila >= FilaDeLaVenta ? ClaseDeLaVenta : ClaseNormal;
+                    sala.Score = i * 5 + (sala.Senalada ? 15 : 5) + 4 * (sueno.Franja - 1);
                 }
             }
+            // The end scores five over the best room of its band: 32 after rooms of 26 and 27.
+            foreach (var fin in porFila.SelectMany(f => f).Where(s => s.EsFinal))
+                fin.Score = porFila.SelectMany(f => f).Where(s => !s.EsFinal).Max(s => s.Score) + 5;
         }
 
         /// <summary>
@@ -867,10 +1029,70 @@ namespace Jondo.Unity.Server.Managers
             return room;
         }
 
+        /// <summary>What <see cref="SkipTo"/> made of it.</summary>
+        public enum SkipOutcome { Done, NoRoom, Behind, Past }
+
         /// <summary>
-        /// Buys at the fountain one stands at: the offer named by its reward id, or by its place
-        /// in the shop. Its price comes off the dream points, its bonuses join the ones gained, and
-        /// it leaves the shop. Null when it cannot be bought, and why in <paramref name="refusal"/>.
+        /// The dream carried forward, to test what lies deep in it without the fights first: its
+        /// bands opened as far as needed, and a way down the exits from the room one stands in to
+        /// the nearest room of <paramref name="row"/> -- or to the Fin du rêve, with no row. Every
+        /// room on the way is entered and won as if it had been fought: its bonus and its dream
+        /// points paid, its step drawn on the path. The room stood in counts as won too. The room
+        /// reached is returned, not entered: entering it is the handler's, with its map and group.
+        /// </summary>
+        /// <returns>
+        /// Behind when the row is not past the room stood in -- a dream only goes forward -- and
+        /// Past when the dream has no such row. Skipped counts the fights won on the way.
+        /// </returns>
+        public static (SkipOutcome Outcome, Sala? Room, int Skipped) SkipTo(Sueno dream, int? row)
+        {
+            var from = dream.SalaActual;
+            if (from == null) return (SkipOutcome.NoRoom, null, 0);
+            if (row.HasValue ? row.Value <= from.Fila : from.EsFinal) return (SkipOutcome.Behind, from, 0);
+
+            bool Reached(Sala room) => row.HasValue ? room.Fila == row.Value : room.EsFinal;
+            while (!dream.Salas.Any(Reached) && dream.Franja < Bands) AnadirFranja(dream);
+
+            // Breadth first down the exits: the nearest room of the row, and the way to it.
+            var cameFrom = new Dictionary<int, int> { [from.Id] = from.Id };
+            var queue = new Queue<int>();
+            queue.Enqueue(from.Id);
+            Sala? target = null;
+            while (queue.Count > 0 && target == null)
+            {
+                var room = dream.Buscar(queue.Dequeue());
+                if (room == null) continue;
+                foreach (int next in room.Salidas)
+                {
+                    if (cameFrom.ContainsKey(next)) continue;
+                    cameFrom[next] = room.Id;
+                    var nextRoom = dream.Buscar(next);
+                    if (nextRoom != null && Reached(nextRoom)) { target = nextRoom; break; }
+                    queue.Enqueue(next);
+                }
+            }
+            if (target == null) return (SkipOutcome.Past, null, 0);
+
+            var way = new List<int>();
+            for (int step = cameFrom[target.Id]; step != from.Id; step = cameFrom[step]) way.Insert(0, step);
+
+            int skipped = 0;
+            if (from.Miembros.Count > 0 && !from.Hecha) { from.Hecha = true; skipped++; }
+            foreach (int id in way)
+            {
+                var room = Enter(dream, id, out _);
+                if (room == null || room.Miembros.Count == 0) continue;
+                room.Hecha = true;
+                skipped++;
+            }
+            return (SkipOutcome.Done, target, skipped);
+        }
+
+        /// <summary>
+        /// Buys at the fountain one stands at: the offer named by its f10 -- what the client sends,
+        /// measured the first time a purchase was tried -- or else by its reward id or its place in
+        /// the shop. Its price comes off the dream points, its bonuses join the ones gained, and it
+        /// leaves the shop. Null when it cannot be bought, and why in <paramref name="refusal"/>.
         /// </summary>
         public static Reward? Buy(Sueno dream, int which, out string refusal)
         {
@@ -882,7 +1104,8 @@ namespace Jondo.Unity.Server.Managers
                 return null;
             }
 
-            var offer = room.Offers.Find(o => o.Id == which)
+            var offer = room.Offers.Find(o => o.Tag == which)
+                        ?? room.Offers.Find(o => o.Id == which)
                         ?? (which >= 0 && which < room.Offers.Count ? room.Offers[which] : null);
             if (offer == null)
             {
@@ -1050,6 +1273,15 @@ namespace Jondo.Unity.Server.Managers
                     continue;
                 }
 
+                // The end of the dream on one of the three maps of the subarea with a single door:
+                // a room one fights in and leaves, with no fork after it.
+                var finales = MapasDeFinal();
+                if (sala.EsFinal && finales.Count > 0)
+                {
+                    sala.MapaDeLaSala = finales[dado.Next(finales.Count)];
+                    continue;
+                }
+
                 int i = dado.Next(libres.Count);
                 sala.MapaDeLaSala = libres[i];
                 libres.RemoveAt(i);
@@ -1072,6 +1304,7 @@ namespace Jondo.Unity.Server.Managers
             yield return MapaDeEntrada;
             foreach (long mapa in MapasDeSala()) yield return mapa;
             foreach (long mapa in MapasDeFuente()) yield return mapa;
+            foreach (long mapa in MapasDeFinal()) yield return mapa;
         }
 
         /// <summary>
@@ -1102,6 +1335,18 @@ namespace Jondo.Unity.Server.Managers
         }
 
         private static List<long>? _mapasDeFuente;
+        private static List<long>? _mapasDeFinal;
+
+        /// <summary>The three maps of subarea 904 with one door and nothing else: 237785140, 237785159 and 237789236.</summary>
+        private static List<long> MapasDeFinal()
+        {
+            if (_mapasDeFinal != null) return _mapasDeFinal;
+            var salen = MapasDeLaSubarea()
+                .Where(m => m != MapaDeEntrada && DoorsOf(m).Count == 1 && Interactives.ElementsOf(m).Count == 1)
+                .OrderBy(m => m).ToList();
+            if (salen.Count > 0) _mapasDeFinal = salen;
+            return salen;
+        }
 
         /// <summary>The five maps of subarea 904 with the fountain and its three doors.</summary>
         private static List<long> MapasDeFuente()
@@ -1199,7 +1444,7 @@ namespace Jondo.Unity.Server.Managers
         /// abre si no hay bastantes: los Sueños se juegan a partir del 50 y hay tramos del mundo
         /// donde no hay grupos de ese nivel exacto.
         /// </remarks>
-        private static void Poblar(Sala sala, int nivel, int dificultad)
+        private static void Poblar(Sala sala, int nivel, int dificultad, bool keepReward = false)
         {
             var candidatos = new List<(int Id, long MapaId, int Casilla, int Nivel, string Miembros)>();
 
@@ -1223,6 +1468,7 @@ namespace Jondo.Unity.Server.Managers
             sala.Miembros.AddRange(MiembrosDe(elegido.Miembros));
 
             // Y lo que regala la sala, de las nueve recompensas que ofrecen las salas medidas.
+            if (keepReward && sala.Reward != null) return;
             lock (_azar)
             {
                 sala.Reward = RoomRewards[_azar.Next(RoomRewards.Length)];
@@ -1234,5 +1480,103 @@ namespace Jondo.Unity.Server.Managers
             _enCurso.Clear();
             _cuenta.Clear();
         }
+
+        /// <summary>
+        /// The Fin du rêve by difficulty, as the dofuspourlesnoobs guide gives it: the level of the
+        /// first wave and what each one adds -- "Niveau 250 de base + 5 niveaux à chaque vague" in
+        /// a Rêve, 275 and 10 in a Paradoxe, 300 and 15 in a Cauchemar -- the waves it takes to win,
+        /// 1, 3 and 3, and the most there can be, 5, 15 and no end (0).
+        /// </summary>
+        public sealed record FinalRules(int BaseLevel, int Step, int MinWaves, int MaxWaves);
+
+        public static FinalRules FinalRulesOf(int difficulty)
+            => difficulty <= LastSueno ? new FinalRules(250, 5, 1, 5)
+             : difficulty <= LastParadoja ? new FinalRules(275, 10, 3, 15)
+             : new FinalRules(300, 15, 3, 0);
+
+        /// <summary>
+        /// A wave of the Fin du rêve: "une vague peut contenir des boss, des avis de recherche et
+        /// des monstres". Bosses of the dungeons, one more every third wave up to three; a wanted
+        /// monster -- a template with isBounty -- one wave in two; and the rest monsters of the
+        /// world's high groups, four fighters in the first wave and one more every two, up to
+        /// eight. Each at its top grade: the wave's level is put on them when the fight builds them.
+        /// </summary>
+        public static List<(int Monstruo, int Grado)> FinalWave(int wave)
+        {
+            Cargar();
+            var bosses = DungeonManager.All.Values.SelectMany(d => d.Bosses).Distinct().ToList();
+            var bounties = Bounties();
+            var strong = _strong ??= _grupos!.Where(g => g.Nivel >= 150).SelectMany(g => MiembrosDe(g.Miembros))
+                                             .Select(m => m.Monstruo).Distinct().ToList();
+
+            int size = Math.Min(8, 4 + (wave - 1) / 2);
+            int bossCount = Math.Min(3, 1 + (wave - 1) / 3);
+            var members = new List<(int, int)>();
+            lock (_azar)
+            {
+                for (int i = 0; i < bossCount && bosses.Count > 0; i++) members.Add((bosses[_azar.Next(bosses.Count)], TopGrade));
+                if (wave % 2 == 1 && bounties.Count > 0) members.Add((bounties[_azar.Next(bounties.Count)], TopGrade));
+                while (members.Count < size && strong.Count > 0) members.Add((strong[_azar.Next(strong.Count)], TopGrade));
+            }
+            return members;
+        }
+
+        /// <summary>A grade past any monster's: the fight's own clamp takes it to the highest there is.</summary>
+        private const int TopGrade = 99;
+
+        private static List<int>? _bounties;
+
+        /// <summary>The monsters of the world's groups of level 150 and more, read once.</summary>
+        private static List<int>? _strong;
+
+        /// <summary>The wanted monsters: the templates with isBounty.</summary>
+        private static List<int> Bounties()
+        {
+            if (_bounties != null) return _bounties;
+            var found = new List<int>();
+            try
+            {
+                using var connection = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT Id, Data FROM MonsterTemplates;";
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    using var doc = JsonDocument.Parse(reader.GetString(1));
+                    if (doc.RootElement.TryGetProperty("isBounty", out var b) && b.ValueKind == JsonValueKind.Number && b.GetInt32() != 0)
+                        found.Add(reader.GetInt32(0));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Sueños] The wanted monsters could not be read: {ex.Message}");
+            }
+            _bounties = found;
+            return found;
+        }
+
+        /// <summary>
+        /// A fighter brought to a level: its life and its characteristics by the ratio of the
+        /// levels, its points and resistances as they are. The guide says the dream's monsters
+        /// grow with the dreamer and the end's are 250 and more; the grades stop around 200, so
+        /// this is how they get there. Not the game's own scaling, which is not known.
+        /// </summary>
+        public static void ScaleTo(Fighter fighter, int level)
+        {
+            if (fighter.Level <= 0 || level <= fighter.Level) { fighter.Level = Math.Max(fighter.Level, level); return; }
+            double ratio = (double)level / fighter.Level;
+            fighter.MaxHP = (int)Math.Round(fighter.MaxHP * ratio);
+            fighter.CurrentHP = fighter.MaxHP;
+            fighter.Strength = (int)Math.Round(fighter.Strength * ratio);
+            fighter.Intelligence = (int)Math.Round(fighter.Intelligence * ratio);
+            fighter.Chance = (int)Math.Round(fighter.Chance * ratio);
+            fighter.Agility = (int)Math.Round(fighter.Agility * ratio);
+            fighter.Initiative = (int)Math.Round(fighter.Initiative * ratio);
+            fighter.Level = level;
+        }
+
+        /// <summary>For tests: a dream in memory as if it had been read from the base.</summary>
+        internal static void Remember(Sueno dream) => _enCurso[dream.CharacterId] = dream;
     }
 }

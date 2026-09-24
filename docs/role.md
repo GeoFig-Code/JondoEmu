@@ -77,8 +77,9 @@ The chat-command permission table currently assigns:
 - role 2: `.teleport`;
 - role 4: `.kamas`, `.level`, `.size`, `.shop`;
 - role 4: `.oficio` and `.oficios` too (one job, or every job, at a level);
-- role 5: `.relative`, `.item`, `.itemset`, `.receta`, and forgegod mode under its three names, `.forjadios`,
-  `.forgegod` and `.forgedieu`, written into the table explicitly rather than left to the default.
+- role 5: `.relative`, `.item`, `.itemset`, `.receta`, forgegod mode under its three names, `.forjadios`,
+  `.forgegod` and `.forgedieu`, and the dream skip under its four, `.sueno`, `.sueño`, `.dream` and
+  `.reve`, these two written into the table explicitly rather than left to the default.
 
 `.relative` explicitly requires Administrator. `.item`, `.itemset` and `.receta` use the handler's secure
 default: every registered command absent from the permission table requires Administrator.

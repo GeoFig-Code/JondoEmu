@@ -73,6 +73,25 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(3, dream.Salas.First(r => r.EsFuente).Offers!.Count);
         }
 
+        /// <summary>
+        /// The client buys by the offer's f10: clicking "Psst Psst" sent iym { f1: 149 }, the f10
+        /// of reward 15389, and nothing was bought while the server looked for a reward id.
+        /// </summary>
+        [Fact]
+        public void The_client_buys_by_the_f10()
+        {
+            var dream = New();
+            var fountain = dream.Salas.First(r => r.EsFuente);
+            Dreams.Enter(dream, fountain.Id, out _);
+            dream.DreamPoints = 35;
+
+            var bought = Dreams.Buy(dream, 149, out _);
+            Assert.NotNull(bought);
+            Assert.Equal(15389, bought!.Id);
+            Assert.Equal(20, dream.DreamPoints);
+            Assert.Contains(dream.Ganados, b => b.Efecto == 3405 && b.Valor == 85231);
+        }
+
         /// <summary>Anywhere else there is no shop: no f6, and nothing to buy.</summary>
         [Fact]
         public void Only_a_fountain_sells()

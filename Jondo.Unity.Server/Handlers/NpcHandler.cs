@@ -858,6 +858,7 @@ namespace Jondo.Unity.Server.Handlers
                                       $"{antes} en {sueno.DreamPoints} " +
                                       $"({elegidaAhora.DreamPointsPercent}%).");
 
+                    DreamHandler.Persist(sueno);
                     await DreamHandler.RefrescarEstadoAsync(stream);
                 }
                 else

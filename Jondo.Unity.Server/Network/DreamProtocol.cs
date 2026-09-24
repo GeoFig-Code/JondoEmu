@@ -26,10 +26,10 @@ namespace Jondo.Unity.Server.Network
         /// servidor contestaba, el cliente no se quejaba y no se abría nada.
         ///
         /// <code>
-        ///   f1 {
-        ///     f2   ¿?  medido 5, 10, 15 y 20        f3   el nombre
-        ///     f7 { f1 { f4:1, f11:128 }, f2:1 }     f8   el nivel
-        ///     f13  la cuenta de sueños              f14  1     f15  1     f16  "1" o "2"
+        ///   f1 {  the dream saved to continue -- none, zero bytes, when there is none
+        ///     f1   arenas left       f2   dream points        f3   el nombre
+        ///     f4   storms left       f7 (repeated)  the bonuses gained     f8   el nivel
+        ///     f13  the difficulty    f14  1     f15  1     f16  the room it is in, as a string
         ///     f17 {
         ///       f1 (repetido)  una SALA:  f1 su número como cadena
         ///                                 f2 { f1 score, f3 dream points, f4 { the reward },
@@ -49,17 +49,21 @@ namespace Jondo.Unity.Server.Network
         ///
         /// Y las cinco filas siempre: una sala, luego dos a cuatro por fila, luego una.
         /// </remarks>
-        public static byte[] BuildDreamMap(Dreams.Sueno sueno)
+        public static byte[] BuildDreamMap(Dreams.Sueno? sueno)
         {
+            if (sueno == null) return Array.Empty<byte>();
+
             var dentro = Pb.New()
-                .Var(2, PorExplicar)
+                .VarIfNotZero(1, sueno.Arena)
+                .VarIfNotZero(2, sueno.DreamPoints)
                 .Str(3, sueno.Nombre)
-                .Msg(7, Pb.New().Msg(1, Pb.New().Var(4, 1).Var(11, 128)).Var(2, 1))
-                .Var(8, sueno.Nivel)
-                .Var(13, sueno.Cuenta)
-                .Var(14, 1)
-                .Var(15, 1)
-                .Str(16, "1");
+                .VarIfNotZero(4, sueno.Tormentas);
+            foreach (var bono in sueno.Ganados) dentro.Msg(7, BonusEntry(bono));
+            dentro.Var(8, sueno.Nivel)
+                  .Var(13, sueno.Dificultad)
+                  .Var(14, 1)
+                  .Var(15, 1)
+                  .Str(16, Texto(sueno.Actual));
 
             return Pb.New().Msg(1, dentro.Msg(17, Graph(sueno, sueno.Franja))).Build();
         }
@@ -84,7 +88,7 @@ namespace Jondo.Unity.Server.Network
             var rooms = new List<Dreams.Sala>();
             foreach (var sala in sueno.Salas)
             {
-                bool opensThisBand = sala.EsFuente && sala.Franja == franja - 1;
+                bool opensThisBand = Dreams.Closes(sala) && sala.Franja == franja - 1;
                 if (sala.Franja == franja || opensThisBand) rooms.Add(sala);
             }
             // The fountain that opens the band goes first, as in the capture.
@@ -104,7 +108,7 @@ namespace Jondo.Unity.Server.Network
             foreach (var sala in rooms)
             {
                 // The fountain that closes the band leads into the next one: its edges are there.
-                bool closesThisBand = sala.EsFuente && sala.Franja == franja;
+                bool closesThisBand = Dreams.Closes(sala) && sala.Franja == franja;
                 if (sala.Salidas.Count == 0 || closesThisBand) continue;
 
                 var destinos = Pb.New();
@@ -130,6 +134,8 @@ namespace Jondo.Unity.Server.Network
         {
             if (sala.Fila == 0) return Pb.New().Var(7, 0);
             if (sala.EsFuente) return Pb.New().Var(5, TipoDeFuente).Var(6, sala.Fila).Var(7, 0);
+            // The end of the dream: "64" of the invitation capture, { f1: 32, f5: 4, f6: 26, f7: 1 }.
+            if (sala.EsFinal) return Pb.New().Var(1, sala.Score).Var(5, TipoDeFinal).Var(6, sala.Fila).Var(7, 1);
 
             return Pb.New()
                 .Var(1, sala.Score)
@@ -231,15 +237,8 @@ namespace Jondo.Unity.Server.Network
         private const int TipoDeCombate = 1;
         private const int TipoDeFuente = 3;
 
-        /// <summary>
-        /// El f2 de la cabecera, que no se ha sabido qué es.
-        /// </summary>
-        /// <remarks>
-        /// Nueve muestras y sólo cuatro valores —5, 10, 15 y 20—, siempre múltiplo de cinco, del
-        /// mismo personaje y siempre a nivel 200. No sigue a la dificultad, que se manda después
-        /// en el ixf, ni a la cuenta de sueños del f13. Se manda el menor de los medidos.
-        /// </remarks>
-        private const int PorExplicar = 5;
+        /// <summary>The Fin du rêve: type 4, the one room of row 26 in the invitation capture.</summary>
+        private const int TipoDeFinal = 4;
 
         /// <summary>
         /// El izg: el estado del sueño en curso.

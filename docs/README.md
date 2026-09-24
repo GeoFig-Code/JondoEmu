@@ -103,6 +103,12 @@ How `auth.db` and `world.db` are copied with SQLite's online backup API, checked
 rotated to five complete sets and restored as a matching pair.
 *Go there* before changing database initialization or recovering an installation after an update.
 
+**`bosses.md`** — Monster and boss mechanics.
+How the engine runs what the monsters' spells say: the behaviour spell cast at the fight's start,
+triggered rows armed on every fighter they name, the 30-odd triggers fired, state disabling (952),
+telefrags and the T/W masks, life thresholds, revives, glyphs, and what is still missing.
+*Go there* before touching a boss, or when a monster does something its guide says it should not.
+
 **`item-commands.md`** — Administrator item creation commands.
 The exact syntax and behavior of `.item`, `.itemset` and `.receta`, including role checks, template,
 set and recipe data sources, maximum factory effects, stacking, persistence, inventory updates and

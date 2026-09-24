@@ -16,6 +16,9 @@ namespace Jondo.Unity.Server.Managers
     public sealed class SpellEffect
     {
         public int EffectId { get; init; }
+
+        /// <summary>A copy of the row, for changing what firing or arming it reads -- its delay, its mask.</summary>
+        internal SpellEffect Copia() => (SpellEffect)MemberwiseClone();
         public int EffectUid { get; init; }
         public int Value { get; init; }
         public int DiceNum { get; init; }
@@ -33,7 +36,7 @@ namespace Jondo.Unity.Server.Managers
         /// Medido contra hechizos cuyo texto lo dice: Precipitación lleva delay 1 —«en el turno
         /// siguiente»— y Palabra Secreta delay 2 —«dentro de 2 turnos»—.
         /// </summary>
-        public int Delay { get; init; }
+        public int Delay { get; set; }
 
         public int Element { get; init; }
 
@@ -46,7 +49,7 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>A quién va: "C" a quien lo lanza, "a"/"A" a los de enfrente, y con "e519" o
         /// "E519" pegado, sólo si NO tiene o SÍ tiene ese estado.</summary>
-        public string TargetMask { get; init; } = "";
+        public string TargetMask { get; set; } = "";
 
         /// <summary>
         /// La FORMA de la zona, que es una letra guardada como su código: 'P' un punto, 'C' un
@@ -56,6 +59,9 @@ namespace Jondo.Unity.Server.Managers
         /// el Ojo de Topo enseñaba la previsualización sobre los dos pious y luego no le hacía
         /// nada al segundo.
         /// </summary>
+        /// <summary>The cells a ';' zone names, map cells; empty for every other shape.</summary>
+        public IReadOnlyList<int> CeldasFijas { get; init; } = Array.Empty<int>();
+
         public int Forma { get; init; } = 'P';
         public int Tamano { get; init; } = 1;
 
@@ -218,8 +224,21 @@ namespace Jondo.Unity.Server.Managers
 
                     int forma = 'P', tamano = 1, minimo = 0, paso = 0, tope = 0;
                     bool para = false;
+                    var fijas = new List<int>();
                     if (e.TryGetProperty("zoneDescr", out var z) && z.ValueKind == JsonValueKind.Object)
                     {
+                        // The ';' zone names its cells outright, map cells: the summons a boss
+                        // puts on fixed cells, its runes, its fixed-cell blows.
+                        if (z.TryGetProperty("cellIds", out var celdas))
+                        {
+                            var lista = celdas.ValueKind == JsonValueKind.Object && celdas.TryGetProperty("Array", out var dentro)
+                                ? dentro : celdas;
+                            if (lista.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var c in lista.EnumerateArray())
+                                    if (c.ValueKind == JsonValueKind.Number) fijas.Add(c.GetInt32());
+                            }
+                        }
                         int f = Entero(z, "shape");
                         if (f > 0) forma = f;
                         tamano = Entero(z, "param1");
@@ -242,6 +261,7 @@ namespace Jondo.Unity.Server.Managers
                         Element = e.TryGetProperty("effectElement", out var el) && el.TryGetInt32(out int v) ? v : -1,
                         Triggers = Texto(e, "triggers", "I"),
                         TargetMask = Texto(e, "targetMask", ""),
+                        CeldasFijas = fijas,
                         Forma = forma,
                         Tamano = tamano,
                         TamanoMinimo = minimo,

@@ -87,6 +87,17 @@ namespace Jondo.Unity.Server.Managers
             return false;
         }
 
+        /// <summary>Whether one of the fighter's states keeps him from dealing damage: Pacifista (218) among them.</summary>
+        public static bool KeepsFromDealingDamage(Fighter who)
+        {
+            foreach (int stateId in who.Buffs.Estados)
+            {
+                var state = Of(stateId);
+                if (state != null && state.CantDealDamage) return true;
+            }
+            return false;
+        }
+
         /// <summary>Whether one of the fighter's states turns healing away.</summary>
         public static bool IsIncurable(Fighter who)
         {

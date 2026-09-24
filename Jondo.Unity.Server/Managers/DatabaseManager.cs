@@ -588,6 +588,18 @@ namespace Jondo.Unity.Server
                 ";
                 createCrafter.ExecuteNonQuery();
 
+                // The Infinite Dream each character has going, whole, as JSON: it outlives a
+                // disconnection and a restart, and it is what the well offers to continue.
+                var createDream = worldConnection.CreateCommand();
+                createDream.CommandText = @"
+                    CREATE TABLE IF NOT EXISTS CharacterDreams (
+                        CharacterId INTEGER PRIMARY KEY,
+                        Json TEXT NOT NULL,
+                        UpdatedAt TEXT NOT NULL
+                    );
+                ";
+                createDream.ExecuteNonQuery();
+
                 // Los retos de mazmorra que ya se han logrado. Van con logro detrás, y un logro
                 // se hace UNA vez: cumplido el reto, no se le vuelve a ofrecer a ese personaje
                 // nunca más. Los retos normales no pasan por aquí, que ésos salen siempre.
@@ -2240,6 +2252,7 @@ namespace Jondo.Unity.Server
             "CharacterItems", "CharacterSpellChoices", "CharacterSpellBar",
             "HavenBag", "HavenBagFurniture", "HavenBagChest",
             "CharacterWardrobe", "CharacterAppearance", "CharacterJobs", "CharacterCrafterSettings",
+            "CharacterDreams",
             "CharacterChallenges", "CharacterQuests", "CharacterAchievements",
             "CharacterKeyring", "CharacterElements",
         };
@@ -4386,6 +4399,65 @@ namespace Jondo.Unity.Server
             }
         }
 
+        /// <summary>A character's dream, as JSON, over the one it had.</summary>
+        public static void SaveDream(long characterId, string json)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = @"
+                    INSERT INTO CharacterDreams (CharacterId, Json, UpdatedAt) VALUES ($c, $j, $t)
+                    ON CONFLICT(CharacterId) DO UPDATE SET Json = $j, UpdatedAt = $t;";
+                command.Parameters.AddWithValue("$c", characterId);
+                command.Parameters.AddWithValue("$j", json);
+                command.Parameters.AddWithValue("$t", DateTime.UtcNow.ToString("o"));
+                command.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] Could not save the dream of {characterId}: {ex.Message}");
+            }
+        }
+
+        /// <summary>A character's dream, over: won, or lost with no arena left.</summary>
+        public static void DeleteDream(long characterId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "DELETE FROM CharacterDreams WHERE CharacterId = $c;";
+                command.Parameters.AddWithValue("$c", characterId);
+                command.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] Could not delete the dream of {characterId}: {ex.Message}");
+            }
+        }
+
+        /// <summary>A character's dream as JSON, or null when it has none.</summary>
+        public static string? LoadDream(long characterId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT Json FROM CharacterDreams WHERE CharacterId = $c;";
+                command.Parameters.AddWithValue("$c", characterId);
+                return command.ExecuteScalar() as string;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] Could not read the dream of {characterId}: {ex.Message}");
+                return null;
+            }
+        }
+
         /// <summary>One job's artisan settings, written as they change.</summary>
         public static void SaveCrafterSetting(long characterId, int jobId, Handlers.ArtisanHandler.Setting setting)
         {
@@ -5114,11 +5186,14 @@ namespace Jondo.Unity.Server
                         int characteristic = GetEffectCharacteristic(effectId);
                         if (characteristic > 0 && dice != 0)
                         {
+                            // The sign is the catalogue's own, read off the description: a bonus adds, a "-" row
+                            // takes away. Everything was a removal before, and a monster's own
+                            // buffs -- +MP, +damage, power -- never counted as buffs to it.
                             data.StatEffects.Add(new SpellStatEffect
                             {
                                 EffectId = effectId,
                                 Characteristic = characteristic,
-                                Value = -dice,
+                                Value = EffectMeta(effectId).Sign < 0 ? -dice : dice,
                                 Duration = dur
                             });
                         }

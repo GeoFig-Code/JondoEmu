@@ -781,6 +781,9 @@ namespace Jondo.Unity.Server.Network
                 Console.WriteLine($"[World] Guild sent for {character.Name}: {guild.Name} ({members.Count} members).");
             }
 
+            // Back on a dream's map: the dream again, or out of it when there is none to go back to.
+            await Handlers.DreamHandler.OnWorldEntryAsync(stream);
+
             // And in place of the characteristics of the capture, the ones of this character.
             await EnviarAsync(stream, ConnectionProtocol.Push(Op.Kub, ConnectionProtocol.BuildCharacteristics()));
             Console.WriteLine($"[World] Characteristics sent for {character.Name}: level " +

@@ -218,6 +218,55 @@ namespace Jondo.Unity.World.Fights
             public bool Critico { get; set; }
 
             public bool Vivo(int ronda) => CaducaEnRonda < 0 || ronda < CaducaEnRonda;
+
+            /// <summary>
+            /// The rows of the spell this hook holds for its bearer, by effect uid -- a monster
+            /// spell's triggered rows are armed one by one on the fighters their mask and zone
+            /// named, and only those go off, on him. Null: every row of the spell, re-aimed each
+            /// time, the class spells' way.
+            /// </summary>
+            public HashSet<int> Filas { get; set; }
+        }
+
+        /// <summary>
+        /// Arms rows of a spell on this fighter, in their caster's name: added to the hook that
+        /// caster already has here with that spell, or a new one. Lasts the longest of the two.
+        /// </summary>
+        public void ArmarFilas(int hechizo, int grado, int caducaEnRonda, long lanzador, int puestoEnRonda,
+                               IEnumerable<int> filas, bool critico = false)
+        {
+            var ya = ActiveSpells.FirstOrDefault(e => e.Filas != null && e.Hechizo == hechizo && e.Lanzador == lanzador);
+            if (ya != null)
+            {
+                foreach (int fila in filas) ya.Filas.Add(fila);
+                ya.Grado = grado;
+                if (ya.CaducaEnRonda >= 0) ya.CaducaEnRonda = caducaEnRonda < 0 ? -1 : Math.Max(ya.CaducaEnRonda, caducaEnRonda);
+                ya.PuestoEnRonda = puestoEnRonda;
+                return;
+            }
+            ActiveSpells.Add(new ActiveSpell
+            {
+                Hechizo = hechizo, Grado = grado, CaducaEnRonda = caducaEnRonda, Lanzador = lanzador,
+                PuestoEnRonda = puestoEnRonda, Critico = critico, Filas = new HashSet<int>(filas),
+            });
+        }
+
+        /// <summary>
+        /// Everything a fighter put on this one goes: his rows, the states only they held, the
+        /// rows he armed here. For a monster's death -- a Pépite's mark on Crunchidor, an Éclat's
+        /// invulnerability on its escort did not outlive them, and here they did.
+        /// </summary>
+        public List<Buff> QuitarLoDe(long quien)
+        {
+            var quitados = _puestos.FindAll(e => e.Quien == quien && !e.Pendiente);
+            _puestos.RemoveAll(e => e.Quien == quien && !e.Pendiente);
+            ActiveSpells.RemoveAll(e => e.Lanzador == quien);
+            foreach (var quitado in quitados)
+            {
+                if (quitado.Estado == 0 || quitado.EffectId == Jondo.Unity.World.Combat.EffectSupport.DisableState) continue;
+                if (!SigueHabiendo(quitado.Estado)) _estados.Remove(quitado.Estado);
+            }
+            return quitados;
         }
 
         /// <summary>Deja apuntado que este hechizo sigue puesto, o alarga el que ya estaba.</summary>
@@ -242,15 +291,33 @@ namespace Jondo.Unity.World.Fights
         }
 
         private ActiveSpell _enganchesPorHechizo(int hechizo)
-            => ActiveSpells.FirstOrDefault(e => e.Hechizo == hechizo);
+            => ActiveSpells.FirstOrDefault(e => e.Hechizo == hechizo && e.Filas == null);
 
         /// <summary>Quita los enganches cumplidos.</summary>
         public void BarrerEnganches(int ronda) => ActiveSpells.RemoveAll(e => !e.Vivo(ronda));
 
         public IReadOnlyList<Buff> Puestos => _puestos;
-        public IReadOnlyCollection<int> Estados => _estados;
+        /// <summary>
+        /// The states that count: the ones put, less the ones a live 952 has switched off. The
+        /// set itself when nothing is switched off, which is nearly always.
+        /// </summary>
+        public IReadOnlyCollection<int> Estados
+        {
+            get
+            {
+                if (!_puestos.Exists(e => e.EffectId == Jondo.Unity.World.Combat.EffectSupport.DisableState)) return _estados;
+                var activos = new HashSet<int>(_estados);
+                activos.RemoveWhere(Desactivado);
+                return activos;
+            }
+        }
 
-        public bool TieneEstado(int estado) => _estados.Contains(estado);
+        public bool TieneEstado(int estado) => _estados.Contains(estado) && !Desactivado(estado);
+
+        /// <summary>Whether a 952 row holds this state switched off right now.</summary>
+        public bool Desactivado(int estado)
+            => _puestos.Exists(e => e.EffectId == Jondo.Unity.World.Combat.EffectSupport.DisableState
+                                 && e.Estado == estado && !e.Pendiente);
 
         public void PonerEstado(int estado) { if (estado != 0) _estados.Add(estado); }
         public void QuitarEstado(int estado) => _estados.Remove(estado);
@@ -295,6 +362,31 @@ namespace Jondo.Unity.World.Fights
             return quitados;
         }
 
+        /// <summary>
+        /// Takes off every row that can be dispelled -- a dispellable of one, the catalogue's
+        /// "dispellable" -- and the states only those rows held. For effect 132.
+        /// </summary>
+        public List<Buff> QuitarLosDesembrujables()
+        {
+            var quitados = _puestos.FindAll(e => e.Dispellable == 1 && !e.Pendiente);
+            _puestos.RemoveAll(e => e.Dispellable == 1 && !e.Pendiente);
+            foreach (var quitado in quitados)
+            {
+                if (quitado.Estado == 0 || quitado.EffectId == Jondo.Unity.World.Combat.EffectSupport.DisableState) continue;
+                if (!SigueHabiendo(quitado.Estado)) _estados.Remove(quitado.Estado);
+            }
+            return quitados;
+        }
+
+        /// <summary>Takes one row off, and the state only it held. False when it was not here.</summary>
+        public bool QuitarFila(Buff fila)
+        {
+            if (!_puestos.Remove(fila)) return false;
+            if (fila.Estado != 0 && fila.EffectId != Jondo.Unity.World.Combat.EffectSupport.DisableState
+                && !SigueHabiendo(fila.Estado)) _estados.Remove(fila.Estado);
+            return true;
+        }
+
         /// <summary>Retira todo lo que dejó un hechizo, incluidos sus estados y sus enganches.</summary>
         /// <remarks>
         /// The hooks go with the rows: Furor's 406 on 28604 takes the hooked "1160 under TE"
@@ -309,8 +401,8 @@ namespace Jondo.Unity.World.Fights
 
             foreach (var quitado in quitados)
             {
-                if (quitado.Estado == 0) continue;
-                if (!_puestos.Any(e => e.Estado == quitado.Estado))
+                if (quitado.Estado == 0 || quitado.EffectId == Jondo.Unity.World.Combat.EffectSupport.DisableState) continue;
+                if (!SigueHabiendo(quitado.Estado))
                     _estados.Remove(quitado.Estado);
             }
             return quitados;
@@ -509,12 +601,21 @@ namespace Jondo.Unity.World.Fights
 
             // Un estado temporal no puede sobrevivir al embrujo que lo puso. Se conserva si
             // todavía queda otro embrujo vivo que represente el mismo estado.
+            // A 952 falling puts nothing back and takes nothing away: the state it switched off
+            // simply counts again.
             foreach (var caido in caidos)
             {
-                if (caido.Estado == 0) continue;
-                if (!_puestos.Any(e => e.Estado == caido.Estado)) _estados.Remove(caido.Estado);
+                if (caido.Estado == 0 || caido.EffectId == Jondo.Unity.World.Combat.EffectSupport.DisableState) continue;
+                if (!SigueHabiendo(caido.Estado)) _estados.Remove(caido.Estado);
             }
             return caidos;
+        }
+
+        /// <summary>Whether a row still puts this state -- a 952 switching it off does not count.</summary>
+        private bool SigueHabiendo(int estado)
+        {
+            return _puestos.Any(e => e.Estado == estado
+                                  && e.EffectId != Jondo.Unity.World.Combat.EffectSupport.DisableState);
         }
 
         /// <summary>

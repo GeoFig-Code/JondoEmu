@@ -722,10 +722,13 @@ namespace Jondo.Unity.Server.Network
         public static int FamiliaDelEmbrujo(int efecto, int categoria, int boost)
         {
             const int PoneEstado = 950;
+            const int DesactivaEstado = 952;
             const int ModificaUnHechizo = 3;
 
             if (categoria == ModificaUnHechizo) return 4;
-            if (efecto == PoneEstado) return 2;
+            // 952 is a state row too -- the state it switches off rides in its value -- so it is
+            // drawn with them. No capture shows one; the family is the reading, not a measure.
+            if (efecto == PoneEstado || efecto == DesactivaEstado) return 2;
             if (boost == 0) return HiddenFamily;
             return 0;                 // bono de característica: el f15 no viaja
         }
@@ -919,6 +922,41 @@ namespace Jondo.Unity.Server.Network
             => BuildAction(owner, RemovedGlyph, Pb.New().Var(1, glyphId), detailField: 22);
 
         public const int RemovedGlyph = 310;
+
+        /// <summary>
+        /// A glyph a SPELL lays down -- a trap, a turn-start or turn-end glyph, an aura: the same
+        /// jwe 401 as the bomb wall, with a body of its own.
+        ///
+        ///   f1 { f1 (repeated) { f2: colour, f3: cell }   one per cell of its footprint
+        ///        f2: 1        f3: the spell it casts     f4: the glyph's number
+        ///        f6: grade    f7: colour                  f9: the spell that laid it
+        ///        f10: the aimed cell    f11: 1           f12: whose it is }
+        /// </summary>
+        /// <remarks>
+        /// Measured on the 58 of them the captures hold outside the Rogue's walls: Feca, Anutrof,
+        /// Ocra, the troll fair's. The Anutrof's 29575 lists its twelve cells, a ring of three, in
+        /// the f1s. The colour is the placing row's <c>value</c> in RGB, in every one of them --
+        /// 5718180 is Excursión's and 3222918 Caza's -- so it is the data's colour and not a
+        /// choice: Conde Kontatrás's time glyph carries 0, black. What the f2 counts is not
+        /// clear: 1 in most, 2 to 4 in some, 1 to 12 across the twelve glyphs of one cast of the
+        /// troll fair. One is sent. The size of the bomb wall's f5 does not appear.
+        /// </remarks>
+        public static byte[] BuildSpellGlyph(long owner, int glyphId, IEnumerable<int> cells, int aimedCell,
+                                             int castSpell, int layingSpell, int grade, int colour)
+        {
+            var body = Pb.New();
+            foreach (int cell in cells) body.Msg(1, Pb.New().VarIfNotZero(2, colour).Var(3, cell));
+            body.Var(2, 1)
+                .Var(3, castSpell)
+                .Var(4, glyphId)
+                .Var(6, grade)
+                .VarIfNotZero(7, colour)
+                .Var(9, layingSpell)
+                .Var(10, aimedCell)
+                .Var(11, 1)
+                .Var(12, owner);
+            return BuildAction(owner, PlacedGlyph, Pb.New().Msg(1, body), detailField: 32);
+        }
 
         /// <summary>
         /// And how one GOES OFF (a jwe with f14 = 306 or 307):

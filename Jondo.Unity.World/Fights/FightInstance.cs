@@ -448,6 +448,17 @@ namespace Jondo.Unity.World.Fights
         /// Mete un invocado en el combate, en el bando del que lo invoca, y rehace el orden de
         /// turnos para que le toque jugar.
         /// </summary>
+        /// <summary>
+        /// A monster that comes into the fight once it has started -- a wave of the Fin du rêve.
+        /// Not a summon: nobody summoned it, it pays like any monster, and it plays its own turn.
+        /// </summary>
+        public void Join(Fighter fighter)
+        {
+            fighter.TeamId = 1;
+            Rojo.Add(fighter);
+            RebuildTurnOrderKeepingCurrent();
+        }
+
         public void Invocar(Fighter invocado, Fighter dueno)
         {
             invocado.Invocador = dueno.Id;
@@ -627,6 +638,49 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public bool EndTurnRequested { get; set; }
 
+        /// <summary>
+        /// How deep the triggers set off by other triggers go right now. A hit fires "D", "D"
+        /// casts a spell that hits, and that hit fires "D" again: past a few levels it is a loop
+        /// in the data, not a mechanic, and it stops there.
+        /// </summary>
+        public int TriggerDepth { get; set; }
+
+        /// <summary>
+        /// The telefrags of the spell being resolved: who swapped cells with whom through a
+        /// teleport, both ways. The client's own sheet on the Xelor says it -- "se generan cuando
+        /// dos entidades intercambian posiciones debido a los efectos de teletransportación de un
+        /// hechizo" -- and the masks' T names them for the rows that follow in the same spell.
+        /// </summary>
+        public Dictionary<long, long> Telefrags { get; set; } = new Dictionary<long, long>();
+
+        /// <summary>
+        /// The dead, in the order they fell: "Invoca al último aliado muerto" (780, 1034) brings
+        /// back the last of the caster's side.
+        /// </summary>
+        public List<Fighter> Muertos { get; } = new List<Fighter>();
+
+        /// <summary>The "EC" counts that have come true, per fighter, so each goes off once until it is false again.</summary>
+        public HashSet<(long, string)> RecuentosCumplidos { get; } = new HashSet<(long, string)>();
+
+        /// <summary>
+        /// The damage of the blow that set the triggers off, while they go off: "% de los daños
+        /// iniciales sufridos" (1123-1128) and "Cura #1% de los daños sufridos" read it.
+        /// </summary>
+        public int DanoDelDisparo { get; set; }
+
+        /// <summary>
+        /// While above zero, a cast's triggered rows are not armed on anybody: an attitude fires
+        /// its own rows itself, and a player's passives keep the hooks their captures measured.
+        /// </summary>
+        public int SinArmar { get; set; }
+
+        /// <summary>
+        /// The fighters a teleport of the spell being resolved could not land -- the mirror cell
+        /// off the board or not walkable. The masks' W names them: Conde Kontatrás's clock kills a
+        /// whole side when his mirror cell does not exist, as the guide says.
+        /// </summary>
+        public HashSet<long> TeleportsFallidos { get; set; } = new HashSet<long>();
+
         private int _siguienteGlifo;
 
         /// <summary>Pone algo en el suelo y le da su identificador.</summary>
@@ -648,6 +702,17 @@ namespace Jondo.Unity.World.Fights
             return salen;
         }
 
+        /// <summary>What goes off with somebody ending his turn there.</summary>
+        public List<Glifo> LosQueAcaban(int casilla)
+        {
+            var salen = new List<Glifo>();
+            foreach (var g in Glifos)
+            {
+                if (g.SeDisparaAlAcabarElTurno && g.Cubre(casilla)) salen.Add(g);
+            }
+            return salen;
+        }
+
         /// <summary>Lo que se dispara con alguien empezando su turno ahí.</summary>
         public List<Glifo> LosQueEmpiezan(int casilla)
         {
@@ -663,12 +728,32 @@ namespace Jondo.Unity.World.Fights
         public List<Glifo> BarrerLosGlifos()
         {
             var caidos = new List<Glifo>();
+            // Only the spent ones here. A glyph's time is its caster's: it falls at the start of
+            // his turn once its round has come, the way the rows he puts do -- see
+            // QuitarLosGlifosCaducados. Falling at whoever's turn came first, the time glyph of a
+            // boss who plays last was gone before any player started a turn in it.
             foreach (var g in Glifos)
             {
-                if (g.Gastado) { caidos.Add(g); continue; }
-                if (g.CaducaEnRonda > 0 && RoundNumber >= g.CaducaEnRonda) caidos.Add(g);
+                if (g.Gastado) caidos.Add(g);
             }
 
+            foreach (var muerto in caidos) Glifos.Remove(muerto);
+            return caidos;
+        }
+
+        /// <summary>
+        /// The glyphs whose time is up at this turn start, taken off: the ones whose round has come
+        /// and whose time runs on this fighter's turns (<paramref name="suTiempoCorre"/>), and the
+        /// ones whose caster is gone, which do not outlive him.
+        /// </summary>
+        public List<Glifo> QuitarLosGlifosCaducados(Func<Glifo, bool> suTiempoCorre, Func<Glifo, bool> sinDueno)
+        {
+            var caidos = new List<Glifo>();
+            foreach (var g in Glifos)
+            {
+                bool cumplido = g.CaducaEnRonda > 0 && RoundNumber >= g.CaducaEnRonda && suTiempoCorre(g);
+                if (cumplido || sinDueno(g)) caidos.Add(g);
+            }
             foreach (var muerto in caidos) Glifos.Remove(muerto);
             return caidos;
         }
