@@ -114,6 +114,10 @@ Important arguments include:
 --langCode <es|en|fr>
 ```
 
+The texture-pack arguments are separate from these session and identity arguments. The current
+native launcher forces DirectX 11 but does not enable an optional HD or 4K pack. See
+`client-graphics.md` for the exact switches, required client directories and verification steps.
+
 Equivalent `ZAAP_PORT`, `ZAAP_HASH`, `ZAAP_GAME`, `ZAAP_RELEASE`, `ZAAP_INSTANCE_ID` and
 `ZAAP_CAN_AUTH` environment variables are set for the child. Every client receives its own hash
 and instance id even though all clients use the same local listeners.

@@ -76,6 +76,13 @@ and where the independent process and socket limits are enforced.
 *Go there* when changing the team UI, the launch arguments, account-token resolution or the path
 from a launcher row to its game socket.
 
+**`client-graphics.md`** — SD, HD and 4K map packs and the Windows renderer.
+How `--hdReady` and `--4kReady` select optional map texture bundles, why `-force-d3d11` is an
+independent setting, what an unpacked client must contain, and which Jondo launch paths currently
+pass each argument.
+*Go there* when an installed HD pack is not used, when changing client launch arguments, or when
+checking whether a selected client actually contains the requested pack.
+
 **`remote-server.md`** — Running the server on another machine.
 How `JONDO_PUBLIC_BIND` opens all server services consistently, how the launcher's managed loopback
 relay bridges JondoFix to the configured host, which ports are involved and what the relay does not
