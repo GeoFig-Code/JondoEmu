@@ -297,6 +297,7 @@ namespace Jondo.Unity.Server.Handlers
             int pointsBefore = sueno.DreamPoints;
             var sala = Dreams.Enter(sueno, salaId, out var gained);
             if (sala == null) return;
+            _enElSueno[GameState.CharacterId] = true;
 
             // El potenciador y los puntos se cobran AL ENTRAR, antes de pelear, y una sola vez por sala.
             if (gained != null || sueno.DreamPoints != pointsBefore)
@@ -897,6 +898,16 @@ namespace Jondo.Unity.Server.Handlers
             bool aqui = Dreams.IsDreamMap(GameState.MapId);
             bool antes = _enElSueno.TryGetValue(yo, out bool estaba) && estaba;
             _enElSueno[yo] = aqui;
+
+            // And back onto a dream's map from outside it -- H out of the Merkasako lands where it
+            // was opened -- is the same as waking there: the room again, its group planted back
+            // and the interface up, or the Plano Astral when there is no dream to go back to.
+            // Without it the room stood empty, and a room with no group counts as passed.
+            if (!antes && aqui)
+            {
+                await OnWorldEntryAsync(stream);
+                return;
+            }
             if (!antes || aqui) return;
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ixg));
