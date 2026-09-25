@@ -376,15 +376,17 @@ namespace Jondo.Unity.Launcher
                 // había antes de respaldo.
                 var area = PantallaDeTrabajo();
 
-                // MelonLoader abre su propia consola negra y su pantalla de arranque delante del
-                // juego. Se le dice que no por línea de órdenes además de por Loader.cfg: la orden
-                // manda sobre el fichero, así que da igual que alguien lo reescriba.
-                string arguments =
-                    $"-force-d3d11 -screen-fullscreen 0 -screen-width {area.Width} -screen-height {area.Height} " +
-                    "--melonloader.hideconsole --melonloader.disablestartscreen " +
-                    $"--port 15881 --gameName dofus --gameRelease dofus3 --instanceId {instanceId} --hash {hash} " +
-                    $"--canLogin true --langCode {language} " +
-                    "--autoConnectType 1 --connectionPort 5555";
+                // The optional HD/4K scenery packs: a flag only for a pack the player turned on
+                // AND that is installed and verified for the client's current version.
+                string packFlags = Packs.TexturePackService.ForClient(clientPath)
+                    .LaunchFlags(UI.LauncherPreferences.PackHd, UI.LauncherPreferences.Pack4k);
+                if ((UI.LauncherPreferences.PackHd || UI.LauncherPreferences.Pack4k) && packFlags.Length == 0)
+                {
+                    Console.WriteLine("[Launcher] A texture pack is turned on but not installed and verified " +
+                                      "for this client version; starting without it.");
+                }
+
+                string arguments = ClientArguments(area.Width, area.Height, instanceId, hash, language, packFlags);
 
                 var startInfo = new System.Diagnostics.ProcessStartInfo
                 {
@@ -445,6 +447,24 @@ namespace Jondo.Unity.Launcher
             {
                 return new Result { Success = false, Message = $"Error starting the client: {ex.Message}" };
             }
+        }
+
+        /// <summary>The Dofus client's command line.</summary>
+        /// <param name="packFlags">From <see cref="Packs.TexturePackService.LaunchFlags"/>; may be empty.</param>
+        internal static string ClientArguments(int width, int height, int instanceId, string hash, string language, string packFlags)
+        {
+            // MelonLoader abre su propia consola negra y su pantalla de arranque delante del
+            // juego. Se le dice que no por línea de órdenes además de por Loader.cfg: la orden
+            // manda sobre el fichero, así que da igual que alguien lo reescriba.
+            string arguments =
+                $"-force-d3d11 -screen-fullscreen 0 -screen-width {width} -screen-height {height} " +
+                "--melonloader.hideconsole --melonloader.disablestartscreen " +
+                $"--port 15881 --gameName dofus --gameRelease dofus3 --instanceId {instanceId} --hash {hash} " +
+                $"--canLogin true --langCode {language} " +
+                "--autoConnectType 1 --connectionPort 5555";
+
+            // Same place as in Ankama's zaap.yml: after the connection arguments, with no value.
+            return packFlags.Length > 0 ? arguments + " " + packFlags : arguments;
         }
 
         /// <summary>

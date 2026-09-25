@@ -128,6 +128,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Per-client identity chain — instance id, launch hash, Zaap session, game token, single-use ticket, socket-owned session
 - ✅ Independent lifecycle indicators for profiles, processes and sockets
 - ✅ Embedded server log; single-file deployment; ES/EN/FR
+- ✅ HD and 4K scenery packs from Ankama's own CDN, for the client's own version only: resumable download, every chunk and file checked against its SHA-1, verify and remove, and `--hdReady` / `--4kReady` passed only for a verified pack (`docs/client-graphics.md`)
 - ✅ Animated neon sign and falling stars
 - ✅ Launcher and server are separate programs — the launcher carries no database, maps, handlers or effect catalogue
 - 🚧 OAuth — loopback redirect and PKCE on the launcher side; the server half waits for a website
@@ -1654,7 +1655,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,396 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,431 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 
@@ -1729,6 +1730,7 @@ Shared:
 * **`Jondo.Unity.Protocol`** — message definitions and the generated `Op` layer
 * **`Jondo.Unity.World`** — world logic, `FightInstance`, the fight rulebooks (`FightRules`), buffs and states (`Buff`), area shapes and displacement (`Zone`), isometric geometry (`MapGeometry`), the criterion evaluator (`Criterion`), raids and the kanojedo content
 * **`Jondo.Unity.Sprites`** — draws a character or an NPC out of the client's own bones, skins and atlases. Shared by the Studio and the launcher
+* **`Jondo.Unity.Cytrus`** — reads Ankama's Cytrus manifests and plans the bundle requests; the launcher's texture-pack download uses it
 * **`Jondo.Unity.Parser`** — capture parsing
 * **`Jondo.Unity.Tests`** — the xUnit tests, and the gate on publishing
 

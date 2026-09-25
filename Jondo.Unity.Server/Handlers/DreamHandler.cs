@@ -217,6 +217,9 @@ namespace Jondo.Unity.Server.Handlers
         /// </remarks>
         public static async Task<bool> TryDoorAsync(NetworkStream stream, int elementId)
         {
+            // A dream's doors and fountain are on its own maps: out in the world, a dream left
+            // to be continued has nothing to say about what the player clicks.
+            if (!Dreams.IsDreamMap(GameState.MapId)) return false;
             var sueno = Dreams.De(GameState.CharacterId);
             if (sueno == null) return false;
 
@@ -400,9 +403,9 @@ namespace Jondo.Unity.Server.Handlers
         /// and only the f18 and f19 change. This used to add the room's score to the f8, which is
         /// the bonus to experience and loot: 220% became 275% in three rooms.
         /// </remarks>
-        public static bool SalaLimpiada(long grupoDerrotado)
+        public static bool SalaLimpiada(long grupoDerrotado, long mapa)
         {
-            if (grupoDerrotado == 0) return false;
+            if (grupoDerrotado == 0 || !Dreams.IsDreamMap(mapa)) return false;
 
             var sueno = Dreams.De(GameState.CharacterId);
             if (sueno == null) return false;
@@ -424,9 +427,16 @@ namespace Jondo.Unity.Server.Handlers
             return false;
         }
 
-        /// <summary>Vuelve a mandar el estado del sueño, si es que hay uno.</summary>
+        /// <summary>Vuelve a mandar el estado del sueño, si es que hay uno y se está en él.</summary>
+        /// <remarks>
+        /// Only on one of the dream's maps. The izg is what turns the client's dream interface on
+        /// -- the panel, and the band and depth in place of the map's name and coordinates -- and
+        /// a dream left behind is still there to be continued: sent after any fight, it put the
+        /// dream's interface over a dungeon's exit.
+        /// </remarks>
         public static async Task RefrescarEstadoAsync(NetworkStream stream)
         {
+            if (!Dreams.IsDreamMap(GameState.MapId)) return;
             var sueno = Dreams.De(GameState.CharacterId);
             if (sueno == null) return;
 
@@ -725,6 +735,7 @@ namespace Jondo.Unity.Server.Handlers
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Ixg));
+            MarkLeft();
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Iom));
 
@@ -865,6 +876,37 @@ namespace Jondo.Unity.Server.Handlers
                               $"{result.Skipped} fight(s) counted as won on the way.");
             await EntrarEnSalaAsync(stream, sueno, result.Room.Id);
             return result;
+        }
+
+        /// <summary>Whether the last map each character loaded was one of the dream's.</summary>
+        private static readonly ConcurrentDictionary<long, bool> _enElSueno = new();
+
+        /// <summary>The dream's interface already closed by whoever sent the ixg.</summary>
+        internal static void MarkLeft() => _enElSueno[GameState.CharacterId] = false;
+
+        /// <summary>
+        /// A map loaded, however the player got there. Out of the dream's maps by any way but its
+        /// own exit -- the Merkasako and its zaap, a teleport, a command -- the client still has the
+        /// dream's interface up, and only the ixg takes it down: the real server sends it on its
+        /// own, with no iyx before it, in "sueño infinito largo" and "recibir invitacion a
+        /// sueños". The dream is kept, as the exit keeps it, and its groups leave their maps.
+        /// </summary>
+        public static async Task OnMapLoadedAsync(NetworkStream stream)
+        {
+            long yo = GameState.CharacterId;
+            bool aqui = Dreams.IsDreamMap(GameState.MapId);
+            bool antes = _enElSueno.TryGetValue(yo, out bool estaba) && estaba;
+            _enElSueno[yo] = aqui;
+            if (!antes || aqui) return;
+
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ixg));
+            var sueno = Dreams.De(yo);
+            if (sueno != null)
+            {
+                Dreams.Unplant(sueno);
+                Persist(sueno);
+            }
+            Console.WriteLine($"[Sueños] {yo} left the dream's maps without its exit: the interface closed.");
         }
 
         /// <summary>Saves a dream, so a disconnection or a restart does not lose it.</summary>

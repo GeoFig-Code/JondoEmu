@@ -539,11 +539,7 @@ namespace Jondo.Unity.Studio.Pages
             if (effect.ZoneShape == 0) return "";
 
             char letter = (char)effect.ZoneShape;
-            bool known = effect.ZoneShape is Zone.Punto or Zone.Circulo or Zone.Aspa or Zone.Barra
-                                          or Zone.TodoElMapa or Zone.WholeMap or Zone.Linea or Zone.MediaLinea
-                                          or Zone.CruzRecta or Zone.CruzCompleta or Zone.Cuadrado
-                                          or Zone.MedioCirculo or Zone.Segmento or Zone.Anillo
-                                          or Zone.LineaPerpendicular;
+            bool known = Zone.IsKnown(effect.ZoneShape);
 
             return known ? $"{letter}{effect.ZoneSize}" : $"{letter}? {effect.ZoneSize}";
         }

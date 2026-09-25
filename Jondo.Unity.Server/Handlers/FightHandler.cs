@@ -7874,7 +7874,7 @@ namespace Jondo.Unity.Server.Handlers
                 // En una sala de sueño NO se repone: la sala se limpia y se queda limpia, que es
                 // lo que hace que avanzar signifique algo. Reponerla dejaría al jugador peleando
                 // la misma sala para siempre.
-                if (!DreamHandler.SalaLimpiada(muerto))
+                if (!DreamHandler.SalaLimpiada(muerto, fight.RoleplayMapId))
                 {
                     // A dungeon room comes back as itself -- its eight, its boss -- and not as a
                     // random group of the subarea, which could have the boss in it.
@@ -7933,9 +7933,11 @@ namespace Jondo.Unity.Server.Handlers
 
             // Si esto era una sala de sueño, el estado ha cambiado —la sala está hecha y los
             // puntos han subido— y hay que decírselo antes de recargar el mapa, o la ventana
-            // seguirá enseñando lo de antes hasta que se cambie de sala.
-            await DreamHandler.RefrescarEstadoAsync(stream);
-            if (suenoAcabado) await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ixg));
+            // seguirá enseñando lo de antes hasta que se cambie de sala. Only then: any other
+            // fight, with a dream left to be continued, put the dream's interface on the world.
+            if (Managers.Dreams.IsDreamMap(fight.RoleplayMapId) && !suenoAcabado)
+                await DreamHandler.RefrescarEstadoAsync(stream);
+            if (suenoAcabado) { await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ixg)); DreamHandler.MarkLeft(); }
             if (avisoDelSueno != null)
                 await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildNotice(avisoDelSueno)));
 

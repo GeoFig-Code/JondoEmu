@@ -72,6 +72,16 @@ namespace Jondo.Unity.Tests.Economy
 
         private static (GameSession Crafter, GameSession Customer) Two(long crafterKamas, long customerKamas)
         {
+            // Ending a commission saves both characters, and a world.db fresh out of
+            // datos/world.zip -- the CI's -- still has the Characters table from before the
+            // scroll columns, which the server adds when it starts. Brought up to date first, as
+            // the server would.
+            using (var connection = new Microsoft.Data.Sqlite.SqliteConnection(Jondo.Unity.Server.DatabaseManager.WorldConnectionString))
+            {
+                connection.Open();
+                Jondo.Unity.Server.DatabaseManager.MoveScrollsOutOfTheBase(connection);
+            }
+
             var crafter = GameSession.SinSocket();
             var customer = GameSession.SinSocket();
             crafter.State.CharacterId = 9_000_000_001;

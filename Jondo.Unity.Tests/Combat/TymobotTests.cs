@@ -137,10 +137,10 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void The_segment_runs_from_the_caster_to_the_aimed_cell()
         {
-            var cells = Zone.Casillas(Zone.Segmento, 63, 287, 260, minimo: 1);
+            var cells = Zone.Casillas(Zone.Segmento, 1, 287, 260, minimo: 63);
 
             Assert.Equal(new[] { 273, 260 }, cells);
-            Assert.Contains(287, Zone.Casillas(Zone.Segmento, 63, 287, 260, minimo: 0));
+            Assert.Contains(287, Zone.Casillas(Zone.Segmento, 0, 287, 260, minimo: 63));
         }
 
         private static string Hex(byte[] bytes) => string.Concat(bytes.Select(b => b.ToString("x2")));

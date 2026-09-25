@@ -120,16 +120,19 @@ namespace Jondo.Unity.Tests.Combat
             Assert.DoesNotContain(centre, around);
             Assert.Equal(12, around.Count);
 
-            // The Q is a straight cross too, its param2 the inner radius: Salto's Q1/1 is the
-            // four cells around the arrival, and a bare Q2 keeps its centre.
+            // The Q is the straight cross without its centre, as the client's zone factory
+            // builds it: Salto's Q1/1 and a bare Q1 are both the four cells around the arrival,
+            // and a Q2 is the X2 less its centre.
             var salto = Zone.Casillas(Zone.CruzRecta, 1, 260, centre, minimo: 1);
             Assert.DoesNotContain(centre, salto);
             Assert.Equal(4, salto.Count);
             Assert.All(salto, c => Assert.Equal(1, MapGeometry.Distance(centre, c)));
+            Assert.Equal(salto.OrderBy(c => c), Zone.Casillas(Zone.CruzRecta, 1, 260, centre).OrderBy(c => c));
             var cruz = Zone.Casillas(Zone.CruzRecta, 2, 260, centre);
-            Assert.Contains(centre, cruz);
-            Assert.Equal(9, cruz.Count);
-            Assert.Equal(Zone.Casillas(Zone.Aspa, 2, 260, centre).OrderBy(c => c), cruz.OrderBy(c => c));
+            Assert.DoesNotContain(centre, cruz);
+            Assert.Equal(8, cruz.Count);
+            Assert.Equal(Zone.Casillas(Zone.Aspa, 2, 260, centre).Where(c => c != centre).OrderBy(c => c),
+                         cruz.OrderBy(c => c));
 
             // The ring is the O: exactly param1 away.
             var edge = Zone.Casillas(Zone.Anillo, 2, 260, centre);
@@ -168,17 +171,23 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Contains(MapGeometry.PointToCell(cx, cy - 1), t1);
         }
 
-        /// <summary>The half circle keeps the half away from the caster.</summary>
+        /// <summary>
+        /// The half circle is the client's: the aimed cell and two diagonal rays bent back
+        /// towards the caster, a V around the target, none of it nearer the caster than the
+        /// target is.
+        /// </summary>
         [Fact]
-        public void The_half_circle_faces_away_from_the_caster()
+        public void The_half_circle_bends_back_towards_the_caster()
         {
-            int caster = 260, centre = 301;
+            int centre = 301;
+            var (x, y) = MapGeometry.CellToPoint(centre);
+            int caster = MapGeometry.PointToCell(x - 3, y);
             var half = Zone.Casillas(Zone.MedioCirculo, 2, caster, centre);
+            Assert.Equal(new[] { centre, MapGeometry.PointToCell(x - 1, y - 1), MapGeometry.PointToCell(x - 1, y + 1),
+                                 MapGeometry.PointToCell(x - 2, y - 2), MapGeometry.PointToCell(x - 2, y + 2) },
+                         half);
             int away = MapGeometry.Distance(caster, centre);
-            Assert.Contains(centre, half);
             Assert.All(half, c => Assert.True(MapGeometry.Distance(caster, c) >= away));
-            Assert.All(half, c => Assert.True(MapGeometry.Distance(centre, c) <= 2));
-            Assert.True(half.Count < Zone.Casillas(Zone.Circulo, 2, caster, centre).Count);
         }
 
         /// <summary>

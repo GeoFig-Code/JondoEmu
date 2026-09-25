@@ -1131,7 +1131,8 @@ namespace Jondo.Unity.Server.Managers
         internal static List<int> CasillasDelEfecto(SpellEffect efecto, int desde, int centro)
             => efecto.Forma == FormaDeCeldasFijas && efecto.CeldasFijas.Count > 0
                 ? new List<int>(efecto.CeldasFijas)
-                : Jondo.Unity.World.Maps.Zone.Casillas(efecto.Forma, efecto.Tamano, desde, centro, efecto.TamanoMinimo);
+                : Jondo.Unity.World.Maps.Zone.Casillas(efecto.Forma, efecto.Tamano, desde, centro, efecto.TamanoMinimo,
+                                                       efecto.ParaEnElObjetivo);
 
         /// <summary>Los tres efectos que sacan un bicho al tablero.</summary>
         private static readonly HashSet<int> Invocaciones = new HashSet<int> { 181, 1008, 1011 };

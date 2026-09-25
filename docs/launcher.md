@@ -114,9 +114,9 @@ Important arguments include:
 --langCode <es|en|fr>
 ```
 
-The texture-pack arguments (`--hdReady`, `--4kReady`) are not among them: the launcher forces
-DirectX 11 and tells the client of no HD or 4K pack, so the game offers only Default. See
-`client-graphics.md`.
+The texture-pack arguments (`--hdReady`, `--4kReady`) come last, and only for a pack the player
+turned on in Settings → Graphics that is installed and verified for the client's own version. How
+the packs are downloaded from Ankama's CDN and verified is in `client-graphics.md`.
 
 Equivalent `ZAAP_PORT`, `ZAAP_HASH`, `ZAAP_GAME`, `ZAAP_RELEASE`, `ZAAP_INSTANCE_ID` and
 `ZAAP_CAN_AUTH` environment variables are set for the child. Every client receives its own hash

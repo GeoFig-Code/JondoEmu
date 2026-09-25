@@ -464,6 +464,7 @@ namespace Jondo.Unity.Server.Network
                         // map's zaap is taken by a conversation the player left behind.
                         NpcHandler.Forget();
                         WorkshopHandler.Forget();
+                        await Handlers.DreamHandler.OnMapLoadedAsync(stream);
                         await Managers.Quests.SendMarksAsync(stream, GameState.MapId);
 
                         byte[] actors = ConnectionProtocol.Push(Op.Jss,

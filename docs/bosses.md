@@ -104,9 +104,16 @@ The kind letters `m`/`M` do not include the caster.
 - When a monster dies, the rows it put on others and the rows it armed go.
 - A Pacifista deals no damage.
 
+## Zones
+
+Every letter is drawn the way the client's zone factory builds it (`Zone`, read from the shape
+classes of the 3.6.10 GameAssembly): the cross family `P X Q + # *` (Q and # without their centre,
+param2 counted in steps along each ray), the circles `C O I`, the lines `L /`, `T -` and `l` (its
+param1 the first step and param2 the length), `U` (a V bent back towards the caster), the cone `V`,
+the fork `F`, the squares `G W`, the boomerang `B`, the checkerboard `D` (D60 and D61 its two
+colours), the rectangle `R`, the outside circle `Z`, and `;`, the cells named outright.
+
 ## What is not there yet
 
-Zone shapes `G`, `*`, `I`, `B`, `D`, `W`, `R`, `/`, `F`, `Z` (they fall back to the aimed cell);
-waves and altars of the newest
-dungeons; effects 202, 1044, 2020, 786, 107 (damage returned), 1189, 2184, 2188, 2027, 2194; the
+Waves and altars of the newest dungeons; effects 202, 1044, 2020, 786, 107 (damage returned), 1189, 2184, 2188, 2027, 2194; the
 confusion effects 770-775 are shown but do not turn a player's aim.

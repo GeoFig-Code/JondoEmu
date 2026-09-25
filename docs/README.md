@@ -79,9 +79,9 @@ from a launcher row to its game socket.
 **`client-graphics.md`** — The HD and 4K scenery packs and the Windows renderer.
 What makes a pack show (on disk, `--hdReady` / `--4kReady` saying so, the player's pick in the
 game's options), why `-force-d3d11` is a separate choice, where the packs are on Ankama's CDN for
-the client's own version, and what the Jondo launcher passes today.
+the client's own version, and how the Jondo launcher downloads, verifies and passes them.
 *Go there* when an installed HD pack is not offered, when changing the client's launch arguments,
-or when downloading a pack.
+or when a pack download misbehaves.
 
 **`remote-server.md`** — Running the server on another machine.
 How `JONDO_PUBLIC_BIND` opens all server services consistently, how the launcher's managed loopback

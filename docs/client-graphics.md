@@ -72,11 +72,31 @@ in the file. A file is installed when its whole SHA-1 is the manifest's.
 
 ## 4. Jondo
 
-`LauncherService.LaunchClient` (`Jondo.Unity.Launcher/LauncherService.cs`) passes `-force-d3d11`
-and neither pack flag, so a client started by the Jondo launcher offers only Default, whatever it
-has on disk. Passing a flag belongs to the launcher, and only for a pack that is installed and
-verified in the client being started. `%APPDATA%\Jondo\lanzador.cfg` may name a client other than
-the one next to the launcher: check the `Textures` folder of that one.
+The launcher's **Settings** has a **Graphics** block with one row per pack (`MainWindow.Packs.cs`,
+`Jondo.Unity.Launcher/Packs/`). A row shows the pack's size and state and one button that reads
+Download, Resume or Verify as the state asks, and Cancel while it works; Remove; and a box to use
+the pack in the game, which can be ticked only once the pack is verified.
+
+- **The version is the client's.** `ClientVersion.Read` reads `Dofus_Data/StreamingAssets/version`
+  of the client the launcher starts, and nothing else: not `LauncherService.Version`, which names
+  the protocol. No readable version, no download; the manifest of that version not on the CDN, no
+  download either -- never another version's.
+- **Downloading.** The manifest is cached per version in `%LOCALAPPDATA%\Jondo\cytrus\`. Each bundle
+  is one streamed Range request, four at a time, with retries; every chunk is checked against its
+  SHA-1 before it is written at its offset into `<file>.part`, a journal keeps the bundles already
+  done so a stop or a crash resumes, and every whole file is checked before it takes its name.
+  Free space is checked first, and nothing is written while a `Dofus.exe` of that client runs.
+- **Installed** means verified: `jondo-pack.json` in the pack's folder records the version and
+  every file's size and SHA-1, written only after the whole check. A pack that is already on disk
+  (the 2x one Ankama's launcher leaves) starts as unverified, and Verify hashes it without
+  downloading anything if it is whole. When the client's version changes, the pack is unverified
+  again until it is verified for the new one.
+- **Launching.** `--hdReady` / `--4kReady` are added (`packHd`, `pack4k` in
+  `%APPDATA%\Jondo\lanzador.cfg`) only for a pack the player ticked AND installed for the version
+  of the client being started. The pack is then picked in the game's options.
+
+`lanzador.cfg` may name a client other than the one next to the launcher: the packs are those of
+the client it names.
 
 To list the packs a client has, without touching it:
 
