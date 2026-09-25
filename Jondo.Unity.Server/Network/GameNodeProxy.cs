@@ -471,6 +471,9 @@ namespace Jondo.Unity.Server.Network
                                                               sessionAccountId));
                         await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, actors);
 
+                        // How many fights the map has, right behind its actors when it has any.
+                        await FightHandler.SendFightCountAsync(stream, GameState.MapId);
+
                         // And straight behind it, the mark that says there are no more actors. In
                         // every capture that loads a map lva comes immediately after jss, and
                         // without it the client never counts the map as loaded: two seconds later
@@ -538,6 +541,10 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr.Contains("type.ankama.com/jqi"))
                 {
                     await WorldMoveHandler.AllowMapExitAsync(stream, payload);
+
+                    // A party member whose leader opened a fight while he was walking goes in
+                    // when his walk ends, as the follow capture does.
+                    await FightHandler.AfterWalkAsync(stream);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Jqk)))
                 {
@@ -1225,6 +1232,17 @@ namespace Jondo.Unity.Server.Network
                     // Atacar a un grupo de monstruos. Es lo que manda el cliente de verdad al
                     // lanzar un combate: lleva el id contextual del grupo.
                     await FightHandler.AttackAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kay)))
+                {
+                    // Into somebody else's fight during its placement: the swords on the map or
+                    // the party window.
+                    await FightHandler.JoinRequestAsync(stream, payload);
+                }
+                else if (FightHandler.IsAutoOptionRequest(payloadStr))
+                {
+                    // The party window's automatic entry and automatic ready.
+                    await FightHandler.AutoOptionAsync(stream, payload, payloadStr);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Jzy)) || payloadStr.Contains(Op.Uri(Op.Kaq))
                          || payloadStr.Contains("type.ankama.com/jwz") || payloadStr.Contains("type.ankama.com/jxy")

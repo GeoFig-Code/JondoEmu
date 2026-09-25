@@ -1487,6 +1487,53 @@ public static class Op
     /// <summary>Presente en 25 de las 31 carpetas de captura (399 mensajes, 90 ficheros). Nada establecido.</summary>
     public const string Kmu = "kmu";
 
+    // ─── A fight on the map, and coming into one (Network/FightJoinProtocol.cs) ──────────
+
+    /// <summary>Server to client: the swords of a fight in its placement appear on the map.</summary>
+    public const string Hpy = "hpy";
+
+    /// <summary>Server to client: the swords go, the placement is over. { f1: the fight }.</summary>
+    public const string Hpr = "hpr";
+
+    /// <summary>Server to client: how many fights the map has. { f2: how many }, empty for none.</summary>
+    public const string Jqz = "jqz";
+
+    /// <summary>Server to client: a member taken off a team shown on the map.</summary>
+    public const string Jzw = "jzw";
+
+    /// <summary>Server to client: a fighter taken off the board during the placement.</summary>
+    public const string Kar = "kar";
+
+    /// <summary>Server to client: a kay turned down, { f1: the fighter named, f2: why }.</summary>
+    public const string Jxs = "jxs";
+
+    /// <summary>Server to client, empty: out of the fight, sent to whoever leaves the placement.</summary>
+    public const string Jxa = "jxa";
+
+    /// <summary>Client to server, empty: the party window's automatic entry into fights, on.</summary>
+    public const string Ilf = "ilf";
+
+    /// <summary>Server to client, root 3, empty: the answer to ilf.</summary>
+    public const string Ikm = "ikm";
+
+    /// <summary>Client to server, empty: the automatic entry, off.</summary>
+    public const string Int = "int";
+
+    /// <summary>Server to client, root 3, empty: the answer to int.</summary>
+    public const string Ilv = "ilv";
+
+    /// <summary>Client to server, empty: the party window's automatic ready, on.</summary>
+    public const string Ikr = "ikr";
+
+    /// <summary>Server to client, root 3, empty: the answer to ikr.</summary>
+    public const string Inn = "inn";
+
+    /// <summary>Client to server, empty: the automatic ready, off.</summary>
+    public const string Inp = "inp";
+
+    /// <summary>Server to client, root 3, empty: the answer to inp.</summary>
+    public const string Ilr = "ilr";
+
     /// <summary>Llega con jrh en cada carga de mapa y no espera nada de vuelta; el emulador ya lo ignora en silencio. 727 mensajes, 88 ficheros.</summary>
     public const string Kmv = "kmv";
 

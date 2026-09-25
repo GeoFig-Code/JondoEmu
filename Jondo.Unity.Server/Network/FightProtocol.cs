@@ -237,17 +237,6 @@ namespace Jondo.Unity.Server.Network
                 .Build();
 
         /// <summary>
-        /// Uno que está en el combate (kae).
-        ///
-        ///   f1 { f3: quién, f4: 1, f5: vacío }      f2: el id del combate
-        /// </summary>
-        public static byte[] BuildFighterInFight(long fighterId, long fightId)
-            => Pb.New()
-                .Msg(1, Pb.New().Var(3, fighterId).Var(4, 1).EmptyMsg(5))
-                .Var(2, fightId)
-                .Build();
-
-        /// <summary>
         /// Una opción del combate (kau): bloquear a los mirones, cerrarlo al grupo y demás.
         ///
         ///   f3: cuál       f5: el id del combate

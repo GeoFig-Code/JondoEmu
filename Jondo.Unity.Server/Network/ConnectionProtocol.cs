@@ -883,38 +883,11 @@ namespace Jondo.Unity.Server.Network
             {
                 if (group.Members.Count == 0) continue;
 
-                var creatures = Pb.New();
-                for (int i = 1; i < group.Members.Count; i++)
-                {
-                    var member = group.Members[i];
-                    creatures.Msg(1, Pb.New()
-                        .Var(1, member.Monster.Id)
-                        .VarIfNotZero(2, LevelOf(member))
-                        .Msg(3, Pb.New()
-                            .Var(2, LookKind)
-                            .VarIfNotZero(3, BonesOf(member.Monster.Look)))
-                        .VarIfNotZero(4, GradeOf(member)));
-                }
+                // A group being fought went off the map with a kmu when its fight opened (the
+                // follow capture, frame 132): it is not drawn for whoever comes now either.
+                if (Handlers.FightHandler.IsGroupFighting(group.MobId)) continue;
 
-                var leader = group.Members[0];
-                creatures.Msg(2, Pb.New()
-                    .Var(1, leader.Monster.Id)
-                    .VarIfNotZero(2, LevelOf(leader))
-                    .VarIfNotZero(4, GradeOf(leader)));
-
-                if (group.Modular) AddAlternatives(creatures, group.Members);
-
-                jss.Msg(5, Pb.New()
-                    .Msg(1, Pb.New().Var(1, group.CellId).Var(2, group.Orientation))
-                    .Msg(2, Pb.New()
-                        .Msg(1, Pb.New().Msg(4, Pb.New()
-                            .Var(1, 1)
-                            .Msg(2, creatures)
-                            .Var(5, -1)))
-                        .Msg(3, Pb.New()
-                            .Var(2, LookKind)
-                            .VarIfNotZero(3, BonesOf(leader.Monster.Look))))
-                    .Var(3, group.MobId));
+                jss.Msg(5, MonsterGroupActor(group));
             }
 
             AddNpcs(jss, mapId);
@@ -925,7 +898,55 @@ namespace Jondo.Unity.Server.Network
 
             AddInteractiveElements(jss, mapId);
 
+            // And last, the fights in their placement: the swords. Each f12 is what an hpy carries
+            // (the sword capture's jss at frame 53, the jalatós one at 840); a fight past its
+            // placement has none -- it is only counted, by the jqz that follows the jss.
+            foreach (var fight in Handlers.FightHandler.PlacementFightsOnMap(mapId))
+            {
+                jss.Msg(12, Handlers.FightHandler.MapEntryOf(fight));
+            }
+
             return jss.Build();
+        }
+
+        /// <summary>
+        /// A monster group as an actor of the map: its entry in the jss, and what a jsn carries
+        /// to draw it again (the follow capture's frame 131 is this same block).
+        /// </summary>
+        internal static Pb MonsterGroupActor(Managers.MobSpawnManager.MobGroup group)
+        {
+            var creatures = Pb.New();
+            for (int i = 1; i < group.Members.Count; i++)
+            {
+                var member = group.Members[i];
+                creatures.Msg(1, Pb.New()
+                    .Var(1, member.Monster.Id)
+                    .VarIfNotZero(2, LevelOf(member))
+                    .Msg(3, Pb.New()
+                        .Var(2, LookKind)
+                        .VarIfNotZero(3, BonesOf(member.Monster.Look)))
+                    .VarIfNotZero(4, GradeOf(member)));
+            }
+
+            var leader = group.Members[0];
+            creatures.Msg(2, Pb.New()
+                .Var(1, leader.Monster.Id)
+                .VarIfNotZero(2, LevelOf(leader))
+                .VarIfNotZero(4, GradeOf(leader)));
+
+            if (group.Modular) AddAlternatives(creatures, group.Members);
+
+            return Pb.New()
+                .Msg(1, Pb.New().Var(1, group.CellId).Var(2, group.Orientation))
+                .Msg(2, Pb.New()
+                    .Msg(1, Pb.New().Msg(4, Pb.New()
+                        .Var(1, 1)
+                        .Msg(2, creatures)
+                        .Var(5, -1)))
+                    .Msg(3, Pb.New()
+                        .Var(2, LookKind)
+                        .VarIfNotZero(3, BonesOf(leader.Monster.Look))))
+                .Var(3, group.MobId);
         }
 
         /// <summary>
