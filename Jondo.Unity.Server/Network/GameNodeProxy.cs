@@ -629,6 +629,15 @@ namespace Jondo.Unity.Server.Network
                 {
                     await Handlers.PartyHandler.PromoteAsync(stream, payload);
                 }
+                // Following the party leader: see Handlers.PartyFollowHandler.
+                else if (payloadStr.Contains(Op.Uri(Op.Imh)))
+                {
+                    await Handlers.PartyFollowHandler.FollowAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Imo)))
+                {
+                    await Handlers.PartyFollowHandler.UnfollowAsync(stream, payload);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Ktb)))
                 {
                     await Handlers.PrivateMessageHandler.WhisperAsync(stream, payload);

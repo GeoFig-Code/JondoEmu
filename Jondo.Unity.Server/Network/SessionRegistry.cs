@@ -223,6 +223,11 @@ namespace Jondo.Unity.Server.Network
             if (mapaQueDeja > 0 && mapaQueDeja != quien.MapId)
             {
                 seVa = await RemoveFromMapAsync(mapaQueDeja, quien.CharacterId, quien.Id, porDonde);
+
+                // And whoever follows him, if he leads a party, learns where he landed, right
+                // behind the jsd and kmu of the old map: frames 101-103 of "Grupos/con grupo
+                // seguir desplazamiento del lider...". See PartyFollowHandler.
+                await Handlers.PartyFollowHandler.LeaderMovedAsync(quien);
             }
 
             var ficha = DatabaseManager.GetCharacterById(quien.CharacterId);
@@ -250,17 +255,15 @@ namespace Jondo.Unity.Server.Network
                                                          int? porDonde = null)
         {
             var party = Managers.Parties.Of(characterId);
-            byte[] removed = ConnectionProtocol.BuildActorRemoved(characterId);
-            byte[] left = ConnectionProtocol.BuildActorLeft(characterId, porDonde);
 
             var targets = OnMap(mapId).Where(s => s.Id != exceptSessionId).ToArray();
             var results = await Task.WhenAll(targets.Select(async target =>
             {
                 try
                 {
-                    if (party != null && Managers.Parties.Of(target.CharacterId) == party)
-                        await target.SendAsync(left);
-                    await target.SendAsync(removed);
+                    bool mate = party != null && Managers.Parties.Of(target.CharacterId) == party;
+                    foreach (byte[] notice in LeaveNotices(characterId, mate, porDonde))
+                        await target.SendAsync(notice);
                     return true;
                 }
                 catch (Exception ex)
@@ -271,6 +274,24 @@ namespace Jondo.Unity.Server.Network
                 }
             }));
             return results.Count(delivered => delivered);
+        }
+
+        /// <summary>
+        /// What one person still on the map gets when a character leaves it, in order.
+        /// </summary>
+        /// <remarks>
+        /// The jsd only goes when the character walked out, because only then is there a way out
+        /// to tell. When the leader takes the zaap in "Grupos/con grupo seguir desplazamiento del
+        /// lider...", the member standing next to him gets an empty imk and the kmu, and no jsd
+        /// (frames 245-246). A jsd without its f3 is not "no direction" either: it is direction 0,
+        /// east, which proto3 leaves off the wire -- frame 5 is the leader walking right from
+        /// [1,-32] to [2,-32] -- so sending one for a jump told the party he had walked off east.
+        /// </remarks>
+        internal static IReadOnlyList<byte[]> LeaveNotices(long characterId, bool partyMate, int? porDonde)
+        {
+            byte[] removed = ConnectionProtocol.BuildActorRemoved(characterId);
+            if (!partyMate || !porDonde.HasValue) return new[] { removed };
+            return new[] { ConnectionProtocol.BuildActorLeft(characterId, porDonde), removed };
         }
 
         /// <summary>Creates a new ticket for a specific account, server and client language.</summary>

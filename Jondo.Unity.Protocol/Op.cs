@@ -424,11 +424,29 @@ public static class Op
     /// <summary>Hay jefe nuevo: { f1: el nuevo jefe, f2: id del grupo }. Once bytes; NO se reenvia el grupo.</summary>
     public const string Ilx = "ilx";
 
-    /// <summary>Respuesta corta y VACIA a un ima. Ni siquiera lleva carga.</summary>
+    /// <summary>
+    /// Following the leader switched on or off: { f1: on }. Empty when off, 0801 when on; the
+    /// member's client answers the first with an imo and the second with an imh. Measured in
+    /// "Grupos/con grupo seguir desplazamiento del lider...": empty in the same segment as the
+    /// kmu of the leader leaving by zaap. The ima of "nombrar a otro jugador jefe" gets it empty.
+    /// </summary>
     public const string Imk = "imk";
 
-    /// <summary>Mientras el grupo sigue al lider: { f1: a quien se sigue, mapa, coordenadas, casilla }.</summary>
+    /// <summary>
+    /// Where the leader is, to the members following him: { f1: leader, f3 { f1: map, f2: x,
+    /// f4: subarea, f5: y }, f4: cell }. After every walk of his and every map change; it is
+    /// what makes the member's client walk after him.
+    /// </summary>
     public const string Ikv = "ikv";
+
+    /// <summary>A member asks to follow the leader: empty. Answered with lqn 1662, ikv and iln.</summary>
+    public const string Imh = "imh";
+
+    /// <summary>The answer to imh, empty, on root field 3 with the request id.</summary>
+    public const string Iln = "iln";
+
+    /// <summary>A member stopped following: { f1: the member }. Sent to him, between lqn 1661 and inb.</summary>
+    public const string Ika = "ika";
 
     // Los siguientes los nombra Akuma en su tabla y encajan con los que salen sueltos en las
     // capturas, pero NO se han medido campo a campo aqui: no hay ninguna captura donde se expulse
@@ -459,10 +477,10 @@ public static class Op
     /// </summary>
     public const string Ino = "ino";
 
-    /// <summary>Acuse del cliente sobre el grupo. Sin medir.</summary>
+    /// <summary>A member stops following the leader: empty. Answered with lqn 1661, ika and inb.</summary>
     public const string Imo = "imo";
 
-    /// <summary>Acuse del servidor sobre el grupo. Sin medir.</summary>
+    /// <summary>The answer to imo, empty, on root field 3 with the request id.</summary>
     public const string Inb = "inb";
 
     /// <summary>Los detalles de un grupo, respuesta al imd.</summary>

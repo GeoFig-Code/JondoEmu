@@ -2158,15 +2158,19 @@ namespace Jondo.Unity.Server.Network
         /// muñeco andando hacia ese lado y entonces lo borra.
         ///
         ///   10 a282f0a6c408 18 06     quién, y se fue por arriba
-        ///   10 a282f0a6c408           quién, y ya está
-        ///
-        /// Los que van sin dirección son las salidas que no tienen ninguna: por el zaap uno no se
-        /// va hacia ningún lado, desaparece. Por eso es opcional.
+        ///   10 a282f0a6c408           who, and he left to the east (0, off the wire)
         /// </summary>
+        /// <remarks>
+        /// The one without f3 is direction 0, east, which proto3 leaves off the wire; it is not an
+        /// exit with no direction. Frame 5 of that capture is the leader walking from [1,-32] to
+        /// [2,-32], and the member's own jsd of frame 19 is the same walk. So a 0 is written the
+        /// same way here, and a jump -- which has no way out at all -- sends no jsd: see
+        /// <see cref="SessionRegistry.LeaveNotices"/>.
+        /// </remarks>
         public static byte[] BuildActorLeft(long contextualId, int? porDonde = null)
         {
             var pb = Pb.New().Var(2, contextualId);
-            if (porDonde.HasValue) pb.Var(3, porDonde.Value);
+            if (porDonde.HasValue) pb.VarIfNotZero(3, porDonde.Value);
             return Push(Op.Jsd, pb.Build());
         }
 
