@@ -183,7 +183,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Movement, map change and adjacent maps; auto-pilot from the minimap and *travel to*
 <img width="538" height="452" alt="image" src="https://github.com/user-attachments/assets/a6438938-00c2-4a76-b4e1-48abf3d56934" />
 
-- ✅ Seeing others arrive and leave, in all four directions
+- ✅ Seeing others arrive and leave, in all four directions: whoever walks off the map disappears from the others' screens (`kmu`), with the `jsd` before it for their party, as the captures send it
 - ✅ Up to 8 clients at once, each on its own socket-owned session
 - ✅ Everybody is drawn wearing their gear — the other players on the map, the opponent in a fight and every character on the selection screen. Equipment is read per character from `CharacterItems`
 
@@ -234,6 +234,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Parties — invite, accept, refuse, leave, hand over the lead, kick, and a full member sheet
 - ✅ Lead passes on when the leader leaves; a disconnect removes the member and tells the rest
 - ✅ Friends list
+- ✅ Trading with another player on the map: ask, refuse or accept, lay stacks down and take them back, kamas, ready on both sides, and the goods changing hands — a new stack under a new uid, or onto one of the same — measured on both sides in the two trade captures
 - ✅ Every command answers in the session's own language, from a catalogue in Spanish, English and French. The language comes from the `--langCode` the launcher started the client with
 - ❌ The invitation popup's *Details* button (`imd` → `ilb`), the dedicated member-gone message (`inc`), party search and following the leader
 

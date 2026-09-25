@@ -118,6 +118,7 @@ namespace Jondo.Unity.Server.Network
 
                         // A commission half done ends for the one left behind too.
                         try { await CommissionHandler.AbandonAsync(sesion); } catch { }
+                        try { await TradeHandler.AbandonAsync(sesion); } catch { }
                         try { await ArtisanHandler.LeftAsync(sesion); } catch { }
 
                         // Guardar al cerrar, que no se hacía en ninguna parte: hasta ahora el
@@ -811,6 +812,7 @@ namespace Jondo.Unity.Server.Network
                     // Mover un objeto entre la bolsa y el cofre. The same kcr lays a stack on a
                     // commission's offer, on a workshop's bench, or on a magus table.
                     if (!await CommissionHandler.OfferAsync(stream, payload)
+                        && !await TradeHandler.MoveAsync(stream, payload)
                         && !await WorkshopHandler.MoveAsync(stream, payload))
                         await ChestHandler.MoveAsync(stream, payload);
                 }
@@ -827,7 +829,8 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr.Contains(Op.Uri(Op.Kep)))
                 {
                     // Ready: a commission's customer, or in a workshop the craft button.
-                    if (!await CommissionHandler.ReadyAsync(stream, payload))
+                    if (!await CommissionHandler.ReadyAsync(stream, payload)
+                        && !await TradeHandler.ReadyAsync(stream, payload))
                         await WorkshopHandler.CraftAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kcj)))
@@ -847,8 +850,8 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kgi)))
                 {
-                    // Accepting it.
-                    await CommissionHandler.AcceptAsync(stream);
+                    // Accepting it, or a trade.
+                    if (!await CommissionHandler.AcceptAsync(stream)) await TradeHandler.AcceptAsync();
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kgd)))
                 {
@@ -872,8 +875,14 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kee)))
                 {
-                    // Kamas in an exchange: a commission's payment.
-                    await CommissionHandler.PaymentAsync(stream, payload);
+                    // Kamas in an exchange: a commission's payment, or a trade's.
+                    if (!await CommissionHandler.PaymentAsync(stream, payload))
+                        await TradeHandler.KamasAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Keu)))
+                {
+                    // Asking another player to trade.
+                    await TradeHandler.RequestAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Itr)))
                 {
@@ -951,6 +960,7 @@ namespace Jondo.Unity.Server.Network
                     // propia: con la conversación abierta, cualquier orden que deje el zaap antes
                     // se queda con la X que era del diálogo.
                     if (await CommissionHandler.CloseAsync()) { }
+                    else if (await TradeHandler.CloseAsync()) { }
                     else if (WorkshopHandler.IsOpen) await WorkshopHandler.CloseAsync(stream);
                     else if (ChestHandler.IsOpen) await ChestHandler.CloseAsync(stream);
                     else if (NpcHandler.IsShopOpen) await NpcHandler.CloseShopAsync(stream);

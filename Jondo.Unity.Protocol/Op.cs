@@ -1332,6 +1332,24 @@ public static class Op
     /// <summary>Kamas put into an exchange: { f1: kamas }.</summary>
     public const string Kee = "kee";
 
+    /// <summary>Client to server: asking another player to trade, { f2: whom }.</summary>
+    public const string Keu = "keu";
+
+    /// <summary>A trade asked for, to both: { f1: who asks, f2: who is asked, f4: 1 }.</summary>
+    public const string Kfz = "kfz";
+
+    /// <summary>
+    /// The trade window opens, to both: { f2: asker's pods capacity, f3: 1, f4: asked's capacity,
+    /// f5: asker's pods carried, f6: asker, f7: asked, f8: asked's carried }.
+    /// </summary>
+    public const string Kbg = "kbg";
+
+    /// <summary>The kamas one side of a trade puts in: { f1: kamas, f3: true when the other one's }.</summary>
+    public const string Ket = "ket";
+
+    /// <summary>A side's pods once a trade is done: { f1: capacity, f2: true when the other one's, f3: carried }.</summary>
+    public const string Keq = "keq";
+
     /// <summary>
     /// A line of the chat log: { f3: kind, f4: parameters }. The payment of a commission writes
     /// { f3: 64, f4: "+", f4: amount } beside lqn 594, "Pago: {0} kamas.".
