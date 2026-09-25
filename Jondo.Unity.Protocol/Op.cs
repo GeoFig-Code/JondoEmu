@@ -1203,7 +1203,10 @@ public static class Op
     /// <summary>Sin identificar. 3 usos en el emulador.</summary>
     public const string Kaq = "kaq";
 
-    /// <summary>Sin identificar. 1 uso en el emulador.</summary>
+    /// <summary>
+    /// A fight option's state: { f1: the side, f3: which, f4: on, f5: the fight }. Four at every
+    /// board, in the order 2, 1, 3, 0, and one whenever a side switches one (jzx).
+    /// </summary>
     public const string Kau = "kau";
 
     /// <summary>Sin identificar. 2 usos en el emulador.</summary>
@@ -1506,6 +1509,12 @@ public static class Op
 
     /// <summary>Server to client: a kay turned down, { f1: the fighter named, f2: why }.</summary>
     public const string Jxs = "jxs";
+
+    /// <summary>
+    /// Client to server: a side's fight option switched, { f1: which } -- none for no spectators,
+    /// 1 party only, 2 closed, 3 asking for help. Answered by kau with its new state.
+    /// </summary>
+    public const string Jzx = "jzx";
 
     /// <summary>Server to client, empty: out of the fight, sent to whoever leaves the placement.</summary>
     public const string Jxa = "jxa";

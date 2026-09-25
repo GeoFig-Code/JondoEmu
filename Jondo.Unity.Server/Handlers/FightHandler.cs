@@ -934,10 +934,16 @@ namespace Jondo.Unity.Server.Handlers
                                                       fight.FightId)));
             }
 
-            foreach (int option in Network.FightProtocol.FightOptions)
+            // Each side's options with their state, the attackers' and, when the other side is
+            // people, theirs too: both challenge captures show the kau with f1 = 1 (frames 29, 43).
+            foreach (int side in fight.Reglas.EnfrenteHayMonstruos
+                         ? new[] { FightInstance.Azules } : new[] { FightInstance.Azules, FightInstance.Rojos })
             {
-                await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kau,
-                    Network.FightProtocol.BuildFightOption(option, fight.FightId)));
+                foreach (int option in Network.FightProtocol.FightOptions)
+                {
+                    await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kau,
+                        Network.FightProtocol.BuildFightOption(side, option, fight.OptionOn(side, option), fight.FightId)));
+                }
             }
 
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jzu,
@@ -2357,7 +2363,8 @@ namespace Jondo.Unity.Server.Handlers
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jxz,
                 Network.FightProtocol.BuildRound(fight.RoundNumber)));
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kau,
-                Network.FightProtocol.BuildFightOption(0, fight.FightId)));
+                Network.FightProtocol.BuildFightOption(FightInstance.Azules, FightInstance.OptionSecret,
+                    fight.OptionOn(FightInstance.Azules, FightInstance.OptionSecret), fight.FightId)));
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jzu,
                 Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jwq,
@@ -7694,11 +7701,14 @@ namespace Jondo.Unity.Server.Handlers
             bool azulGana = fight.SigueVivo(FightInstance.Azules);
 
             var gente = Publico(fight);
+            PlanRewards(fight);
             await ACadaUnoAsync(fight, sesion =>
             {
                 return TerminarParaUnoAsync(sesion.Stream, fight,
                                             fight.HaGanado(sesion.State.CharacterId), azulGana);
             });
+            ForgetRewards(fight);
+            ChallengeWatcher.Forget(fight);
 
             // And the map: the people drawn again where they came back -- they went off it with
             // a kmu -- the count of fights one less, the group back or its replacement.
@@ -7714,7 +7724,7 @@ namespace Jondo.Unity.Server.Handlers
         /// </remarks>
         private static Network.FightProtocol.FightResult FinDe(
             Fighter fighter, bool gano, bool esQuienMira, long xpGained,
-            Network.FightProtocol.Spoils spoils, bool gane)
+            Network.FightProtocol.Spoils spoils, bool gane, Reward? suyo = null)
         {
             // Un monstruo va sin ficha: solo quien es y si gano.
             if (fighter.IsMonster)
@@ -7736,13 +7746,17 @@ namespace Jondo.Unity.Server.Handlers
                 // el minimo que hay que tener para estar en ese nivel. Su barra sale vacia, y eso
                 // es cosmetico; lo que hacia falta era el NIVEL, que es lo que distingue a una
                 // persona de un monstruo.
+                // What he won, though, is known when the fight was shared out: each end screen of the
+                // follow capture lists both players' experience, kamas and items.
                 int nivel = Math.Max(1, fighter.Level);
                 return new Network.FightProtocol.FightResult
                 {
                     Fighter = fighter.Id,
                     Winner = gano,
                     Level = nivel,
-                    Xp = ExperienceTable.LevelFloor(nivel),
+                    Xp = ExperienceTable.LevelFloor(nivel) + (suyo?.Xp ?? 0),
+                    XpGained = suyo?.Xp ?? 0,
+                    Spoils = gano && suyo != null ? SpoilsOf(suyo) : null,
                 };
             }
 
@@ -7795,8 +7809,22 @@ namespace Jondo.Unity.Server.Handlers
             long xpGained = won ? ConElExtra(quePagan.Sum(m => (long)m.XpReward), extraDeRetos) : 0;
             long kamas = won ? ConElExtra(quePagan.Sum(m => 10L + (m.Level * 5L)), extraDeRetos) : 0;
             var caidos = new List<PlayerItem>();
-            var loot = won ? RollFightLoot(fight, extraDeRetos, out caidos)
-                           : new Dictionary<int, int>();
+            Dictionary<int, int> loot;
+
+            // His share, when the fight was planned for all its winners (FightRewards): the same
+            // numbers his partners see in their end screen.
+            var suyo = won ? RewardOf(fight, GameState.CharacterId) : null;
+            if (suyo != null)
+            {
+                xpGained = suyo.Xp;
+                kamas = suyo.Kamas;
+                loot = suyo.Loot;
+                EntregarBotin(loot, out caidos);
+            }
+            else
+            {
+                loot = won ? RollFightLoot(fight, extraDeRetos, out caidos) : new Dictionary<int, int>();
+            }
 
             // El koliseo paga LO SUYO. No entra por lo de arriba porque enfrente no hay monstruos
             // de los que sacar experiencia, kamas ni tabla de botín: lo paga el koliseo por ganar,
@@ -7861,12 +7889,12 @@ namespace Jondo.Unity.Server.Handlers
             foreach (var f in fight.Azul)
             {
                 if (f.EsInvocado || f.EsIlusion) continue;
-                results.Add(FinDe(f, azulGana, f.Id == yo, xpGained, spoils, gane));
+                results.Add(FinDe(f, azulGana, f.Id == yo, xpGained, spoils, gane, RewardOf(fight, f.Id)));
             }
             foreach (var f in fight.Rojo)
             {
                 if (f.EsInvocado || f.EsIlusion) continue;
-                results.Add(FinDe(f, !azulGana, f.Id == yo, xpGained, spoils, gane));
+                results.Add(FinDe(f, !azulGana, f.Id == yo, xpGained, spoils, gane, RewardOf(fight, f.Id)));
             }
 
             int duration = (int)Math.Max(0, (DateTime.UtcNow - fight.StartedAt).TotalMilliseconds);
@@ -8865,7 +8893,17 @@ namespace Jondo.Unity.Server.Handlers
         private static Dictionary<int, int> RollFightLoot(FightInstance fight, int extra,
                                                           out List<PlayerItem> caidos)
         {
-            caidos = new List<PlayerItem>();
+            var loot = RollLoot(fight, extra);
+            EntregarBotin(loot, out caidos);
+            return loot;
+        }
+
+        /// <summary>
+        /// The roll alone, for the player of this session, delivering nothing: what
+        /// <see cref="PlanRewards"/> rolls for each winner before anybody is shown the end.
+        /// </summary>
+        private static Dictionary<int, int> RollLoot(FightInstance fight, int extra)
+        {
             var loot = new Dictionary<int, int>();
 
             // Los INVOCADOS no pagan. Entran en el bando del que los invoca con IsMonster
@@ -8911,7 +8949,6 @@ namespace Jondo.Unity.Server.Handlers
                 }
             }
 
-            EntregarBotin(loot, out caidos);
             return loot;
         }
 

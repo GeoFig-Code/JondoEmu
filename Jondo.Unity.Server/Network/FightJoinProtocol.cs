@@ -177,20 +177,22 @@ namespace Jondo.Unity.Server.Network
         ///   f5: the attackers' options  f5: the defenders' options
         ///   f6: the fight
         ///
-        /// The options go empty: this server has no locks, and an empty block is what Z carries
-        /// for fights nobody locked ("2a002a00"). The flag cells are the attacker's cell and the
-        /// group's (F: [71, 73] with the group drawn on 71 before it went off; B: [228, 200],
-        /// Ocrazy's path ending on 228 and the group on 200).
+        /// The options are empty for a side nobody locked, as Z carries them ("2a002a00"). Of what
+        /// goes in them only one thing is measured: a side restricted to its party is { f4: 1 } (the
+        /// fight 4368 of J 840); the other options' fields are not known and are left out. The
+        /// flag cells are the attacker's cell and the group's (F: [71, 73] with the group drawn on
+        /// 71 before it went off; B: [228, 200], Ocrazy's path ending on 228 and the group on 200).
         /// </summary>
         public static Pb FightOnMap(long fightId, int kind, int attackersFlag, int defendersFlag,
-                                    Pb attackers, Pb defenders)
+                                    Pb attackers, Pb defenders,
+                                    bool attackersPartyOnly = false, bool defendersPartyOnly = false)
             => Pb.New()
                 .Packed(1, new long[] { attackersFlag, defendersFlag })
                 .VarIfNotZero(2, kind)
                 .Msg(3, attackers)
                 .Msg(3, defenders)
-                .EmptyMsg(5)
-                .EmptyMsg(5)
+                .Msg(5, Pb.New().VarIfNotZero(4, attackersPartyOnly ? 1 : 0))
+                .Msg(5, Pb.New().VarIfNotZero(4, defendersPartyOnly ? 1 : 0))
                 .Var(6, fightId);
 
         /// <summary>The swords appear on the map (hpy): { f1: the fight on the map }.</summary>

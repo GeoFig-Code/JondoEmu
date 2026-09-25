@@ -182,7 +182,9 @@ namespace Jondo.Unity.Server.Handlers
             return FightJoinProtocol.FightOnMap(fight.FightId, fight.Reglas.TipoDelKam,
                 where?.AttackersFlag ?? 0, where?.DefendersFlag ?? 0,
                 TeamOnMap(fight, FightInstance.Azules, withMembers: true),
-                TeamOnMap(fight, FightInstance.Rojos, withMembers: true));
+                TeamOnMap(fight, FightInstance.Rojos, withMembers: true),
+                fight.OptionOn(FightInstance.Azules, FightInstance.OptionPartyOnly),
+                fight.OptionOn(FightInstance.Rojos, FightInstance.OptionPartyOnly));
         }
 
         /// <summary>
@@ -260,6 +262,67 @@ namespace Jondo.Unity.Server.Handlers
             }
         }
 
+        /// <summary>
+        /// Whether a side opens restricted to its party: when a person of it is in a party, as the
+        /// real server does by itself in every party fight captured -- the follow capture, the
+        /// party search, both challenges -- with no jzx from the client first.
+        /// </summary>
+        internal static bool RestrictToPartyOnOpening(FightInstance fight, int side)
+        {
+            bool party = fight.Bando(side).Any(f => !f.IsMonster && !f.EsInvocado && Parties.IsInParty(f.Id));
+            if (party) fight.SetOption(side, FightInstance.OptionPartyOnly, true);
+            return party;
+        }
+
+        /// <summary>
+        /// Whether this character may come into a side restricted to its party: only a member of
+        /// the party of someone on it. A side not restricted takes anybody.
+        /// </summary>
+        internal static bool MayJoinSide(FightInstance fight, int side, long characterId)
+        {
+            if (!fight.OptionOn(side, FightInstance.OptionPartyOnly)) return true;
+            var party = Parties.Of(characterId);
+            if (party == null || !Parties.IsInParty(characterId)) return false;
+            return fight.Bando(side).Any(f => !f.IsMonster && !f.EsInvocado && Parties.Of(f.Id) == party);
+        }
+
+        /// <summary>
+        /// jzx: a side's option switched by its leader -- the first person on it -- on or off, and
+        /// told to the fight and to the map. Closing it says lqn 95 ("0802" and "105f" in the poutch
+        /// capture, 124, and the perceptor one, 69); the other switches say nothing measured.
+        /// </summary>
+        public static async Task FightOptionAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? jzx = ConnectionProtocol.ReadPayload(payload, Op.Jzx);
+            if (jzx == null) return;
+            int option = 0;
+            foreach (var f in ProtoMessage.Parse(jzx).Fields)
+                if (f.FieldNumber == 1 && f.WireType == 0) option = (int)f.VarIntValue;
+            if (option is < 0 or > 3) return;
+
+            long me = GameState.CharacterId;
+            var fight = FightOf(me);
+            if (fight == null) return;
+            int side = fight.EquipoDe(me);
+            var leader = side < 0 ? null : fight.Bando(side).FirstOrDefault(f => !f.IsMonster && !f.EsInvocado);
+            if (leader == null || leader.Id != me) return;
+
+            bool on = !fight.OptionOn(side, option);
+            fight.SetOption(side, option, on);
+            byte[] kau = ConnectionProtocol.Push(Op.Kau, Network.FightProtocol.BuildFightOption(side, option, on, fight.FightId));
+            await ATodosAsync(fight, kau);
+            if (fight.State == FightState.Placement) await ToTheMapAsync(fight, kau);
+            if (option == FightInstance.OptionClosed && on)
+            {
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildSystemMessage(ClosedMessage)));
+            }
+            Program.LogDebug($"[Fight] {GameState.CharacterName} turns option {option} of side {side} " +
+                             $"of fight #{fight.FightId} {(on ? "on" : "off")}.");
+        }
+
+        /// <summary>lqn 95, what follows closing a fight.</summary>
+        private const int ClosedMessage = 95;
+
         /// <summary>Where a challenged person stood when the fight opened: his roleplay cell.</summary>
         private static int DefenderStandsOn(FightInstance fight, int fallback)
         {
@@ -290,13 +353,22 @@ namespace Jondo.Unity.Server.Handlers
                     FightJoinProtocol.BuildActorHidden(person.Id)));
             }
 
+            foreach (int side in new[] { FightInstance.Azules, FightInstance.Rojos })
+            {
+                if (!RestrictToPartyOnOpening(fight, side)) continue;
+                await ToTheMapAsync(fight, ConnectionProtocol.Push(Op.Kau,
+                    Network.FightProtocol.BuildFightOption(side, FightInstance.OptionPartyOnly, true, fight.FightId)));
+            }
+
             // The hpy has the monsters' side empty, as all three captures do: its members come in
             // the kae behind it, one at a time.
             _onTheMap.TryGetValue(fight.FightId, out var where);
             var shown = FightJoinProtocol.FightOnMap(fight.FightId, fight.Reglas.TipoDelKam,
                 where?.AttackersFlag ?? 0, where?.DefendersFlag ?? 0,
                 TeamOnMap(fight, FightInstance.Azules, withMembers: true),
-                TeamOnMap(fight, FightInstance.Rojos, withMembers: !monsters));
+                TeamOnMap(fight, FightInstance.Rojos, withMembers: !monsters),
+                fight.OptionOn(FightInstance.Azules, FightInstance.OptionPartyOnly),
+                fight.OptionOn(FightInstance.Rojos, FightInstance.OptionPartyOnly));
             await ToTheMapAsync(fight, ConnectionProtocol.Push(Op.Hpy,
                 FightJoinProtocol.BuildFightShown(shown)));
 
@@ -332,6 +404,14 @@ namespace Jondo.Unity.Server.Handlers
             var fight = FightById(fightId);
 
             string? why = WhyNotJoin(fight, named, me.State, out int team);
+            if (why == null && !MayJoinSide(fight!, team, me.CharacterId))
+            {
+                // The one refusal with a measured answer: jxs { f1: whom he asked for, f2: 16 },
+                // at J 856, the side restricted to its party.
+                await me.SendAsync(ConnectionProtocol.Push(Op.Jxs,
+                    FightJoinProtocol.BuildJoinRefused(named, FightJoinProtocol.RefusedPartyOnly)));
+                why = "the side is restricted to its party";
+            }
             if (why != null)
             {
                 Program.LogDebug($"[Fight] {me.State.CharacterName} does not join fight #{fightId} " +

@@ -606,9 +606,42 @@ namespace Jondo.Unity.World.Fights
         }
 
         /// <summary>Why somebody cannot come into this fight.</summary>
+        // ─── Options: who may come in, and who may watch ──────────────────────────────
+
+        /// <summary>No spectators: jzx with no option, kau { f4: 1 } with no f3.</summary>
+        public const int OptionSecret = 0;
+
+        /// <summary>Only the side's party: kau { f3: 1 }, on by itself when a party opens it.</summary>
+        public const int OptionPartyOnly = 1;
+
+        /// <summary>Nobody else: jzx { f1: 2 }, with lqn 95.</summary>
+        public const int OptionClosed = 2;
+
+        /// <summary>Asking for help: jzx { f1: 3 }.</summary>
+        public const int OptionHelp = 3;
+
+        private readonly bool[,] _options = new bool[2, 4];
+
+        /// <summary>Whether a side has an option on.</summary>
+        public bool OptionOn(int team, int option)
+        {
+            if (team is < 0 or > 1 || option is < 0 or > 3) return false;
+            lock (_options) return _options[team, option];
+        }
+
+        /// <summary>Turns a side's option on or off.</summary>
+        public void SetOption(int team, int option, bool on)
+        {
+            if (team is < 0 or > 1 || option is < 0 or > 3) return;
+            lock (_options) _options[team, option] = on;
+        }
+
         public enum JoinRefusal
         {
             None,
+
+            /// <summary>The side is closed: nobody else comes in.</summary>
+            Closed,
 
             /// <summary>The placement is over: the swords are gone from the map (hpr).</summary>
             NotInPlacement,
@@ -635,6 +668,7 @@ namespace Jondo.Unity.World.Fights
             if (State != FightState.Placement) return JoinRefusal.NotInPlacement;
             if (team != Azules && team != Rojos) return JoinRefusal.NoSuchTeam;
             if (Bando(team).Exists(f => f.IsMonster && !f.EsInvocado)) return JoinRefusal.MonsterTeam;
+            if (OptionOn(team, OptionClosed)) return JoinRefusal.Closed;
             if (PeopleIn(team) >= maxPeoplePerTeam) return JoinRefusal.TeamFull;
             if (FreePlacementCell(team) < 0) return JoinRefusal.TeamFull;
             return JoinRefusal.None;

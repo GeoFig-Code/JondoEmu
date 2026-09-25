@@ -514,7 +514,9 @@ Three architecture tests enforce it: no lookups that assume one team is the play
 - 🟡 Weapon strikes apply damage and AP cost; the slash animation does not
 - ✅ Push and collision damage, `blockedCells × (level/2 + push − resistance + 32) / 4`, floored. The fighter acting as the wall takes half, and the **Unmovable** state cancels it
 - ✅ Joining someone else's fight in its placement: the swords on the map, a click on them (`kay`), or a party member pulled in behind the leader with *automatic entry*, and *automatic ready*; a dungeon's monster side grows with each player to the first `clamp(players, 4, 8)` of the room's eight
-- 🟡 Locking a fight to the party and the refusals other than a locked team are not there yet; each player gets the full experience and loot
+- ✅ A party opens its fights kept to the party, as the real server does, and the side's leader switches the options from the fight window — no spectators, party only, closed, asking for help (`jzx` → `kau`); an outsider knocking on a party-only side is turned down (`jxs` 16)
+- ✅ A won fight is shared: the experience with the game's group bonus, each player's part by level up to two and a half times the strongest monster's; the kamas by prospecting; the items rolled for each player; and every end screen lists everybody's gains, as the follow capture shows. A player alone gets what he always got
+- 🟡 Wisdom, the experience given to a mount or a guild and account bonuses are not modelled, alone or in a group; refusals other than a party-only side are not answered
 - ✅ A dropped client does not stop the fight, and the player can come back into it — see
   [Connection and authentication](#-connection-and-authentication)
 - ❌ Lock and tackle in melee
@@ -1658,7 +1660,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,483 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,491 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 

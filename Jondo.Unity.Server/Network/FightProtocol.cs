@@ -244,7 +244,15 @@ namespace Jondo.Unity.Server.Network
         /// Salen cuatro seguidas en cada apertura, con f3 valiendo 2, 1, 3 y la cuarta sin f3.
         /// </summary>
         public static byte[] BuildFightOption(int option, long fightId)
-            => Pb.New().VarIfNotZero(3, option).Var(5, fightId).Build();
+            => BuildFightOption(0, option, false, fightId);
+
+        /// <summary>
+        /// The same with its side and its state: { f1: the side, f3: which, f4: on, f5: the fight }.
+        /// "08011802200128bb26" is the defenders' side closed in the sword capture (frame 34),
+        /// "1801200128e703" the attackers' restricted to their party in the follow capture (136).
+        /// </summary>
+        public static byte[] BuildFightOption(int team, int option, bool on, long fightId)
+            => Pb.New().VarIfNotZero(1, team).VarIfNotZero(3, option).VarIfNotZero(4, on ? 1 : 0).Var(5, fightId).Build();
 
         /// <summary>Las cuatro que manda el servidor real, en su orden.</summary>
         public static readonly int[] FightOptions = { 2, 1, 3, 0 };

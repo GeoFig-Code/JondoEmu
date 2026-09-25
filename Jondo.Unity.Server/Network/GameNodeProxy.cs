@@ -895,6 +895,11 @@ namespace Jondo.Unity.Server.Network
                     if (!await CommissionHandler.PaymentAsync(stream, payload))
                         await TradeHandler.KamasAsync(stream, payload);
                 }
+                else if (payloadStr.Contains(Op.Uri(Op.Jzx)))
+                {
+                    // A side's fight option switched: no spectators, party only, closed, help.
+                    await FightHandler.FightOptionAsync(stream, payload);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Keu)))
                 {
                     // Asking another player to trade.
