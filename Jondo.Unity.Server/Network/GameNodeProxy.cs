@@ -109,10 +109,8 @@ namespace Jondo.Unity.Server.Network
                         {
                             try
                             {
-                                await SessionRegistry.BroadcastToMapAsync(
-                                    sesion.MapId,
-                                    ConnectionProtocol.BuildActorLeft(sesion.CharacterId),
-                                    sesion.Id);
+                                await SessionRegistry.RemoveFromMapAsync(
+                                    sesion.MapId, sesion.CharacterId, sesion.Id);
                             }
                             catch { }
                             sesion.LeaveWorld();
@@ -259,9 +257,8 @@ namespace Jondo.Unity.Server.Network
                     }
                     if (SessionContext.Current.IsInWorld)
                     {
-                        await SessionRegistry.BroadcastToMapAsync(
-                            SessionContext.State.MapId,
-                            ConnectionProtocol.BuildActorLeft(SessionContext.State.CharacterId),
+                        await SessionRegistry.RemoveFromMapAsync(
+                            SessionContext.State.MapId, SessionContext.State.CharacterId,
                             SessionContext.Current.Id);
                         SessionContext.Current.LeaveWorld();
                     }

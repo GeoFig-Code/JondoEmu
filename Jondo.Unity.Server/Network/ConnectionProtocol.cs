@@ -2170,6 +2170,21 @@ namespace Jondo.Unity.Server.Network
             return Push(Op.Jsd, pb.Build());
         }
 
+        /// <summary>
+        /// Takes an actor off the map in the client of someone watching (kmu): only who.
+        /// </summary>
+        /// <remarks>
+        /// This, and not the jsd, is what makes a character who left disappear from the others'
+        /// screens. In "Movimiento/captura otro personaje saliendo del mapa" two characters walk
+        /// off the observer's map, and each time the server sends their jsj to the edge and then
+        /// kmu { f2: their id } -- no jsd at all. The jsd goes to the one leaving, before his jru,
+        /// and to his party: in "Grupos/con grupo seguir desplazamiento del lider..." the member
+        /// watching gets the leader's jsd and, right behind it, the same kmu. With the jsd alone
+        /// the character walked to the edge on the others' screens and stayed there.
+        /// </remarks>
+        public static byte[] BuildActorRemoved(long contextualId)
+            => Push(Op.Kmu, Pb.New().Var(2, contextualId).Build());
+
         /// <summary>"Load this map" (jru).</summary>
         public static byte[] BuildLoadMap(long mapId)
             => Push(Op.Jru, Pb.New().Var(2, mapId).Build());

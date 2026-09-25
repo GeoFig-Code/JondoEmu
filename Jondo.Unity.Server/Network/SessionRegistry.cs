@@ -222,8 +222,7 @@ namespace Jondo.Unity.Server.Network
             int seVa = 0;
             if (mapaQueDeja > 0 && mapaQueDeja != quien.MapId)
             {
-                seVa = await BroadcastToMapAsync(mapaQueDeja,
-                    ConnectionProtocol.BuildActorLeft(quien.CharacterId, porDonde), quien.Id);
+                seVa = await RemoveFromMapAsync(mapaQueDeja, quien.CharacterId, quien.Id, porDonde);
             }
 
             var ficha = DatabaseManager.GetCharacterById(quien.CharacterId);
@@ -240,6 +239,38 @@ namespace Jondo.Unity.Server.Network
                                  $"Avisados {seVa} que deja y {llega} que se encuentra.");
             }
             return (seVa, llega);
+        }
+
+        /// <summary>
+        /// A character gone from a map, told to everyone still on it: the kmu that takes him off
+        /// their screens, with the jsd before it for the ones in his party, as the captures have
+        /// it (see <see cref="ConnectionProtocol.BuildActorRemoved"/>).
+        /// </summary>
+        public static async Task<int> RemoveFromMapAsync(long mapId, long characterId, Guid exceptSessionId,
+                                                         int? porDonde = null)
+        {
+            var party = Managers.Parties.Of(characterId);
+            byte[] removed = ConnectionProtocol.BuildActorRemoved(characterId);
+            byte[] left = ConnectionProtocol.BuildActorLeft(characterId, porDonde);
+
+            var targets = OnMap(mapId).Where(s => s.Id != exceptSessionId).ToArray();
+            var results = await Task.WhenAll(targets.Select(async target =>
+            {
+                try
+                {
+                    if (party != null && Managers.Parties.Of(target.CharacterId) == party)
+                        await target.SendAsync(left);
+                    await target.SendAsync(removed);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Unregister(target);
+                    Program.LogDebug($"[Sessions] Send to {target.Id} failed: {ex.Message}");
+                    return false;
+                }
+            }));
+            return results.Count(delivered => delivered);
         }
 
         /// <summary>Creates a new ticket for a specific account, server and client language.</summary>
