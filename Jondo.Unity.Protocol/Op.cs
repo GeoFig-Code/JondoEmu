@@ -781,11 +781,72 @@ public static class Op
     /// </remarks>
     public const string Iyc = "iyc";
 
-    /// <summary>El builder no se llama nunca. 2 mensajes en 2 ficheros.</summary>
+    /// <summary>
+    /// Server to client: a house's sale changed, { f2: owner's nickname, f3: house, f5: tag,
+    /// f6: price, f8: instance }. Frame 19 of "Casas/poner casa en venta", 23 of the withdrawal.
+    /// </summary>
     public const string Izu = "izu";
 
-    /// <summary>Lo mismo que jjs pero en su propio mensaje; se descarta. 5 mensajes.</summary>
+    /// <summary>
+    /// Server to client: the account's houses, f1 (repeated) { f2: house, f4: model, f6 { where,
+    /// full plaque } }. The captured one is left out of the world entry replay; ours is built
+    /// from the database (HouseHandler.SendAccountHousesAsync), empty with no house.
+    /// </summary>
     public const string Jaa = "jaa";
+
+    /// <summary>Server to client, a response: a house's full plaque, { f1: lnx }. The answer to izv.</summary>
+    public const string Izr = "izr";
+
+    /// <summary>Client to server: a house's plaque, please, { f1: instance, f2: house }.</summary>
+    public const string Izv = "izv";
+
+    /// <summary>Server to client: a house changed, { f1: plaque, f2: house, f3: packed doors }.</summary>
+    public const string Izz = "izz";
+
+    /// <summary>Client to server: the sale window's answer, { f1: price, f2: instance, f3: on sale }.</summary>
+    public const string Jan = "jan";
+
+    /// <summary>
+    /// Client to server, { f1: int64 }: one of the two house requests with a lone number, built by
+    /// the class that builds jan and khv. Taken as a buyer's yes by inference; see HouseHandler.BuyAsync.
+    /// </summary>
+    public const string Jad = "jad";
+
+    /// <summary>The other one; see <see cref="Jad"/>.</summary>
+    public const string Jal = "jal";
+
+    /// <summary>Server to client: jjt { f3: instance, f4: house }, a house going on sale (sale frame 15).</summary>
+    public const string Jjt = "jjt";
+
+    /// <summary>Server to client: the sale window, { f1: buying, f2: house, f3: instance, f4: 1, f5: price }.</summary>
+    public const string Khr = "khr";
+
+    /// <summary>Server to client: a code's outcome, empty or { f2: 1 } for a wrong one.</summary>
+    public const string Khu = "khu";
+
+    /// <summary>Client to server: an owner's new code, { f1: code }; no f1 takes it off.</summary>
+    public const string Khv = "khv";
+
+    /// <summary>Client to server: a code typed at a locked door or chest, { f1: code }.</summary>
+    public const string Khw = "khw";
+
+    /// <summary>Server to client: the code keypad, { f1: 1 to get in, f3: 8 }.</summary>
+    public const string Kia = "kia";
+
+    /// <summary>Server to client: the guild chest's tabs, f1 (repeated) { types, tab, rights, name }.</summary>
+    public const string Ivl = "ivl";
+
+    /// <summary>Server to client: the guild chest's window, { f1: 22, f2: tab, f3: 100 }.</summary>
+    public const string Kbk = "kbk";
+
+    /// <summary>Client to server: another tab of the guild chest, { f2: tab }.</summary>
+    public const string Jll = "jll";
+
+    /// <summary>Server to client: who has the guild chest open, f1 (repeated) names.</summary>
+    public const string Jlo = "jlo";
+
+    /// <summary>Server to client: jlq { f1: name }, the one who just opened the guild chest.</summary>
+    public const string Jlq = "jlq";
 
     /// <summary>Se envia con los muebles, entre jss y lva; significado no establecido.</summary>
     public const string Jaz = "jaz";

@@ -96,6 +96,7 @@ namespace Jondo.Unity.Server
             Managers.RecipeManager.Initialize();
             Managers.Interactives.Initialize();
             Managers.HavenBagStore.Initialize();
+            Managers.StorageStacks.Initialize();
             Managers.Bank.Initialize();
             Managers.Wardrobe.Initialize();
             Managers.Titles.Initialize();
@@ -108,6 +109,8 @@ namespace Jondo.Unity.Server
             Managers.Bins.Initialize();
             Managers.Anomalies.Initialize();
             Managers.Houses.Initialize();
+            Managers.HouseStore.Initialize();
+            Managers.GuildChests.Initialize();
             // Detrás de Houses a propósito: TeleportManager rechaza las rutas que caen sobre una
             // puerta de casa, y para eso las casas tienen que estar ya cargadas.
             Managers.TeleportManager.Initialize();

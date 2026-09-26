@@ -121,7 +121,13 @@ namespace Jondo.Unity.Server.Handlers
                     await BinHandler.OpenAsync(stream, interactive.Element.Id, action.SkillId);
                     break;
                 case InteractiveActionKind.HouseDoor:
-                    await HouseHandler.EnterAsync(stream, interactive.Element.Id, action.SkillId);
+                    await HouseHandler.UseDoorAsync(stream, interactive, action);
+                    break;
+                case InteractiveActionKind.HouseChest:
+                    await HouseHandler.UseChestAsync(stream, interactive, action);
+                    break;
+                case InteractiveActionKind.GuildChest:
+                    await GuildChestHandler.OpenAsync(stream, interactive.Element.Id, action.SkillId);
                     break;
                 case InteractiveActionKind.HouseExit:
                     await HouseHandler.LeaveAsync(stream, interactive.Element.Id, action.SkillId);

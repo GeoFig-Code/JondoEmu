@@ -211,14 +211,19 @@ Built with **Avalonia**, the same toolkit as the Studio.
 
 ### 🏘️ Houses, bins and haven bags
 
-- ✅ **1,437 doors on 553 maps**, all enterable and ownerless; **261 house models** with name, price and room count
+- ✅ **1,437 doors on 553 maps**, all enterable; **261 house models** with name, price and room count. The **37 doors whose model is known** can be owned — per account, as the captures name the owner — and their owner, price and codes are kept in the base
 <img width="1112" height="920" alt="image" src="https://github.com/user-attachments/assets/1506283c-f6cd-45b5-b9c4-f345273f67bb" />
 
 - ✅ Entering and leaving (`jqw` in, `jru` out), coming out through the door you went in by
-- ❌ The house plaque, chest, access code, buying and selling
-- ✅ **67 public bins on 63 maps** — they open, show empty and close
-- ❌ Putting items into a bin and taking them out
-- ✅ Haven bags: entering and leaving, their own zaap, **48 themes**, **4,083 furniture pieces** placed and persisted, chest with the full item flow, lottery machine, and no monsters inside
+- ✅ The plaque (`lnx`) of a house with an owner, on its street and inside it, and the account's houses (`jaa`) at login; each viewer gets his own door — the owner *Vender* or *Modificar el precio de venta* and *Modificar el código*, anybody else *Entrar* and, on a house for sale, *Comprar*
+- ✅ Selling and taking off sale from the door's own window (`khr` → `izv`/`izr` → `jan`), with the burst of the two captures byte for byte
+- ✅ The access code — set, change, remove — and the keypad a stranger gets at a locked door; a wrong code is refused as the capture shows
+- ✅ The house chests, one storage per house and chest, with their lock code: the owner opens and locks, anybody else opens and, if locked, types the code; items in and out as in the capture
+- 🟡 Buying — *Comprar* on a house for sale, or on one nobody owns at its model's price — pays the seller's bank, hands it what the house's chests held, and clears the codes. No capture buys a house: the buyer's window and the message that confirms it are inferred, and the confirmation is only honoured when it carries the price that window showed
+- 🟡 Also inferred: the plaque's `f5` read as "locked", getting in or opening a chest with the right code (only a wrong one was captured), and what the rest of the street is told
+- ❌ The other 1,400 doors cannot be owned (no model, no price); houses shared with a guild, kicking someone out, the list of houses on sale
+- ✅ **67 public bins on 63 maps**, shared by everybody and kept in the base: what one player throws in, anybody takes out — one unit per `-1`, the bin's stack sent again with what is left, as in the Bonta capture
+- ✅ Haven bags: entering and leaving, their own zaap, **48 themes**, **4,083 furniture pieces** placed and persisted, chest with the full item flow (its own window kind, `-1` takes one unit, a moved stack gets a new uid), lottery machine, and no monsters inside
 <img width="2560" height="1492" alt="image" src="https://github.com/user-attachments/assets/a81a3b24-8559-4ad5-8a27-e6913eef95a8" />
 
 > Which house sits behind which door is not in the client data. The 1,437 doors share **114 genuine interiors**, assigned deterministically within their own neighbourhood; the mapping lives in `datos/casas_mundo_3.6.10.10.json` and can be corrected by hand.
@@ -227,7 +232,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 
 - ✅ The bank, opened by the banker's "I want to consult my chest", as in the Bonta capture: one kama a stored stack to open it, the account's items and kamas shared by all its characters and kept in the base, items and kamas in and out — a moved stack gets a new uid, `-1` moves a single unit
 - ✅ A banker in all ten banks of the client's world map: Bonta's where the capture has him; the other nine — Astrub, Brakmar, Amakna, Pandala, Sufokia, Frigost, Picanesburgo and two villages — inside their bank's first room near where Bonta's stands, each the client's own banker for the place (the Brakmarian, Moneo for the Saharach, Yendong for Pandala, the owl elsewhere). Their cells are inferred, no capture shows those maps
-- ❌ The guild chest in the bank, and the bank's level condition
+- ✅ The guild chest, in the **24 banks** that have one: the guild's own, kept in the base, opened as in the Bonta capture (`ivl`, `kbk`, `iwb`, `jlo`, `jlq`), with the ranks' rights to look, put in and take out — the client's own rights table, tab by tab
+- ❌ The bank's level condition; the guild chest's extra tabs (bought with the guild hall's evolutions), its kamas and its history
 - ✅ The marketplaces: the client's seven — resources, equipment, consumables, runes, creatures, souls and cosmetics — each one shared by every counter of its kind, **39 counters** in Bonta, Brakmar, Astrub, Pandala, Frigost, Sufokia, Incarnam and two more towns. Browse by type and by item, buy a lot of 1, 10, 100 or 1000 — into the bag, and its price into the seller's bank whether they are connected or not — put a lot on sale for the 2 % tax, take it back; 672 hours on sale. Measured in the five captures that open one
 - 🟡 Inferred rather than captured: taking a lot back, the seller's sale notice, the end of a lot's time (it returns to the seller's bank), the refusals, and what resources and consumables take. Six of the client's 45 marketplace hints have no counter we can tell apart from a door, and are left out
 - ❌ Changing a listing's price and the sales history, which no capture shows
@@ -274,7 +280,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The oracle shop, five oracles, priced by how many accounts the guild has
 - ❌ The client's own requests for applying, inviting, kicking, assigning a rank and buying a raid
   are not handled; `.gremio` and `.raid` stand in
-- ❌ The guild chest, the *Encargos* and *Casas* tabs
+- ✅ The guild chest, in the banks — see [Banks and marketplaces](#-banks-and-marketplaces)
+- ❌ The *Encargos* and *Casas* tabs
 
 **Raids** — the Gigalodón Abyss and the Eternal Gardens Sanctuary — are bought with guild kamas
 (360 and 480), launched by a captain and run against a clock: an hour the first, two the second.
@@ -1670,7 +1677,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,520 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,555 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 
@@ -1762,7 +1769,7 @@ Documentation index in `docs/README.md`. Start with `docs/protocol.md` (how a me
 
 Three **SQLite** databases in `bases/`, and one folder of text:
 
-* **`world.db`** — characters, inventories, positions, map persistence, spells, monsters, appearances, wardrobe, haven bags, guilds and raids. Distributed compressed as `datos/world.zip` (24.8 MB) and extracted on first run.
+* **`world.db`** — characters, inventories, positions, map persistence, spells, monsters, appearances, wardrobe, haven bags, houses and their chests, bins, guilds, the guild chest and raids. Distributed compressed as `datos/world.zip` (24.8 MB) and extracted on first run.
 * **`auth.db`** — accounts and authentication sessions, created on first run.
 * **`paquetes.db`** — the packets the server does not yet know how to answer, deduplicated by protobuf shape. It carries nothing needed to play and can be deleted to start over.
 * **`content/`** — the authored layer, in versioned JSON. The only one edited by hand, and the only one nothing regenerates. See [Jondo Studio](#-jondo-studio).

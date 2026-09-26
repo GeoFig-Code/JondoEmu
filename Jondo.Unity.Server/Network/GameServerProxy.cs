@@ -353,9 +353,9 @@ namespace Jondo.Unity.Server.Network
 
         /// <summary>
         /// Tag shown next to the nickname in the UI. It is derived from the account id so that
-        /// it stays stable across sessions.
+        /// it stays stable across sessions. A house's plaque names its owner with the same pair.
         /// </summary>
-        private static string BuildAccountTag(long accountId) => (accountId % 10000).ToString("D4");
+        internal static string BuildAccountTag(long accountId) => (accountId % 10000).ToString("D4");
 
         /// <summary>
         /// Fin del abono: dentro de un año, contado desde ahora.

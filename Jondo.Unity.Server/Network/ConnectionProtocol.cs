@@ -896,7 +896,11 @@ namespace Jondo.Unity.Server.Network
             var where = MapManager.GetMapInfo(mapId);
             if (where != null) jss.VarIfNotZero(6, where.SubAreaId);
 
-            AddInteractiveElements(jss, mapId);
+            // The houses, between the subarea and the elements as in both house captures: f7 the
+            // one the viewer is inside, f9 those on this street that have an owner.
+            Handlers.HouseHandler.AddToMap(jss, mapId);
+
+            AddInteractiveElements(jss, mapId, accountId);
 
             // And last, the fights in their placement: the swords. Each f12 is what an hpy carries
             // (the sword capture's jss at frame 53, the jalatós one at 840); a fight past its
@@ -1097,10 +1101,10 @@ namespace Jondo.Unity.Server.Network
         ///
         /// Van al final, detrás de la subzona, que es donde los pone la captura real.
         /// </summary>
-        private static void AddInteractiveElements(Pb jss, long mapId)
+        private static void AddInteractiveElements(Pb jss, long mapId, long viewerAccountId)
         {
             foreach (var interactive in Managers.InteractiveRegistry.OnMap(mapId))
-                Declare(jss, interactive);
+                Declare(jss, interactive, viewerAccountId);
 
             AddQuestElements(jss, mapId);
             AddReadableElements(jss, mapId);
@@ -1194,7 +1198,7 @@ namespace Jondo.Unity.Server.Network
         /// los veinticinco fresnos de un mismo mapa, sin una excepción. Todo lo que no es recurso
         /// —zaaps, cofres, puertas— va siempre en el 4 y sin estado, como hasta ahora.
         /// </summary>
-        private static void Declare(Pb jss, Managers.RegisteredInteractive interactive)
+        private static void Declare(Pb jss, Managers.RegisteredInteractive interactive, long viewerAccountId)
         {
             bool gathering = Managers.Resources.Is(interactive.MapId, interactive.Element.Id);
             var state = gathering
@@ -1216,7 +1220,9 @@ namespace Jondo.Unity.Server.Network
             // en tres de los cuatro oficios.
             if (gathering && usable) declaration.Var(2, 0);
 
-            foreach (var action in interactive.Actions)
+            // A house's door and chests offer each viewer his own skills: the owner sells, a
+            // stranger buys. Every other element offers all of them.
+            foreach (var action in Handlers.HouseHandler.VisibleActions(interactive, viewerAccountId))
             {
                 declaration.Msg(usable ? 4 : 3, Pb.New()
                     .Var(1, action.SkillInstanceId)
@@ -2436,18 +2442,8 @@ namespace Jondo.Unity.Server.Network
 
         // ─── World: cofre ───────────────────────────────────────────────────────
 
-        /// <summary>
-        /// "El cofre está abierto" (kci). De la captura del cofre de una casa:
-        ///
-        ///   f1: 100   f3: 4
-        ///
-        /// Los dos son constantes ahí; el 100 tiene pinta de ser cuántos huecos tiene.
-        /// </summary>
-        public static byte[] BuildStorageOpened()
-            => Pb.New().Var(1, StorageSlots).Var(3, StorageKind).Build();
-
-        private const int StorageSlots = 100;
-        private const int StorageKind = 4;
+        // "El cofre está abierto" (kci) is built per kind of storage -- a house chest's is not a
+        // bin's nor the haven bag's -- in StorageProtocol.BuildOpened.
 
         /// <summary>
         /// Lo que hay dentro del cofre (iwb). Misma forma que el inventario, con la bolsa como

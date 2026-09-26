@@ -185,6 +185,18 @@ namespace Jondo.Unity.Server
         public int HouseEntryCell { get; set; }
 
         /// <summary>
+        /// The street door one came in by: which house this is, since several doors lead to the
+        /// same interior and each door is a house of its own, with its own owner and chests.
+        /// </summary>
+        public int HouseEntryElementId { get; set; }
+
+        /// <summary>The house window this character has open -- a sale, a purchase, a code keypad -- if any.</summary>
+        public Handlers.HouseHandler.Dialog? HouseDialog { get; set; }
+
+        /// <summary>The house chest, bin or guild chest this character has open, if any.</summary>
+        public Handlers.StorageHandler.Window? Storage { get; set; }
+
+        /// <summary>
         /// Desde qué mapa se entró al merkasako, para volver ahí con la misma tecla.
         /// </summary>
         /// <remarks>

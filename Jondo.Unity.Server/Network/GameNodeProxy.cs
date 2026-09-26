@@ -795,6 +795,36 @@ namespace Jondo.Unity.Server.Network
                     // detrás sin mezclar datos entre mapas ni entre sockets.
                     await InteractiveActionHandler.UseAsync(stream, payload);
                 }
+                else if (payloadStr.Contains(Op.Uri(Op.Izv)))
+                {
+                    // A house's plaque, asked for by the sale window.
+                    await HouseHandler.InfoAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Jan)))
+                {
+                    // The house sale window's answer: on sale at a price, or off sale.
+                    await HouseHandler.SellAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Jad)) || payloadStr.Contains(Op.Uri(Op.Jal)))
+                {
+                    // A buyer's yes, by inference: see HouseHandler.BuyAsync.
+                    await HouseHandler.BuyAsync(stream, payload, payloadStr.Contains(Op.Uri(Op.Jad)) ? Op.Jad : Op.Jal);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Khv)))
+                {
+                    // An owner's code keypad: the door's or a chest's.
+                    await HouseHandler.ChangeCodeAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Khw)))
+                {
+                    // A stranger's code keypad: a locked door or chest.
+                    await HouseHandler.UseCodeAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Jll)))
+                {
+                    // Another tab of the guild chest.
+                    await GuildChestHandler.SelectTabAsync(stream, payload);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Jbn)))
                 {
                     // El botón del merkasako, y la tecla H.
@@ -829,10 +859,12 @@ namespace Jondo.Unity.Server.Network
                     // Mover un objeto entre la bolsa y el cofre. The same kcr lays a stack on a
                     // commission's offer, on a workshop's bench, or on a magus table.
                     // And in a marketplace open to sell, it takes a lot back off sale.
+                    // And a house chest, a bin or the guild chest.
                     if (!await CommissionHandler.OfferAsync(stream, payload)
                         && !await TradeHandler.MoveAsync(stream, payload)
                         && !await WorkshopHandler.MoveAsync(stream, payload)
                         && !await BankHandler.MoveAsync(stream, payload)
+                        && !await StorageHandler.MoveAsync(stream, payload)
                         && !await MarketplaceHandler.WithdrawAsync(payload))
                         await ChestHandler.MoveAsync(stream, payload);
                 }
@@ -922,7 +954,8 @@ namespace Jondo.Unity.Server.Network
                 {
                     // Kamas in an exchange: a commission's payment, the bank's, or a trade's.
                     if (!await CommissionHandler.PaymentAsync(stream, payload)
-                        && !await BankHandler.KamasAsync(stream, payload))
+                        && !await BankHandler.KamasAsync(stream, payload)
+                        && !await HouseHandler.KamasAsync(stream))
                         await TradeHandler.KamasAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Jzx)))
@@ -1015,6 +1048,8 @@ namespace Jondo.Unity.Server.Network
                     else if (MarketplaceHandler.IsOpen) await MarketplaceHandler.CloseAsync();
                     else if (WorkshopHandler.IsOpen) await WorkshopHandler.CloseAsync(stream);
                     else if (BankHandler.IsOpen) await BankHandler.CloseAsync(stream);
+                    else if (await HouseHandler.CloseDialogAsync(stream)) { }
+                    else if (StorageHandler.IsOpen) await StorageHandler.CloseAsync(stream);
                     else if (ChestHandler.IsOpen) await ChestHandler.CloseAsync(stream);
                     else if (NpcHandler.IsShopOpen) await NpcHandler.CloseShopAsync(stream);
                     else if (NpcHandler.IsDialogueOpen) await NpcHandler.CloseAsync(stream, payload);
@@ -1451,6 +1486,9 @@ namespace Jondo.Unity.Server.Network
             // Y lo que uno tiene de adorno, que el servidor real manda una sola vez, aquí: los
             // títulos y ornamentos disponibles, y cuál lleva puesto.
             await WardrobeHandler.SendOwnedAsync(stream, SessionContext.Current.AccountId);
+
+            // The account's houses (jaa): the capture's no longer travels, this one is ours.
+            await HouseHandler.SendAccountHousesAsync(stream);
 
             // Y su diario de misiones, por lo mismo: el de la captura ya no viaja.
             await Managers.Quests.SendJournalAsync(stream);

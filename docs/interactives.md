@@ -96,8 +96,10 @@ registry.
 | Lottery | Graphic 51031 on a haven-bag map | -1 | 184 | `LotteryHandler` |
 | Zaapi | Graphics 70520/70521 (Bonta), 304418 (Brakmar) | 106 | 157 | `ZaapiTravelHandler` |
 | Bin | Graphics 8438, 46529, 63081, 260022 | 105 | 153 | `BinHandler` |
-| HouseDoor | Any of 37 graphics the captures declare type 300 | 300 | 84 | `HouseHandler` |
+| HouseDoor | Any of 37 graphics the captures declare type 300 | 300 | 84; 84, 97, 98, 100, 108 on the 37 doors that can be owned, offered per viewer | `HouseHandler` |
 | HouseExit | The chosen exit element of a house interior | 316 | 184 | `HouseHandler` |
+| HouseChest | Graphics 12367 and 46581 inside a house interior | 85 | 104, 105, offered per viewer | `HouseHandler` |
+| GuildChest | Graphic 70671 (the banks' guild chest) | 388 | 184 | `GuildChestHandler` |
 | Teleport | Exact `(mapId, elementId)` kept from Giny 2.68 after 3.6 validation | 0 | 114 | `TeleportHandler` |
 
 Every one of those `(type, skill)` pairs is measured, not chosen: `tools/tipos_interactivos.py`
