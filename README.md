@@ -20,7 +20,7 @@ High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** writte
 
 &nbsp;
 
-- 🌍 &nbsp;**World** &nbsp;— &nbsp;[Connection and authentication](#-connection-and-authentication) · [World and movement](#-world-and-movement) · [Travel](#-travel) · [Houses, bins and haven bags](#-houses-bins-and-haven-bags) · [Social](#-social) · [Guilds and raids](#-guilds-and-raids)
+- 🌍 &nbsp;**World** &nbsp;— &nbsp;[Connection and authentication](#-connection-and-authentication) · [World and movement](#-world-and-movement) · [Travel](#-travel) · [Houses, bins and haven bags](#-houses-bins-and-haven-bags) · [Banks and marketplaces](#-banks-and-marketplaces) · [Social](#-social) · [Guilds and raids](#-guilds-and-raids)
 
 - 🎒 &nbsp;**Character** &nbsp;— &nbsp;[Character and inventory](#-character-and-inventory) · [Appearances](#-appearances) · [Professions](#-professions)
 
@@ -223,6 +223,15 @@ Built with **Avalonia**, the same toolkit as the Studio.
 
 > Which house sits behind which door is not in the client data. The 1,437 doors share **114 genuine interiors**, assigned deterministically within their own neighbourhood; the mapping lives in `datos/casas_mundo_3.6.10.10.json` and can be corrected by hand.
 
+### 🏦 Banks and marketplaces
+
+- ✅ The bank, opened by the banker's "I want to consult my chest", as in the Bonta capture: one kama a stored stack to open it, the account's items and kamas shared by all its characters and kept in the base, items and kamas in and out — a moved stack gets a new uid, `-1` moves a single unit
+- ✅ Bankers wherever one stands: Bonta, measured in its capture, and Astrub. Any banker placed later works with nothing else to do
+- ❌ The other eight banks — Brakmar, Amakna, Pandala, Sufokia, Frigost and three villages — have no banker yet: no capture shows their maps. The guild chest in the bank, and the bank's level condition, are not there either
+- ✅ The marketplaces: the client's seven — resources, equipment, consumables, runes, creatures, souls and cosmetics — each one shared by every counter of its kind, **39 counters** in Bonta, Brakmar, Astrub, Pandala, Frigost, Sufokia, Incarnam and two more towns. Browse by type and by item, buy a lot of 1, 10, 100 or 1000 — into the bag, and its price into the seller's bank whether they are connected or not — put a lot on sale for the 2 % tax, take it back; 672 hours on sale. Measured in the five captures that open one
+- 🟡 Inferred rather than captured: taking a lot back, the seller's sale notice, the end of a lot's time (it returns to the seller's bank), the refusals, and what resources and consumables take. Six of the client's 45 marketplace hints have no counter we can tell apart from a door, and are left out
+- ❌ Changing a listing's price and the sales history, which no capture shows
+
 ### 💬 Social
 
 - ✅ Information messages as `lqn { type, message, parameters }` against the client's 2,555-entry table
@@ -235,8 +244,6 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Lead passes on when the leader leaves; a disconnect removes the member and tells the rest
 - ✅ Friends list
 - ✅ Trading with another player on the map: ask, refuse or accept, lay stacks down and take them back, kamas, ready on both sides, and the goods changing hands — a new stack under a new uid, or onto one of the same — measured on both sides in the two trade captures
-- ✅ The marketplaces: the client's seven — resources, equipment, consumables, runes, creatures, souls and cosmetics — each one shared by every counter of its kind, **39 counters** in Bonta, Brakmar, Astrub, Pandala, Frigost, Sufokia, Incarnam and two more towns. Browse by type and by item, buy a lot of 1, 10, 100 or 1000 — into the bag, and its price into the seller's bank whether they are connected or not — put a lot on sale for the 2 % tax, take it back; 672 hours on sale. Measured in the five captures that open one
-- 🟡 Inferred rather than captured: taking a lot back, the seller's sale notice, the end of a lot's time (it returns to the seller's bank), the refusals, and what resources and consumables take. Six of the client's 45 marketplace hints have no counter we can tell apart from a door, and are left out
 - ✅ Every command answers in the session's own language, from a catalogue in Spanish, English and French. The language comes from the `--langCode` the launcher started the client with
 - ✅ Following the leader: the member's client walks after him map by map on each `ikv` the server sends it, as the follow capture measures; a zaap cuts the follow, as on the real server
 - ❌ The invitation popup's *Details* button (`imd` → `ilb`), the dedicated member-gone message (`inc`) and party search
@@ -439,7 +446,7 @@ Full workings in **`docs/quests.md`**.
 - ✅ Talk to the guardian, hand over the key, and you are in the first room; win a fight and you
   move on; beat the boss in the last one and you come out
 - ✅ The boss is placed at startup in **126** dungeons, in the room the data says, at its highest grade
-- ✅ Each room has one group of eight built from the dungeon's own monsters, and a fight takes the first `clamp(players, 4, 8)` — four for a player alone — at the room's grade, as the jalatós capture shows; the map carries the group's variants by team size byte for byte; a beaten room comes back as itself, boss included
+- ✅ Each room has one group of eight built from the dungeon's own monsters, and a fight takes the first `clamp(players, 4, 8)` — four for a player alone — at the room's grade, as the jalatós capture shows; the map carries the group's variants by team size byte for byte, and the monster side grows by one with each player who joins the fight, up to eight; a beaten room comes back as itself, boss included
 - ✅ The keyring and the required item come from the client's own data
 - ✅ Dungeon challenges are imposed at 0% and carry achievements
 
@@ -461,6 +468,7 @@ Entered from the Plano Astral's well: a dream of 26 rooms in depth, walked band 
 - ✅ Astral storms reroll the room's group and map; a dream is saved to the base and resumed after a disconnection or a restart
 - ✅ The Fin du rêve in waves of bosses, wanted monsters and high-level monsters: level 250 +5 a wave (1 to win, 5 at most) in a Sueño, 275 +10 (3 to win, 15 at most) in a Paradoja, 300 +15 (3 to win, no end) in a Pesadilla. Winning it, or falling after the waves it takes, ends the dream won
 - ✅ A lost fight spends the Draconiros arena and the room can be tried again; with no arena left the dream is lost
+- ✅ The dream's interface only on the dream's own maps: leaving by any way — its exit, the Merkasako, a zaap, a teleport — closes it (`ixg`, sent on its own as the real server does), and coming back onto a dream's map from outside puts the player back in the room, its group and its interface as on waking there
 - ✅ `.sueno [row]` (`.sueño`, `.dream`, `.reve`), administrators only: carries the dream in progress down its own graph to a room of that row, or to the Fin du rêve with no row — every room on the way entered and won as if fought, its bonus and dream points paid
 - 🟡 Monsters are brought to the Fin du rêve's level by scaling their life and characteristics; the game's own scaling is not known, and the other rooms fight at the world groups' own grades
 - ❌ Favour rooms, and the effects of the spells the shop sells
@@ -571,7 +579,7 @@ spells each touches, is [`docs/effect-coverage.txt`](docs/effect-coverage.txt).
 - ✅ One draw per cast — the `random` shares of a spell level add up to 100 and one draw picks a row and everything in its `group`: Bumerán Pérfido steals in one element and boosts that element's characteristic
 - ✅ Stack limits — a spell level's `maxStack` says how many equivalent rows live together: `-1` without limit (Fervor, Tumulto), `1` the new row replaces the old (Espada del Juicio, announced gone before the new one), `2` and up a cap (Presión, Espada Destructora)
 - ✅ States need no code — effect 950 sets a number, 951 clears it, the masks do the rest; the 103 states the client flags — invulnerable, cannot be moved or pushed, incurable — are read from `datos/spell_states.json`: an invulnerable target takes no blow at all, a pinned one no push
-- ✅ Area shapes from `zoneDescr` — point, circle, cross (`X` and `Q`), the bar across the cast (`T`), line, half-line, ring (`O`), perpendicular line (`-`), square, half-circle, segment, whole map — with the inner edge (`param2`) honoured and each spell's own per-tile falloff
+- ✅ Area shapes from `zoneDescr`, every letter the way the client's own zone factory builds it: the crosses `P X Q + # *` (`Q` and `#` without their centre, `param2` counted in steps along each ray), the circles `C O I`, the lines `L /`, the bars `T -`, the line from the caster `l` (its first step and its length), `U` bent back towards the caster, the cone `V`, the fork `F`, the squares `G W`, the boomerang `B`, the checkerboard `D`, the rectangle `R`, the outside circle `Z`, the cells named outright `;` and the whole map — with each spell's own per-tile falloff
 - ✅ Displacement — push, pull, step back, step forward, push without damage, and push or pull to the aimed cell (783/1043); direction taken from the centre of the area, stopping at walls, holes and fighters
 - ✅ Teleports — to a cell, back to the previous position, symmetrical around the caster or the target — and position swaps
 - ✅ Carry and throw (50/51) — the Pandawa's Karcham and Chamrak and the Tymobot's Pinzas share the two primitives
@@ -599,7 +607,7 @@ spells each touches, is [`docs/effect-coverage.txt`](docs/effect-coverage.txt).
 - ✅ Script markers 3792 and 3793 do nothing: their value is a script id, not an effect
 - ✅ The characteristic sheet in the shape the client expects: 53 entries in a fixed order, and a single-characteristic refresh replaces its entry
 - ❌ A cooldown pinned to a number of turns (1045), a spell's own basic-healing bonus (2935), damage as a share of the damage taken (1223), best-element healing (3002), damage sharing and interception, portals, revealing invisibles, MP steal — the full list is in the coverage table
-- ❌ Area shapes `G` (55 effects), `*` (10) and `;`, which fall back to the centre tile alone, and the target-mask letters the check-list below names
+- ❌ The target-mask letters the check-list below names
 
 > Only the **Ocra**, the **Tymador** and the **Yopuka** have been checked against the real client spell by spell; the check-list below says which spells. A spell only works when all of its effects resolve, and the gaps concentrate in a handful of effect families.
 
@@ -1579,7 +1587,7 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ✅ The preparation phase: two candidates with a 15-second timer, the player marks and validates, and the server fixes whatever is left when you declare ready
 - ✅ **15 of the 16** watched live, with every rule taken from the challenge's own translated description
 - ✅ Results travel the moment they happen — a failure the instant the challenge breaks, a success at the end, a defeat failing them all at once
-- ✅ The bonus is folded into experience, kamas and drop rates on a win
+- ✅ The bonus is folded into experience, kamas and drop rates on a win — the same verdicts and the same bonus for every player of the fight
 - ✅ Dungeon and anomaly challenges are imposed at 0% and carry achievements, written once and never offered again
 - ❌ *Hired Killer* (35), which needs the server to designate and re-designate the target
 - ❌ Challenges without a known percentage: the client ships no bonus field for them
@@ -1662,7 +1670,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,503 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,518 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 
