@@ -2359,6 +2359,29 @@ namespace Jondo.Unity.Server
             }
         }
 
+        /// <summary>
+        /// The account a character belongs to (Characters.AccountId), or zero when there is no such
+        /// character. What a marketplace pays a seller's bank through, connected or not.
+        /// </summary>
+        public static long AccountIdOfCharacter(long characterId)
+        {
+            if (characterId <= 0) return 0;
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT AccountId FROM Characters WHERE Id = $id;";
+                command.Parameters.AddWithValue("$id", characterId);
+                return command.ExecuteScalar() is long accountId ? accountId : 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DatabaseManager] Could not read the account of {characterId}: {ex.Message}");
+                return 0;
+            }
+        }
+
         public static bool LoadCharacter(long characterId)
         {
             using var connection = new SqliteConnection(WorldConnectionString);

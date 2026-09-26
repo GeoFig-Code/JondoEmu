@@ -498,7 +498,11 @@ public static class Op
     /// <summary>Sin identificar. 1 uso en el emulador.</summary>
     public const string Ios = "ios";
 
-    /// <summary>Sin identificar. 2 usos en el emulador.</summary>
+    /// <summary>
+    /// Client to server: an NPC's action, { f1: action, f2: map, f3: the NPC }. A marketplace's
+    /// buy and sell buttons come through here too, with no NPC: { f1: 5 sell or 6 buy, f2: the
+    /// map, f3: -1 } in the equipment marketplace capture.
+    /// </summary>
     public const string Iov = "iov";
 
     /// <summary>
@@ -1215,8 +1219,36 @@ public static class Op
     /// <summary>Sin identificar. 1 uso en el emulador.</summary>
     public const string Kbd = "kbd";
 
-    /// <summary>Sin identificar. 2 usos en el emulador.</summary>
+    /// <summary>
+    /// Server to client, a marketplace: one item's offers, { f1: item type, f2: item, f3 (repeated)
+    /// { f1: offer, f4: effects, f5: item, f6: packed price of each lot size, 0 where none,
+    /// f8: item type } }. The answer to keh; without f3 when nothing is on sale, and bare, f1 and
+    /// f2 alone, to the first keh that stops following the item.
+    /// </summary>
     public const string Kbt = "kbt";
+
+    /// <summary>
+    /// Client to server, a marketplace: buy a lot, { f1: offer, f2: the price it was shown, f3:
+    /// the lot size }. Seven in the runes capture, one per lot size of 1, 10, 100 and 1000.
+    /// </summary>
+    public const string Kbm = "kbm";
+
+    /// <summary>
+    /// Server to client: the marketplace opens to sell, { f3: the same settings as kdw's f1 }.
+    /// Its f1 is the seller's own listings, a repeated { f2: item as kes's f1, f3: price, f4: the
+    /// time left } by the client's own class; the capture's seller had none, so that part is
+    /// read off the client and not measured.
+    /// </summary>
+    public const string Kby = "kby";
+
+    /// <summary>Client to server, a marketplace in sell mode: the prices of an item, { f1: item }. Answered by kcq.</summary>
+    public const string Kbz = "kbz";
+
+    /// <summary>
+    /// Server to client, a marketplace: the prices of an item for whoever sells it, { f3: item,
+    /// f4: average price, f5 { f1: packed lowest price of each lot size } }.
+    /// </summary>
+    public const string Kcq = "kcq";
 
     /// <summary>El cofre se abre; los dos valores son constantes en la captura y el 100 parece el numero de huecos.</summary>
     public const string Kci = "kci";
@@ -1224,19 +1256,32 @@ public static class Op
     /// <summary>Mover un objeto del cofre; la direccion no viaja, se deduce de donde esta el objeto. f1 llega como -1 cuando se arrastra la pila entera.</summary>
     public const string Kcr = "kcr";
 
-    /// <summary>Sin identificar. 1 uso en el emulador.</summary>
+    /// <summary>
+    /// Server to client, a marketplace: a purchase went through, { f2: offer, f4: true }. The last
+    /// of what a kbm is answered with, after the lqn 252 that says what was bought.
+    /// </summary>
     public const string Kcx = "kcx";
 
-    /// <summary>Sin identificar. 2 usos en el emulador.</summary>
+    /// <summary>
+    /// Server to client, a marketplace: the items of one type on sale, { f1: packed items, f2:
+    /// type }; f2 alone when there are none. The answer to kdk.
+    /// </summary>
     public const string Kda = "kda";
 
     /// <summary>Sin identificar. 1 uso en el emulador.</summary>
     public const string Kdg = "kdg";
 
-    /// <summary>Sin identificar. 1 uso en el emulador.</summary>
+    /// <summary>
+    /// Client to server, a marketplace: follow an item type, { f2: true, f4: type }, answered by
+    /// kda; stop following it, f4 alone, answered by nothing.
+    /// </summary>
     public const string Kdk = "kdk";
 
-    /// <summary>Sin identificar. 1 uso en el emulador.</summary>
+    /// <summary>
+    /// Server to client: a marketplace opens to buy, { f1 { f1: -1, f2: 200, f3: 708, f4: the
+    /// marketplace, f5: float tax percentage, f6: hours on sale, f7: float, f9: packed item
+    /// types, f10: packed lot sizes } }. f4 is the id of the client's AuctionHousesDataRoot.
+    /// </summary>
     public const string Kdw = "kdw";
 
     /// <summary>
@@ -1431,11 +1476,42 @@ public static class Op
     /// <summary>Sin identificar. 2 usos en el emulador.</summary>
     public const string Kea = "kea";
 
-    /// <summary>Sin identificar. 2 usos en el emulador.</summary>
+    /// <summary>
+    /// Client to server, a marketplace: follow an item, { f1: item, f2: true }, answered by kbt;
+    /// stop following it, f1 alone. The client sends that one twice in a row.
+    /// </summary>
     public const string Keh = "keh";
 
-    /// <summary>No implementado. Exclusivo de las capturas de interactivos varios (Interactivos varios); 9 mensajes.</summary>
+    /// <summary>
+    /// Server to client, a marketplace: an offer of a followed item changed, { f2: packed price
+    /// of each lot size, f3: offer, f4: effects, f5: item, f6: item type }. To the buyer after
+    /// every lot bought from an offer that still has more, and to the seller behind kfi.
+    /// </summary>
     public const string Kgp = "kgp";
+
+    /// <summary>
+    /// Server to client, a marketplace: an offer of a followed item is gone, { f1: item, f2: item
+    /// type, f4: offer }. What the buyer gets instead of kgp when the lot bought was its last.
+    /// </summary>
+    public const string Kgv = "kgv";
+
+    /// <summary>
+    /// Server to client, a marketplace: an offer of a followed item appeared, { f1: effects, f2:
+    /// item type, f3: item, f4: packed price of each lot size, f5: offer }, then kgp for it.
+    /// </summary>
+    public const string Kfi = "kfi";
+
+    /// <summary>
+    /// Client to server, a marketplace in sell mode: put a lot on sale, { f1: price, f2: the
+    /// stack's uid, f3: the lot size }.
+    /// </summary>
+    public const string Kge = "kge";
+
+    /// <summary>
+    /// Server to client, a marketplace: the seller's lot is on sale, { f1 { f1: the listing, f2:
+    /// effects, f3: item, f4: how many }, f2: price, f4: seconds on sale, 2,419,200 }.
+    /// </summary>
+    public const string Kes = "kes";
 
     /// <summary>El cofre se cerro.</summary>
     public const string Khd = "khd";

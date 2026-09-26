@@ -138,6 +138,9 @@ namespace Jondo.Unity.Server.Handlers
                 case InteractiveActionKind.GuildFounding:
                     await GuildHandler.OpenFoundingAsync(stream, interactive.Element.Id, action.SkillId);
                     break;
+                case InteractiveActionKind.Marketplace:
+                    await MarketplaceHandler.OpenAsync(interactive.Element.Id, action.SkillId);
+                    break;
                 default:
                     throw new InvalidOperationException($"Acción interactiva no gestionada: {action.Kind}.");
             }

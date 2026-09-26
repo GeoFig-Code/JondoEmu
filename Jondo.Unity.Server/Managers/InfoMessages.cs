@@ -63,6 +63,34 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>«$quantity{2} x {{item,{0},{1}}} ($quantity{3} kamas)», la compra.</summary>
         public const int Purchase = 252;
 
+        // ─── The marketplaces' ────────────────────────────────────────────────────
+        //
+        // No capture refuses anything or sells anything of the player's, so these are the rows of
+        // the client's own table that say it, and which one goes where is INFERRED. The refusals
+        // go with Warning: table 0 repeats the same sentences under other ids (57, 58, 59, 61,
+        // 63, 64), and table 1 is the one of warnings and errors.
+
+        /// <summary>«Este objeto no forma parte de las categorías aceptadas en este mercadillo.» Warning.</summary>
+        public const int MarketplaceWrongCategory = 64;
+
+        /// <summary>«No tienes suficientes kamas para poder pagar el impuesto de puesta en venta...» Warning.</summary>
+        public const int MarketplaceCannotPayTax = 65;
+
+        /// <summary>«No puedes poner más objetos en venta por el momento...» Warning.</summary>
+        public const int MarketplaceTooManyListings = 66;
+
+        /// <summary>«No tienes suficientes kamas para poder comprar este objeto.» Warning.</summary>
+        public const int MarketplaceCannotAfford = 71;
+
+        /// <summary>«Este objeto ya no está disponible por este precio. Alguien ha sido más rápido...» Warning.</summary>
+        public const int MarketplaceSoldOut = 72;
+
+        /// <summary>
+        /// «Banco: + $quantity{0} kamas (venta: $quantity{3} $item{2}).» Info, to the seller of a
+        /// lot. Its twin 65 carries a link to a sales history this server does not keep.
+        /// </summary>
+        public const int MarketplaceSold = 73;
+
         /// <summary>«No tienes el nivel de oficio necesario.» Va con <see cref="Warning"/>.</summary>
         public const int JobLevelTooLow = 284;
 

@@ -1239,12 +1239,16 @@ namespace Jondo.Unity.Server.Network
             // soleils de sortie — un f15 artificiel empêche le client de rattacher l'élément au
             // dessin de ses propres données de carte. C'est ce qui laissait les portes invisibles
             // tant qu'on ne tenait pas la touche des interactifs enfoncée.
+            //
+            // A marketplace counter has none either: 22 declarations of 17 counters in the
+            // captures, 212600837's equipment to 207625216's cosmetics, and not one f15 among them.
             bool sinColocacion = false;
             foreach (var action in interactive.Actions)
             {
                 if (action.Kind == Managers.InteractiveActionKind.Teleport
                     || action.Kind == Managers.InteractiveActionKind.Dream
-                    || action.Kind == Managers.InteractiveActionKind.DreamDoor) sinColocacion = true;
+                    || action.Kind == Managers.InteractiveActionKind.DreamDoor
+                    || action.Kind == Managers.InteractiveActionKind.Marketplace) sinColocacion = true;
             }
             if (interactive.Actions.Count == 0 || sinColocacion) return;
 
@@ -2497,6 +2501,21 @@ namespace Jondo.Unity.Server.Network
                 if (entry != null) body.Msg(2, entry);
             }
             return body.Var(3, Math.Max(1, quantity)).VarIfNotZero(4, uid);
+        }
+
+        /// <summary>
+        /// An item's effects, one entry each under the field given, the way <see cref="ItemBody"/>
+        /// writes them under f2. The marketplace's offers carry them under f4 (kbt, kgp) and f1
+        /// (kfi), with nothing else of the item around them.
+        /// </summary>
+        internal static Pb AddEffects(Pb target, int field, IEnumerable<Managers.Equipment.ItemEffect> effects)
+        {
+            foreach (var effect in effects)
+            {
+                var entry = EffectEntry(effect);
+                if (entry != null) target.Msg(field, entry);
+            }
+            return target;
         }
 
         /// <summary>Un objeto que se va (itc del cofre, ium de la bolsa): solo su identificador.</summary>

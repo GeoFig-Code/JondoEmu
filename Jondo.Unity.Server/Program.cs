@@ -113,6 +113,11 @@ namespace Jondo.Unity.Server
             Managers.TeleportManager.Initialize();
             Managers.Resources.Initialize();
             Managers.Workshops.Initialize();
+            // Before the registry, which declares their counters; the book of lots on sale with
+            // them, and what ran out of time while the server was down goes back to its sellers.
+            Managers.Marketplaces.Initialize();
+            Managers.MarketplaceListings.Initialize();
+            Handlers.MarketplaceHandler.SweepExpiredAsync().GetAwaiter().GetResult();
             Managers.Forgemagic.Initialize();
             Managers.InfoMessages.Initialize();
             Managers.Challenges.Initialize();

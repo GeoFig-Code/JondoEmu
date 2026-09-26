@@ -569,6 +569,63 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
+        /// Puts items straight into an account's bank, from nowhere in particular: onto an identical
+        /// stack if there is one, else as a new stack. What a marketplace gives back when a lot's
+        /// time on sale is over. Safe from any session and from none; an open bank window of that
+        /// account is refreshed. False when nothing was put in.
+        /// </summary>
+        public static async Task<bool> AddItemAsync(long accountId, int gid, int quantity, string? effects)
+        {
+            if (accountId <= 0 || gid <= 0 || quantity <= 0) return false;
+            string stored = effects ?? "";
+
+            EnsureTables();
+            var gate = GateOf(accountId);
+            await gate.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                using var connection = Open();
+                using var transaction = connection.BeginTransaction();
+
+                long into = SameStack(connection, transaction,
+                    "SELECT Uid, Quantity FROM BankItems WHERE AccountId = $o AND Gid = $gid " +
+                    "AND IFNULL(Effects, '') = $e ORDER BY Uid LIMIT 1;", accountId, gid, stored, out _);
+
+                using var write = connection.CreateCommand();
+                write.Transaction = transaction;
+                if (into == 0)
+                {
+                    write.CommandText = "INSERT INTO BankItems (Uid, AccountId, Gid, Quantity, Effects) " +
+                                        "VALUES ($uid, $a, $gid, $n, $e);";
+                    write.Parameters.AddWithValue("$uid", DatabaseManager.NextItemUid());
+                    write.Parameters.AddWithValue("$gid", gid);
+                    write.Parameters.AddWithValue("$e", stored);
+                }
+                else
+                {
+                    write.CommandText = "UPDATE BankItems SET Quantity = Quantity + $n WHERE Uid = $uid AND AccountId = $a;";
+                    write.Parameters.AddWithValue("$uid", into);
+                }
+                write.Parameters.AddWithValue("$a", accountId);
+                write.Parameters.AddWithValue("$n", quantity);
+                write.ExecuteNonQuery();
+                transaction.Commit();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Bank] Could not put {gid} x{quantity} in the bank of account {accountId}: {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                gate.Release();
+            }
+
+            await Handlers.BankHandler.RefreshWindowsAsync(accountId, null).ConfigureAwait(false);
+            return true;
+        }
+
+        /// <summary>
         /// From the bank to the bag: <paramref name="quantity"/> units of the bank stack
         /// <paramref name="uid"/>, or the whole stack if it has fewer. Null when it cannot be done.
         /// </summary>

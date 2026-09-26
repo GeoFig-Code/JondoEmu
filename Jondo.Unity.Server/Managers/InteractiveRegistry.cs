@@ -42,6 +42,9 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>El altar del Templo de los Gremios, que abre el editor de fundación.</summary>
         GuildFounding,
+
+        /// <summary>A marketplace counter: it opens the marketplace to buy (kdw).</summary>
+        Marketplace,
     }
 
     /// <summary>Una habilidad ofrecida por un elemento interactivo.</summary>
@@ -234,6 +237,22 @@ namespace Jondo.Unity.Server.Managers
                          new Interactives.Element(route.ElementId, route.SourceCellId, route.GfxId),
                          route.InteractiveType, InteractiveActionKind.Teleport, route.SkillId);
             }
+
+            // The marketplace counters, by element and not by graphic: Brakmar's five share one
+            // graphic and each opens another marketplace. Declared with the type of their kind and
+            // the skill every real jss gives them; something already declared keeps its own.
+            int counters = 0;
+            foreach (long mapId in Interactives.MapIds)
+            {
+                foreach (var (element, house) in Marketplaces.On(mapId))
+                {
+                    if (_byElement.ContainsKey((mapId, element.Id))) continue;
+                    Register(mapId, element, house.InteractiveType, InteractiveActionKind.Marketplace,
+                             Marketplaces.Skill);
+                    counters++;
+                }
+            }
+            if (counters > 0) Console.WriteLine($"[Marketplaces] {counters} counter declarations on the maps.");
 
             // Y los recursos de oficio, que son con diferencia lo mas numeroso: veinticinco mil.
             // Se reconocen por su grafico igual que todo lo demas.

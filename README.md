@@ -235,6 +235,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Lead passes on when the leader leaves; a disconnect removes the member and tells the rest
 - ✅ Friends list
 - ✅ Trading with another player on the map: ask, refuse or accept, lay stacks down and take them back, kamas, ready on both sides, and the goods changing hands — a new stack under a new uid, or onto one of the same — measured on both sides in the two trade captures
+- ✅ The marketplaces: the client's seven — resources, equipment, consumables, runes, creatures, souls and cosmetics — each one shared by every counter of its kind, **39 counters** in Bonta, Brakmar, Astrub, Pandala, Frigost, Sufokia, Incarnam and two more towns. Browse by type and by item, buy a lot of 1, 10, 100 or 1000 — into the bag, and its price into the seller's bank whether they are connected or not — put a lot on sale for the 2 % tax, take it back; 672 hours on sale. Measured in the five captures that open one
+- 🟡 Inferred rather than captured: taking a lot back, the seller's sale notice, the end of a lot's time (it returns to the seller's bank), the refusals, and what resources and consumables take. Six of the client's 45 marketplace hints have no counter we can tell apart from a door, and are left out
 - ✅ Every command answers in the session's own language, from a catalogue in Spanish, English and French. The language comes from the `--langCode` the launcher started the client with
 - ✅ Following the leader: the member's client walks after him map by map on each `ikv` the server sends it, as the follow capture measures; a zaap cuts the follow, as on the real server
 - ❌ The invitation popup's *Details* button (`imd` → `ilb`), the dedicated member-gone message (`inc`) and party search
@@ -1660,7 +1662,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,491 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,503 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 

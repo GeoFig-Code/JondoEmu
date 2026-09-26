@@ -462,6 +462,7 @@ namespace Jondo.Unity.Server.Network
                         // map's zaap is taken by a conversation the player left behind.
                         NpcHandler.Forget();
                         WorkshopHandler.Forget();
+                        MarketplaceHandler.Forget();
                         await Handlers.DreamHandler.OnMapLoadedAsync(stream);
                         await Managers.Quests.SendMarksAsync(stream, GameState.MapId);
 
@@ -827,11 +828,38 @@ namespace Jondo.Unity.Server.Network
                 {
                     // Mover un objeto entre la bolsa y el cofre. The same kcr lays a stack on a
                     // commission's offer, on a workshop's bench, or on a magus table.
+                    // And in a marketplace open to sell, it takes a lot back off sale.
                     if (!await CommissionHandler.OfferAsync(stream, payload)
                         && !await TradeHandler.MoveAsync(stream, payload)
                         && !await WorkshopHandler.MoveAsync(stream, payload)
-                        && !await BankHandler.MoveAsync(stream, payload))
+                        && !await BankHandler.MoveAsync(stream, payload)
+                        && !await MarketplaceHandler.WithdrawAsync(payload))
                         await ChestHandler.MoveAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kdk)))
+                {
+                    // A marketplace: follow an item type, or stop.
+                    await MarketplaceHandler.TypeAsync(payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Keh)))
+                {
+                    // A marketplace: follow an item and see its offers, or stop.
+                    await MarketplaceHandler.ItemAsync(payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kbm)))
+                {
+                    // A marketplace: buy a lot.
+                    await MarketplaceHandler.BuyAsync(payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kbz)))
+                {
+                    // A marketplace open to sell: an item's prices.
+                    await MarketplaceHandler.PriceAsync(payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kge)))
+                {
+                    // A marketplace open to sell: a lot goes on sale.
+                    await MarketplaceHandler.SellAsync(payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kew)))
                 {
@@ -984,6 +1012,7 @@ namespace Jondo.Unity.Server.Network
                     // se queda con la X que era del diálogo.
                     if (await CommissionHandler.CloseAsync()) { }
                     else if (await TradeHandler.CloseAsync()) { }
+                    else if (MarketplaceHandler.IsOpen) await MarketplaceHandler.CloseAsync();
                     else if (WorkshopHandler.IsOpen) await WorkshopHandler.CloseAsync(stream);
                     else if (BankHandler.IsOpen) await BankHandler.CloseAsync(stream);
                     else if (ChestHandler.IsOpen) await ChestHandler.CloseAsync(stream);
@@ -1197,8 +1226,10 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Iov)))
                 {
-                    // Ha clicado un NPC: según la acción, se le abre la tienda o el diálogo.
-                    await NpcHandler.InteractAsync(stream, payload);
+                    // Ha clicado un NPC: según la acción, se le abre la tienda o el diálogo. With
+                    // a marketplace open and no NPC, it is its buy or sell button.
+                    if (!await MarketplaceHandler.ModeAsync(payload))
+                        await NpcHandler.InteractAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Ioy)))
                 {

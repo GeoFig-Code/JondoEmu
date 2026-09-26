@@ -219,6 +219,9 @@ namespace Jondo.Unity.Server
         /// <summary>The trade with another player this character is in, asked or open, if any.</summary>
         public Handlers.Trade? Trade { get; set; }
 
+        /// <summary>The marketplace this character has open, to buy or to sell, if any.</summary>
+        public Handlers.MarketplaceWindow? Marketplace { get; set; }
+
         /// <summary>
         /// This character's settings as an artisan, job by job: the minimum level asked of a
         /// customer, whether they craft for free, and whether they are in the public list.

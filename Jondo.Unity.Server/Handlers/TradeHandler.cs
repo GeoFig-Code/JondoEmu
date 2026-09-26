@@ -339,9 +339,9 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// A stack, or part of it, out of this character's bag: ium when it all goes, ivj with what
-        /// is left when it does not.
+        /// is left when it does not. A marketplace listing takes its lot out the same way.
         /// </summary>
-        private static (string Opcode, byte[] Body, int Gid, string Effects)? Give(long uid, int quantity)
+        internal static (string Opcode, byte[] Body, int Gid, string Effects)? Give(long uid, int quantity)
         {
             long me = SessionContext.State.CharacterId;
             var stored = HavenBagStore.FromInventory(me, uid);
@@ -357,9 +357,10 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// A stack into this character's bag: onto one of the same item with the same effects if
-        /// there is one (ivj), else as a new stack with a new uid (iua), as the captures show.
+        /// there is one (ivj), else as a new stack with a new uid (iua), as the captures show. The
+        /// uid is the stack it ended in. A lot bought at a marketplace arrives the same way.
         /// </summary>
-        private static (string Opcode, byte[] Body)? Receive(int gid, int quantity, string effects)
+        internal static (string Opcode, byte[] Body, long Uid)? Receive(int gid, int quantity, string effects)
         {
             long me = SessionContext.State.CharacterId;
             var parsed = Equipment.ParseEffects(effects);
@@ -372,7 +373,7 @@ namespace Jondo.Unity.Server.Handlers
                 if (stored != null && DatabaseManager.UpdateCharacterItem(me, same.Uid, now, stored.Effects))
                 {
                     Equipment.Add(same.Uid, gid, quantity, Equipment.Bag, null);
-                    return (Op.Ivj, TradeProtocol.BuildQuantity(same.Uid, now));
+                    return (Op.Ivj, TradeProtocol.BuildQuantity(same.Uid, now), same.Uid);
                 }
             }
 
@@ -389,7 +390,7 @@ namespace Jondo.Unity.Server.Handlers
             GameState.AddInventoryItem(legacy);
 
             var arrived = new HavenBagStore.StoredItem { Uid = uid, Gid = gid, Quantity = quantity, Effects = effects };
-            return (Op.Iua, ConnectionProtocol.BuildItemArrived(3, arrived));
+            return (Op.Iua, ConnectionProtocol.BuildItemArrived(3, arrived), uid);
         }
 
         // ─── Calling it off ─────────────────────────────────────────────────────────────────
