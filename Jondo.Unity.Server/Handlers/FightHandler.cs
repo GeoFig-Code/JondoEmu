@@ -689,7 +689,10 @@ namespace Jondo.Unity.Server.Handlers
                 LookBoneId = 744,
                 IsMonster = false
             };
-            playerFighter.CurrentHP = playerFighter.MaxHP;
+            // The life he has, not the whole of it: what a defeat left missing comes back with
+            // the regeneration, and the fight takes what is there (FightDefeat.cs).
+            playerFighter.CurrentHP = Managers.RestingLife.LifeAt(GameState.CharacterId, playerFighter.MaxHP,
+                                                                   DateTime.UtcNow);
             playerFighter.CurrentAP = playerFighter.MaxAP;
             playerFighter.CurrentMP = playerFighter.MaxMP;
             RellenarLaFicha(playerFighter);
@@ -1240,6 +1243,15 @@ namespace Jondo.Unity.Server.Handlers
             monsterFighter.Otras[Managers.EffectEngine.EsquivaPM] = (dbStats?.PmDodge ?? 0) + sabiduriaDelBicho / 10;
             monsterFighter.Otras[Managers.EffectEngine.RetiraPA] = sabiduriaDelBicho / 10;
             monsterFighter.Otras[Managers.EffectEngine.RetiraPM] = sabiduriaDelBicho / 10;
+
+            // Escape and tackle: a tenth of its agility, and the grade's own bonus on top. That is
+            // the sheet of every plain monster the captures fight -- 492 at agility 44, 48, 52 and
+            // 56 carries 4, 4, 5 and 5 of each, the Dopeul's 3286 at 800 carries 80 -- and the
+            // same tenth the client gives a player (Translations 1113698). Whether it tackles at
+            // all is its template's.
+            SetTackleSheet(monsterFighter, dbStats?.Agility ?? 0,
+                           dbStats?.TackleEvadeBonus ?? 0, dbStats?.TackleBlockBonus ?? 0);
+            monsterFighter.TemplateAllowsTackle = Managers.MonsterFlags.AllowsTackle(monsterId);
 
             // The spells that are born waiting: their grade's InitialCooldown, as a player's are.
             // 75 bosses' spells could be cast on the first turn that the game holds back.
@@ -3325,16 +3337,17 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Andar durante el combate (jrw).
+        /// Walking in a fight (jrw).
         ///
-        ///   servidor jto   abre la secuencia de andar
-        ///            jsj   el camino entero, la orientación final y quién se mueve
-        ///            jwe   f14 129, con los pasos gastados en negativo
-        ///            jxw   la ficha con los puntos de movimiento que quedan
-        ///            jwi   cierra, y el cliente lo acusa con un jti
+        ///   server  jto   opens the walk sequence
+        ///           jsj   the whole path, the way its last step faces, and who moves
+        ///           jxw   the MP left, inside its own jto 3 / jwi 3
+        ///           jwe   f14 129, the steps spent, negative
+        ///           jwi   closes it, and the client acknowledges with a jti
         ///
-        /// El cliente manda sólo las esquinas del camino; el jsj devuelve la ristra completa de
-        /// casillas, que es lo que el cliente anima.
+        /// with a jwe 104 and its losses in front of any stretch that leaves an enemy's contact:
+        /// see <see cref="WalkPathAsync"/>. The client sends only the corners of the path; the
+        /// jsj gives back every cell, which is what the client animates.
         /// </summary>
         public static async Task WalkAsync(NetworkStream stream, byte[] payload)
         {
@@ -3375,39 +3388,15 @@ namespace Jondo.Unity.Server.Handlers
             int steps = camino.Count - 1;
             if (steps > walker.CurrentMP) return;
 
-            var path = new List<long>();
-            foreach (int celda in camino) path.Add(celda);
-
-            walker.CurrentMP -= steps;
-            // Por MoverA y no tocando CellId a pelo: así queda apuntado de dónde venía, que es
-            // lo que necesita el efecto 1100 para deshacer el movimiento.
-            walker.MoverA(camino[camino.Count - 1]);
+            // The walk itself, tackles paid on the way: see FightTackle.cs. What comes back is
+            // what was really walked, shorter than asked when a tackle leaves too few MP.
+            var walked = await WalkPathAsync(fight, walker, camino, facing);
+            steps = walked.Count - 1;
+            camino = walked;
             destination = walker.CellId;
-            CarriedFollows(fight, walker);
 
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
-                Network.FightProtocol.BuildSequenceStart(walker.Id,
-                                                         Network.FightProtocol.WalkSequence)));
-
-            await ATodosAsync(fight,
-                ConnectionProtocol.BuildActorMoved(walker.Id, path, facing));
-
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
-                Network.FightProtocol.BuildAction(walker.Id, Network.FightProtocol.Walked,
-                                                  Network.FightProtocol.Spent(walker.Id, steps),
-                                                  Network.FightProtocol.PointsDetail)));
-            var pasos = StatisticsBehind(fight, walker);
-            if (pasos != null) pasos.MovementPointsSpent += steps;
-
-            await FichaATodosAsync(fight, walker.Id,
-                (MovementPointsCharacteristic, (long)walker.CurrentMP, 0L, 0L));
-
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
-                Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), walker.Id,
-                                                       Network.FightProtocol.WalkSequence)));
-
-            Program.LogDebug($"[Combate] Anda hasta la casilla {destination}: {steps} pasos, " +
-                             $"le quedan {walker.CurrentMP} PM.");
+            Program.LogDebug($"[Fight] Walks to cell {destination}: {steps} step(s), " +
+                             $"{walker.CurrentMP} MP and {walker.CurrentAP} AP left.");
 
             // Y lo que reaccione a andar, UNA VEZ POR CASILLA. El Centinela se come uno de alcance
             // y un dos por ciento de daños a distancia en cada paso, no en cada movimiento: andar
@@ -4160,6 +4149,7 @@ namespace Jondo.Unity.Server.Handlers
             // to do at turn start and plays, controlled by its owner.
             invocado.JuegaTurno = receta.Juega;
             invocado.HechizosDeInvocado = receta.Hechizos;
+            invocado.TemplateAllowsTackle = receta.AllowsTackle;
 
             fight.Invocar(invocado, quienInvoca);
 
@@ -7156,6 +7146,16 @@ namespace Jondo.Unity.Server.Handlers
                 if (action.Path.Count > 1 && !await MonsterWalkAsync(stream, fight, monster, new List<int>(action.Path)))
                     return;
 
+                // The plan counted on the tackles of its path, but the walk is what happened: a
+                // monster that did not get where it meant to, or that was left without the AP,
+                // thinks again from where it stands instead of casting from the wrong cell.
+                if (monster.CellId != action.From || monster.CurrentAP < action.Spell.Cost)
+                {
+                    Program.LogDebug($"[AI] {monster.Id} stopped at {monster.CellId} with {monster.CurrentAP} AP " +
+                                     $"instead of casting {action.Spell.Id} from {action.From}; thinking again.");
+                    continue;
+                }
+
                 Program.LogDebug($"[IA] {monster.Id} lanza {action.Spell.Id} a {action.Target.Id} " +
                                  $"(casilla {action.TargetCell}) desde {monster.CellId}, valor {action.Score:0.0}.");
                 await MonsterCastAsync(stream, fight, monster, action.Spell, action.Target, action.TargetCell);
@@ -7190,6 +7190,8 @@ namespace Jondo.Unity.Server.Handlers
                 Walkable = cell => PisableEnCombate(fight, cell),
                 Sees = (from, to) => MapGeometry.HasLineOfSight(from, to, blockers),
                 Fighters = TodosLosCombatientes(fight).ToList(),
+                // The walk's own rule, so that what it plans is what it will pay.
+                TackleAt = (mover, cell, ap, mp) => TackleAt(fight, mover, cell, ap, mp).Loss,
             };
         }
 
@@ -7295,26 +7297,11 @@ namespace Jondo.Unity.Server.Handlers
         /// False when the ground killed it -- the turn is over then, and has been ended.
         /// </summary>
         private static async Task<bool> MonsterWalkAsync(NetworkStream stream, FightInstance fight, Fighter monster,
-                                                         List<int> walked)
+                                                         List<int> planned)
         {
-            var path = walked.ConvertAll(c => (long)c);
-            int steps = walked.Count - 1;
-            int destination = walked[walked.Count - 1];
-            monster.CurrentMP -= steps;
-            monster.CellId = destination;
-
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
-                Network.FightProtocol.BuildSequenceStart(monster.Id,
-                                                         Network.FightProtocol.WalkSequence)));
-            await ATodosAsync(fight,
-                ConnectionProtocol.BuildActorMoved(monster.Id, path, FacingOf(fight, monster)));
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
-                Network.FightProtocol.BuildAction(monster.Id, Network.FightProtocol.Walked,
-                                                  Network.FightProtocol.Spent(monster.Id, steps),
-                                                  Network.FightProtocol.PointsDetail)));
-            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
-                Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), monster.Id,
-                                                       Network.FightProtocol.WalkSequence)));
+            // The same walk as a player's, tackles and all: the real server holds its monsters
+            // as it holds people (the collector and the Dopeul are tackled in their captures).
+            var walked = await WalkPathAsync(fight, monster, planned);
 
             // Y lo que hubiera en el suelo donde ha ido a parar. Esto NO estaba: el
             // monstruo cambiaba de casilla y se anunciaba, y ahí se acababa. Ni los muros
@@ -7946,6 +7933,12 @@ namespace Jondo.Unity.Server.Handlers
             Program.LogDebug($"[Combate] Reparto: {xpGained} de experiencia (total {GameState.Experience}, " +
                              $"nivel {GameState.CharacterLevel}), {kamas} kamas y {loot.Count} clase(s) de objeto.");
 
+            // What losing costs, against monsters (FightDefeat.cs): the energy, half the life, and
+            // the way back to the save point. Applied before the kub, which is what shows the
+            // first two. Any other end gives the life back whole, as it always has.
+            var defeat = !gane && DefeatCostsIn(fight) ? ApplyDefeat() : null;
+            if (defeat == null) Managers.RestingLife.Clear(GameState.CharacterId);
+
             // La ficha del personaje otra vez, que si no el cliente se queda con la del COMBATE
             // puesta al volver al mapa: se salía con los puntos de acción que quedaran al terminar
             // —cuatro— y con la vida del combatiente.
@@ -7956,6 +7949,16 @@ namespace Jondo.Unity.Server.Handlers
             // por eso el arreglo anterior no cambió nada.
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kub,
                 ConnectionProtocol.BuildCharacteristics()));
+
+            // "Has perdido 2000 puntos de energía.", right behind that kub in the Pandala and
+            // Dopeul defeats. With nothing lost -- the gauge already at its last point -- there is
+            // no capture, and nothing is said.
+            if (defeat != null && defeat.EnergyLost > 0)
+            {
+                await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildSystemMessage(Managers.InfoMessages.EnergyLost,
+                                                          defeat.EnergyLost.ToString())));
+            }
 
             // El grupo que se acaba de matar desaparece del mapa, y en su sitio sale otro.
             //
@@ -8002,6 +8005,16 @@ namespace Jondo.Unity.Server.Handlers
                 ? Network.SessionContext.State.RoleplayMapId
                 : fight.RoleplayMapId;
             LeaveFight();
+
+            // A loser does not go back where he fought: he goes to his save point, beside its
+            // zaap. Set after LeaveFight, which puts him back on the map he left.
+            if (defeat != null && MapManager.GetMapInfo(defeat.SavePointMap) != null)
+            {
+                back = defeat.SavePointMap;
+                Network.SessionContext.State.MapId = defeat.SavePointMap;
+                Network.SessionContext.State.CellId = defeat.SavePointCell;
+                DatabaseManager.SaveCurrentCharacter();
+            }
 
             // ¿Se peleaba dentro de una mazmorra? Entonces ganar mueve: a la sala siguiente, o
             // fuera si era la última. Se decide AQUÍ y no después de que esto termine, porque el

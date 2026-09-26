@@ -57,6 +57,12 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>«Has perdido $quantity{0} kamas.»</summary>
         public const int KamasLost = 46;
 
+        /// <summary>
+        /// «Has perdido &lt;b&gt;{0}&lt;/b&gt; puntos de energía.» Info, the amount as its one parameter:
+        /// "lqn { f2: 34, f4: "2000" }" right behind the kub of every lost fight against monsters.
+        /// </summary>
+        public const int EnergyLost = 34;
+
         /// <summary>«Has conseguido {0} '$item{1}'.»</summary>
         public const int ItemGained = 21;
 

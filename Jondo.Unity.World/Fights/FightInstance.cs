@@ -1055,6 +1055,12 @@ namespace Jondo.Unity.World.Fights
         public int TurnStartCell { get; set; }
         public int TurnStartMp { get; set; }
 
+        /// <summary>
+        /// The MP the fighter whose turn it is has lost to tackles this turn. They are no MP he
+        /// used: the Zombi challenge (1008205) says losing MP to a tackle does not break it.
+        /// </summary>
+        public int TurnTackledMp { get; set; }
+
         /// <summary>A quién hay que rematar antes de pegarle a otro (retos 31 y 32).</summary>
         public long ChallengeFocus { get; set; }
 

@@ -98,7 +98,24 @@ namespace Jondo.Unity.Server.Managers
             public Func<int, int, bool> Sees { get; init; } = (_, _) => true;
             public IReadOnlyList<Fighter> Fighters { get; init; } = Array.Empty<Fighter>();
 
+            /// <summary>
+            /// What leaving a cell costs the walker holding these AP and MP: the fight's own
+            /// tackle rule (<see cref="Tackle"/>), handed in by the fight. Nothing by default.
+            /// </summary>
+            public Func<Fighter, int, int, int, Tackle.Loss> TackleAt { get; init; } = (_, _, _, _) => Tackle.Loss.None;
+
             public bool Occupied(int cell) => Fighters.Any(f => f.IsAlive && f.CellId == cell);
+        }
+
+        /// <summary>
+        /// A way to a cell: the path, and the AP and MP the monster still holds on arrival once
+        /// every tackle on the way is paid.
+        /// </summary>
+        public sealed record Route(List<int> Path, int ActionPoints, int MovementPoints)
+        {
+            /// <summary>The points the walk costs beyond its steps: what the tackles take.</summary>
+            public int LostToTackles(Fighter monster)
+                => monster.CurrentAP - ActionPoints + (monster.CurrentMP - MovementPoints - (Path.Count - 1));
         }
 
         /// <summary>A step of the turn: walk this path, then cast this spell at this cell.</summary>
@@ -117,7 +134,7 @@ namespace Jondo.Unity.Server.Managers
             if (enemies.Count == 0) return null;
             var allies = board.Fighters.Where(f => f.IsAlive && f.TeamId == monster.TeamId).ToList();
 
-            var reach = Reachable(board, monster);
+            var reach = Routes(board, monster);
             Action? best = null;
 
             foreach (var spell in spells)
@@ -131,9 +148,13 @@ namespace Jondo.Unity.Server.Managers
                 // And anything free once a turn too, or a free spell is cast until the cap.
                 if ((!spell.Offensive || spell.Cost == 0) && thisTurn > 0) continue;
 
-                foreach (var (cell, path) in reach)
+                foreach (var (cell, route) in reach)
                 {
-                    double walk = 1.0 - WalkPenalty * (path.Count - 1);
+                    // What the tackles on the way take is not there to cast with, and every
+                    // point they take weighs like a cell walked.
+                    if (spell.Cost > route.ActionPoints) continue;
+                    var path = route.Path;
+                    double walk = 1.0 - WalkPenalty * (path.Count - 1 + route.LostToTackles(monster));
                     foreach (var (target, aim) in Targets(spell, monster, cell, enemies, allies))
                     {
                         if (!CanCast(board, spell, monster, cell, aim, target)) continue;
@@ -155,6 +176,8 @@ namespace Jondo.Unity.Server.Managers
         public static List<int> Reposition(Board board, Fighter monster, IReadOnlyList<Spell> spells)
         {
             var enemies = board.Fighters.Where(f => f.IsAlive && f.TeamId != monster.TeamId).ToList();
+            // Where it can get to once the tackles of its way are paid: a monster held in melee
+            // does not plan a retreat its MP will not cover.
             var reach = Reachable(board, monster);
             if (enemies.Count == 0 || reach.Count <= 1) return new List<int> { monster.CellId };
 
@@ -203,23 +226,51 @@ namespace Jondo.Unity.Server.Managers
         /// four neighbours of each cell, as far as its MP go, around whoever stands in the way.
         /// </summary>
         public static Dictionary<int, List<int>> Reachable(Board board, Fighter monster)
+            => Routes(board, monster).ToDictionary(kv => kv.Key, kv => kv.Value.Path);
+
+        /// <summary>
+        /// <see cref="Reachable"/> with the points left on arrival. Every cell left next to an
+        /// enemy able to tackle costs what the board's tackle rule says -- computed on the
+        /// points held when leaving it, as the walk will -- so the search keeps, for each cell,
+        /// the way that leaves the most MP, then the most AP, then the fewest steps. With nobody
+        /// to tackle it is the plain breadth-first search it always was, cell for cell.
+        /// </summary>
+        public static Dictionary<int, Route> Routes(Board board, Fighter monster)
         {
-            var paths = new Dictionary<int, List<int>> { [monster.CellId] = new List<int> { monster.CellId } };
+            var routes = new Dictionary<int, Route>
+            {
+                [monster.CellId] = new Route(new List<int> { monster.CellId }, monster.CurrentAP, monster.CurrentMP),
+            };
             var queue = new Queue<int>();
             queue.Enqueue(monster.CellId);
             while (queue.Count > 0)
             {
                 int here = queue.Dequeue();
-                var path = paths[here];
-                if (path.Count - 1 >= monster.CurrentMP) continue;
+                var route = routes[here];
+
+                // Leaving this cell: the tackle is paid before the step.
+                var loss = board.TackleAt(monster, here, route.ActionPoints, route.MovementPoints);
+                int actionPoints = route.ActionPoints - loss.ActionPoints;
+                int movementPoints = route.MovementPoints - loss.MovementPoints;
+                if (movementPoints <= 0) continue;
+
                 foreach (int next in MapGeometry.GetNeighbors(here))
                 {
-                    if (paths.ContainsKey(next) || !board.Walkable(next) || board.Occupied(next)) continue;
-                    paths[next] = new List<int>(path) { next };
+                    if (!board.Walkable(next) || board.Occupied(next)) continue;
+                    var candidate = new Route(new List<int>(route.Path) { next }, actionPoints, movementPoints - 1);
+                    if (routes.TryGetValue(next, out var known) && !Better(candidate, known)) continue;
+                    routes[next] = candidate;
                     queue.Enqueue(next);
                 }
             }
-            return paths;
+            return routes;
+        }
+
+        private static bool Better(Route candidate, Route known)
+        {
+            if (candidate.MovementPoints != known.MovementPoints) return candidate.MovementPoints > known.MovementPoints;
+            if (candidate.ActionPoints != known.ActionPoints) return candidate.ActionPoints > known.ActionPoints;
+            return candidate.Path.Count < known.Path.Count;
         }
 
         /// <summary>Whom a spell can be aimed at, and at which cell.</summary>

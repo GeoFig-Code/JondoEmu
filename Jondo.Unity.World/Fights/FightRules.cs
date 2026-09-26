@@ -25,6 +25,7 @@
     ///   PagaElKoliseo               no          no        sí          no
     ///   BorraElGrupoAlGanar         sí          no        no          no
     ///   AvanzaDeSala                sí          no        no          no
+    ///   DefeatCosts                 sí          no        no          no
     /// </code>
     ///
     /// Los números no son elegidos: el 4, el 0 y el 7 son el f2 del kam en las capturas, y el 592
@@ -61,6 +62,16 @@
         /// <summary>Si ganar puede mover a la sala siguiente de una mazmorra.</summary>
         public abstract bool AvanzaDeSala { get; }
 
+        /// <summary>
+        /// Whether losing costs the loser: the energy of <see cref="DefeatPenalty"/>, half his
+        /// life, and the way back to his save point. Against monsters it does, in the four
+        /// defeats of the captures; in a challenge and in the Koliseo it does not -- the client's
+        /// help (Translations 1156704) excepts them by name, and the challenge capture's loser
+        /// keeps his 8,250 energy --; and the training dummies cost nothing either: the class
+        /// captures lose to Puch Ingball with the energy and the life untouched.
+        /// </summary>
+        public abstract bool DefeatCosts { get; }
+
         /// <summary>Si el kaa lleva cuenta atrás. Se deduce del reloj: no es otra decisión.</summary>
         public bool KaaConCuentaAtras => RelojDeColocacion > 0;
 
@@ -94,6 +105,7 @@
             public override bool PagaElKoliseo => false;
             public override bool BorraElGrupoAlGanar => true;
             public override bool AvanzaDeSala => true;
+            public override bool DefeatCosts => true;
             public override string Nombre => "contra monstruos";
         }
 
@@ -119,6 +131,7 @@
             public override bool PagaElKoliseo => false;
             public override bool BorraElGrupoAlGanar => false;
             public override bool AvanzaDeSala => false;
+            public override bool DefeatCosts => false;
             public override string Nombre => "desafío";
         }
 
@@ -139,6 +152,7 @@
             public override bool PagaElKoliseo => false;
             public override bool BorraElGrupoAlGanar => false;
             public override bool AvanzaDeSala => false;
+            public override bool DefeatCosts => false;
             public override string Nombre => "entrenamiento";
         }
 
@@ -162,6 +176,7 @@
 
             public override bool BorraElGrupoAlGanar => false;
             public override bool AvanzaDeSala => false;
+            public override bool DefeatCosts => false;
             public override string Nombre => "koliseo";
         }
     }

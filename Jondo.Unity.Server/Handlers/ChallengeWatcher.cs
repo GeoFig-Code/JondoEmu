@@ -158,6 +158,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             fight.TurnStartCell = quien.CellId;
             fight.TurnStartMp = quien.CurrentMP;
+            fight.TurnTackledMp = 0;
             fight.KillCells.Clear();
         }
 
@@ -198,13 +199,13 @@ namespace Jondo.Unity.Server.Handlers
         {
             if (!Alguno(fight) || quien.TeamId != 0) return;
 
-            // Zombi: exactamente un PM por turno. Los PM que se pierden al zafarse de un placaje
-            // no cuentan, dice la descripción; aquí no hay placajes, así que no hay excepción que
-            // hacer.
-            if (Vivo(fight, Zombi) && fight.TurnStartMp - quien.CurrentMP != 1)
+            // Zombi: exactly one MP a turn. The MP lost getting out of a tackle do not count, its
+            // description says (1008205), so they are taken off what he spent.
+            int spentMp = fight.TurnStartMp - quien.CurrentMP - fight.TurnTackledMp;
+            if (Vivo(fight, Zombi) && spentMp != 1)
             {
                 await BreakAsync(stream, fight, Zombi,
-                                 $"{quien.Name} ha gastado {fight.TurnStartMp - quien.CurrentMP} PM");
+                                 $"{quien.Name} ha gastado {spentMp} PM");
             }
 
             // Estatua: acabar donde empezaste.

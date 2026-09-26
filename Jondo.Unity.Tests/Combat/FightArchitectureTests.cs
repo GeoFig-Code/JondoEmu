@@ -48,6 +48,9 @@ namespace Jondo.Unity.Tests.Combat
         {
             ElMotor,
             "Jondo.Unity.Server/Handlers/FightJoin.cs",
+            // Walking and its tackles, and what a defeat costs: partials of the same class.
+            "Jondo.Unity.Server/Handlers/FightTackle.cs",
+            "Jondo.Unity.Server/Handlers/FightDefeat.cs",
         };
 
         private static string Motor() => string.Join("\n", ElMotorEntero.Select(Fuente));

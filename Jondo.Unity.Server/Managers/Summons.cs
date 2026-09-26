@@ -64,6 +64,13 @@ namespace Jondo.Unity.Server.Managers
         public bool Juega { get; init; } = true;
 
         /// <summary>
+        /// Whether it tackles: the CanTackle bit of the template's <c>m_flags</c>, see
+        /// <see cref="MonsterFlags"/>. The Osamodas' summon 5192 carries it, and in three
+        /// captures its tackle of 60 holds whoever walks away from it.
+        /// </summary>
+        public bool AllowsTackle { get; init; } = true;
+
+        /// <summary>
         /// The spells it casts, with the grade its own grade opens: the template's <c>spells</c>
         /// against its <c>spellGrades</c> ("1,1;2,2;3,3;3,4;3,5" is spell grade 1 at monster
         /// grade 1, 2 at 2, 3 from 3 on). They go to whoever controls it as a jyy of its own:
@@ -171,6 +178,7 @@ namespace Jondo.Unity.Server.Managers
                 var (hechizo, gradoDelHechizo) = HechizoDe(conexion, nivelDelHechizo);
 
                 bool juega = (Entero(doc.RootElement, "m_flags") & CanPlayFlag) != 0;
+                bool tackles = (Entero(doc.RootElement, "m_flags") & MonsterFlags.CanTackle) != 0;
                 var hechizos = HechizosDe(doc.RootElement, grado);
 
                 return new Summon
@@ -194,6 +202,7 @@ namespace Jondo.Unity.Server.Managers
                     HechizoPropio = hechizo,
                     GradoDelHechizoPropio = gradoDelHechizo,
                     Juega = juega,
+                    AllowsTackle = tackles,
                     Hechizos = hechizos,
                     // Absent means one, not free: a template with no summonCost at all is an
                     // ordinary summon. Every template in world.db carries the key, so this

@@ -130,6 +130,14 @@ namespace Jondo.Unity.World.Fights
         public int AccumulatedMpLoss { get; set; } = 0;
         public int AccumulatedApLoss { get; set; } = 0;
 
+        /// <summary>
+        /// Whether its template lets it tackle: the <c>CanTackle</c> bit (128) of a monster's or a
+        /// summon's <c>m_flags</c>. People always can. The training dummies are among the 358
+        /// templates without it, and walking away from one never costs a point in the class
+        /// captures -- 26 walks out of their contact. See <see cref="Tackle"/>.
+        /// </summary>
+        public bool TemplateAllowsTackle { get; set; } = true;
+
         // ─── Lo que limita los lanzamientos ─────────────────────────────────────
 
         /// <summary>

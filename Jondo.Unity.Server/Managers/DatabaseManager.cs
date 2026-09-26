@@ -2255,6 +2255,7 @@ namespace Jondo.Unity.Server
             "CharacterDreams",
             "CharacterChallenges", "CharacterQuests", "CharacterAchievements",
             "CharacterKeyring", "CharacterElements",
+            "CharacterEnergy",
         };
 
         /// <summary>
@@ -3782,6 +3783,11 @@ namespace Jondo.Unity.Server
                     stats.Wisdom = g.TryGetProperty("wisdom", out var wis) ? wis.GetInt32() : 0;
                     stats.PaDodge = g.TryGetProperty("paDodge", out var pad) ? pad.GetInt32() : 0;
                     stats.PmDodge = g.TryGetProperty("pmDodge", out var pmd) ? pmd.GetInt32() : 0;
+                    if (g.TryGetProperty("bonusCharacteristics", out var bonus))
+                    {
+                        stats.TackleEvadeBonus = bonus.TryGetProperty("tackleEvade", out var te) ? te.GetInt32() : 0;
+                        stats.TackleBlockBonus = bonus.TryGetProperty("tackleBlock", out var tb) ? tb.GetInt32() : 0;
+                    }
                     stats.NeutralResistance = g.TryGetProperty("neutralResistance", out var nr) ? nr.GetInt32() : 0;
                     stats.EarthResistance = g.TryGetProperty("earthResistance", out var er) ? er.GetInt32() : 0;
                     stats.FireResistance = g.TryGetProperty("fireResistance", out var fr) ? fr.GetInt32() : 0;
@@ -5485,6 +5491,14 @@ namespace Jondo.Unity.Server
         /// <summary>The grade's own AP and MP dodge ("paDodge", "pmDodge"), on top of what its wisdom gives.</summary>
         public int PaDodge { get; set; }
         public int PmDodge { get; set; }
+
+        /// <summary>
+        /// The grade's own escape and tackle ("bonusCharacteristics.tackleEvade" and
+        /// "tackleBlock"), on top of the tenth of its agility both come from. 75 grades carry one.
+        /// </summary>
+        public int TackleEvadeBonus { get; set; }
+        public int TackleBlockBonus { get; set; }
+
         public int NeutralResistance { get; set; }
         public int EarthResistance { get; set; }
         public int FireResistance { get; set; }

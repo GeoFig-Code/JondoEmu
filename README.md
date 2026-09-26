@@ -338,7 +338,10 @@ Built with **Avalonia**, the same toolkit as the Studio.
 
 - ✅ Life regeneration, run by the client and switched by the server: started on every return to a
   roleplay map (`ktz`) and stopped on the way into a fight (`kuq`), so a fight starts on the life
-  the ticks earned
+  the ticks earned — after a defeat, from half the maximum (characteristic 97 in the `kub`)
+- ✅ Energy, out of the gauge of 10,000 (characteristics 29 and 47), kept per character and spent by
+  lost fights against monsters; it never drops below 1, so nobody becomes a ghost
+- ❌ Energy coming back — with rest or consumables; no capture measures the rate
 - ✅ Commands — `.teleport [x,y]` or `.teleport <map id>`, `.kamas`, `.shop`, `.size`, `.level`, `.item`, `.itemset`, `.receta`, `.sueno`, `.gremio`, `.raid`; they answer with an information line only their author sees
 - ✅ Live administration over HTTP — `POST /api/personaje` sets characteristics, kamas and level, grants items or a mount, and teleports a connected character without a reconnect. `POST /api/rol` changes account roles. Administrator only, loopback only
 - 🟡 `.level` repaints the in-fight spell bar, but the fighter's own level is not updated until the next fight
@@ -507,6 +510,7 @@ One fight engine serves four kinds of fight. What changes between them comes fro
 | Koliseo payout | no | no | yes | no |
 | Clears the group on a win | yes | no | no | no |
 | Moves to the next room | yes | no | no | no |
+| A defeat costs energy, half the life and the way home | yes | no | no | no |
 
 Two rules hold the rest together:
 
@@ -527,7 +531,7 @@ Three architecture tests enforce it: no lookups that assume one team is the play
 - ✅ Loot, victory and defeat screens, experience over **1,889 levels**, level-ups and group respawn
 - ✅ End-of-fight statistics — damage dealt by source (own casts, glyphs and walls, summons, turn triggers, pushes), taken, heals given and received, shields, enemies defeated, and the per-turn and per-AP averages, each player getting their own numbers
 - ✅ Monsters and bosses run their own spells' mechanics: the behaviour spell cast at the start, triggered rows armed on every fighter they name, 30+ triggers (damage by element, heals, states on and off, pushes and collisions, thresholds, deaths), state disabling (952), telefrags, delayed sub-casts, life thresholds, revives, glyphs shown in their own colours — Conde Kontatrás's clock works end to end. See **`docs/bosses.md`**
-- ✅ Monster AI that plans its turn: every spell it can pay for, against every target, from every cell its MP reach — the blow against the target's resistance, kills first and the weakest enemy focused, heals for the badly wounded, AP/MP removal, buffs and summons once a turn; cooldowns, casts per turn and per target honoured; then it places itself (ranged at its reach, melee against the weakest to lock him, fleeing when nearly dead)
+- ✅ Monster AI that plans its turn: every spell it can pay for, against every target, from every cell its MP reach — the blow against the target's resistance, kills first and the weakest enemy focused, heals for the badly wounded, AP/MP removal, buffs and summons once a turn; cooldowns, casts per turn and per target honoured; then it places itself (ranged at its reach, melee against the weakest to lock him, fleeing when nearly dead). Every cell it plans to leave next to an enemy is charged the tackle it will pay, so a held monster neither plans a retreat its MP will not cover nor a cast the lost AP will not pay for
 - 🟡 Weapon strikes apply damage and AP cost; the slash animation does not
 - ✅ Push and collision damage, `blockedCells × (level/2 + push − resistance + 32) / 4`, floored. The fighter acting as the wall takes half, and the **Unmovable** state cancels it
 - ✅ Joining someone else's fight in its placement: the swords on the map, a click on them (`kay`), or a party member pulled in behind the leader with *automatic entry*, and *automatic ready*; a dungeon's monster side grows with each player to the first `clamp(players, 4, 8)` of the room's eight
@@ -536,7 +540,23 @@ Three architecture tests enforce it: no lookups that assume one team is the play
 - 🟡 Wisdom, the experience given to a mount or a guild and account bonuses are not modelled, alone or in a group; refusals other than a party-only side are not answered
 - ✅ A dropped client does not stop the fight, and the player can come back into it — see
   [Connection and authentication](#-connection-and-authentication)
-- ❌ Lock and tackle in melee
+- ✅ Tackle and escape, for players, monsters and summons alike: every cell left next to an enemy
+  keeps `(escape + 2) / (2 × (tackle + 2))` of the AP and MP, the loss rounded half up — the seven
+  tackles of the captures, to the point. Sent as the real server does, inside the walk: `jwe 104`
+  naming the tacklers, then each loss behind its sheet (`101` AP, `127` MP), then the path; a path
+  that walks into contact pays where it arrives, and one the tackle leaves without MP stops there
+- ✅ Who does not tackle or is not tackled: templates without the client's `CanTackle` bit (the
+  training dummies), states flagged *cantTackle* / *cantBeTackled* (No Placable, Arraigado…), the
+  invisible, the carried and the dead. Monsters tackle and escape with a tenth of their agility plus
+  their grade's bonus, as their captured sheets do
+- 🟡 Several tacklers at once each keep their own share of what is left, which no capture shows;
+  summons tackle with none of their own, since their characteristics are not scaled to their
+  summoner yet; the "when tackled" triggers of items are not fired
+- ✅ Losing against monsters: energy down by ten per level up to 200 (2,000 at 354, never below 1)
+  with its "Has perdido … puntos de energía", half the maximum life missing, and back beside the
+  zaap of the save point — a duel, the Koliseo, the kanojedo and a dream cost nothing
+- 🟡 The save point is the Astrub zaap every character starts beside: saving another is in no capture
+- ❌ The anomaly's defeat back to its vestige, and ghosts, tombs and phoenixes, which the energy never reaches
 
 ### 🤺 Duels
 <img width="2560" height="1506" alt="image" src="https://github.com/user-attachments/assets/286367e0-6342-4aef-b07b-52d3bdbdf9d4" />
@@ -1677,7 +1697,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,555 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,608 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 
