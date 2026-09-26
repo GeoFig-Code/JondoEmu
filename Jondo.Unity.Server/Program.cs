@@ -96,6 +96,7 @@ namespace Jondo.Unity.Server
             Managers.RecipeManager.Initialize();
             Managers.Interactives.Initialize();
             Managers.HavenBagStore.Initialize();
+            Managers.Bank.Initialize();
             Managers.Wardrobe.Initialize();
             Managers.Titles.Initialize();
             Managers.Cosmetics.Initialize();
@@ -127,6 +128,8 @@ namespace Jondo.Unity.Server
             // Detras de los NPCs a proposito: lee sus plantillas para saber con que respuesta
             // ofrece cada guardian el manojo y con cual la llave.
             Managers.DungeonDoor.Initialize();
+            // Behind the NPCs too, and for the same reason: the bankers are found in their templates.
+            Managers.Bankers.Initialize();
             Managers.NpcShops.Initialize();
             // Detras de Npcs porque las misiones cuelgan de sus dialogos, y el catalogo es de
             // Ankama y no cambia: se lee una vez y lo comparten todas las sesiones.

@@ -4836,6 +4836,37 @@ namespace Jondo.Unity.Server
         /// <summary>El mayor uid escrito en la base. Lo usa la guardia de regresion.</summary>
         public static long MayorUidGuardado() => MayorUidEnUso();
 
+        /// <summary>
+        /// Makes sure no uid handed out from now on is at or below <paramref name="highest"/>.
+        /// </summary>
+        /// <remarks>
+        /// For the tables that keep items outside CharacterItems, the bank's first: the dispenser
+        /// starts above the highest uid in CharacterItems and nothing else, so an item that went
+        /// into the bank with the highest uid of all would have its number handed out again on the
+        /// next start. Whoever owns such a table tells the dispenser its highest uid once.
+        /// </remarks>
+        public static void KeepUidsAbove(long highest)
+        {
+            if (highest <= 0) return;
+
+            if (System.Threading.Interlocked.Read(ref _ultimoUidRepartido) == 0)
+            {
+                lock (_candadoDelUid)
+                {
+                    if (_ultimoUidRepartido == 0)
+                        _ultimoUidRepartido = Math.Max(MayorUidEnUso(), PrimerUidRepartido);
+                }
+            }
+
+            long seen;
+            do
+            {
+                seen = System.Threading.Interlocked.Read(ref _ultimoUidRepartido);
+                if (seen >= highest) return;
+            }
+            while (System.Threading.Interlocked.CompareExchange(ref _ultimoUidRepartido, highest, seen) != seen);
+        }
+
         private static long MayorUidEnUso()
         {
             try

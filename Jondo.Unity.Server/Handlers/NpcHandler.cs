@@ -243,6 +243,11 @@ namespace Jondo.Unity.Server.Handlers
                 respuestas = todas.ToArray();
             }
 
+            // And a banker offers the bank: his reply in front of the rest, the way the Bontarian
+            // banker offers it in frame 74 of the bank capture. See BankHandler.
+            var banker = Bankers.Of(npc.NpcId);
+            if (banker != null) respuestas = BankHandler.WithTheBankReply(banker, respuestas);
+
             // Se apunta por dónde va la conversación. Sin esto el ioy que llega después no se puede
             // situar: trae el id de la respuesta y nada más, ni de qué NPC ni de qué frase venía.
             SessionContext.State.OpenDialogueNpcId = npc.NpcId;
@@ -250,7 +255,7 @@ namespace Jondo.Unity.Server.Handlers
             SessionContext.State.OpenDialogueMessage = pregunta;
 
             await PreguntarAsync(stream, pregunta, respuestas, template,
-                                 escrito?.Line(pregunta));
+                                 escrito?.Line(pregunta), banker);
 
             // Y si alguna misión en curso pedía justamente venir a ver a éste, ya está.
             await Managers.Quests.OnTalkingToAsync(stream, npc.NpcId);
@@ -587,7 +592,8 @@ namespace Jondo.Unity.Server.Handlers
         /// </remarks>
         private static async Task PreguntarAsync(NetworkStream stream, long pregunta, long[] respuestas,
                                                  Npcs.Template? plantilla = null,
-                                                 Jondo.Unity.World.Content.DialogueLine? frase = null)
+                                                 Jondo.Unity.World.Content.DialogueLine? frase = null,
+                                                 Bankers.Banker? banker = null)
         {
             if (respuestas.Length == 0)
             {
@@ -621,6 +627,19 @@ namespace Jondo.Unity.Server.Handlers
                     parametros ??= new Dictionary<long, IReadOnlyList<long>>();
                     parametros[opcion.Reply] = opcion.Parameters;
                 }
+            }
+
+            // A banker's greeting says the fee -- "te costará #1 kamas" -- and his bank reply
+            // carries effect 196: ios f3 "1397" and f2 { f1: 63535, f3 { f1: 196 } }, frame 74.
+            if (banker != null)
+            {
+                parametros ??= new Dictionary<long, IReadOnlyList<long>>();
+                parametros[banker.Consult] = BankHandler.ConsultReplyEffects;
+
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Ios, BankProtocol.BuildQuestion(pregunta, respuestas, parametros,
+                        BankHandler.GreetingParameters(SessionContext.Current.AccountId))));
+                return;
             }
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
@@ -795,6 +814,16 @@ namespace Jondo.Unity.Server.Handlers
             if (SessionContext.State.OpenDialogueNpcId == Kanojedo.MasterNpc && Kanojedo.Owns(reply))
             {
                 await MasterReplyAsync(stream, reply);
+                return;
+            }
+
+            // The bank's reply: the dialogue closes and the bank opens behind it, frames 79-84 of
+            // the bank capture. See BankHandler.
+            var banker = Bankers.Of(SessionContext.State.OpenDialogueNpcId);
+            if (banker != null && reply == banker.Consult)
+            {
+                CerrarConversacion();
+                await BankHandler.OpenAsync(stream);
                 return;
             }
 

@@ -829,7 +829,8 @@ namespace Jondo.Unity.Server.Network
                     // commission's offer, on a workshop's bench, or on a magus table.
                     if (!await CommissionHandler.OfferAsync(stream, payload)
                         && !await TradeHandler.MoveAsync(stream, payload)
-                        && !await WorkshopHandler.MoveAsync(stream, payload))
+                        && !await WorkshopHandler.MoveAsync(stream, payload)
+                        && !await BankHandler.MoveAsync(stream, payload))
                         await ChestHandler.MoveAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kew)))
@@ -891,8 +892,9 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kee)))
                 {
-                    // Kamas in an exchange: a commission's payment, or a trade's.
-                    if (!await CommissionHandler.PaymentAsync(stream, payload))
+                    // Kamas in an exchange: a commission's payment, the bank's, or a trade's.
+                    if (!await CommissionHandler.PaymentAsync(stream, payload)
+                        && !await BankHandler.KamasAsync(stream, payload))
                         await TradeHandler.KamasAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Jzx)))
@@ -983,6 +985,7 @@ namespace Jondo.Unity.Server.Network
                     if (await CommissionHandler.CloseAsync()) { }
                     else if (await TradeHandler.CloseAsync()) { }
                     else if (WorkshopHandler.IsOpen) await WorkshopHandler.CloseAsync(stream);
+                    else if (BankHandler.IsOpen) await BankHandler.CloseAsync(stream);
                     else if (ChestHandler.IsOpen) await ChestHandler.CloseAsync(stream);
                     else if (NpcHandler.IsShopOpen) await NpcHandler.CloseShopAsync(stream);
                     else if (NpcHandler.IsDialogueOpen) await NpcHandler.CloseAsync(stream, payload);

@@ -204,6 +204,12 @@ namespace Jondo.Unity.Server
         public int HavenBagEntryCell { get; set; }
         public bool IsChestOpen { get; set; }
 
+        /// <summary>
+        /// The map where this character opened the bank, or zero when the bank is not open.
+        /// A map rather than a flag: see <see cref="Handlers.BankHandler.IsOpen"/>.
+        /// </summary>
+        public long BankMapId { get; set; }
+
         /// <summary>The workshop this character has open -- craft station, magus table, grinder -- if any.</summary>
         public Handlers.WorkshopHandler.Bench? Workshop { get; set; }
 
