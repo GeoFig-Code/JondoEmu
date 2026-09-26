@@ -42,21 +42,21 @@ namespace Jondo.Unity.Server.Managers
     /// 524199, 524212 and 524415 in datos/interactive_elements.json):
     ///
     ///   Bonta            217059328 (+ 217060352, 217061376)   banker 6394, cell 289 -- CAPTURED
-    ///   Astrub           192415750     bankers 100, 520, 522 from npc_spawns_derived.json
-    ///   Brakmar          214695944, 214696968                  no banker placed
-    ///   Amakna village   99095051                              no banker placed
-    ///   Pandala village  207618052                             no banker placed
-    ///   Pueblo de los ganaderos 84935175                       no banker placed
-    ///   Sufokia          91753985                              no banker placed
-    ///   Pueblo costero   86511105                              no banker placed
-    ///   Burgo (Frigost)  54534165                              no banker placed
-    ///   Picanesburgo     173937154                             no banker placed
+    ///   Astrub           192415750     520, 522 from the quest layer; 100 on 289 (inferred)
+    ///   Brakmar          214695944, 214696968                  6374 on 329 (inferred)
+    ///   Amakna village   99095051                              100 on 343 (inferred)
+    ///   Pandala village  207618052                             5653 on 289 (inferred)
+    ///   Pueblo de los ganaderos 84935175                       100 on 343 (inferred)
+    ///   Sufokia          91753985                              100 on 344 (inferred)
+    ///   Pueblo costero   86511105                              100 on 289 (inferred)
+    ///   Burgo (Frigost)  54534165                              100 on 370 (inferred)
+    ///   Picanesburgo     173937154                             3516 on 289 (inferred)
     ///
     /// Of all those maps only Bonta's first room is in a capture -- one jss, frame 16 of the bank
-    /// visit -- so it is the only banker whose place is measured. The Astrub ones come from the
-    /// quest catalogue's base layer, whose cells are placeholders. The rest are not in any capture,
-    /// and are deliberately NOT filled in from another emulator's data: the day a capture or a
-    /// person places them, they offer the bank through this class with nothing else to do.
+    /// visit -- so it is the only banker whose place is measured. The others are placed in
+    /// content/npcs/spawns.json, not from another emulator's data but on a stated rule: the free
+    /// walkable cell of the bank's first room nearest to Bonta's 289, facing 3, with the client's
+    /// own banker for the place -- see that file's comment for why each one is who he is.
     /// </para>
     /// </remarks>
     public static class Bankers

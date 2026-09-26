@@ -226,8 +226,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 ### 🏦 Banks and marketplaces
 
 - ✅ The bank, opened by the banker's "I want to consult my chest", as in the Bonta capture: one kama a stored stack to open it, the account's items and kamas shared by all its characters and kept in the base, items and kamas in and out — a moved stack gets a new uid, `-1` moves a single unit
-- ✅ Bankers wherever one stands: Bonta, measured in its capture, and Astrub. Any banker placed later works with nothing else to do
-- ❌ The other eight banks — Brakmar, Amakna, Pandala, Sufokia, Frigost and three villages — have no banker yet: no capture shows their maps. The guild chest in the bank, and the bank's level condition, are not there either
+- ✅ A banker in all ten banks of the client's world map: Bonta's where the capture has him; the other nine — Astrub, Brakmar, Amakna, Pandala, Sufokia, Frigost, Picanesburgo and two villages — inside their bank's first room near where Bonta's stands, each the client's own banker for the place (the Brakmarian, Moneo for the Saharach, Yendong for Pandala, the owl elsewhere). Their cells are inferred, no capture shows those maps
+- ❌ The guild chest in the bank, and the bank's level condition
 - ✅ The marketplaces: the client's seven — resources, equipment, consumables, runes, creatures, souls and cosmetics — each one shared by every counter of its kind, **39 counters** in Bonta, Brakmar, Astrub, Pandala, Frigost, Sufokia, Incarnam and two more towns. Browse by type and by item, buy a lot of 1, 10, 100 or 1000 — into the bag, and its price into the seller's bank whether they are connected or not — put a lot on sale for the 2 % tax, take it back; 672 hours on sale. Measured in the five captures that open one
 - 🟡 Inferred rather than captured: taking a lot back, the seller's sale notice, the end of a lot's time (it returns to the seller's bank), the refusals, and what resources and consumables take. Six of the client's 45 marketplace hints have no counter we can tell apart from a door, and are left out
 - ❌ Changing a listing's price and the sales history, which no capture shows
@@ -1670,7 +1670,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,518 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,520 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 
