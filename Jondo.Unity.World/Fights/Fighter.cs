@@ -136,6 +136,13 @@ namespace Jondo.Unity.World.Fights
         public bool IsBot { get; set; }
 
         /// <summary>
+        /// Where the other side last saw him while he is invisible: the cell he went invisible
+        /// on, then each one he casts from. -1 before he ever was. What a JondoBot aims at when
+        /// it cannot see him.
+        /// </summary>
+        public int LastSeenCell { get; set; } = -1;
+
+        /// <summary>
         /// The tenths of a second this fighter kept from the turn he passed, for his next one
         /// (FightProtocol.SavedAfter). Only a character keeps any.
         /// </summary>

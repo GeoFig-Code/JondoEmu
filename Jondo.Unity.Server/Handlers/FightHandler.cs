@@ -2841,7 +2841,7 @@ namespace Jondo.Unity.Server.Handlers
             // En un desafio contestan los dos clientes y el trabajo de abrir el turno es uno solo.
             // Al segundo jwz se le deja marchar sin hacer nada: si no, los invocados vencidos se
             // deshacen dos veces y los puntos se devuelven dos veces.
-            if (!fight.AtenderElTurnoUnaVez(fight.RoundNumber, fight.CurrentTurnIndex)) return;
+            if (!fight.AtenderElTurnoUnaVez(fight.RoundNumber, fight.CurrentTurnIndex, fighter.Id)) return;
 
             int duration = fighter.EsInvocado
                 ? Network.FightProtocol.SummonTurnDeciseconds
@@ -3907,6 +3907,15 @@ namespace Jondo.Unity.Server.Handlers
 
             // A summon casts at the grade its template opens, which the level lookup cannot
             // give: monster spells have no player level and would all resolve to the top grade.
+            // A summon casts its own spells, never its owner's. With the client and the fight out
+            // of step -- the owner's client still on his turn, the fight on his summon's -- his
+            // Invocación de Chaferloko came out of his Arakna at grade 0 and summoned for her.
+            if (caster.EsInvocado && spell != 0 && (caster.HechizosDeInvocado == null || !caster.HechizosDeInvocado.Any(h => h.Spell == spell)))
+            {
+                Program.LogDebug($"[Combate] {caster.Id} no tiene el hechizo {spell}; no se lanza.");
+                return;
+            }
+
             var limites = LimitesDelQueLanza(caster, spell);
             int cost = limites.Cost, spellLevel = limites.LevelId, grade = limites.Grade;
 
@@ -4062,6 +4071,8 @@ namespace Jondo.Unity.Server.Handlers
 
             caster.LanzadosEsteTurno[spell] = esteTurno + 1;
             if (aQuien != 0) caster.LanzadosPorObjetivo[(spell, aQuien)] = sobreEse + 1;
+            // Casting gives an invisible one away: his enemies see where the spell came from.
+            if (Managers.MonsterTactics.IsInvisible(caster)) caster.LastSeenCell = caster.CellId;
 
             // El Versatil (no repetir accion) y los dos de rematar antes de cambiar de objetivo.
             await ChallengeWatcher.CastAsync(stream, fight, caster, spell, victim,
@@ -6299,6 +6310,7 @@ namespace Jondo.Unity.Server.Handlers
                 // monster going invisible reaches the Osamodas' client, his enemy's, the same way.
                 if (c.Efecto.EffectId == Jondo.Unity.World.Combat.EffectSupport.Visibility)
                 {
+                    c.Sobre.LastSeenCell = c.Sobre.CellId;
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                         Network.FightProtocol.BuildVisibility(quienLanza.Id, c.Sobre.Id, Network.FightProtocol.Hidden)));
                 }
@@ -7729,13 +7741,14 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>The board as the tactics see it: the fight's floor, its line of sight, its fighters.</summary>
-        private static Managers.MonsterTactics.Board BoardOf(FightInstance fight)
+        internal static Managers.MonsterTactics.Board BoardOf(FightInstance fight)
         {
             var blockers = MapManager.GetLosBlockers(fight.ArenaMapId);
             return new Managers.MonsterTactics.Board
             {
                 Walkable = cell => PisableEnCombate(fight, cell),
-                Sees = (from, to) => MapGeometry.HasLineOfSight(from, to, blockers),
+                Sees = (from, to) => MapGeometry.HasLineOfSight(from, to,
+                    cell => (blockers != null && blockers.Contains(cell)) || BlocksSight(fight, cell)),
                 Fighters = TodosLosCombatientes(fight).ToList(),
                 // The walk's own rule, so that what it plans is what it will pay.
                 TackleAt = (mover, cell, ap, mp) => TackleAt(fight, mover, cell, ap, mp).Loss,
@@ -7743,7 +7756,35 @@ namespace Jondo.Unity.Server.Handlers
                 Reach = (row, caster, from, aim) => Managers.EffectEngine.ReachOf(fight, caster, row, from, aim),
                 // And its summon limit, as it will be checked when the summon comes out.
                 CanSummon = (caster, template, grade) => FitsTheSummonLimit(fight, caster, template, grade),
+                // An invisible enemy where he was last seen, not where he is.
+                Hidden = Managers.MonsterTactics.IsInvisible,
+                LastSeen = fighter => fighter.LastSeenCell,
+                // The traps of the side whose turn it is.
+                Trapped = cell => OwnTraps(fight).Any(g => g.Cubre(cell)),
+                TrapsOut = () => OwnTraps(fight).Count(),
             };
+        }
+
+        /// <summary>The traps laid by the side whose turn it is, not yet sprung.</summary>
+        private static IEnumerable<Jondo.Unity.World.Fights.Glifo> OwnTraps(FightInstance fight)
+        {
+            int side = fight.CurrentFighter?.TeamId ?? -1;
+            return fight.Glifos.Where(g => !g.Gastado && g.Tipo == Managers.EffectEngine.ColocaUnaTrampa
+                                           && fight.Buscar(g.Dueno)?.TeamId == side);
+        }
+
+        /// <summary>
+        /// Whether a fighter stands in the way of sight on that cell: anybody alive but the one
+        /// whose turn it is, who is planning where it will be and has left where it stood. In the
+        /// game a fighter blocks sight like a pillar does; without this a JondoBot shot through
+        /// a summon or an ally as if the cell were empty.
+        /// </summary>
+        private static bool BlocksSight(FightInstance fight, int cell)
+        {
+            long planning = fight.CurrentFighter?.Id ?? 0;
+            foreach (var fighter in TodosLosCombatientes(fight))
+                if (fighter.IsAlive && fighter.Id != planning && fighter.CellId == cell) return true;
+            return false;
         }
 
         /// <summary>
@@ -7917,6 +7958,7 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             monster.CurrentAP -= data.APCost;
+            if (Managers.MonsterTactics.IsInvisible(monster)) monster.LastSeenCell = monster.CellId;
 
             // Y su identificador, para que su lanzamiento también diga QUÉ se lanza.
             int spellLevel = data.SpellLevelId;
@@ -8783,7 +8825,7 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>Exact hidden-spell grade used by chained cast animations.</summary>
-        private static LimitesDelHechizo LimitesDeGrado(int spellId, int grade)
+        internal static LimitesDelHechizo LimitesDeGrado(int spellId, int grade)
         {
             int exactGrade = Math.Max(1, grade);
             var cacheKey = (spellId, -exactGrade);

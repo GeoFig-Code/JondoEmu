@@ -87,6 +87,40 @@ namespace Jondo.Unity.Tests.Combat
             finally { KoliseoBots.Forget(spec.Id); }
         }
 
+        /// <summary>
+        /// A fighter in between blocks sight as a pillar does: a JondoBot does not shoot through
+        /// an ally or a summon. The one whose turn it is does not block itself -- it plans from
+        /// where it will be, and has left where it stood.
+        /// </summary>
+        [Fact]
+        public void A_fighter_in_between_blocks_the_bots_sight()
+        {
+            var fight = new FightInstance(9_991_021, 1, 1);
+            fight.AddPlayer(Player(0));
+            fight.AddOpponent(new Fighter { Id = -7, TeamId = 1, Level = 200, MaxHP = 6666, CurrentHP = 6666, IsBot = true });
+            fight.AddOpponent(new Fighter { Id = -8, TeamId = 1, Level = 200, MaxHP = 100, CurrentHP = 100 });
+            var planner = fight.CurrentFighter!;
+            var others = fight.TurnOrder.Where(f => f != planner).ToList();
+            var (target, between) = (others[0], others[1]);
+            planner.CellId = Centre;
+            target.CellId = InLineAt(Centre, 4);
+            between.CellId = InLineAt(Centre, 6);
+            Assert.True(FightHandler.BoardOf(fight).Sees(Centre, target.CellId));
+
+            between.CellId = InLineAt(Centre, 2);
+            Assert.False(FightHandler.BoardOf(fight).Sees(Centre, target.CellId));
+            // From past the one in between it sees again; and the dead block nothing.
+            Assert.True(FightHandler.BoardOf(fight).Sees(InLineAt(Centre, 3), target.CellId));
+            between.CurrentHP = 0;
+            Assert.True(FightHandler.BoardOf(fight).Sees(Centre, target.CellId));
+
+            // Its own cell does not block it either: from behind where it stands, it plans a shot
+            // it will take once it has walked there.
+            int behind = Enumerable.Range(0, MapGeometry.MaxCells).First(c => MapGeometry.Distance(c, target.CellId) == 5
+                && MapGeometry.Distance(c, Centre) == 1 && MapGeometry.CellToPoint(c).Item2 == MapGeometry.CellToPoint(Centre).Item2);
+            Assert.True(FightHandler.BoardOf(fight).Sees(behind, target.CellId));
+        }
+
         private static MonsterTactics.Spell Made(params SpellEffect[] rows) => new()
         {
             Id = 999_001, Grade = 1, Cost = 2, MinRange = 0, MaxRange = 6, Rows = rows,
@@ -171,6 +205,140 @@ namespace Jondo.Unity.Tests.Combat
             };
 
             Assert.Equal(hidden, MonsterTactics.Reposition(board, monster, new[] { bow })[^1]);
+        }
+
+        /// <summary>
+        /// Three turns of a Sram JondoBot, the enemy seven cells away and coming no nearer: what
+        /// it casts, spell by spell, with a turn's limits and cooldowns as the fight keeps them.
+        /// </summary>
+        private static List<MonsterTactics.Action> SramTurns(int turns, params int[] picks)
+        {
+            // The Sram's picks: these where their pair holds them, the base spell elsewhere.
+            var spec = new KoliseoBots.Spec
+            {
+                Id = KoliseoBots.FirstId - 4, Breed = 4, Sex = 0, Name = "JondoBot Sram",
+                Choices = SpellTable.PairsOf(4).ToDictionary(p => p.Id, p => picks.FirstOrDefault(p.Holds) is int s && s != 0 ? s : p.Base),
+            };
+            try
+            {
+                var fight = new FightInstance(9_991_004, 1, 1);
+                var bot = KoliseoBots.BuildFighter(spec);
+                bot.CellId = Centre;
+                var enemy = Player(InLineAt(Centre, 7));
+                fight.AddPlayer(enemy);
+                fight.AddOpponent(bot);
+                StartOfFight(bot);
+                var traps = new List<int>();
+                var board = new MonsterTactics.Board
+                {
+                    Fighters = new[] { bot, enemy },
+                    Reach = (row, caster, from, aim) => EffectEngine.ReachOf(fight, caster, row, from, aim),
+                    CanSummon = (c, t, g) => FightHandler.FitsTheSummonLimit(fight, c, t, g),
+                    Trapped = cell => traps.Contains(cell),
+                    TrapsOut = () => traps.Count,
+                };
+                var spells = FightHandler.TacticsOf(bot);
+                var cast = new List<MonsterTactics.Action>();
+                for (int turn = 0; turn < turns; turn++)
+                {
+                    bot.CurrentAP = bot.MaxAP;
+                    bot.CurrentMP = bot.MaxMP;
+                    bot.LanzadosEsteTurno.Clear();
+                    foreach (var key in bot.Recarga.Keys.ToList()) bot.Recarga[key] = Math.Max(0, bot.Recarga[key] - 1);
+                    for (int step = 0; step < 10; step++)
+                    {
+                        var action = MonsterTactics.Next(board, bot, spells.FindAll(s => SpellCriteria.Allows(bot, s.Id, s.Grade)));
+                        if (action == null) break;
+                        cast.Add(action);
+                        if (action.Spell.LaysTraps) traps.Add(action.TargetCell);
+                        bot.CurrentMP -= action.Path.Count - 1;
+                        bot.CellId = action.From;
+                        bot.CurrentAP -= action.Spell.Cost;
+                        bot.LanzadosEsteTurno[action.Spell.Id] = bot.LanzadosEsteTurno.GetValueOrDefault(action.Spell.Id) + 1;
+                        int wait = FightHandler.LimitesDeGrado(action.Spell.Id, action.Spell.Grade).Intervalo;
+                        if (wait > 0) bot.Recarga[action.Spell.Id] = wait;
+                    }
+                }
+                return cast;
+            }
+            finally { KoliseoBots.Forget(spec.Id); }
+        }
+
+        private const int Invisibilidad = 12913, Doble = 12915, Arsenico = 12907;
+
+        /// <summary>
+        /// A Sram JondoBot plays like one: it lays traps where the enemy may walk, never two on one
+        /// cell, puts its double out -- not on a trap of its own --, and goes invisible. It used
+        /// to cast only its ranged blows and run: a trap, invisibility and a double were each
+        /// worth nothing to it.
+        /// </summary>
+        [Fact]
+        public void A_Sram_JondoBot_lays_traps_goes_invisible_and_puts_its_double_out()
+        {
+            var cast = SramTurns(3, Invisibilidad, Doble, Arsenico);
+            string said = string.Join(", ", cast.Select(a => $"{a.Spell.Id}@{a.TargetCell}"));
+
+            var traps = cast.Where(a => a.Spell.LaysTraps).Select(a => a.TargetCell).ToList();
+            Assert.True(traps.Count >= 2, said);
+            Assert.Equal(traps.Count, traps.Distinct().Count());
+            var twin = Assert.Single(cast, a => a.Spell.Id == Doble);
+            Assert.DoesNotContain(twin.TargetCell, traps);
+            Assert.Contains(cast, a => a.Spell.Id == Invisibilidad);
+        }
+
+        /// <summary>
+        /// A trap is likelier to be walked on on the enemy's way to its caster than off to a side,
+        /// and not at all out of his reach but for later.
+        /// </summary>
+        [Fact]
+        public void A_trap_on_the_enemys_way_is_likelier_to_be_walked_on()
+        {
+            var board = new MonsterTactics.Board();
+            int enemy = InLineAt(Centre, 6);
+            int onTheWay = InLineAt(Centre, 3);
+            int aside = Enumerable.Range(0, MapGeometry.MaxCells).First(c => MapGeometry.Distance(c, enemy) == 3
+                && MapGeometry.Distance(c, Centre) > 3);
+            int far = Enumerable.Range(0, MapGeometry.MaxCells).First(c => MapGeometry.Distance(c, enemy) == 12);
+
+            double way = MonsterTactics.TrapOdds(board, new[] { onTheWay }, enemy, 6, Centre);
+            double side = MonsterTactics.TrapOdds(board, new[] { aside }, enemy, 6, Centre);
+            double later = MonsterTactics.TrapOdds(board, new[] { far }, enemy, 6, Centre);
+            Assert.True(way > side && side > later && later > 0, $"{way} {side} {later}");
+        }
+
+        /// <summary>
+        /// An invisible enemy is not aimed at where he stands, which the bot cannot know, but
+        /// where he was last seen -- and with nowhere to aim, the bot has nothing to cast at him.
+        /// It used to hit an invisible player as if he were in plain sight.
+        /// </summary>
+        [Fact]
+        public void An_invisible_enemy_is_aimed_at_where_he_was_last_seen()
+        {
+            var (bot, enemy, _) = Duel();
+            int seen = InLineAt(Centre, 3);
+            var blow = Made(new SpellEffect { EffectId = 97, DiceNum = 30, DiceSide = 40, TargetMask = "a,A", Triggers = "I" });
+
+            var sighted = new MonsterTactics.Board { Fighters = new[] { bot, enemy } };
+            Assert.Equal(enemy.CellId, MonsterTactics.Next(sighted, bot, new[] { blow })!.TargetCell);
+
+            var unseen = new MonsterTactics.Board { Fighters = new[] { bot, enemy }, Hidden = f => f == enemy, LastSeen = _ => seen };
+            var guess = MonsterTactics.Next(unseen, bot, new[] { blow });
+            Assert.NotNull(guess);
+            Assert.Equal(seen, guess!.TargetCell);
+
+            var lost = new MonsterTactics.Board { Fighters = new[] { bot, enemy }, Hidden = f => f == enemy };
+            Assert.Null(MonsterTactics.Next(lost, bot, new[] { blow }));
+        }
+
+        /// <summary>A poison of three turns bites three times, and is worth more than one of a single turn.</summary>
+        [Fact]
+        public void A_poison_that_lasts_is_worth_its_turns()
+        {
+            var (bot, enemy, board) = Duel();
+            SpellEffect Poison(int turns) => new() { EffectId = 97, DiceNum = 20, DiceSide = 30, Duration = turns, TargetMask = "a,A", Triggers = "TB" };
+            double once = MonsterTactics.ValueOfRows(board, Made(Poison(1)), bot, bot.CellId, enemy.CellId, new List<Fighter> { enemy });
+            double thrice = MonsterTactics.ValueOfRows(board, Made(Poison(3)), bot, bot.CellId, enemy.CellId, new List<Fighter> { enemy });
+            Assert.True(once > 0 && thrice > 2 * once, $"{once} {thrice}");
         }
     }
 }

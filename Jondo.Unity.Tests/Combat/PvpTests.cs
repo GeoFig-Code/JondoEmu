@@ -184,6 +184,20 @@ namespace Jondo.Unity.Tests.Combat
             Assert.True(combate.AtenderElTurnoUnaVez(2, 0));
         }
 
+        /// <summary>
+        /// The same index of the same round is somebody else's turn once the order is rebuilt: the
+        /// Ocra at index 2, a fighter before him gone, his Arakna summoned at index 2. Her turn
+        /// opens; taken for his, it never did.
+        /// </summary>
+        [Fact]
+        public void A_turn_at_an_index_already_confirmed_opens_when_it_is_somebody_elses()
+        {
+            var combate = new FightInstance(1, 100, 200);
+            Assert.True(combate.AtenderElTurnoUnaVez(3, 2, 13825558));
+            Assert.False(combate.AtenderElTurnoUnaVez(3, 2, 13825558));
+            Assert.True(combate.AtenderElTurnoUnaVez(3, 2, -3));
+        }
+
         // -------------------------------------------------------- apuntarse y el emparejamiento
 
         [Fact]

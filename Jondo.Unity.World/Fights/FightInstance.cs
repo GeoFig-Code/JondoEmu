@@ -52,7 +52,7 @@ namespace Jondo.Unity.World.Fights
         private readonly HashSet<long> _preparados = new HashSet<long>();
 
         /// <summary>El último turno cuyo «confírmame» ya se atendió, como ronda y posición.</summary>
-        private (int Ronda, int Puesto) _turnoAtendido = (-1, -1);
+        private (int Ronda, int Puesto, long Quien) _turnoAtendido = (-1, -1, -1);
 
         /// <summary>Su propio candado: no comparte nada con el de la preparacion.</summary>
         private readonly object _candadoDelTurno = new object();
@@ -68,12 +68,20 @@ namespace Jondo.Unity.World.Fights
         /// pasar una vez y no dos. Aquí es donde se decide cuál de las dos respuestas hace el
         /// trabajo; a la otra sólo se le ignora.
         /// </remarks>
-        public bool AtenderElTurnoUnaVez(int round, int turnIndex)
+        /// <param name="fighterId">
+        /// Whose turn it is. The index alone is not a turn: a death or a summon in the middle of a
+        /// round rebuilds the order and moves everybody's index, and the next turn can land on
+        /// the index of the last one confirmed. Measured: the Ocra's own turn at index 2 of round
+        /// R, a fighter before him gone, his Arakna summoned at index 2 -- and her turn, "round R,
+        /// index 2", was taken for the one already opened. No jzc went out, the fight stood still
+        /// and the client's clock ran into the negatives.
+        /// </param>
+        public bool AtenderElTurnoUnaVez(int round, int turnIndex, long fighterId = 0)
         {
             lock (_candadoDelTurno)
             {
-                if (_turnoAtendido == (round, turnIndex)) return false;
-                _turnoAtendido = (round, turnIndex);
+                if (_turnoAtendido == (round, turnIndex, fighterId)) return false;
+                _turnoAtendido = (round, turnIndex, fighterId);
                 return true;
             }
         }
@@ -85,7 +93,7 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public bool TurnAwaitingConfirmation
         {
-            get { lock (_candadoDelTurno) return _turnoAtendido != (RoundNumber, CurrentTurnIndex); }
+            get { lock (_candadoDelTurno) return _turnoAtendido != (RoundNumber, CurrentTurnIndex, CurrentFighter?.Id ?? 0); }
         }
 
         /// <summary>

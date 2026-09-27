@@ -104,7 +104,16 @@ namespace JondoFix
             var cards = new[] { binding.btn_1v1Mode, binding.btn_2v2Mode, binding.btn_3v3Mode, binding.btn_eventMode };
             int shown = cards.Count(Shown);
             var window = WindowOf(binding.ctr_pvpArenaFights);
-            if (window == null) return;
+            if (!_described)
+            {
+                _described = true;
+                MelonLogger.Msg($"[JondoFix] Koliseo: {shown} card(s) shown; above the cards: {Chain(binding.ctr_pvpArenaFights)}.");
+            }
+            if (window == null)
+            {
+                MelonLogger.Warning("[JondoFix] Koliseo: no window above the cards to widen.");
+                return;
+            }
 
             float wanted = shown >= 4 ? FourCardsWidth : DesignWidth;
             // What was set here last, if anything: LoadMode can come again before the window is
@@ -128,12 +137,28 @@ namespace JondoFix
             return display.keyword != StyleKeyword.Undefined || display.value != DisplayStyle.None;
         }
 
-        /// <summary>The Koliseo window itself: the ancestor the client names PvpArenaBase.</summary>
+        private static bool _described;
+
+        /// <summary>
+        /// The Koliseo window itself: the first WindowFigma above the cards -- the UXML names it
+        /// PvpArenaBase, but that name is not what it carries once instantiated.
+        /// </summary>
         private static VisualElement WindowOf(VisualElement inside)
         {
             for (var element = inside; element != null; element = element.parent)
-                if (element.name == "PvpArenaBase") return element;
+            {
+                if (element.name == "PvpArenaBase" || element.TryCast<WindowFigma>() != null) return element;
+            }
             return null;
+        }
+
+        /// <summary>Every element above this one, with its type, name and width, for the log.</summary>
+        private static string Chain(VisualElement from)
+        {
+            var parts = new List<string>();
+            for (var element = from; element != null && parts.Count < 12; element = element.parent)
+                parts.Add($"{element.GetType().Name}#{element.name} {element.resolvedStyle.width:0}");
+            return string.Join(" < ", parts);
         }
 
         // ─── The rules ───────────────────────────────────────────────────────────────────
@@ -270,6 +295,9 @@ namespace JondoFix
         {
             try { KoliseoUi.NameTheCard(ui?.binding?.btn_eventMode); }
             catch (Exception ex) { MelonLogger.Warning($"[JondoFix] Koliseo card: {ex.Message}"); }
+            // And the room, from here too: whichever of these the client runs, the cards get it.
+            try { KoliseoUi.MakeRoom(ui?.binding); }
+            catch (Exception ex) { MelonLogger.Warning($"[JondoFix] Koliseo width: {ex.Message}"); }
         }
     }
 
@@ -277,10 +305,12 @@ namespace JondoFix
     [HarmonyPatch(typeof(PvpArenaFightsUi), nameof(PvpArenaFightsUi.UpdateEventMode))]
     public static class KoliseoEventCardPatch
     {
-        public static void Postfix(VisualElement buttonMode)
+        public static void Postfix(PvpArenaFightsUi __instance, VisualElement buttonMode)
         {
             try { KoliseoUi.NameTheCard(buttonMode); }
             catch (Exception ex) { MelonLogger.Warning($"[JondoFix] Koliseo card: {ex.Message}"); }
+            try { KoliseoUi.MakeRoom(__instance?.binding); }
+            catch (Exception ex) { MelonLogger.Warning($"[JondoFix] Koliseo width: {ex.Message}"); }
         }
     }
 

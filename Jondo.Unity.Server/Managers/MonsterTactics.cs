@@ -98,8 +98,11 @@ namespace Jondo.Unity.Server.Managers
 
             public bool HasRows => Rows.Count > 0;
 
-            /// <summary>Whether one of its rows summons: it is then aimed at free cells too.</summary>
-            public bool SummonsByRow => Rows.Any(r => EffectEngine.EsInvocacion(r.EffectId));
+            /// <summary>Whether one of its rows summons -- a double too: it is then aimed at free cells too.</summary>
+            public bool SummonsByRow => Rows.Any(r => EffectEngine.EsInvocacion(r.EffectId) || r.EffectId == EffectEngine.InvocaUnDoble);
+
+            /// <summary>Whether one of its rows lays a trap: it is then aimed at the cells the enemy may walk.</summary>
+            public bool LaysTraps => Rows.Any(r => r.EffectId == EffectEngine.ColocaUnaTrampa);
 
             public bool Offensive => Damage > 0 || Removal > 0;
             public bool Supportive => Heal > 0 || Buff > 0;
@@ -132,7 +135,41 @@ namespace Jondo.Unity.Server.Managers
             /// own limit, which counts each summon by its cost. Without one, it may.
             /// </summary>
             public Func<Fighter, int, int, bool>? CanSummon { get; init; }
+
+            /// <summary>
+            /// Whether a fighter is out of sight -- invisible -- and where his enemies saw him
+            /// last, -1 for nowhere. An invisible enemy is not aimed at where he stands, which
+            /// nobody on the other side knows, but at where he was last seen (<see cref="Ghosts"/>).
+            /// </summary>
+            public Func<Fighter, bool> Hidden { get; init; } = _ => false;
+            public Func<Fighter, int> LastSeen { get; init; } = _ => -1;
+
+            /// <summary>Whether a trap of the caster's side already covers the cell, and how many it has out.</summary>
+            public Func<int, bool> Trapped { get; init; } = _ => false;
+            public Func<int> TrapsOut { get; init; } = () => 0;
         }
+
+        /// <summary>The enemies the monster sees: alive, of the other side, not invisible.</summary>
+        internal static List<Fighter> Foes(Board board, Fighter monster)
+            => board.Fighters.Where(f => f.IsAlive && f.TeamId != monster.TeamId && !board.Hidden(f)).ToList();
+
+        /// <summary>
+        /// The invisible enemies, each where he was last seen -- where he went invisible, or
+        /// where he last cast from. A guess: he may have walked away since, so what lands there
+        /// is worth <see cref="GuessOdds"/> of a sure blow.
+        /// </summary>
+        internal static List<(Fighter Enemy, int Cell)> Ghosts(Board board, Fighter monster)
+            => board.Fighters.Where(f => f.IsAlive && f.TeamId != monster.TeamId && board.Hidden(f))
+                             .Select(f => (f, board.LastSeen(f)))
+                             .Where(g => MapGeometry.IsValid(g.Item2))
+                             .ToList();
+
+        /// <summary>How likely an invisible enemy still stands where he was last seen.</summary>
+        internal const double GuessOdds = 0.5;
+
+        /// <summary>Whether a fighter is invisible: an invisibility row (150) on him that has taken hold.</summary>
+        public static bool IsInvisible(Fighter fighter)
+            => fighter.Buffs.Puestos.Any(b => b.EffectId == Jondo.Unity.World.Combat.EffectSupport.Visibility && !b.Pendiente);
 
         /// <summary>
         /// A way to a cell: the path, and the AP and MP the monster still holds on arrival once
@@ -157,8 +194,8 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The next thing worth doing, or null when there is none.</summary>
         public static Action? Next(Board board, Fighter monster, IReadOnlyList<Spell> spells)
         {
-            var enemies = board.Fighters.Where(f => f.IsAlive && f.TeamId != monster.TeamId).ToList();
-            if (enemies.Count == 0) return null;
+            var enemies = Foes(board, monster);
+            if (enemies.Count == 0 && Ghosts(board, monster).Count == 0) return null;
             var allies = board.Fighters.Where(f => f.IsAlive && f.TeamId == monster.TeamId).ToList();
 
             var reach = Routes(board, monster);
@@ -255,8 +292,7 @@ namespace Jondo.Unity.Server.Managers
                                && !AlreadyHas(monster, spell.Id);
                     });
                     if (!raises) continue;
-                    double value = ValueOfRows(board, spell, monster, from, aim,
-                                               board.Fighters.Where(f => f.IsAlive && f.TeamId != monster.TeamId).ToList());
+                    double value = ValueOfRows(board, spell, monster, from, aim, Foes(board, monster));
                     if (value <= 0) continue;
                     double score = value / Math.Max(1, spell.Cost);
                     if (boost == null || score > boost.Score)
@@ -271,7 +307,7 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static List<int> Reposition(Board board, Fighter monster, IReadOnlyList<Spell> spells)
         {
-            var enemies = board.Fighters.Where(f => f.IsAlive && f.TeamId != monster.TeamId).ToList();
+            var enemies = Foes(board, monster);
             // Where it can get to once the tackles of its way are paid: a monster held in melee
             // does not plan a retreat its MP will not cover.
             var reach = Reachable(board, monster);
@@ -532,20 +568,43 @@ namespace Jondo.Unity.Server.Managers
         {
             var aims = new HashSet<int>();
             if (spell.OnSelf || spell.MinRange == 0) aims.Add(from);
+            bool Unseen(Fighter f) => f.TeamId != monster.TeamId && board.Hidden(f);
             if (!spell.OnSelf)
             {
                 foreach (var fighter in board.Fighters)
-                    if (fighter.IsAlive) aims.Add(fighter == monster ? from : fighter.CellId);
+                    if (fighter.IsAlive && !Unseen(fighter)) aims.Add(fighter == monster ? from : fighter.CellId);
                 foreach (var enemy in enemies)
                     foreach (int cell in MapGeometry.GetNeighbors(enemy.CellId))
                         if (board.Walkable(cell) && !board.Occupied(cell)) aims.Add(cell);
+                // Where an invisible one was last seen, and around it: a blow thrown there on a guess.
+                foreach (var (_, seen) in Ghosts(board, monster))
+                {
+                    aims.Add(seen);
+                    foreach (int cell in MapGeometry.GetNeighbors(seen))
+                        if (board.Walkable(cell)) aims.Add(cell);
+                }
+
+                // A trap goes where the enemy is likely to walk: the free cells in its reach
+                // with the best odds of being stepped on.
+                if (spell.LaysTraps)
+                {
+                    int reach = spell.MaxRange + monster.Range;
+                    var threats = Threats(board, monster, enemies);
+                    var likely = Enumerable.Range(0, MapGeometry.MaxCells)
+                        .Where(c => c != from && board.Walkable(c) && !board.Occupied(c) && !board.Trapped(c))
+                        .Where(c => { int d = MapGeometry.Distance(from, c); return d >= spell.MinRange && d <= reach; })
+                        .Select(c => (Cell: c, Odds: threats.Count == 0 ? 0 : threats.Max(t => TrapOdds(board, new[] { c }, t.Cell, t.MP, from))))
+                        .Where(c => c.Odds > 0)
+                        .OrderByDescending(c => c.Odds).Take(TrapCellsTried);
+                    foreach (var (cell, _) in likely) aims.Add(cell);
+                }
 
                 if (spell.SummonsByRow && enemies.Count > 0)
                 {
                     int reach = spell.MaxRange + monster.Range;
                     int Nearest(int cell) => enemies.Min(e => MapGeometry.Distance(cell, e.CellId));
                     var toward = Enumerable.Range(0, MapGeometry.MaxCells)
-                        .Where(c => c != from && board.Walkable(c) && !board.Occupied(c))
+                        .Where(c => c != from && board.Walkable(c) && !board.Occupied(c) && !board.Trapped(c))
                         .Where(c => { int d = MapGeometry.Distance(from, c); return d >= spell.MinRange && d <= reach; })
                         .OrderBy(Nearest).Take(SummonCellsTried);
                     foreach (int cell in toward) aims.Add(cell);
@@ -555,13 +614,54 @@ namespace Jondo.Unity.Server.Managers
             foreach (int aim in aims)
             {
                 var there = aim == from ? monster
-                    : board.Fighters.FirstOrDefault(f => f.IsAlive && f != monster && f.CellId == aim);
+                    : board.Fighters.FirstOrDefault(f => f.IsAlive && f != monster && f.CellId == aim && !Unseen(f));
                 yield return (there ?? monster, aim);
             }
         }
 
         /// <summary>How many of the cells nearest to the enemy a summon is weighed on.</summary>
         private const int SummonCellsTried = 6;
+
+        /// <summary>How many of the likeliest cells a trap is weighed on.</summary>
+        private const int TrapCellsTried = 8;
+
+        /// <summary>
+        /// Where the enemies are, as the monster knows it: each one it sees where he stands, each
+        /// invisible one where he was last seen, with the MP he will walk on his turn.
+        /// </summary>
+        private static List<(Fighter Who, int Cell, int MP, double Sure)> Threats(Board board, Fighter monster, List<Fighter> enemies)
+        {
+            var threats = enemies.Select(e => (e, e.CellId, Math.Max(e.MaxMP, e.CurrentMP), 1.0)).ToList();
+            foreach (var (ghost, seen) in Ghosts(board, monster))
+                threats.Add((ghost, seen, Math.Max(ghost.MaxMP, ghost.CurrentMP), GuessOdds));
+            return threats;
+        }
+
+        /// <summary>
+        /// The odds an enemy walks onto a trap covering these cells on his coming turn -- a
+        /// guess, the enemy not seeing it: best on his way to the monster within his MP, then
+        /// next to the monster, where one who fights up close ends, then anywhere he can walk,
+        /// and a little for later, a trap lasting until something steps on it.
+        /// </summary>
+        internal static double TrapOdds(Board board, IEnumerable<int> footprint, int enemyCell, int enemyMp, int monsterCell)
+        {
+            double best = 0;
+            int apart = MapGeometry.Distance(enemyCell, monsterCell);
+            foreach (int cell in footprint)
+            {
+                if (!board.Walkable(cell)) continue;
+                int toCell = MapGeometry.Distance(enemyCell, cell);
+                // Under him it waits for him to be moved onto it again, which is not his to choose.
+                if (toCell == 0) continue;
+                int toMonster = MapGeometry.Distance(cell, monsterCell);
+                double odds = toCell > enemyMp ? 0.05
+                    : toCell + toMonster == apart ? 0.5
+                    : toMonster == 1 ? 0.35
+                    : 0.15;
+                best = Math.Max(best, odds);
+            }
+            return best;
+        }
 
         /// <summary>
         /// What a cast of a class spell is worth, read the way the engine will apply it: row by
@@ -591,6 +691,8 @@ namespace Jondo.Unity.Server.Managers
             var heals = new Dictionary<Fighter, double>();
             double value = 0;
             int Nearest(int cell) => enemies.Count == 0 ? 0 : enemies.Min(e => MapGeometry.Distance(cell, e.CellId));
+            var ghosts = Ghosts(board, monster);
+            bool trapped = false;
 
             void Rows(int spellId, IReadOnlyList<SpellEffect> rows, Fighter caster, int castFrom, int castAim,
                       double weight, int depth)
@@ -605,14 +707,17 @@ namespace Jondo.Unity.Server.Managers
                     double p = weight * timing * chance;
                     int id = row.EffectId;
 
-                    if (EffectEngine.EsInvocacion(id))
+                    bool twin = id == EffectEngine.InvocaUnDoble;
+                    if (EffectEngine.EsInvocacion(id) || twin)
                     {
                         // Put down where it was aimed: a free cell, and the nearer the enemy the
                         // better. It plays every turn from then on, so it is worth a blow or two --
-                        // when the fight's limit lets it out at all.
+                        // when the fight's limit lets it out at all. A double -- the Sram's, a
+                        // copy of it that locks and takes the blows -- goes out the same way; the
+                        // engine does not count it against the limit.
                         if (!summoned && castAim != castFrom && board.Walkable(castAim) && !board.Occupied(castAim)
-                            && EffectEngine.CasterMeets(caster, row)
-                            && (board.CanSummon == null || board.CanSummon(caster, row.DiceNum, Math.Max(1, row.DiceSide))))
+                            && !board.Trapped(castAim) && EffectEngine.CasterMeets(caster, row)
+                            && (twin || board.CanSummon == null || board.CanSummon(caster, row.DiceNum, Math.Max(1, row.DiceSide))))
                         {
                             value += p * (150 + 1.5 * monster.Level + 15 * (Nearest(castFrom) - Nearest(castAim)));
                             summoned = true;
@@ -620,10 +725,62 @@ namespace Jondo.Unity.Server.Managers
                         continue;
                     }
 
-                    var reached = ReachOf(board, row, caster, castFrom, castAim);
+                    if (id == EffectEngine.ColocaUnaTrampa)
+                    {
+                        // A trap: its own spell on whoever steps on it, times the odds anybody
+                        // does. Put on a free cell, one per cast, not over another of its side's,
+                        // and each one out already makes the next less likely to be walked on.
+                        if (trapped || depth > 0 || row.DiceNum <= 0) continue;
+                        if (castAim == castFrom || !board.Walkable(castAim) || board.Occupied(castAim) || board.Trapped(castAim)) continue;
+                        trapped = true;
+                        var footprint = EffectEngine.CasillasDelEfecto(row, castFrom, castAim);
+                        if (footprint.Count == 0) footprint = new List<int> { castAim };
+                        double crowd = Math.Pow(TrapCrowding, board.TrapsOut());
+                        foreach (var (who, cell, mp, sure) in Threats(board, monster, enemies))
+                        {
+                            double odds = TrapOdds(board, footprint, cell, mp, castFrom) * sure * crowd;
+                            if (odds <= 0) continue;
+                            double sprung = TrapBlow(caster, who, row.DiceNum, Math.Max(1, row.DiceSide), castAim, 0);
+                            blows.TryGetValue(who, out double had);
+                            blows[who] = had + sprung * odds * p;
+                        }
+                        continue;
+                    }
+
+                    if (id == Jondo.Unity.World.Combat.EffectSupport.Visibility)
+                    {
+                        // Invisible: the enemy cannot aim at it, only guess. Worth more to one
+                        // under half its life, nothing to one already out of sight, and the
+                        // opposite of a gift on an enemy.
+                        foreach (var who in ReachOf(board, row, caster, castFrom, castAim))
+                        {
+                            if (IsInvisible(who)) continue;
+                            double worth = p * InvisibleShare * who.MaxHP
+                                           * (who.CurrentHP * 2 < who.MaxHP ? 1.5 : 1.0);
+                            value += who.TeamId == monster.TeamId ? worth : -worth;
+                        }
+                        continue;
+                    }
+
+                    // Whom it reaches -- but not an invisible enemy where he really is: nobody on
+                    // this side knows that. He counts where he was last seen, on a guess.
+                    var reached = ReachOf(board, row, caster, castFrom, castAim)
+                        .Where(w => w.TeamId == monster.TeamId || !board.Hidden(w)).ToList();
+                    bool damage = id >= Jondo.Unity.World.Combat.EffectSupport.FirstDamage && id <= Jondo.Unity.World.Combat.EffectSupport.LastDamage;
+                    if (damage && ghosts.Count > 0 && HitsEnemies(row))
+                    {
+                        var zone = EffectEngine.CasillasDelEfecto(row, castFrom, castAim);
+                        foreach (var (ghost, seen) in ghosts)
+                        {
+                            if (!zone.Contains(seen)) continue;
+                            double guess = Blow(Average(row), ElementOfDamage(id), caster, ghost) * p * GuessOdds;
+                            blows.TryGetValue(ghost, out double had);
+                            blows[ghost] = had + guess;
+                        }
+                    }
                     if (reached.Count == 0) continue;
 
-                    if (id >= Jondo.Unity.World.Combat.EffectSupport.FirstDamage && id <= Jondo.Unity.World.Combat.EffectSupport.LastDamage)
+                    if (damage)
                     {
                         double dice = Average(row);
                         var element = ElementOfDamage(id);
@@ -720,6 +877,55 @@ namespace Jondo.Unity.Server.Managers
         private const int SubCastDepth = 2;
         private const double SubCastShare = 0.9;
 
+        /// <summary>
+        /// What going invisible is worth, as a share of the life of whoever goes invisible: the
+        /// blow or so of the enemy's that cannot be aimed. For a JondoBot, 333 of its 6,666 --
+        /// on 2 AP as much as its best blow per AP --, half as much again under half its life.
+        /// </summary>
+        private const double InvisibleShare = 0.05;
+
+        /// <summary>How much less likely a trap is walked on for each one of its side already out.</summary>
+        private const double TrapCrowding = 0.7;
+
+        /// <summary>Whether a row's mask takes in enemies -- all of them, or the players among them.</summary>
+        private static bool HitsEnemies(SpellEffect row)
+            => (row.TargetMask ?? "").Split(',').Select(t => t.Trim().TrimStart('*'))
+                                     .Any(t => t == "A" || t == "H");
+
+        /// <summary>
+        /// What a trap's own spell does to the one who steps on it, the spell going off on the
+        /// trap's centre with him on it: the rows whose zone takes his cell in -- Fragmentación
+        /// hits the centre with one row and three rings around it with three more, and he is in
+        /// the centre, not in the rings --, its sub-casts' as far as they go, and the AP and MP
+        /// it takes from him.
+        /// </summary>
+        private static double TrapBlow(Fighter caster, Fighter victim, int spell, int grade, int centre, int depth)
+        {
+            double total = 0;
+            foreach (var row in SpellEffects.De(spell, grade))
+            {
+                if (EffectEngine.EsMarcadorDeGuion(row.EffectId) || row.ForClientOnly || Timing(row) <= 0) continue;
+                int id = row.EffectId;
+                bool onHim = EffectEngine.CasillasDelEfecto(row, centre, centre).Contains(centre);
+                if (id >= Jondo.Unity.World.Combat.EffectSupport.FirstDamage && id <= Jondo.Unity.World.Combat.EffectSupport.LastDamage)
+                {
+                    if (onHim && HitsEnemies(row)) total += Blow(Average(row), ElementOfDamage(id), caster, victim) * Timing(row);
+                }
+                else if (EffectEngine.EsDeLaFamiliaDeSublanzar(id) && depth < SubCastDepth && row.DiceNum > 0)
+                    total += SubCastShare * TrapBlow(caster, victim, row.DiceNum, Math.Max(1, row.DiceSide), centre, depth + 1);
+                else if (onHim && HitsEnemies(row))
+                {
+                    var (characteristic, sign) = DatabaseManager.EffectMeta(id);
+                    if (sign < 0 && (characteristic == 1 || characteristic == 23))
+                    {
+                        int held = characteristic == 1 ? Math.Max(victim.MaxAP, victim.CurrentAP) : Math.Max(victim.MaxMP, victim.CurrentMP);
+                        total += Math.Min(Average(row), held) * StatWeight(characteristic);
+                    }
+                }
+            }
+            return total;
+        }
+
         /// <summary>The life-stealing blows run from 91 to 95; 96 to 100 only hurt.</summary>
         private const int LastLifeSteal = 95;
 
@@ -736,7 +942,20 @@ namespace Jondo.Unity.Server.Managers
                 else if (string.Equals(trigger, EffectEngine.AlEmpezarElTurno, StringComparison.OrdinalIgnoreCase)
                          || string.Equals(trigger, EffectEngine.AlAcabarElTurno, StringComparison.OrdinalIgnoreCase)) later = true;
             }
-            return now ? 1.0 : later ? 0.7 : 0;
+            return now ? 1.0 : later ? 0.7 * Repeats(row) : 0;
+        }
+
+        /// <summary>
+        /// How many times a row that waits on the turn's start or end goes off: once for each
+        /// turn it lasts -- a poison of three turns bites three times --, each a little less sure
+        /// than the one before, and no more than four counted.
+        /// </summary>
+        private static double Repeats(SpellEffect row)
+        {
+            int turns = row.Duration < 0 ? 4 : Math.Clamp(row.Duration, 1, 4);
+            double total = 0, weight = 1;
+            for (int i = 0; i < turns; i++, weight *= 0.8) total += weight;
+            return total;
         }
 
         /// <summary>
