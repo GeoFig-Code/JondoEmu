@@ -677,16 +677,44 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jml)))
                 {
-                    // Abrir la ventana de gremio: pedir rangos, miembros y cabecera.
-                    await Handlers.GuildHandler.OpenWindowAsync(stream, payload);
+                    // The guild window's members.
+                    await Handlers.GuildHandler.MembersAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jlk)))
+                {
+                    // The guild window opens: the chest's tabs and the header. The window used to
+                    // come out black when the client sent jlk and jii and waited: it was waiting
+                    // for these, and for the jfp's jff as an answer.
+                    await Handlers.GuildHandler.OpenWindowAsync(stream);
                 }
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jii)))
                 {
-                    // La pestaña de la ventana. Se contesta con lo mismo que al jml, porque el
-                    // cliente NO siempre manda el jml: tras volver a entrar con un gremio ya hecho
-                    // mandaba jlk y jii y se quedaba esperando, y la ventana salía negra. Con
-                    // esto la ventana tiene su cabecera y sus miembros venga o no el jml.
-                    await Handlers.GuildHandler.OpenWindowAsync(stream, payload);
+                    // A tab of the guild window: the real server never answers it (26 of 28
+                    // captured, the other two answered by their neighbours). It was answered with
+                    // the guild again, jgw first, and every tab printed "acabas de unirte".
+                }
+                // The guild window's tabs whose contents this server does not keep, answered empty
+                // as the captures of a new guild answer them (see Op.Jfv to Op.Hxm).
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jfv)))
+                    await Handlers.GuildHandler.EmptyTabAsync(stream, payload, Op.Jfs, 0);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jeu)))
+                    await Handlers.GuildHandler.EmptyTabAsync(stream, payload, Op.Jei, 3);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jga)))
+                    await Handlers.GuildHandler.EmptyTabAsync(stream, payload, Op.Jfz, 1);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jgr)))
+                    await Handlers.GuildHandler.EmptyTabAsync(stream, payload, Op.Jgq, 1);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jet)))
+                    await Handlers.GuildHandler.EmptyTabAsync(stream, payload, Op.Jdb, 0);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jfw)))
+                    await Handlers.GuildHandler.EmptyTabAsync(stream, payload, Op.Jfr, 0);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hzc)))
+                    await Handlers.GuildHandler.EmptyTabAsync(stream, payload, Op.Ice, 1);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hvx)))
+                    await Handlers.GuildHandler.EmptyTabAsync(stream, payload, Op.Hxm, 0);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jew)))
+                {
+                    // When the week starts again: asked at world entry too.
+                    await Handlers.GuildHandler.WeeklyResetAsync(stream, payload);
                 }
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jiy)))
                 {

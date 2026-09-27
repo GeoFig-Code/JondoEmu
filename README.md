@@ -279,6 +279,13 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The guild window: header (`jhh`), ranks (`jco`), member list (`jgu`) with class, level,
   achievement points, gremichas, online state and the leader's note; the guild comes with you into
   the world on login, rebuilt from the database
+- ✅ The window answered request by request, as in the captures: opening (`jlk` → the chest's tabs
+  and the header), the members only when `jml` asks for them, the perks' `jff` as an answer, and a
+  tab change (`jii`) not at all. Login says you belong (`jhe`, with your contribution) and never
+  "you have just joined", which only joining says (`jco` before `jgw`, as the client needs)
+- ✅ The tabs this server keeps nothing for — perks, raids, the paged list, the collectors' —
+  answered empty as a new guild's are (`jfv`, `jeu`, `jga`, `jgr`, `jet`, `jfw`, `hzc`, `hvx`), and
+  the week's reset (`jew` → `jez`, Tuesday 05:00 UTC, in all five captures)
 - ✅ Leave from the window (`jho`) or with `.gremio salir`; kick with `.gremio expulsar`
 - ✅ Ranks — open, rename, set rights, create (`jcs`, `jct`, `jck`, `jcv`), each answered with the
   whole `jco`. Rights are stored as they arrive. `.gremio rango <personaje> <n>` assigns one
@@ -1783,7 +1790,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,863 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,871 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 

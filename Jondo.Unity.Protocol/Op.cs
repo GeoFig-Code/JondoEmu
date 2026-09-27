@@ -1032,6 +1032,66 @@ public static class Op
     /// <summary>C→S: cambia de pestaña dentro de la ventana de gremio. f2 la pestaña.</summary>
     public const string Jiy = "jiy";
 
+    // ─── The guild window's tabs, as the captures answer them for a guild with nothing ────
+    // Each pair is request → answer (root 3). "Gremio/muchas acciones en mi gremio como lider".
+
+    /// <summary>C→S: the perks tab (with jfp, jeu, jga and an empty jml). Answered with <see cref="Jfs"/>.</summary>
+    public const string Jfv = "jfv";
+
+    /// <summary>S→C: answer to the jfv, empty.</summary>
+    public const string Jfs = "jfs";
+
+    /// <summary>C→S: the perks tab. Answered with <see cref="Jei"/>, "1a00" for none.</summary>
+    public const string Jeu = "jeu";
+
+    /// <summary>S→C: answer to the jeu.</summary>
+    public const string Jei = "jei";
+
+    /// <summary>C→S: the perks tab. Answered with <see cref="Jfz"/>, "0a00" for none.</summary>
+    public const string Jga = "jga";
+
+    /// <summary>S→C: answer to the jga.</summary>
+    public const string Jfz = "jfz";
+
+    /// <summary>C→S: when the week starts again, asked at world entry and from the guild window.</summary>
+    public const string Jew = "jew";
+
+    /// <summary>
+    /// S→C: answer to the jew, f1 the next weekly reset as an ISO string: Tuesday, 05:00 UTC, in
+    /// all five captures ("2026-08-18T05:00:00Z" asked on Wednesday the 12th and Saturday the 15th).
+    /// </summary>
+    public const string Jez = "jez";
+
+    /// <summary>C→S: asked with the jew from the guild window. Answered with <see cref="Jgq"/>, "0a00" for none.</summary>
+    public const string Jgr = "jgr";
+
+    /// <summary>S→C: answer to the jgr.</summary>
+    public const string Jgq = "jgq";
+
+    /// <summary>C→S: a guild tab's paged list ("08012200": f1 page 1). Answered with <see cref="Jdb"/>.</summary>
+    public const string Jet = "jet";
+
+    /// <summary>S→C: answer to the jet.</summary>
+    public const string Jdb = "jdb";
+
+    /// <summary>C→S: a guild tab, with hzc and hvx. Answered with <see cref="Jfr"/>, empty.</summary>
+    public const string Jfw = "jfw";
+
+    /// <summary>S→C: answer to the jfw.</summary>
+    public const string Jfr = "jfr";
+
+    /// <summary>C→S: sent with the jfw. Answered with <see cref="Ice"/>, "0a00" for none.</summary>
+    public const string Hzc = "hzc";
+
+    /// <summary>S→C: answer to the hzc.</summary>
+    public const string Ice = "ice";
+
+    /// <summary>C→S: sent with the jfw, and alone. Answered with <see cref="Hxm"/>, empty.</summary>
+    public const string Hvx = "hvx";
+
+    /// <summary>S→C: answer to the hvx.</summary>
+    public const string Hxm = "hxm";
+
     /// <summary>C→S: abandonar el gremio. f1 el personaje.</summary>
     public const string Jho = "jho";
 
@@ -1116,7 +1176,11 @@ public static class Op
     /// <summary>Sin identificar. 1 uso en el emulador.</summary>
     public const string Jgv = "jgv";
 
-    /// <summary>El gremio de la cuenta grabada; se descarta. 7 mensajes.</summary>
+    /// <summary>
+    /// S→C: belonging to a guild, silently (fft::begx): f1 the guild, f2 the rank, f3 the
+    /// member's contribution, f4 not known. What world entry sends -- "jco jhe jhh ... jgu" in
+    /// every capture of it --; the jgw is the one of joining, with its chat line and popup.
+    /// </summary>
     public const string Jhe = "jhe";
 
     /// <summary>El gremio otra vez: fecha de fundacion, nivel y numero de miembros. Se descarta; mientras viajaba provocaba un NullReferenceException en el cliente. 18 mensajes.</summary>

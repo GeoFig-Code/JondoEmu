@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Jondo.Unity.Server.Managers;
 
 namespace Jondo.Unity.Server.Network
@@ -43,6 +44,49 @@ namespace Jondo.Unity.Server.Network
                 .Var(2, rank)
                 .Msg(3, GuildBlock(guild))
                 .Build();
+
+        /// <summary>
+        /// Belonging to a guild, said silently (jhe): f1 the guild's block, f2 the rank, f3 the
+        /// member's contribution. What world entry sends; the jgw is joining, and its handler
+        /// prints "you have just joined" and opens a popup every time it comes.
+        /// </summary>
+        /// <remarks>
+        /// Against the captures of «Jondo»: f3 is 10 and then 20 around "contribuir en el gremio
+        /// 10 puntos", the {20, 20} of the member's own jgu row. The f4 (1791 for that member,
+        /// 4568 for another) is not known and does not go; a member who has just joined has it at
+        /// zero, since the jgw does not carry it.
+        /// </remarks>
+        public static byte[] BuildMembership(GuildStore.Guild guild, int rank, long contribution)
+            => Pb.New()
+                .Msg(1, GuildBlock(guild))
+                .Var(2, rank)
+                .VarIfNotZero(3, contribution)
+                .Build();
+
+        /// <summary>
+        /// The next weekly reset (jez), as an ISO string: Tuesday at 05:00 UTC. The five captures
+        /// that ask for it agree -- asked on Sunday the 9th it is the 11th, on Wednesday the 12th
+        /// and Saturday the 15th the 18th, on Saturday the 29th 1 September, and on Tuesday the
+        /// 1st at 23:12, the reset of that morning already past, the 8th.
+        /// </summary>
+        public static byte[] BuildWeeklyReset(DateTime utcNow)
+            => Pb.New().Str(1, NextWeeklyReset(utcNow).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'",
+                                                                  System.Globalization.CultureInfo.InvariantCulture)).Build();
+
+        internal static DateTime NextWeeklyReset(DateTime utcNow)
+        {
+            int ahead = ((int)DayOfWeek.Tuesday - (int)utcNow.DayOfWeek + 7) % 7;
+            var reset = DateTime.SpecifyKind(utcNow.Date.AddDays(ahead).AddHours(5), DateTimeKind.Utc);
+            return reset > utcNow ? reset : reset.AddDays(7);
+        }
+
+        /// <summary>
+        /// A guild tab's answer for a guild that has none of what it lists -- no perks, no raids,
+        /// nothing in the paged list -- as the captures of a new guild answer it: the empty
+        /// message ("0a00" or "1a00") in the one field they carry, or nothing at all.
+        /// </summary>
+        public static byte[] BuildEmptyTab(int field)
+            => field == 0 ? Array.Empty<byte>() : Pb.New().Bytes(field, Array.Empty<byte>()).Build();
 
         /// <summary>
         /// La cabecera de la ventana de gremio (jhh): f1 la fecha de fundación, f3 el nivel, f9

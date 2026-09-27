@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using Jondo.Unity.Protocol;
+using Jondo.Unity.Server.Handlers;
 using Jondo.Unity.Server.Managers;
 using Jondo.Unity.Server.Network;
 using Microsoft.Data.Sqlite;
@@ -150,6 +153,60 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal("0805", Hex(GuildProtocol.BuildContributionsLeft(5)));
             Assert.Equal("", Hex(GuildProtocol.BuildContributionsLeft(0)));
             Assert.Equal("1a00", Hex(GuildProtocol.BuildNoBenefits()));
+        }
+
+        /// <summary>
+        /// Belonging, as world entry says it (jhe): the capture's frame of «Jondo» after two
+        /// contributions ("entrar a combate-desconectarse-reconectar", frame 180), all but its
+        /// unknown f4.
+        /// </summary>
+        [Fact]
+        public void Belonging_is_the_world_entrys_jhe_and_not_the_jgw_of_joining()
+        {
+            const string captured = "0a200a111a0f08a5011008188080fe0728b2afc20410bbc8021a054a6f6e646f200110011814" + "20ff0d";
+            Assert.Equal(captured[..^6], Hex(GuildProtocol.BuildMembership(Jondo, rank: 1, contribution: 20)));
+        }
+
+        /// <summary>The next weekly reset (jez), against the five captures that ask for it.</summary>
+        [Theory]
+        [InlineData("2026-08-09T16:56:00Z", "2026-08-11T05:00:00Z")]
+        [InlineData("2026-08-12T21:50:00Z", "2026-08-18T05:00:00Z")]
+        [InlineData("2026-08-15T18:24:00Z", "2026-08-18T05:00:00Z")]
+        [InlineData("2026-08-29T21:03:00Z", "2026-09-01T05:00:00Z")]
+        [InlineData("2026-09-01T23:12:00Z", "2026-09-08T05:00:00Z")]
+        public void The_week_starts_again_on_tuesday_at_five(string asked, string reset)
+        {
+            var now = DateTime.Parse(asked, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
+            Assert.Equal("0a14" + Hex(System.Text.Encoding.ASCII.GetBytes(reset)), Hex(GuildProtocol.BuildWeeklyReset(now)));
+        }
+
+        /// <summary>The tabs of a guild with nothing in them, as the captures answer them.</summary>
+        [Fact]
+        public void An_empty_tab_is_the_captures()
+        {
+            Assert.Equal("0a00", Hex(GuildProtocol.BuildEmptyTab(1)));   // jfz, jgq, ice
+            Assert.Equal("1a00", Hex(GuildProtocol.BuildEmptyTab(3)));   // jei
+            Assert.Equal("", Hex(GuildProtocol.BuildEmptyTab(0)));       // jfs, jfr, hxm
+        }
+
+        /// <summary>
+        /// Opening the window answers the chest's tabs and the header, and the members only when
+        /// the jml asks for them -- never the jgw of joining, which printed "acabas de unirte al
+        /// gremio" at every tab.
+        /// </summary>
+        [Fact]
+        public async Task Opening_the_window_never_says_you_have_just_joined()
+        {
+            GuildStore.Create(7003, "Jondo", 165, 8, 16744448, 9476018);
+            await using var wire = await global::Jondo.Unity.Tests.Combat.PortalTests.Wire.Open(7003);
+            using (SessionContext.Push(wire.Session))
+            {
+                await GuildHandler.OpenWindowAsync(wire.Session.Stream!);
+                await GuildHandler.MembersAsync(wire.Session.Stream!, ConnectionProtocol.Push(Op.Jml, Array.Empty<byte>()));
+            }
+
+            var ops = (await wire.Drain()).Select(f => f.Op).ToList();
+            Assert.Equal(new[] { Op.Ivl, Op.Jhh }, ops);
         }
 
         /// <summary>Las gremichas salen de las contribuciones: diez por cada una, en total.</summary>

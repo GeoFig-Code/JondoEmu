@@ -185,17 +185,24 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Le manda a un personaje todo lo de su gremio: pertenencia, rangos, cabecera y la lista
-        /// de miembros. Se usa al crear, al abrir la ventana y al entrar al mundo.
+        /// Le manda a quien acaba de entrar en un gremio todo lo suyo: rangos, pertenencia, la
+        /// lista de miembros y la cabecera.
         /// </summary>
+        /// <remarks>
+        /// Only on joining: the jgw is "you have just joined", with its chat line and its popup.
+        /// It went out too on opening the window and on every tab of it (jml, jii), and that was
+        /// the "acabas de unirte al gremio" at every click. The ranks go first, as in the capture
+        /// ("jco jgw"): the client's jgw handler looks the rank up among them and does not ask
+        /// whether it is there.
+        /// </remarks>
         public static async Task SendGuildToOwnerAsync(NetworkStream stream, GuildStore.Guild guild, long characterId)
         {
             int rank = GuildStore.RankOf(characterId);
             var members = GuildStore.Members(guild.Id);
 
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jco, GuildProtocol.BuildDefaultRanks()));
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jgw,
                 GuildProtocol.BuildGuildJoined(guild, rank)));
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jco, GuildProtocol.BuildDefaultRanks()));
             foreach (var frame in MemberFrames(members))
                 await WriteAsync(stream, frame);
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jhh,
@@ -220,17 +227,54 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Abrir la ventana de gremio (jml / jii). El cliente la pide con una ráfaga de mensajes
-        /// vacíos; el servidor real responde con los rangos, los miembros y la cabecera. Si el
-        /// personaje no tiene gremio, no hay nada que mandar.
+        /// The guild window opening (jlk): the chest's tabs (ivl) and the window's header (jhh).
         /// </summary>
-        public static async Task OpenWindowAsync(NetworkStream stream, byte[] frame)
+        /// <remarks>
+        /// The window opens with a burst -- jlk, jiy{4}, jii{1}, jfp, jiy, then jiy{1}, jml{1},
+        /// jlx{8} -- and the real server answers ivl, jci, jff, jhh, jla, jgu, jmf, in all six
+        /// captures of it. In the invitation's one the client waits for the first half's answers
+        /// before sending the second, and the header comes with the first: the jlk's, since the
+        /// jii is never answered anywhere (26 of 28).
+        /// </remarks>
+        public static async Task OpenWindowAsync(NetworkStream stream)
         {
             long who = SessionContext.State.CharacterId;
             var guild = who == 0 ? null : GuildStore.GuildOf(who);
             if (guild == null) return;
-            await SendGuildToOwnerAsync(stream, guild, who);
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Ivl,
+                StorageProtocol.BuildGuildChestTabs(GuildChests.TabsOfGuild(guild.Id))));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jhh,
+                GuildProtocol.BuildGuildInfo(guild, GuildStore.Members(guild.Id).Count)));
         }
+
+        /// <summary>
+        /// The members (jml {f1: true}): one jgu per member. The jml of the perks tab and of
+        /// closing the window come empty, and the capture answers them nothing.
+        /// </summary>
+        public static async Task MembersAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jml = ConnectionProtocol.ReadPayload(frame, Op.Jml);
+            if (jml == null || FieldValue(jml, 1) == 0) return;
+
+            long who = SessionContext.State.CharacterId;
+            var guild = who == 0 ? null : GuildStore.GuildOf(who);
+            if (guild == null) return;
+            foreach (var member in MemberFrames(GuildStore.Members(guild.Id))) await WriteAsync(stream, member);
+        }
+
+        /// <summary>
+        /// A tab whose contents this server does not keep -- the perks, the raids, the paged
+        /// list, the collectors' -- answered as the captures answer it for a guild that has none:
+        /// its empty message, on root 3 with the request's id.
+        /// </summary>
+        public static async Task EmptyTabAsync(NetworkStream stream, byte[] frame, string answer, int field)
+            => await WriteAsync(stream, ConnectionProtocol.Answer(answer, GuildProtocol.BuildEmptyTab(field),
+                                                                  ConnectionProtocol.RequestId(frame)));
+
+        /// <summary>When the week starts again (jew → jez), on root 3 with the request's id.</summary>
+        public static async Task WeeklyResetAsync(NetworkStream stream, byte[] frame)
+            => await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jez, GuildProtocol.BuildWeeklyReset(DateTime.UtcNow),
+                                                                  ConnectionProtocol.RequestId(frame)));
 
         /// <summary>El f2 del jiy que pide la ficha del anuario.</summary>
         public const int ProfileTab = 4;
@@ -276,11 +320,16 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>El jfp de la apertura: se contesta con el jff de un gremio nuevo.</summary>
+        /// <remarks>
+        /// As an answer, root 3 with the request's id, as in all eight captured: it went out as a
+        /// push, and the window waits for its answer before asking for the members.
+        /// </remarks>
         public static async Task BenefitsAsync(NetworkStream stream, byte[] frame)
         {
             long who = SessionContext.State.CharacterId;
             if (who == 0 || GuildStore.GuildOf(who) == null) return;
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jff, GuildProtocol.BuildNoBenefits()));
+            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jff, GuildProtocol.BuildNoBenefits(),
+                                                               ConnectionProtocol.RequestId(frame)));
         }
 
         // ─── Los rangos ─────────────────────────────────────────────────────────
@@ -937,8 +986,8 @@ namespace Jondo.Unity.Server.Handlers
             int rank = GuildStore.RankOf(characterId);
             var members = GuildStore.Members(guild.Id);
 
-            await session.SendAsync(ConnectionProtocol.Push(Op.Jgw, GuildProtocol.BuildGuildJoined(guild, rank)));
             await session.SendAsync(ConnectionProtocol.Push(Op.Jco, GuildProtocol.BuildDefaultRanks()));
+            await session.SendAsync(ConnectionProtocol.Push(Op.Jgw, GuildProtocol.BuildGuildJoined(guild, rank)));
             foreach (var frame in MemberFrames(members)) await session.SendAsync(frame);
             await session.SendAsync(ConnectionProtocol.Push(Op.Jhh,
                 GuildProtocol.BuildGuildInfo(guild, members.Count)));

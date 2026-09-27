@@ -780,14 +780,16 @@ namespace Jondo.Unity.Server.Network
             // database now, so a character who has a guild sees it. Nothing goes out for one who
             // has none, which is what the discard already did. The captured ranks are a fixed
             // default template (jco), reused here.
+            // In the capture's order, "jco jhe jhh": the ranks, then belonging (jhe) -- not the
+            // jgw of joining, which printed "acabas de unirte al gremio" at every login.
             var guild = Managers.GuildStore.GuildOf(character.Id);
             if (guild != null)
             {
                 int rank = Managers.GuildStore.RankOf(character.Id);
                 var members = Managers.GuildStore.Members(guild.Id);
-                await EnviarAsync(stream, ConnectionProtocol.Push(Op.Jgw,
-                    GuildProtocol.BuildGuildJoined(guild, rank)));
                 await EnviarAsync(stream, ConnectionProtocol.Push(Op.Jco, GuildProtocol.BuildDefaultRanks()));
+                await EnviarAsync(stream, ConnectionProtocol.Push(Op.Jhe,
+                    GuildProtocol.BuildMembership(guild, rank, Managers.GuildStore.ContributedBy(character.Id))));
                 await EnviarAsync(stream, ConnectionProtocol.Push(Op.Jhh,
                     GuildProtocol.BuildGuildInfo(guild, members.Count)));
                 Console.WriteLine($"[World] Guild sent for {character.Name}: {guild.Name} ({members.Count} members).");
