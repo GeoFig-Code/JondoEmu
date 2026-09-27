@@ -146,6 +146,10 @@ namespace Jondo.Unity.Server
             // Detras de las misiones: 259 logros se ganan acabando una, y el catalogo se indexa
             // por mision al cargarse.
             Managers.Achievements.Load();
+            // Behind the quests as well: the Almanax offerings are quests, and the calendar finds
+            // their giver in the quest catalogue.
+            Managers.Almanax.Load();
+            Managers.Emotes.Load();
             Managers.TokenShops.Initialize();
 
             Console.WriteLine("[+] Registering Fight Packet Handlers...");

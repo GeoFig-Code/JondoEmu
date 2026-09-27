@@ -504,6 +504,11 @@ namespace Jondo.Unity.Server.Network
                         await Managers.Quests.OnMapEnteredAsync(stream, GameState.MapId,
                                                                 mapaInfo?.SubAreaId ?? 0);
 
+                        // And the achievements that walking here earns: the zone explored, and
+                        // the level and the bag looked at again. Same place, same reason.
+                        await Managers.Achievements.OnMapEnteredAsync(stream, GameState.MapId,
+                                                                      mapaInfo?.SubAreaId ?? 0);
+
                         Console.WriteLine($"[Game Node] Actors of map {GameState.MapId} sent: " +
                                           $"{here.Name} on cell {GameState.CellId}.");
                     }
@@ -1297,6 +1302,37 @@ namespace Jondo.Unity.Server.Network
                     // Ha pulsado el botón de cobrar un logro. El -1 es «todos los que me debas».
                     await AchievementHandler.ClaimAsync(stream, payload);
                 }
+                else if (payloadStr.Contains(Op.Uri(Op.Mfe)))
+                {
+                    // The achievement window opening: the ones closest to being earned.
+                    await AchievementHandler.OpenedAsync(stream);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Mfp)))
+                {
+                    await AchievementHandler.SecondRequestAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Mff)))
+                {
+                    // A category of the achievement window.
+                    await AchievementHandler.CategoryAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Mfm)))
+                {
+                    await AchievementHandler.DetailsAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Khl)))
+                {
+                    // An emote from the emote bar, sitting included.
+                    await EmoteHandler.PlayAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Hov)))
+                {
+                    await EmoteHandler.SmileyAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Hor)))
+                {
+                    await EmoteHandler.MoodAsync(stream, payload);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Krc)))
                 {
                     await StatsHandler.HandleStatsUpgradeRequest(stream, payload);
@@ -1437,6 +1473,7 @@ namespace Jondo.Unity.Server.Network
             Managers.SpellChoices.LoadFrom(chosen.Id);
             Managers.Quests.LoadFrom(chosen.Id);
             Managers.Achievements.LoadFrom(chosen.Id);
+            Managers.Emotes.LoadFrom(chosen.Id);
             SessionContext.State.ElementsUsed = DatabaseManager.LoadElementsUsed(chosen.Id);
 
             SessionContext.Current.EnterWorld();
@@ -1492,6 +1529,11 @@ namespace Jondo.Unity.Server.Network
 
             // Y su diario de misiones, por lo mismo: el de la captura ya no viaja.
             await Managers.Quests.SendJournalAsync(stream);
+
+            // And their emotes and achievements, for the same reason: the replayed block carried
+            // the recorded account's 47 emotes and 954 achievements.
+            await Managers.Emotes.SendListAsync(stream);
+            await Managers.Achievements.SendListAsync(stream);
 
             // Y la marca verde sobre quien tenga algo que ofrecer en este mapa.
             await Managers.Quests.SendMarksAsync(stream, GameState.MapId);

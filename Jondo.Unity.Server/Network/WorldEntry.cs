@@ -191,8 +191,13 @@ namespace Jondo.Unity.Server.Network
 
             // Los logros de esa cuenta: 954 entradas, y los 954 ids que llevan son logros de verdad.
             // Es la razón de que el personaje entrara con todos los logros del jugador capturado.
-            // Todavía no se manda nada en su lugar, que es lo que ve una cuenta nueva.
+            // In their place goes the character's own list: Managers.Achievements.SendListAsync.
             Op.Mft,
+
+            // And that account's emotes: 47 of them, where a new character has four (1, 97, 98
+            // and 127, in the three captures that create one). In their place goes the
+            // character's own list: Managers.Emotes.SendListAsync.
+            Op.Khn,
         };
 
         /// <summary>Character id the capture belongs to. Learned from the blocks, never written down.</summary>

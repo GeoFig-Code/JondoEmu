@@ -126,6 +126,30 @@ namespace Jondo.Unity.Server
         /// <summary>Los logros de este personaje. Null hasta entrar al mundo, como las misiones.</summary>
         public World.Achievements.AchievementLog? Achievements { get; set; }
 
+        /// <summary>
+        /// The tallies achievements count — monsters beaten, zones entered, items crafted — by
+        /// kind and key, loaded on entering the world and written as they change.
+        /// </summary>
+        public Dictionary<(string Kind, long Key), long> AchievementTallies { get; set; } = new();
+
+        /// <summary>The dungeon and anomaly challenges this character has validated, for <c>EH</c>.</summary>
+        public HashSet<int> ChallengesDone { get; set; } = new HashSet<int>();
+
+        /// <summary>The level the level-based achievements were last looked at on, so a map change does not look again for nothing.</summary>
+        public int AchievementLevelChecked { get; set; }
+
+        /// <summary>Achievements a fight may have earned, looked at once the character is back on the map.</summary>
+        public HashSet<int> AchievementsPending { get; } = new HashSet<int>();
+
+        /// <summary>The emotes this character can play: the starting ones and the ones learned.</summary>
+        public HashSet<int> Emotes { get; set; } = new HashSet<int>();
+
+        /// <summary>When the last emote played, for the gap the real server keeps between two.</summary>
+        public DateTime LastEmoteUtc { get; set; } = DateTime.MinValue;
+
+        /// <summary>When the last smiley went up, for the same gap.</summary>
+        public DateTime LastSmileyUtc { get; set; } = DateTime.MinValue;
+
         /// <summary>En qué nivel va un oficio. Cero experiencia es nivel 1, no nivel cero.</summary>
         public int JobLevel(int jobId)
             => Jobs.TryGetValue(jobId, out var progress) ? progress.Level : 1;

@@ -644,6 +644,9 @@ namespace Jondo.Unity.Server
                 ";
                 createAchievements.ExecuteNonQuery();
 
+                // And the tallies and emotes that go with them, created the same way.
+                EnsureProgressionTables();
+
                 // La entrada gratis del manojo de llaves, gastada o no, por personaje y por
                 // mazmorra. Una fila por las dos cosas porque el manojo da "una entrada gratis en
                 // CADA mazmorra, una vez por semana" -- traduccion 1189621, la pagina de ayuda del
@@ -4620,9 +4623,156 @@ namespace Jondo.Unity.Server
             return salida;
         }
 
+        private static volatile bool _progressionTables;
+
+        /// <summary>
+        /// The tables achievements and emotes keep, created if they are not there.
+        /// </summary>
+        /// <remarks>
+        /// Its own method, and called by the readers and writers below as well as by
+        /// <see cref="Initialize"/>, because a base fresh out of <c>datos/world.zip</c> has none of
+        /// them: that is the schema the continuous integration tests against.
+        ///
+        /// CharacterAchievementCounters holds the tallies the achievement data counts and nothing
+        /// else keeps: monsters beaten (EM), monsters beaten with a challenge won (Ef), subareas
+        /// entered (Xs), items crafted (Xc) and the day of the last Almanax offering (Ax). Kind is
+        /// the operator the achievement data uses, or a two-letter key of ours where it names none.
+        ///
+        /// CharacterEmotes holds the emotes a character has learned beyond the four every
+        /// character starts with.
+        /// </remarks>
+        public static void EnsureProgressionTables()
+        {
+            if (_progressionTables) return;
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = @"
+                    CREATE TABLE IF NOT EXISTS CharacterAchievements (
+                        CharacterId INTEGER NOT NULL,
+                        AchievementId INTEGER NOT NULL,
+                        Claimed INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY (CharacterId, AchievementId)
+                    );
+                    CREATE TABLE IF NOT EXISTS CharacterAchievementCounters (
+                        CharacterId INTEGER NOT NULL,
+                        Kind TEXT NOT NULL,
+                        Key INTEGER NOT NULL,
+                        Count INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY (CharacterId, Kind, Key)
+                    );
+                    CREATE TABLE IF NOT EXISTS CharacterEmotes (
+                        CharacterId INTEGER NOT NULL,
+                        EmoteId INTEGER NOT NULL,
+                        PRIMARY KEY (CharacterId, EmoteId)
+                    );";
+                command.ExecuteNonQuery();
+                _progressionTables = true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] Las tablas de logros y actitudes no se han podido crear: {ex.Message}");
+            }
+        }
+
+        /// <summary>A character's achievement tallies, by kind and key.</summary>
+        public static Dictionary<(string Kind, long Key), long> LoadAchievementCounters(long characterId)
+        {
+            EnsureProgressionTables();
+            var tallies = new Dictionary<(string, long), long>();
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText =
+                    "SELECT Kind, Key, Count FROM CharacterAchievementCounters WHERE CharacterId = $c;";
+                command.Parameters.AddWithValue("$c", characterId);
+                using var reader = command.ExecuteReader();
+                while (reader.Read()) tallies[(reader.GetString(0), reader.GetInt64(1))] = reader.GetInt64(2);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] No se han podido leer los contadores de logros: {ex.Message}");
+            }
+            return tallies;
+        }
+
+        /// <summary>Writes one tally as it now stands.</summary>
+        public static void SaveAchievementCounter(long characterId, string kind, long key, long count)
+        {
+            EnsureProgressionTables();
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = @"
+                    INSERT INTO CharacterAchievementCounters (CharacterId, Kind, Key, Count)
+                    VALUES ($c, $k, $key, $n)
+                    ON CONFLICT(CharacterId, Kind, Key) DO UPDATE SET Count = $n;";
+                command.Parameters.AddWithValue("$c", characterId);
+                command.Parameters.AddWithValue("$k", kind);
+                command.Parameters.AddWithValue("$key", key);
+                command.Parameters.AddWithValue("$n", count);
+                command.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] El contador {kind}/{key} no se ha podido guardar: {ex.Message}");
+            }
+        }
+
+        /// <summary>The emotes a character has learned, beyond the starting ones.</summary>
+        public static HashSet<int> LoadEmotes(long characterId)
+        {
+            EnsureProgressionTables();
+            var emotes = new HashSet<int>();
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT EmoteId FROM CharacterEmotes WHERE CharacterId = $c;";
+                command.Parameters.AddWithValue("$c", characterId);
+                using var reader = command.ExecuteReader();
+                while (reader.Read()) emotes.Add(reader.GetInt32(0));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] No se han podido leer las actitudes: {ex.Message}");
+            }
+            return emotes;
+        }
+
+        /// <summary>Writes down that a character has learned an emote.</summary>
+        public static void SaveEmote(long characterId, int emoteId)
+        {
+            EnsureProgressionTables();
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = @"
+                    INSERT INTO CharacterEmotes (CharacterId, EmoteId) VALUES ($c, $e)
+                    ON CONFLICT(CharacterId, EmoteId) DO NOTHING;";
+                command.Parameters.AddWithValue("$c", characterId);
+                command.Parameters.AddWithValue("$e", emoteId);
+                command.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] La actitud {emoteId} no se ha podido guardar: {ex.Message}");
+            }
+        }
+
         /// <summary>Writes down that a character has an achievement, and whether it was paid.</summary>
         public static void SaveAchievement(long characterId, int achievementId, bool claimed)
         {
+            EnsureProgressionTables();
             try
             {
                 using var connection = new SqliteConnection(WorldConnectionString);
@@ -4646,6 +4796,7 @@ namespace Jondo.Unity.Server
         /// <summary>A character's achievements: the id and whether the reward was taken.</summary>
         public static List<(int Achievement, bool Claimed)> LoadAchievements(long characterId)
         {
+            EnsureProgressionTables();
             var salida = new List<(int, bool)>();
             try
             {

@@ -338,6 +338,57 @@ public static class Op
     /// <summary>El cliente pide la recompensa de un logro: 1 = el logro, o -1 para todos.</summary>
     public const string Mga = "mga";
 
+    /// <summary>
+    /// C→S, empty: sent as the achievement window opens, first of three (mfe, mfp, mff). Answered
+    /// here with <see cref="Mgb"/>, the order the one capture of the window gives the answers in.
+    /// </summary>
+    public const string Mfe = "mfe";
+
+    /// <summary>C→S, empty: the second request of an opening achievement window. Answered with <see cref="Mfx"/>.</summary>
+    public const string Mfp = "mfp";
+
+    /// <summary>C→S: one category of the achievement window, f1 the category. Answered with <see cref="Mfo"/>.</summary>
+    public const string Mff = "mff";
+
+    /// <summary>C→S: one achievement's details, f1 the achievement (INFERRED, never captured). Answered with <see cref="Mfg"/>.</summary>
+    public const string Mfm = "mfm";
+
+    /// <summary>
+    /// S→C: a category's achievements with every objective's progress. f2 (repeated) { f2 id,
+    /// f3 (repeated) { f1 objective, f2 out of, f4 so far, present even at zero while not done } }.
+    /// </summary>
+    public const string Mfo = "mfo";
+
+    /// <summary>S→C: the achievements closest to being earned, f1 (repeated) the same record as <see cref="Mfo"/>.</summary>
+    public const string Mgb = "mgb";
+
+    /// <summary>S→C: one achievement's details, f1 the same record as <see cref="Mfo"/>. INFERRED.</summary>
+    public const string Mfg = "mfg";
+
+    /// <summary>S→C, root 3 and empty in the one capture: the answer to <see cref="Mfp"/>. f1 would be a list of number pairs.</summary>
+    public const string Mfx = "mfx";
+
+    /// <summary>C→S: play an emote, f1 the emote. Answered by <see cref="Khh"/> to the whole map, or not at all.</summary>
+    public const string Khl = "khl";
+
+    /// <summary>S→C: an emote played. f1 character, f3 emote, f5 account, f6 animation name.</summary>
+    public const string Khh = "khh";
+
+    /// <summary>S→C: the character's emotes, f1 packed. Sent on entering the world.</summary>
+    public const string Khn = "khn";
+
+    /// <summary>C→S: a smiley over the head, f2 the smiley.</summary>
+    public const string Hov = "hov";
+
+    /// <summary>S→C: a smiley over somebody's head. f2 character, f3 account, f4 smiley.</summary>
+    public const string Hoc = "hoc";
+
+    /// <summary>C→S: the mood smiley, f5 the smiley, or empty to clear it.</summary>
+    public const string Hor = "hor";
+
+    /// <summary>S→C: the mood smiley is now f3, or cleared when empty.</summary>
+    public const string Hns = "hns";
+
     /// <summary>Catorce conjuntos guardados, cada uno con un look; se descarta. 7 mensajes.</summary>
     public const string Ihb = "ihb";
 
@@ -934,9 +985,10 @@ public static class Op
     public const string Jhq = "jhq";
 
     /// <summary>
-    /// S→C: f1=97 entre el jgw y el jgu al fundar. Su pareja khj lleva el mismo 97 al salir del
-    /// gremio, así que el número no es del gremio ni del miembro: es el mismo aviso en las dos
-    /// direcciones. 1 mensaje, sin significado reconstruido.
+    /// S→C: an emote learned, f1 the emote. Measured as f1=97 between the jgw and the jgu when a
+    /// guild is founded, and its pair khj carries the same 97 on leaving one: 97 is the guild
+    /// banner emote ("Pw=2"). The client's emote frame (ern) is what takes it: it looks the emote
+    /// up, adds it to the emote list and announces its name.
     /// </summary>
     public const string Khi = "khi";
 
@@ -1039,7 +1091,10 @@ public static class Op
     /// <summary>S→C: los kamas de gremio que quedan. f1 la cantidad.</summary>
     public const string Jia = "jia";
 
-    /// <summary>S→C: quitar a alguien de la lista de miembros (salió del gremio). f1 el id de puesto.</summary>
+    /// <summary>
+    /// S→C: an emote lost, f1 the emote. Sent with f1=97, the guild banner, when leaving a guild;
+    /// the client's emote frame (ern) removes it from the list. See <see cref="Khi"/>.
+    /// </summary>
     public const string Khj = "khj";
 
     /// <summary>El conyuge, con su look; se descarta. 13 mensajes.</summary>

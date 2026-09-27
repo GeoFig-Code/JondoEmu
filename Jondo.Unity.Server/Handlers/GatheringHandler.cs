@@ -202,7 +202,9 @@ namespace Jondo.Unity.Server.Handlers
                         resource.ItemId, cuantos)));
 
                 bool subeNivel = SessionContext.State.AddJobExperience(
-                    resource.JobId, JobExperience.PerGather, out long total, out int nivel);
+                    resource.JobId,
+                    Managers.Almanax.WithBonus(Managers.Almanax.BonusType.JobExperience, JobExperience.PerGather),
+                    out long total, out int nivel);
                 DatabaseManager.SaveJobExperience(characterId, resource.JobId, total);
 
                 // The new level goes before the experience, as the wheat that took the farmer to
@@ -213,6 +215,9 @@ namespace Jondo.Unity.Server.Handlers
                     ConnectionProtocol.Push(Op.Irq, ConnectionProtocol.BuildJobExperience(
                         resource.JobId, JobExperience.Next(nivel), nivel,
                         JobExperience.Floor(nivel), total)));
+
+                // The job achievements: "Alcanzar el nivel 10 en 1 oficio" and its kind.
+                if (subeNivel) await Managers.Achievements.AfterJobLevelAsync(stream);
 
                 Resources.Spend(resource.MapId, resource.ElementId);
 

@@ -24,9 +24,9 @@ High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** writte
 
 - 🎒 &nbsp;**Character** &nbsp;— &nbsp;[Character and inventory](#-character-and-inventory) · [Appearances](#-appearances) · [Professions](#-professions)
 
-- 📚 &nbsp;**Content** &nbsp;— &nbsp;[NPCs and monsters](#-npcs-and-monsters) · [Quests](#-quests) · [Dungeons](#-dungeons) · [Infinite Dreams](#-infinite-dreams) · [Jondo Coin](#-jondo-coin)
+- 📚 &nbsp;**Content** &nbsp;— &nbsp;[NPCs and monsters](#-npcs-and-monsters) · [Quests](#-quests) · [Achievements](#-achievements) · [Almanax](#-almanax) · [Dungeons](#-dungeons) · [Infinite Dreams](#-infinite-dreams) · [Jondo Coin](#-jondo-coin)
 
-- ⚔️ &nbsp;**Combat** &nbsp;— &nbsp;[One engine, four rulebooks](#-one-engine-four-rulebooks) · [PvM](#-pvm-combat) · [Duels](#-duels) · [Koliseo](#-koliseo) · [Spell effect engine](#-spell-effect-engine) · [Spell check-list](#-spell-check-list) · [Combat challenges](#-combat-challenges) · [Not implemented](#-not-implemented-at-all)
+- ⚔️ &nbsp;**Combat** &nbsp;— &nbsp;[One engine, four rulebooks](#-one-engine-four-rulebooks) · [PvM](#-pvm-combat) · [Duels](#-duels) · [Koliseo](#-koliseo) · [Spell effect engine](#-spell-effect-engine) · [Spell check-list](#-spell-check-list) · [Combat challenges](#-combat-challenges)
 
 - 🔎 &nbsp;**Tools** &nbsp;— &nbsp;[Jondo Studio](#-jondo-studio) · [Surviving the next patch](#-surviving-the-next-patch)
 
@@ -252,6 +252,13 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Trading with another player on the map: ask, refuse or accept, lay stacks down and take them back, kamas, ready on both sides, and the goods changing hands — a new stack under a new uid, or onto one of the same — measured on both sides in the two trade captures
 - ✅ Every command answers in the session's own language, from a catalogue in Spanish, English and French. The language comes from the `--langCode` the launcher started the client with
 - ✅ Following the leader: the member's client walks after him map by map on each `ikv` the server sends it, as the follow capture measures; a zaap cuts the follow, as on the real server
+- ✅ Emotes from the emote bar, sitting included: played for everybody on the map (`khl` → `khh`,
+  byte for byte against the juggling capture), refused in silence on a mount when the emote forbids
+  it and too soon after the last one, as the captures refuse them. A new character has the four
+  the creation captures show; the ones learned — an achievement's reward — are announced (`khi`)
+  and kept
+- ✅ Smileys over the head for the whole map (`hov` → `hoc`) and the mood smiley (`hor` → `hns`)
+- ❌ Emotes learned from an item: consumables are not used yet
 - ❌ The invitation popup's *Details* button (`imd` → `ilb`), the dedicated member-gone message (`inc`) and party search
 
 ### ⚜️ Guilds and raids
@@ -440,10 +447,65 @@ Dofus does not ship the item-to-look table: the server sends it. **2,371 of the 
 - ✅ Objectives complete two ways: the client reports the **5,670** that ask you to click something
   the server never sees, and the server counts the ones that ask you to beat a monster
 - ✅ Progress is written the moment it changes
+- ✅ A finished step pays its experience and kamas: the ratios are ratios of the client's own
+  formula, read out of its code and exact against the tutorial capture (quest 1629 pays 141 at
+  level 2, with that character's 5 % bonus). Only the reward of the character's level bracket is
+  paid, and emotes are taught
 - 🟡 The start condition language has **29 operators**; six are understood, covering every term of
-  **935 of the 1,976** conditions. The rest are let through and named
+  **935 of the 1,976** conditions, plus `Ad`, the Almanax day. The rest are let through and named
 
 Full workings in **`docs/quests.md`**.
+
+### 🏆 Achievements
+
+**2,780 achievements** in 134 categories, with 8,946 objectives and 6,394 rewards, all from the
+client's own data — and the 272 objectives the client names but does not describe, tied to a zone,
+a level, a job, a quest or a monster by the achievement's own name and description.
+
+- ✅ The achievement window: the achievements closest to being earned when it opens, each category
+  with every achievement and every objective's progress — a tally drawn as 91 of 100 — and the
+  list of what is earned on entering the world. Byte for byte against the one capture that opens it
+- ✅ Earned the way the game earns them: finishing quests, exploring a zone (the 17 exploration
+  achievements the captures earn all fire on entering the subarea they are named after), character
+  and job levels, crafting, monsters beaten — in their dungeon for the dungeon ones, with a challenge
+  won for the family ones —, dungeon challenges validated, items held, achievement points and
+  achievements built on others. **2,172 of 2,780** have every objective in terms this engine
+  judges; the Temporis ones (`SC=5`) are judged false on a classic server
+- ✅ The notification (`mfu`) when one is earned; the reward only when it is claimed (`mga`), once,
+  answered as the captures answer it: the kamas, the character sheet and the experience gained, the
+  items, the emotes, and `mfs`
+- ✅ Experience and kamas by the client's formula, exact against the nine claims in the captures
+  once the bonus those characters had (5 %, and 110 % for one) is counted in
+- 🟡 That per-character experience bonus is not modelled: a claim here pays the base
+- ✅ Kept per character, with the tallies they count, in tables created at startup
+- 🟡 Titles and ornaments are logged and not sent: every character is already offered all 539
+  and 167
+- ❌ BI, Sc, EB, HD, EI, lB, Pr and the other operators the server judges by itself for the rest:
+  breeding mounts, eating sweets, leagues, alignment ranks, the tutorial's first part
+- ❌ Somebody else's achievement announced in the chat (`mgc`), and guild points as a reward
+
+Full workings in **`docs/achievements.md`**.
+
+### 📅 Almanax
+
+The calendar is the client's own: **376 days**, each with its saint, its offering quest and its
+bonuses. No capture visits the sanctuary, so all of this is **inferred** from the data and runs
+through the quest engine.
+
+- ✅ Today's entry: every day of the year resolves to one — the month's saint, or the moveable feast
+  on its date, and Bryss where he stands in. It answers the offering quests' own `Ad` condition
+- ✅ Ontoral Zo hands over today's offering, "Ofrenda para …", and marks it over his head; bringing
+  the offering, seeing the saint and going back to him close its objectives; its reward is the one
+  of the character's level bracket, experience and kamas included; once a day
+- 🟡 The saint of the day stands only where the client's data places him: 80 of the 373 saints. On
+  the other days the "see the saint" objective cannot be closed
+- 🟡 "Reza ante el altar" is free text, closed by the client's own report, as every free-text
+  objective is; whether the client reports it at the altar is not measured
+- 🟡 Of the day's bonuses, the ones with no condition that touch quests and jobs are applied —
+  quest experience, quest kamas, job experience, each named by the one day whose own text says what
+  it does
+- ❌ The rest — monsters' experience and drops, harvests, challenges — come with conditions whose
+  types the client's data does not explain, and are named, not applied
 
 ### 🏰 Dungeons
 <img width="2550" height="1498" alt="image" src="https://github.com/user-attachments/assets/f79f7881-c68e-45b5-ae29-b4aaba928a1d" />
@@ -1627,10 +1689,6 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ *Hired Killer* (35), which needs the server to designate and re-designate the target
 - ❌ Challenges without a known percentage: the client ships no bonus field for them
 
-### ❌ Not implemented at all
-
-- Achievements
-
 ---
 
 ## 🛠️ Jondo Studio
@@ -1705,7 +1763,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,608 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,757 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 
@@ -1797,7 +1855,7 @@ Documentation index in `docs/README.md`. Start with `docs/protocol.md` (how a me
 
 Three **SQLite** databases in `bases/`, and one folder of text:
 
-* **`world.db`** — characters, inventories, positions, map persistence, spells, monsters, appearances, wardrobe, haven bags, houses and their chests, bins, guilds, the guild chest and raids. Distributed compressed as `datos/world.zip` (24.8 MB) and extracted on first run.
+* **`world.db`** — characters, inventories, positions, map persistence, spells, monsters, appearances, wardrobe, haven bags, houses and their chests, bins, guilds, the guild chest and raids, quests, achievements and the tallies they count, learned emotes. Distributed compressed as `datos/world.zip` (24.8 MB) and extracted on first run.
 * **`auth.db`** — accounts and authentication sessions, created on first run.
 * **`paquetes.db`** — the packets the server does not yet know how to answer, deduplicated by protobuf shape. It carries nothing needed to play and can be deleted to start over.
 * **`content/`** — the authored layer, in versioned JSON. The only one edited by hand, and the only one nothing regenerates. See [Jondo Studio](#-jondo-studio).

@@ -368,6 +368,10 @@ namespace Jondo.Unity.Server.Handlers
                 await GiveJobExperienceAsync(stream, recipe.JobId, experience);
             }
             await SendPodsAsync(SessionContext.Current);
+
+            // "Fabricar 1 objeto": the tutorial earns it right here, after the ring.
+            await Managers.Achievements.AfterCraftAsync(stream, count);
+
             if (bench.Count > 1)
             {
                 bench.Count = 1;
@@ -804,11 +808,13 @@ namespace Jondo.Unity.Server.Handlers
         public static async Task GiveJobExperienceAsync(NetworkStream stream, int jobId, long amount)
         {
             if (amount <= 0) return;
+            amount = Managers.Almanax.WithBonus(Managers.Almanax.BonusType.JobExperience, amount);
             bool up = SessionContext.State.AddJobExperience(jobId, amount, out long total, out int level);
             DatabaseManager.SaveJobExperience(SessionContext.State.CharacterId, jobId, total);
             if (up) await SendLevelUpAsync(stream, jobId, level);
             await SendAsync(stream, Op.Irq, ConnectionProtocol.BuildJobExperience(
                 jobId, JobExperience.Next(level), level, JobExperience.Floor(level), total));
+            if (up) await Managers.Achievements.AfterJobLevelAsync(stream);
         }
 
         /// <summary>isz: the job's new level and all of its skills, the way the tutorial's ring sends it.</summary>

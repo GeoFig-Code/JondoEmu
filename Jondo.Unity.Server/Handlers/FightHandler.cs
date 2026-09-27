@@ -7780,6 +7780,9 @@ namespace Jondo.Unity.Server.Handlers
             // que ha caido de verdad, y de eso no se fia uno del cliente.
             await QuestWatcher.FightEndedAsync(stream, fight, won);
 
+            // And what the achievements count, set aside until the character is back on the map.
+            AchievementWatcher.FightEnded(fight, won);
+
             // Y aqui se aplica. En el cable NO viaja desglosado: el porcentaje solo existe dentro
             // del ldd de la preparacion, y la cifra del final llega ya con el extra sumado. Se
             // revisaron los 68 jyg de las capturas y no hay ningun hueco donde quepa un desglose,

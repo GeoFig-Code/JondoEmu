@@ -558,6 +558,7 @@ namespace Jondo.Unity.Server.Handlers
 
                 if (!cumplido) continue;
                 extra += percent;
+                end.Won.Add(id);
 
                 // Los que impone el sitio son los que llevan logro.
                 if (reto != null && reto.NeedsMonster)
@@ -576,10 +577,22 @@ namespace Jondo.Unity.Server.Handlers
         {
             public List<byte[]> Frames { get; } = new List<byte[]>();
             public List<int> Achievements { get; } = new List<int>();
+
+            /// <summary>Every challenge validated, not only the ones that carry an achievement.</summary>
+            public List<int> Won { get; } = new List<int>();
+
             public int Extra { get; set; }
         }
 
         private static readonly ConcurrentDictionary<long, EndVerdict> _ends = new ConcurrentDictionary<long, EndVerdict>();
+
+        /// <summary>
+        /// The challenges validated at the end of this fight, once <see cref="FightEndedAsync"/>
+        /// has judged it; empty before, and for a fight with none. The achievements that count a
+        /// monster "beaten with a challenge won" (Ef) are fed from here.
+        /// </summary>
+        public static IReadOnlyCollection<int> WonIn(FightInstance fight)
+            => _ends.TryGetValue(fight.FightId, out var end) ? end.Won : (IReadOnlyCollection<int>)System.Array.Empty<int>();
 
         /// <summary>The fight is over for everybody: its verdicts go.</summary>
         public static void Forget(FightInstance fight) => _ends.TryRemove(fight.FightId, out _);
