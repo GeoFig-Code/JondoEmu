@@ -1111,6 +1111,13 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public int FinPendiente { get; set; }
 
+        /// <summary>
+        /// What <see cref="FinPendiente"/> holds when the end waits for the client's jwz, not for
+        /// the jti of a sequence of its own: a monster's blows are not the client's to acknowledge,
+        /// and no jti reaches this number.
+        /// </summary>
+        public const int WaitsForTheJwz = int.MaxValue;
+
         /// <summary>Los que ya se han roto. Se avisa una vez y no se vuelve a mirar.</summary>
         public HashSet<int> ChallengesBroken { get; } = new HashSet<int>();
 

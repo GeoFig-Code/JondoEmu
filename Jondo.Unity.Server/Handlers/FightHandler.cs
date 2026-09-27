@@ -1786,6 +1786,8 @@ namespace Jondo.Unity.Server.Handlers
             // se enseña ya. Así un cliente que no acuse no deja el combate colgado para siempre, y
             // no hace falta un temporizador escribiendo en el socket por su cuenta, que se
             // entrelazaría con lo que escribe este mismo hilo.
+            // And the jwz that answers the jxh of the end is what normally ends it: it comes once
+            // the client has played the blows that ended the fight (see CheckFightOverAsync).
             var fight = GetCurrentFight();
 
             if (fight != null && fight.FinPendiente != 0 && !payloadStr.Contains(Op.Uri(Op.Jti)))
@@ -3097,6 +3099,22 @@ namespace Jondo.Unity.Server.Handlers
             await ActitudesAsync(stream, fight, fighter, Managers.EffectEngine.AlEmpezarElTurno);
             await EngancheAsync(stream, fight, fighter, Managers.EffectEngine.AlEmpezarElTurno);
             fighter.LeHanPegado = false;
+
+            // A poison can kill here, at the start of its victim's turn -- a megabot Sram's
+            // Arsénico does. Nothing looked: the dead player was handed his turn and the fight
+            // stood until his clock ran out.
+            if (!fighter.IsAlive || !fight.SigueVivo(FightInstance.Azules) || !fight.SigueVivo(FightInstance.Rojos))
+            {
+                Program.LogDebug($"[Combate] {fighter.Id} empieza el turno y alguien cae por lo que salta " +
+                                 $"al empezarlo.");
+                if (await CheckFightOverAsync(stream, fight)) return;
+                // A dream's next wave came in instead: whoever is standing plays on.
+                if (!fighter.IsAlive)
+                {
+                    await PassTurnAsync(stream);
+                    return;
+                }
+            }
 
             // The two combos the Tymador hands his bombs each turn are no longer dealt here:
             // they are what his class passive does at turn start -- 20488, "La Astucia del
@@ -7657,7 +7675,9 @@ namespace Jondo.Unity.Server.Handlers
                 Program.LogDebug($"[IA] {monster.Id} lanza {action.Spell.Id} a {action.Target.Id} " +
                                  $"(casilla {action.TargetCell}) desde {monster.CellId}, valor {action.Score:0.0}.");
                 await MonsterCastAsync(stream, fight, monster, action.Spell, action.Target, action.TargetCell);
-                if (!monster.IsAlive)
+                // Dead of its own blow, or the blow that emptied a side: the turn ends there, as
+                // in the Dopeul's defeat, with no step taken after it.
+                if (!monster.IsAlive || !fight.SigueVivo(FightInstance.Azules) || !fight.SigueVivo(FightInstance.Rojos))
                 {
                     await EndMonsterTurnAsync(stream, fight);
                     return;
@@ -8139,7 +8159,7 @@ namespace Jondo.Unity.Server.Handlers
 
             Program.LogDebug($"[Fight] Character {quitter.Id} abandoned fight #{fight.FightId}; " +
                              $"waiting for jti action {closure} before the result screen.");
-            await CheckFightOverAsync(stream, fight, closure);
+            await CheckFightOverAsync(stream, fight, closure, alreadyAsked: true);
         }
 
         internal static Fighter? AbandoningFighter(FightInstance? fight, long characterId)
@@ -8151,8 +8171,26 @@ namespace Jondo.Unity.Server.Handlers
             return suyo != null && suyo.IsAlive ? suyo : null;
         }
 
-        private static async Task<bool> CheckFightOverAsync(NetworkStream stream, FightInstance fight,
-                                                            int esperarAcuse = 0)
+        /// <summary>
+        /// Whether a side has nobody left, and then the end: asked for with a jxh and shown once
+        /// the client has played what ended it.
+        /// </summary>
+        /// <remarks>
+        /// Every fight end of the captures closes the same way, the 60-odd won and lost: the last
+        /// sequence, a jxh naming whose turn it was, the client's jwz once it has played it all
+        /// -- behind the jti of its own sequence when the last blow was its -- and only then the
+        /// kuf and the jyg. In the Dopeul's defeat the jwz comes 6.5 s behind the jxh, the time
+        /// the monster's blows take to show. The end went out at once when a monster's turn, a
+        /// turn's start or end or a trap ended the fight, and the end screen cut the blows
+        /// short: a megabot's turn that killed was seen as a fight lost out of nowhere.
+        /// </remarks>
+        /// <param name="esperarAcuse">
+        /// The closing action of the client's own sequence that ended it: its jti may end the wait
+        /// before the jwz does.
+        /// </param>
+        /// <param name="alreadyAsked">The jxh has gone out already (abandoning sends its own).</param>
+        internal static async Task<bool> CheckFightOverAsync(NetworkStream stream, FightInstance fight,
+                                                             int esperarAcuse = 0, bool alreadyAsked = false)
         {
             bool alliesAlive = fight.SigueVivo(FightInstance.Azules);
             bool enemiesAlive = fight.SigueVivo(FightInstance.Rojos);
@@ -8162,17 +8200,24 @@ namespace Jondo.Unity.Server.Handlers
 
             if (alliesAlive && enemiesAlive) return false;
 
-            // Si el golpe que lo ha terminado acaba de salir, no se le enseña el final hasta que el
-            // cliente diga que ha tragado la secuencia; si no, se come las animaciones.
-            if (esperarAcuse != 0)
+            // Nothing on the board to be played yet -- a fight left during its placement -- ends
+            // at once.
+            var whose = fight.CurrentFighter;
+            if (fight.State != Jondo.Unity.World.Fights.FightState.Ongoing || whose == null)
             {
-                fight.FinPendiente = esperarAcuse;
-                Program.LogDebug($"[Combate] Se acabó, pero se espera a que el cliente acuse la " +
-                                 $"acción {esperarAcuse} antes de enseñar el final.");
+                await EndFightAsync(fight);
                 return true;
             }
 
-            await EndFightAsync(fight);
+            if (!alreadyAsked)
+            {
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jxh,
+                    Network.FightProtocol.BuildConfirmTurn(whose.Id)));
+            }
+            fight.FinPendiente = esperarAcuse != 0 ? esperarAcuse : FightInstance.WaitsForTheJwz;
+            Program.LogDebug($"[Combate] Se acabó en el turno de {whose.Id}; el final espera a que el cliente " +
+                             (esperarAcuse != 0 ? $"acuse la acción {esperarAcuse} o conteste el jxh."
+                                                : "conteste el jxh (jwz)."));
             return true;
         }
 
