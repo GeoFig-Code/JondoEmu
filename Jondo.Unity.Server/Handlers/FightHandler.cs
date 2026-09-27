@@ -7799,8 +7799,9 @@ namespace Jondo.Unity.Server.Handlers
             Dictionary<int, int> loot;
 
             // His share, when the fight was planned for all its winners (FightRewards): the same
-            // numbers his partners see in their end screen.
-            var suyo = won ? RewardOf(fight, GameState.CharacterId) : null;
+            // numbers his partners see in their end screen. Only winners are planned, and the one
+            // loser who is: the dreamer who falls at the Fin du rêve after its minimum of waves.
+            var suyo = RewardOf(fight, GameState.CharacterId);
             if (suyo != null)
             {
                 xpGained = suyo.Xp;

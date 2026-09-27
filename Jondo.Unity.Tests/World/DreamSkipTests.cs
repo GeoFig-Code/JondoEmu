@@ -22,7 +22,8 @@ namespace Jondo.Unity.Tests.World
         /// <summary>
         /// From the entrance to the end: all five bands open, one room of each row 0 to 25 on the
         /// path, each an exit of the one before, every fight among them won and paid -- 21 of them,
-        /// rows 1-3, 5-9, 11-15, 17-22 and 23-24. The end itself is left for the handler to enter.
+        /// rows 1-3, 5-9, 11-15, 17-22 and 23-24, less the dream favours the path goes through.
+        /// The end itself is left for the handler to enter.
         /// </summary>
         [Fact]
         public void To_the_end_from_the_entrance()
@@ -35,11 +36,11 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(Dreams.SkipOutcome.Done, outcome);
             Assert.True(end!.EsFinal);
             Assert.Equal(Dreams.Bands, dream.Franja);
-            Assert.Equal(21, skipped);
             Assert.False(end.Cobrada);
             Assert.NotEqual(end.Id, dream.Actual);
 
             var path = dream.Visited.Select(id => dream.Buscar(id)!).OrderBy(r => r.Fila).ToList();
+            Assert.Equal(21 - path.Count(r => r.EsFavor), skipped);
             Assert.Equal(Enumerable.Range(0, 26), path.Select(r => r.Fila));
             for (int i = 1; i < path.Count; i++) Assert.Contains(path[i].Id, path[i - 1].Salidas);
             Assert.Contains(end.Id, path[^1].Salidas);
@@ -48,7 +49,10 @@ namespace Jondo.Unity.Tests.World
             Assert.True(dream.DreamPoints > pointsBefore);
         }
 
-        /// <summary>To a row: the nearest room of it, and only the bands it takes.</summary>
+        /// <summary>
+        /// To a row: the nearest room of it, and only the bands it takes. Eight fights, rows 1-3
+        /// and 5-9, less the dream favour of band II when the way goes through it.
+        /// </summary>
         [Fact]
         public void To_a_row()
         {
@@ -60,7 +64,7 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(10, room!.Fila);
             Assert.True(room.EsFuente);
             Assert.Equal(2, dream.Franja);
-            Assert.Equal(8, skipped);
+            Assert.Equal(8 - dream.Visited.Count(id => dream.Buscar(id)!.EsFavor), skipped);
             Assert.Equal(9, dream.SalaActual!.Fila);
         }
 

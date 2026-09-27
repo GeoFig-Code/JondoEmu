@@ -88,8 +88,8 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
-        /// A room of reward 14931 gives dream points and no bonus: the Paradoja II one takes f11
-        /// from 5 to 15, its own five and these five.
+        /// A room of reward 14931 gives dream points and a storm and no bonus: the Paradoja II one
+        /// takes f11 from 5 to 15, its own five and these five, and f7 from 1 to 2.
         /// </summary>
         [Fact]
         public void A_points_room_pays_its_points()
@@ -102,13 +102,15 @@ namespace Jondo.Unity.Tests.World
             Dreams.Enter(dream, room.Id, out var gained);
 
             Assert.Equal(15, dream.DreamPoints);
+            Assert.Equal(2, dream.Tormentas);
             Assert.Null(gained);
             Assert.Empty(dream.Ganados);
         }
 
         /// <summary>
-        /// The f8 is the percentage under the dream's name, and rooms do not move it: it used to
-        /// grow with every room, 220% becoming 275% in three.
+        /// The f8 is the percentage under the dream's name, and a room of palier I that is not
+        /// marked leaves it at the difficulty's: it used to grow with every room won, 220%
+        /// becoming 275% in three. What does move it is <see cref="Dreams.LootBonusOf"/>.
         /// </summary>
         [Fact]
         public void Rooms_leave_the_bonus_alone()

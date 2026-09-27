@@ -238,11 +238,13 @@ namespace Jondo.Unity.Server.Handlers
             // sala a sala peleando. Con las puertas abiertas desde el principio se podía recorrer
             // el sueño entero sin dar un golpe, cobrando los puntos de todas las salas.
             //
-            // La entrada y la última no tienen grupo, así que no bloquean.
-            if (!SalaSuperada(actual))
+            // La entrada y la fuente no tienen grupo, así que no bloquean; a favour does until
+            // one of its three is chosen.
+            if (!Dreams.CanLeave(actual))
             {
-                Console.WriteLine($"[Sueños] La sala {actual.Id} todavía tiene su grupo en pie: " +
-                                  "no se abre la puerta.");
+                Console.WriteLine(actual.EsFavor
+                    ? $"[Sueños] The favour of room {actual.Id} is not chosen yet: the door stays shut."
+                    : $"[Sueños] La sala {actual.Id} todavía tiene su grupo en pie: no se abre la puerta.");
                 return false;
             }
 
@@ -272,22 +274,6 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             return false;
-        }
-
-        /// <summary>¿Se puede salir ya de esta sala?</summary>
-        /// <remarks>
-        /// Una sala sin grupo —la entrada y la última— se cruza sin más. Una de pelea hace falta
-        /// haberla ganado: <see cref="Dreams.Sala.Hecha"/> lo pone el final del combate.
-        ///
-        /// Se mira también si el grupo sigue plantado, y no sólo la marca, porque son dos cosas
-        /// distintas: la marca dice que se ganó, y el grupo en pie dice que sigue ahí. Con sólo
-        /// una de las dos, un sueño continuado tras reconectar dejaría pasar sin pelear.
-        /// </remarks>
-        private static bool SalaSuperada(Dreams.Sala sala)
-        {
-            if (sala.Miembros.Count == 0) return true;
-            if (sala.Hecha) return true;
-            return sala.Plantado == 0;
         }
 
         /// <summary>Mete al jugador en una sala: el estado y el cambio de mapa.</summary>
@@ -337,7 +323,9 @@ namespace Jondo.Unity.Server.Handlers
             // El grupo se planta ANTES del cambio de mapa: el jss que el cliente pide justo
             // después es el que lleva los actores, y un grupo plantado un instante tarde no
             // aparece hasta que se vuelve a entrar.
-            if (sala.EsFuente) { if (sala.HasReyGob) PlantarLaTienda(sala); } else PlantarElGrupo(sala);
+            if (sala.EsFuente) { if (sala.HasReyGob) PlantarLaTienda(sala); }
+            else if (sala.EsFavor) PlantFavorNpc(sala);
+            else PlantarElGrupo(sala);
 
             int aterriza = await TeleportHandler.ToMapAsync(stream, mapa, 0);
 
@@ -361,6 +349,58 @@ namespace Jondo.Unity.Server.Handlers
 
             Managers.Npcs.PonerDelSueno(sala.MapaDeLaSala, Dreams.ReyGob,
                                         Dreams.CasillaDelReyGob, Dreams.OrientacionDelReyGob);
+        }
+
+        /// <summary>
+        /// The Dispensador de favores in a dream favour: an NPC like the Rey Gob, placed for the
+        /// room and talked to as any other. His cell is walkable-checked: it is INFERRED (see
+        /// <see cref="Dreams.FavorNpc"/>).
+        /// </summary>
+        private static void PlantFavorNpc(Dreams.Sala sala)
+        {
+            if (sala.MapaDeLaSala == 0) return;
+            int cell = MapManager.IsCellWalkable(sala.MapaDeLaSala, Dreams.FavorNpcCell)
+                ? Dreams.FavorNpcCell
+                : MapManager.GetNearestWalkableCell(sala.MapaDeLaSala, Dreams.FavorNpcCell);
+            Managers.Npcs.PonerDelSueno(sala.MapaDeLaSala, Dreams.FavorNpc, cell, Dreams.FavorNpcOrientation);
+        }
+
+        /// <summary>
+        /// "Acepto el favor.": the three choices of the favour one stands in, in the izg's f6,
+        /// and the ixm that opens the client's shop window on them -- in favour mode, which the
+        /// client picks itself from the room's kind. See <see cref="Dreams.Buy"/>.
+        /// </summary>
+        /// <remarks>
+        /// The ixm is the fountain's (read off the client: its handlers are the only ones that
+        /// raise the event the shop window's Setup listens to). That the favour is opened the same
+        /// way is INFERRED from the window: InfiniteDreamShopUi.Setup is where "isFavor" and the
+        /// "ui.infiniteDreams.dreamFavor" title are decided, and it has no other way in.
+        /// </remarks>
+        internal static async Task<bool> OfferFavorAsync(NetworkStream stream)
+        {
+            var sueno = Dreams.De(GameState.CharacterId);
+            var sala = sueno?.SalaActual;
+            if (sueno == null || sala == null || !sala.EsFavor || sala.FavorChosen)
+            {
+                Console.WriteLine($"[Sueños] No favour to offer to {GameState.CharacterId} here.");
+                return false;
+            }
+
+            sala.Offers ??= Dreams.DrawFavor();
+            Persist(sueno);
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ixm));
+            Console.WriteLine($"[Sueños] Favour of room {sala.Id}: " +
+                              string.Join(", ", sala.Offers.Select(o => o.Tag)) + ".");
+            return true;
+        }
+
+        /// <summary>Whether the favour of the room one stands in is still to be chosen: what the Dispensador says.</summary>
+        internal static bool FavorPending()
+        {
+            var sala = Dreams.De(GameState.CharacterId)?.SalaActual;
+            return sala != null && sala.EsFavor && !sala.FavorChosen;
         }
 
         /// <summary>
@@ -562,7 +602,7 @@ namespace Jondo.Unity.Server.Handlers
         public static async Task DropTableAsync(NetworkStream stream, byte[] payload)
         {
             var sueno = Dreams.De(GameState.CharacterId);
-            var drops = DropsOf(sueno?.SalaActual);
+            var drops = DropsOf(sueno?.SalaActual, sueno?.Bonus ?? 100);
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Answer(Op.Izo, DreamProtocol.BuildDropTable(drops),
                                           ConnectionProtocol.RequestId(payload)));
@@ -571,15 +611,17 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// What the room's fight can drop, as the fight rolls it: the Jondo coin of every monster,
-        /// always and added up, then each item of the monsters' own tables and of their global
-        /// ones, at the best chance any of them gives, with its criterion when it has one.
+        /// always and added up, then the dream's own loot table at the room's loot bonus -- the
+        /// reflections, the astral runes, the legends -- with its criteria.
         /// </summary>
         /// <remarks>
-        /// The real table is the dream's own -- 61 lines of dream loot under dream criteria in
-        /// the capture. The monsters here are the world's and drop what they drop in the world,
-        /// and the table says so rather than promising the dream's.
+        /// The table is the real server's, the 61 lines of the izo of the captures (see
+        /// <see cref="DreamData.Loot"/>); its percents are the capture's at the bonus it was
+        /// read at, the reflections x17 at 168 as in the invitation capture. The monsters' own
+        /// world loot is not in it: a dream's fight pays the dream's, as the jyg of the invitation
+        /// capture does -- reflections and a rune, no kamas, nothing of the monsters'.
         /// </remarks>
-        internal static List<(string Criterion, int Item, int Quantity, double Percent)> DropsOf(Dreams.Sala? sala)
+        internal static List<(string Criterion, int Item, int Quantity, double Percent)> DropsOf(Dreams.Sala? sala, int lootBonus = 100)
         {
             var lines = new List<(string Criterion, int Item, int Quantity, double Percent)>();
             if (sala == null || sala.Miembros.Count == 0) return lines;
@@ -587,27 +629,9 @@ namespace Jondo.Unity.Server.Handlers
             var group = MobSpawnManager.ComposeOffMap(sala.Miembros);
             if (group == null) return lines;
 
-            int coins = 0;
-            var best = new Dictionary<(string, int), double>();
-            void Keep(string criterion, int item, double percent)
-            {
-                var key = (criterion ?? "", item);
-                if (!best.TryGetValue(key, out double had) || percent > had) best[key] = percent;
-            }
-
-            foreach (var member in group.Members)
-            {
-                int monster = member.Monster?.Id ?? 0;
-                coins += JondoCoin.RewardFor(member.Level);
-                foreach (var drop in DatabaseManager.GetMonsterDrops(monster, member.GradeIndex))
-                    Keep("", drop.ObjectId, drop.PercentDrop);
-                foreach (var drop in DatabaseManager.GetMonsterGlobalDrops(monster))
-                    Keep(drop.ReceiverCriterion, drop.ObjectId, drop.PercentDrop);
-            }
-
+            int coins = group.Members.Sum(member => JondoCoin.RewardFor(member.Level));
             if (coins > 0) lines.Add(("", JondoCoin.TemplateId, coins, 100.0));
-            foreach (var ((criterion, item), percent) in best.OrderByDescending(kv => kv.Value))
-                lines.Add((criterion, item, 1, percent));
+            lines.AddRange(Dreams.LootTableAt(lootBonus));
             return lines;
         }
 
@@ -688,6 +712,25 @@ namespace Jondo.Unity.Server.Handlers
             if (sueno == null) return;
 
             var actual = sueno.SalaActual;
+
+            // At a favour not chosen yet the storm draws its two bonuses again: the client's own
+            // text for it, "reiniciar ... así como el favor", and the favour window's reroll
+            // button ("ui.infiniteDreams.rerollFavor"). Its answer is INFERRED to be the izg with
+            // the new three, as the storm on a fight answers with the izg of the new group.
+            if (actual != null && actual.EsFavor && Network.SessionContext.State.FightId == 0
+                && sueno.Tormentas > 0 && Dreams.RerollFavor(actual))
+            {
+                sueno.Tormentas--;
+                Persist(sueno);
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Izj, DreamProtocol.BuildStorm()));
+                Console.WriteLine($"[Sueños] Astral storm on the favour of room {actual.Id}: " +
+                                  $"{string.Join(", ", actual.Offers!.Select(o => o.Tag))}; {sueno.Tormentas} left.");
+                return;
+            }
+
             string? refusal =
                 Network.SessionContext.State.FightId != 0 ? "in a fight"
                 : sueno.Tormentas <= 0 ? "no storm left"
@@ -803,6 +846,42 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
+        /// What a fight in a dream's room pays, worked out before anybody is shown the end: the
+        /// dream's difficulty, the row and loot bonus of the room, and -- at the Fin du rêve, once
+        /// it is won or its minimum of waves has fallen -- the dream fragments of the waves that
+        /// fell. Null for a fight that is not a dream's.
+        /// </summary>
+        internal sealed record DreamPay(int Difficulty, int Row, int LootBonus, bool Finished, int Waves, int Fragments);
+
+        internal static DreamPay? PayOf(Jondo.Unity.World.Fights.FightInstance fight, bool won)
+        {
+            if (!Dreams.IsDreamMap(fight.RoleplayMapId)) return null;
+
+            // The dream fought in: the first of its people's whose room is on this fight's map.
+            Dreams.Sueno? sueno = null;
+            foreach (var fighter in fight.Azul.Concat(fight.Rojo))
+            {
+                if (fighter.IsMonster) continue;
+                var dream = Dreams.De(fighter.Id);
+                if (dream?.SalaActual?.MapaDeLaSala != fight.RoleplayMapId) continue;
+                sueno = dream;
+                break;
+            }
+            var sala = sueno?.SalaActual;
+            if (sueno == null || sala == null) return null;
+
+            int waves = 0;
+            bool finished = false;
+            if (_finales.TryGetValue(fight.FightId, out var final))
+            {
+                waves = final.Cleared;
+                finished = won || waves >= final.Rules.MinWaves;
+            }
+            return new DreamPay(sueno.Dificultad, sala.Fila, sueno.Bonus, finished, waves,
+                                finished ? Dreams.FragmentsFor(sueno.Dificultad, waves) : 0);
+        }
+
+        /// <summary>
         /// A fight in a dream's room is over: where the player goes, and what he is told.
         /// </summary>
         /// <remarks>
@@ -827,8 +906,11 @@ namespace Jondo.Unity.Server.Handlers
                 int cleared = final.Cleared;
                 if (won || cleared >= final.Rules.MinWaves)
                 {
+                    // The dream fragments of the waves were paid with the fight's spoils
+                    // (FightHandler.PlanRewards); the notice says how many.
+                    int fragments = Dreams.FragmentsFor(sueno.Dificultad, cleared);
                     var (map, cell) = End(sueno);
-                    return (map, cell, CommandTexts.Get("dream.completed", cleared), true);
+                    return (map, cell, CommandTexts.Get("dream.completed", cleared, fragments), true);
                 }
             }
 

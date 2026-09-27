@@ -387,8 +387,9 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         /// <remarks>
         /// Aparte de las tres capas normales a propósito. Aquéllas describen el mundo, que es
-        /// igual para todos; esto es de UNA partida: el Rey Gob aparece en la sala de Favor del
-        /// sueño de quien la abrió y no tiene por qué estar ahí para nadie más.
+        /// igual para todos; esto es de UNA partida: el Rey Gob aparece en la fuente, y el
+        /// Dispensador de favores en el favor, del sueño de quien la abrió y no tiene por qué
+        /// estar ahí para nadie más.
         ///
         /// Se hereda el aspecto de la plantilla igual que en la carga normal, porque si no el
         /// cliente recibe un actor sin nada que dibujar.
@@ -428,7 +429,7 @@ namespace Jondo.Unity.Server.Managers
                 aqui.Add(spawn);
             }
 
-            Console.WriteLine($"[Sueños] Rey Gob {npcId} puesto en el mapa {mapId}, casilla {cell}.");
+            Console.WriteLine($"[Sueños] NPC {npcId} placed on map {mapId}, cell {cell}.");
         }
 
         public static IEnumerable<long> Maps => _byMap.Keys;
@@ -449,10 +450,11 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>
         /// NPCs that stand on no map when the server starts and are placed later -- the dream's
-        /// Rey Gob -- whose templates are read all the same. Only the placed ones' were, and the
-        /// Rey Gob came out with no template, no look, and the question mark for a face.
+        /// Rey Gob and Dispensador de favores -- whose templates are read all the same. Only the
+        /// placed ones' were, and the Rey Gob came out with no template, no look, and the question
+        /// mark for a face.
         /// </summary>
-        private static readonly int[] PlacedLater = { Dreams.ReyGob };
+        private static readonly int[] PlacedLater = { Dreams.ReyGob, Dreams.FavorNpc };
 
         public static Template? TemplateOf(int npcId)
             => _templates.TryGetValue(npcId, out var template) ? template : null;

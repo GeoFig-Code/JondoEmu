@@ -472,16 +472,24 @@ Entered from the Plano Astral's well: a dream of 26 rooms in depth, walked band 
 
 - ✅ Ten difficulties in three families (Sueño, Paradoja, Pesadilla), each with its measured starting bonus, dream points, astral storms and Draconiros arena
 - ✅ Five bands, as the invitation capture measures them: fountains at rows 4, 10, 16 and 25, band IV closed by one fight room alone, and the **Fin du rêve** at row 26
-- ✅ Every fight room pays its bonus and its dream points on entry — 5, 15 for the marked ones, 10 in band V — and the HUD shows the score, the points and the bonuses summed
+- ✅ Every fight room pays its reward and its dream points on entry — 5, 15 for the marked ones, 10 in band V — and the HUD shows the score, the points, the bonuses summed and the dreamer levels. A reward is what the client's own reward rows say: a bonus, 15 or 30 dream points, an astral storm and five points, or 50 dreamer levels
+- ✅ **Dream favours** (Faveur Onirique): in bands II to IV, three bands in four, one room of kind 2 with the Dispensador de favores. "Acepto el favor." opens the client's shop window in favour mode on three free choices — two bonuses and the purse of 10 dream points, always last. Its doors stay shut until one is chosen; an astral storm draws the two bonuses again
+- ✅ Every door shows what is behind it — fountain, favour, fight, difficult fight or the Fin du rêve — with the portal type the client's own staging sequences read (it was the fight's for every door)
+- ✅ **Dream loot**: a won fight pays each winner ten dream reflections per 100 % of the room's loot bonus, rounded up (17 at 168 %, as in the capture), and rolls the dream's own loot table — astral runes by palier from Paradoja I, legends, Sueñoscudos — at the room's bonus, which grows a tenth a palier and a twentieth in a marked room. No kamas and none of the monsters' world loot, as in the capture; the Jondo coin still drops
+- ✅ The Fin du rêve pays its intensity's dream fragments (Retazo de sueño) for every wave that fell — 25 a wave in Sueño I up to 1000 in Pesadilla III — once the dream is finished, even to a dreamer who falls after its minimum of waves
 - ✅ The bestiary, the loot table and the placement map of the room one stands in
-- ✅ The fountains' shop (Rey Gob one fountain in four): bonuses, spells and dream points bought with dream points; the Rey Gob's favour once per fountain
+- ✅ The fountains' shop (Rey Gob one fountain in four): bonuses, spells and dream points bought with dream points; the Rey Gob's favour — dream points × 1.5 — once per fountain
 - ✅ Astral storms reroll the room's group and map; a dream is saved to the base and resumed after a disconnection or a restart
 - ✅ The Fin du rêve in waves of bosses, wanted monsters and high-level monsters: level 250 +5 a wave (1 to win, 5 at most) in a Sueño, 275 +10 (3 to win, 15 at most) in a Paradoja, 300 +15 (3 to win, no end) in a Pesadilla. Winning it, or falling after the waves it takes, ends the dream won
 - ✅ A lost fight spends the Draconiros arena and the room can be tried again; with no arena left the dream is lost
 - ✅ The dream's interface only on the dream's own maps: leaving by any way — its exit, the Merkasako, a zaap, a teleport — closes it (`ixg`, sent on its own as the real server does), and coming back onto a dream's map from outside puts the player back in the room, its group and its interface as on waking there
 - ✅ `.sueno [row]` (`.sueño`, `.dream`, `.reve`), administrators only: carries the dream in progress down its own graph to a room of that row, or to the Fin du rêve with no row — every room on the way entered and won as if fought, its bonus and dream points paid
 - 🟡 Monsters are brought to the Fin du rêve's level by scaling their life and characteristics; the game's own scaling is not known, and the other rooms fight at the world groups' own grades
-- ❌ Favour rooms, and the effects of the spells the shop sells
+- 🟡 Inferred, not captured: the favour room's map and where its NPC stands, which bonuses a favour draws from, and the loot bonus rule past the three rooms and the guide's example it was read from. Dreamer levels are counted and shown, and applied nowhere; a dream fight's experience is still the world monsters'
+- ❌ The effects of the spells the shop sells
+- ❌ The dream market and the arenero's exchange for reflections: the market's two maps are in the client (238683394 and 238685442, "Mercado onírico"), but no capture or data puts its merchants (Naru Stalar, Goblastral) on them, and the arenero's only placement — a quest objective — is on map 195559426, which this client does not have
+
+Where each part comes from — the captures, the client's DataRoots, the client's code and the dofuspourlesnoobs guide — is written next to the code, in `Managers/Dreams.cs`, `Managers/DreamData.cs` and `Network/DreamProtocol.cs`; the client's tables and the captured loot table are in `datos/suenos_3.6.10.10.json`.
 
 ### 🪙 Jondo Coin
 

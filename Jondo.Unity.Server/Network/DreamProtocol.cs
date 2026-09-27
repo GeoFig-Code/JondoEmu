@@ -123,10 +123,11 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
-        /// What a room is, in the three shapes of the captures, byte for byte:
+        /// What a room is, in the shapes of the captures, byte for byte:
         ///
         ///   the entrance   { f7: 0 }
         ///   a fountain     { f5: 3, f6: the row, f7: 0 }
+        ///   a favour       { f5: 2, f6: the row, f7: 0 }     "15", "29", "41" of the invitation
         ///   a fight        { f1: score, f3: dream points, f4 { the group }, f5: 1, f6: the row,
         ///                    f7: marked }
         /// </summary>
@@ -134,6 +135,7 @@ namespace Jondo.Unity.Server.Network
         {
             if (sala.Fila == 0) return Pb.New().Var(7, 0);
             if (sala.EsFuente) return Pb.New().Var(5, TipoDeFuente).Var(6, sala.Fila).Var(7, 0);
+            if (sala.EsFavor) return Pb.New().Var(5, TipoDeFavor).Var(6, sala.Fila).Var(7, 0);
             // The end of the dream: "64" of the invitation capture, { f1: 32, f5: 4, f6: 26, f7: 1 }.
             if (sala.EsFinal) return Pb.New().Var(1, sala.Score).Var(5, TipoDeFinal).Var(6, sala.Fila).Var(7, 1);
 
@@ -163,9 +165,9 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         private static Pb RewardEntry(Dreams.Reward reward)
         {
-            var entry = Pb.New().Var(1, reward.Kind).Var(2, 0);
+            var entry = Pb.New().Var(1, reward.Storms).Var(2, reward.Sand);
             foreach (var bonus in reward.Bonuses) entry.Msg(3, BonusEntry(bonus));
-            return entry.Var(4, 0)
+            return entry.Var(4, reward.Levels)
                         .Var(5, reward.Points)
                         .VarIfNotZero(7, reward.Rarity)
                         .Var(8, reward.Price)
@@ -222,19 +224,22 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
-        /// El tipo de sala: el f5. Censadas las 665 de las quince capturas, sólo hay dos.
+        /// El tipo de sala: el f5. The client's own names for the five, READ in its door tooltip
+        /// (InfiniteDreamGateTooltipBuilder.SetupViewWithContent, the switch at 0x182D80E58):
         /// </summary>
         /// <remarks>
-        ///   filas 1, 2 y 3   tipo 1   en las 529, sin una excepción   pelea
-        ///   fila 4           tipo 3   en las 68, sin una excepción    Fuente Onírica
+        ///   0  ui.infiniteDreams.startRoom        the entrance, which leaves it out
+        ///   1  ui.infiniteDreams.fightRoom        244 of the 293 distinct rooms of the captures
+        ///   2  ui.infiniteDreams.dreamFavor       6: "15", "29" and "41" of the invitation, twice
+        ///   3  ui.infiniteDreams.dreamFountain    24, the last row of a band
+        ///   4  ui.infiniteDreams.bossRoom         2: the Fin du rêve, row 26
         ///
-        /// El propio cliente lo dice al pasar el ratón por una del tipo 3: «Fuente onírica -
-        /// TIENDA - te permite intercambiar tus puntos de sueño por bonus».
-        ///
-        /// Sala de jefe no sale ninguna: la guía lo confirma —el «Fin del rêve» es la sala 26 y
-        /// nada más—, así que no está en ninguna franja intermedia y no hay nada que medir de él.
+        /// The keys are behind the client's string obfuscation: each name is an a::xxx() that
+        /// decodes a slice of one byte array, XORed with (i &amp; 0xff) ^ 0xAA by a::.cctor
+        /// @0x182008B30 -- the array sits at offset 20795824 of global-metadata.dat.
         /// </remarks>
         private const int TipoDeCombate = 1;
+        private const int TipoDeFavor = 2;
         private const int TipoDeFuente = 3;
 
         /// <summary>The Fin du rêve: type 4, the one room of row 26 in the invitation capture.</summary>
@@ -253,7 +258,7 @@ namespace Jondo.Unity.Server.Network
         ///                               f2 el elemento interactivo que el cliente pulsara
         ///   f7   astral storms left          f8   the bonus to xp and loot, in percent
         ///   f11  the dream points            f12  the band, from 0
-        ///   f13  la sala en la que se está, como cadena
+        ///   f13  la sala en la que se está, como cadena        f14  the dreamer levels gained
         ///   f15 (repeated)  the bonuses gained      f16 (repeated)  one graph per band
         ///   f17  Draconiros arenas left      f18  1: the room's fight is still to be won
         ///   f19  1: the room is clear        f20  the level     f22  the difficulty's bonus
@@ -264,7 +269,9 @@ namespace Jondo.Unity.Server.Network
         /// bonuses are what the dream's panel shows, and that panel is what did not appear.
         ///
         /// f3 is the bestiary, sent while the room's fight is to be won; f6 the fountain's shop,
-        /// sent at a fountain. Not sent: f5 the party and f14.
+        /// sent at a fountain, and a favour's three choices while none is chosen. f14 is 50 in
+        /// the invitation capture, whose path goes through a room of "50 niveles de soñador". Not
+        /// sent: f5 the party.
         /// </remarks>
         public static byte[] BuildDreamState(Dreams.Sueno sueno, IReadOnlyList<Beast>? bestiary = null)
         {
@@ -280,7 +287,10 @@ namespace Jondo.Unity.Server.Network
             // The room one stands in: a fight still to win is f18, a clear room is f19 -- the
             // entrance, a room won, a fountain. Measured over the 57: f18 alone on entering a
             // fight room, f19 alone at the entrance and after the win, both at the fountain.
+            // A favour not chosen yet is the fight to win of its room: f18 alone, its doors shut
+            // -- INFERRED, no capture stands in one -- and a chosen one is clear, f19 alone.
             var room = sueno.SalaActual;
+            bool favourPending = room != null && room.EsFavor && !room.FavorChosen;
             bool fightPending = room != null && room.Miembros.Count > 0 && !room.Hecha;
             bool fountain = room != null && room.EsFuente;
 
@@ -309,19 +319,21 @@ namespace Jondo.Unity.Server.Network
 
                     var entrada = Pb.New();
                     bool lleva = cual < actual.Salidas.Count;
+                    var destino = lleva ? sueno.Buscar(actual.Salidas[cual]) : null;
 
                     if (lleva) entrada.Str(1, Texto(actual.Salidas[cual]));
                     entrada.Var(2, puerta);
                     if (cual != 0) entrada.Var(4, cual);
-                    if (lleva) entrada.Var(5, TipoDePortal);
+                    if (lleva) entrada.Var(5, PortalOf(destino));
 
                     izg.Msg(4, entrada);
                 }
             }
 
             // The shop, at a fountain: what is left of its offers, after the doors and before the
-            // storms, as in the izg of the long capture's room 9.
-            if (fountain && room!.Offers != null)
+            // storms, as in the izg of the long capture's room 9. And a favour's three choices,
+            // while none is chosen: the client's shop window reads the same list.
+            if ((fountain || favourPending) && room!.Offers != null)
                 foreach (var offer in room.Offers) izg.Msg(6, RewardEntry(offer));
 
             // El f7 es el número de TORMENTAS ASTRALES que quedan: en la captura larga va 1, luego
@@ -331,7 +343,8 @@ namespace Jondo.Unity.Server.Network
                .Var(8, sueno.Bonus)
                .VarIfNotZero(11, sueno.DreamPoints)
                .VarIfNotZero(12, sueno.Franja - 1)
-               .Str(13, Texto(sueno.Actual));
+               .Str(13, Texto(sueno.Actual))
+               .VarIfNotZero(14, sueno.DreamerLevels);
 
             // LOS POTENCIADORES ACUMULADOS, uno por f15. Medidos 196 en las capturas, con dos
             // formas y ninguna más -- see BonusEntry. Se acumulan los de las salas ya pisadas: el
@@ -341,8 +354,8 @@ namespace Jondo.Unity.Server.Network
             for (int franja = 1; franja <= sueno.Franja; franja++) izg.Msg(16, Graph(sueno, franja));
 
             izg.VarIfNotZero(17, sueno.Arena)
-               .VarIfNotZero(18, fightPending || fountain ? 1 : 0)
-               .VarIfNotZero(19, fightPending ? 0 : 1)
+               .VarIfNotZero(18, fightPending || fountain || favourPending ? 1 : 0)
+               .VarIfNotZero(19, fightPending || favourPending ? 0 : 1)
                .Var(20, sueno.Nivel)
                .Var(22, sueno.BaseBonus);
 
@@ -350,16 +363,36 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
-        /// El f5 de una puerta que lleva a algún sitio. Medido en 3.
+        /// El f5 de una puerta que lleva a algún sitio: the look of its portal, by what is behind it.
         /// </summary>
         /// <remarks>
-        /// La guía del juego dice que el color del portal cambia según lo que haya al otro lado
-        /// —naranja las de combate, azul la fuente, verde el favor—, así que esto es seguramente
-        /// eso. En las capturas sólo se ha visto el 3, y todas las salas que salen en ellas son de
-        /// combate, o sea que cuadra sin demostrarlo: es una suposición razonable con una sola
-        /// clase medida, no una medición de las tres.
+        /// READ in the client. Its dream frame (eft::xhh @0x181664B30, called for every izg) turns
+        /// each door into the id of a staging sequence of the room's map -- 10 x (the door's f4 +
+        /// 1) + this f5, or 69 for a 6 -- and plays it. The maps of subarea 904 name their fifteen
+        /// sequences (mapdata_assets_world_907.bundle, stagingSequences):
+        ///
+        ///   11 A_shop   12 A_bonus   13 A_combatFacile   14 A_combatDifficile   15 A_boss
+        ///   21 B_...    31 C_...                          and 69 SORTIE on the one-door maps
+        ///
+        /// So 1 is a fountain, 2 a favour -- "bonus", the guide's green portal --, 3 a fight,
+        /// 4 a difficult one, 5 the Fin du rêve, 6 a way out. And the captures agree where they
+        /// can: in their izg a door to a fight room is 3 all 96 times, to a marked one 4 all 4
+        /// times, to a fountain 1 all 5 times. This used to be 3 for every door, a fountain's
+        /// included.
         /// </remarks>
-        private const int TipoDePortal = 3;
+        internal static int PortalOf(Dreams.Sala? destination)
+            => destination == null ? PortalFight
+             : destination.EsFuente ? PortalFountain
+             : destination.EsFavor ? PortalFavor
+             : destination.EsFinal ? PortalEnd
+             : destination.Senalada ? PortalHardFight
+             : PortalFight;
+
+        internal const int PortalFountain = 1;
+        internal const int PortalFavor = 2;
+        internal const int PortalFight = 3;
+        internal const int PortalHardFight = 4;
+        internal const int PortalEnd = 5;
 
         /// <summary>
         /// izo: the loot table of the room, one f2 per item. Measured on the 61 lines of the

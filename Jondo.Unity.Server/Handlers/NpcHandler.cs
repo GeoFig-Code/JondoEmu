@@ -202,6 +202,13 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // The Dispensador de favores of a dream favour opens on what the favour is at.
+            if (npc.NpcId == Managers.Dreams.FavorNpc)
+            {
+                await OpenFavorAsync(stream, npc, mapId);
+                return;
+            }
+
             var template = Npcs.TemplateOf(npc.NpcId);
             var escrito = NpcDialogues.For(npc.NpcId, mapId);
             var primera = escrito?.First();
@@ -490,6 +497,31 @@ namespace Jondo.Unity.Server.Handlers
 
             await PreguntarAsync(stream, Kanojedo.FirstMessage, Lista(Kanojedo.LevelReplies));
             Console.WriteLine($"[Kanojedo] El maestro del mapa {mapId} ofrece sus seis niveles.");
+        }
+
+        /// <summary>
+        /// The Dispensador de favores: his offer while the favour of the room is to be chosen --
+        /// 59655 "La suerte te sonríe...", with "Acepto el favor." and "No, gracias." -- and once
+        /// it is chosen 59657, "La suerte ya te ha sonreído. No puedo hacerte otro favor por ahora.",
+        /// with no reply but the client's own way out. The lines and their replies are his
+        /// template's; which goes with which is the tree in content/npcs/dialogues.json.
+        /// </summary>
+        private static async Task OpenFavorAsync(NetworkStream stream, Npcs.Spawn npc, long mapId)
+        {
+            var escrito = NpcDialogues.For(npc.NpcId, mapId);
+            long pregunta = DreamHandler.FavorPending() ? Managers.Dreams.FavorOfferMessage : Managers.Dreams.FavorGivenMessage;
+            var linea = escrito?.Line(pregunta);
+            long[] respuestas = linea != null ? LasQueTocan(linea) : Array.Empty<long>();
+
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Ioc, ConnectionProtocol.BuildNpcDialog(mapId, npc.ContextualId)));
+
+            SessionContext.State.OpenDialogueNpcId = npc.NpcId;
+            SessionContext.State.OpenDialogueMapId = mapId;
+            SessionContext.State.OpenDialogueMessage = pregunta;
+
+            await PreguntarAsync(stream, pregunta, respuestas, null, linea);
+            Console.WriteLine($"[Sueños] The Dispensador de favores says {pregunta}, {respuestas.Length} replies.");
         }
 
         /// <summary>
@@ -895,6 +927,18 @@ namespace Jondo.Unity.Server.Handlers
                     Console.WriteLine($"[Sueños] La respuesta {reply} toca los puntos y " +
                                       "no hay sueño en curso.");
                 }
+            }
+
+            // "Acepto el favor.": the conversation ends and the favour's three choices open, in
+            // the dream's shop window. See DreamHandler.OfferFavorAsync.
+            if (elegidaAhora != null && elegidaAhora.DreamFavor)
+            {
+                CerrarConversacion();
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Kld, ConnectionProtocol.BuildDialogClosed(
+                        ConnectionProtocol.NpcDialogCloseReason)));
+                await DreamHandler.OfferFavorAsync(stream);
+                return;
             }
 
             if (elegidaAhora != null && elegidaAhora.StartsQuest != 0)

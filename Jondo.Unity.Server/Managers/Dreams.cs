@@ -22,7 +22,7 @@ namespace Jondo.Unity.Server.Managers
     /// <code>
     ///   las salas    f1 = "0".."10"
     ///                  f6   la fila del grafo
-    ///                  f4   what the room gives: a Reward, whose f9 is its InfiniteDreamRewardData row
+    ///                  f4   what the room gives: a Reward, whose f10 is its InfiniteDreamRewardData row
     ///   el grafo     0 -> 1,2   1 -> 3,4   2 -> 4,5   3 -> 6,7
     ///                4 -> 7,8   5 -> 8,9   6..9 -> 10
     /// </code>
@@ -32,10 +32,15 @@ namespace Jondo.Unity.Server.Managers
     ///
     ///   MEDIDO en la captura de Paradoja I, sala por sala: la fila que dice el f6 de cada una
     ///   coincide exactamente con la que le toca en el grafo. The f9 of those rooms -- 14931,
-    ///   14812, 15026, 14798, 14797 -- were read here as MapMobs groups, and they are rewards:
-    ///   14798 is +20% vitality in every room it appears in, while the bestiary lists different
-    ///   monsters each time. The group a room is fought against is chosen here from MapMobs and
-    ///   does not travel in the graph.
+    ///   14812, 15026, 14798, 14797 -- were read here as MapMobs groups, and they are the
+    ///   rewards' icons: 14798 is +20% vitality in every room it appears in, while the bestiary
+    ///   lists different monsters each time. The group a room is fought against is chosen here
+    ///   from MapMobs and does not travel in the graph.
+    ///
+    /// Rooms are of five kinds, the f5 of a room: 0 the entrance, 1 a fight, 2 a dream favour,
+    /// 3 a fountain, 4 the Fin du rêve -- READ in the client's door tooltip,
+    /// InfiniteDreamGateTooltipBuilder.SetupViewWithContent @0x182D80E58, which names them
+    /// startRoom, fightRoom, dreamFavor, dreamFountain and bossRoom in that order.
     ///
     /// La dificultad va de 1 a 10 y la numeración también está medida, comparando el ixf de nueve
     /// capturas contra el nombre que el jugador eligió en cada una:
@@ -68,15 +73,17 @@ namespace Jondo.Unity.Server.Managers
         ///   1: 50   2: 75   3: 100   4: 120   5: 140
         ///   6: 160  7: 190  8: 220   9: 250  10: 300
         ///
+        /// And the client's InfiniteDreamIntensitiesDataRoot says the same, as a dropBonus of 0.5
+        /// to 3.0 (see <see cref="DreamData"/>).
+        ///
         /// These were read for a time as the dream points a dream starts with, and they are not:
         /// the client paints f8 and f22 as the two percentages under the dream's name -- "220%
         /// 220%" in a Pesadilla I -- and the dream points are the f11. What gave it away is the
         /// Rey Gob: "multiply the dream points by 1.5" takes f11 from 25 to 38 in the long capture
         /// and leaves f8 where it was.
         ///
-        /// f22 never moves. f8 does, twice in the captures -- 300 to 315 entering a marked room
-        /// of Pesadilla III, 50 to 55 in the second band of the long one -- and no rule covers
-        /// both, so here it stays where it starts rather than growing by a rule of mine.
+        /// f22 never moves. f8 does: it is the loot bonus of the room one fights in -- see
+        /// <see cref="LootBonusOf"/>.
         /// </remarks>
         private static readonly int[] BonusByDifficulty =
         {
@@ -88,6 +95,146 @@ namespace Jondo.Unity.Server.Managers
             => difficulty >= 1 && difficulty < BonusByDifficulty.Length
                 ? BonusByDifficulty[difficulty]
                 : BonusByDifficulty[1];
+
+        /// <summary>
+        /// The palier a row is in, from 1: the dofuspourlesnoobs guide's paliers, I rooms 1 to 3,
+        /// II 4 to 9, III 10 to 15, IV 16 to 21, V 22 to 26. The fountain of row 4 opens palier II, as the
+        /// f12 of 1 the long capture sends while standing in it says, and row 22 is palier V's --
+        /// it gives the 10 dream points of palier V in the invitation capture.
+        /// </summary>
+        public static int PalierOf(int row) => row < 4 ? 1 : row < 10 ? 2 : row < 16 ? 3 : row < 22 ? 4 : 5;
+
+        /// <summary>
+        /// The loot bonus of a room, in percent: the f8 of the izg while one stands in it. The
+        /// difficulty's bonus, plus a tenth of it for every palier past the first and a
+        /// twentieth more in a marked room.
+        /// </summary>
+        /// <remarks>
+        /// INFERRED from the three rooms of the captures where f8 is not the difficulty's own, and
+        /// the one example of the guide, which the rule gives all four of:
+        ///
+        ///   Sueño I, rows 5 and 6 of the long capture (palier II)       50 x 1.10 = 55
+        ///   Paradoja I, rows 23 and 24 of the invitation (palier V)    120 x 1.40 = 168
+        ///   Pesadilla III, a marked room of row 1 (palier I)           300 x 1.05 = 315
+        ///   the guide's example of 238 %, 24 reflections               190 x 1.25 = 237.5
+        ///
+        /// the last a Paradoja IV in a marked room of palier III. Growing by a tenth a palier
+        /// compounded would give 175.7 and not 168. The guide says the same in words: "le bonus
+        /// de butin est lié à la difficulté de la salle, plus la salle sera difficile, plus vous
+        /// obtiendrez de reflets".
+        /// </remarks>
+        public static int LootBonusOf(int difficulty, int row, bool marked)
+        {
+            double factor = 1 + 0.1 * (PalierOf(row) - 1) + (marked ? 0.05 : 0);
+            return (int)Math.Round(BonusOf(difficulty) * factor, MidpointRounding.AwayFromZero);
+        }
+
+        /// <summary>
+        /// The dream reflections (item <see cref="ReflectionItem"/>) a fight pays each of its
+        /// winners: ten, times the loot bonus, rounded up.
+        /// </summary>
+        /// <remarks>
+        /// MEASURED. In the izo of the five captures that open the loot table the reflections line
+        /// is x5, x16, x17 and x19 at an f8 of 50, 160, 168 and 190; and at the end of the
+        /// invitation capture's fight, with f8 at 168, each of the four players gets 17 in the jyg
+        /// (frame 5572). The guide: "De base, chaque salle rapporte 10 reflets oniriques qu'il faut
+        /// ensuite adapter avec le bonus de butin de la salle ... La valeur est arrondie au
+        /// supérieur", 24 at 238 %. Every winner gets them whole: the four of the jyg get 17 each.
+        /// </remarks>
+        public static int ReflectionsFor(int lootBonus) => (int)Math.Ceiling(10 * Math.Max(0, lootBonus) / 100.0);
+
+        /// <summary>"Reflejo onírico", the dream's reflection: the item 32079 of the jyg.</summary>
+        public const int ReflectionItem = 32079;
+
+        /// <summary>
+        /// "Retazo de sueño", the guide's "Bribe de rêve": item 32080, what the waves of the Fin du
+        /// rêve pay. Its bag, "Bolsa de retazos de sueño", is 34274.
+        /// </summary>
+        public const int FragmentItem = 32080;
+
+        /// <summary>
+        /// The dream fragments a finished dream pays: its intensity's dreamFragments for every
+        /// wave of the Fin du rêve that fell. Zero when the dream was not finished.
+        /// </summary>
+        /// <remarks>
+        /// The client's InfiniteDreamIntensitiesDataRoot gives 25, 50, 75, 75, 100, 150, 200, 300,
+        /// 500 and 1000 for the ten intensities -- the guide's table of "bribes par vague", number
+        /// for number -- and the guide says when: "Les Bribes de rêves s'obtiennent uniquement en
+        /// finissant entièrement un songe", each defeated wave adding its share.
+        /// </remarks>
+        public static int FragmentsFor(int difficulty, int wavesCleared)
+            => Math.Max(0, wavesCleared) * (DreamData.IntensityOf(difficulty)?.DreamFragments ?? 0);
+
+        /// <summary>
+        /// What a won fight of a dream drops for ONE of its winners: the reflections, whole, and a
+        /// roll of every other line of the dream's loot table (<see cref="DreamData.Loot"/>) at
+        /// its percent times the room's loot bonus. <paramref name="roll"/> gives a number in
+        /// [0, 100); a line drops when it is under the line's chance.
+        /// </summary>
+        /// <remarks>
+        /// The table is the izo's, measured; that its chances are the ones rolled is INFERRED --
+        /// the client's loot table window shows them, scaled by the bonus as the reflections are.
+        /// Each winner rolls on his own: in the jyg of the invitation capture the four players get
+        /// the same 17 reflections and only one of them a Runa astral legendaria (21968), the rune
+        /// the table gives 3.36 % at that room's bonus of 168.
+        ///
+        /// A line drops only when its criterion is met. Wp is the palier and Wi the intensity --
+        /// INFERRED: the client has an InfiniteDreamStageCriterion and an
+        /// InfiniteDreamIntensityCriterion, whose letters its string obfuscation hides, and the
+        /// lines only make sense so: the Wp=1..5 rune lines are the guide's runes palier by palier
+        /// (minor and average in I and II, major and astounding in III, ...), and the "Wi&gt;3" of
+        /// every rune line keeps them from the three Rêve intensities, the guide's no legends and
+        /// no astral runes there and the client's droplegend 0. Anything else in a criterion --
+        /// the quests' Qa and Qo, Wv, Sc -- is not answered, and those lines do not drop.
+        /// </remarks>
+        public static Dictionary<int, int> LootOf(int difficulty, int row, int lootBonus, Func<double> roll)
+        {
+            var loot = new Dictionary<int, int>();
+            void Add(int item, int count)
+            {
+                if (count <= 0) return;
+                loot.TryGetValue(item, out int had);
+                loot[item] = had + count;
+            }
+
+            int palier = PalierOf(row);
+            foreach (var line in DreamData.Loot)
+            {
+                if (line.Reflections)
+                {
+                    Add(line.Item, ReflectionsFor(lootBonus));
+                    continue;
+                }
+                if (!Jondo.Unity.World.Content.Criterion.Met(line.Criterion, c => AnswerOf(c, palier, difficulty)))
+                    continue;
+                double chance = line.Scaled ? line.Percent * lootBonus / 100.0 : line.Percent;
+                if (roll() < Math.Min(100.0, chance)) Add(line.Item, 1);
+            }
+            return loot;
+        }
+
+        /// <summary>The loot table as the client's window shows it at a bonus: izo's lines.</summary>
+        public static List<(string Criterion, int Item, int Quantity, double Percent)> LootTableAt(int lootBonus)
+        {
+            var lines = new List<(string, int, int, double)>();
+            foreach (var line in DreamData.Loot)
+            {
+                if (line.Reflections) lines.Add(("", line.Item, ReflectionsFor(lootBonus), 100.0));
+                else lines.Add((line.Criterion, line.Item, 1,
+                                Math.Min(100.0, line.Scaled ? line.Percent * lootBonus / 100.0 : line.Percent)));
+            }
+            return lines;
+        }
+
+        /// <summary>The two letters of a dream's criteria this server answers: Wp, the palier, and Wi, the intensity.</summary>
+        private static Jondo.Unity.World.Content.Answer AnswerOf(Jondo.Unity.World.Content.Condition condition,
+                                                                 int palier, int intensity)
+            => condition.Code switch
+            {
+                "Wp" => Jondo.Unity.World.Content.Criterion.Compare(condition.Operator, palier, condition.Value),
+                "Wi" => Jondo.Unity.World.Content.Criterion.Compare(condition.Operator, intensity, condition.Value),
+                _ => Jondo.Unity.World.Content.Answer.Unknown,
+            };
 
         /// <summary>
         /// The dream points a dream starts with: the f11 of the izg at the entrance. Ten in the
@@ -244,37 +391,54 @@ namespace Jondo.Unity.Server.Managers
         /// iww of the wire -- the f4 of a room in the graph, an f6 of the izg at a fountain.
         /// </summary>
         /// <remarks>
-        /// Measured field by field in the Paradoja III capture and the long one, zeros written:
+        /// Measured field by field in the captures, zeros written:
         ///
-        ///   { f1: kind, f2: 0, f3 (repeated) { a bonus }, f4: 0, f5: points, f7: rarity,
-        ///     f8: price, f9: reward id, f10: ?, f11: 0 }
+        ///   { f1: astral storms, f2: 0, f3 (repeated) { a bonus }, f4: dreamer levels,
+        ///     f5: dream points, f7: rarity, f8: price, f9: icon, f10: reward id, f11: 0 }
         ///
-        /// f9 is a row of the client's own InfiniteDreamRewardData -- what the shop's entries are
-        /// built on -- and not a group of monsters, which is what it was taken for: the same 14798
-        /// is +20% vitality in every room of every capture, whatever monsters the bestiary lists
-        /// there. f10 comes with the reward and is not known. f7 is 1, 2 or 3 where it is written,
-        /// the rarity classes the shop paints (common, rare, epic, legendary). Kind 1 is a room
-        /// that gives dream points instead of a bonus, f5 of them: entering the Paradoja II one
-        /// takes f11 up by ten, the room's own five and these five.
+        /// f10 is the row of the client's own InfiniteDreamRewardsDataRoot: the client looks the
+        /// reward up by it (eft::xhm @0x181665F49 reads it for GetInfiniteDreamRewardsById) and
+        /// buys by it -- clicking "Psst Psst" sends iym { f1: 149 }. And the rows agree: 125 is
+        /// "Fogosidad", one AP; 119 "Vitalidad", % vitality; 118 "Tormenta astral", an astral
+        /// storm and five dream points.
+        ///
+        /// f9 is the reward's icon: the shop line hands it to an AddressableEntry for its
+        /// tx_itemicon (InfiniteDreamShopUi.BindRewardLine @0x182887184). That is why 14798 is on
+        /// both vitality rewards, 119 and 65, and 14808 on the two spell rewards, 140 and 157.
+        /// It was read for a time as a MapMobs group, and then as the reward row.
+        ///
+        /// f1, f4 and f5 are what the reward's actions add up to, read against the rows: 118 --
+        /// one storm action and five dream-point actions -- is f1 1 and f5 5, and entering its
+        /// room takes the storms from 1 to 2 in three captures; 4, fifteen dream-point actions, is
+        /// f5 15; 76, thirty, is f5 30; 154 "50 niveles de soñador" is f4 50, and the izg's f14
+        /// is 50 once its room is behind. f2 is INFERRED to be the Draconiros sand the same way:
+        /// the one reward-shaped count left, never above zero in the captures. f7 is 1, 2 or 3
+        /// where it is written, the rarity classes the shop paints (common, rare, epic,
+        /// legendary).
         /// </remarks>
         public sealed class Reward
         {
-            /// <summary>The InfiniteDreamRewardData row: the f9.</summary>
+            /// <summary>The icon: the f9.</summary>
             public int Id { get; init; }
 
             /// <summary>
-            /// The f10: what the client buys it by. Clicking "Psst Psst" sends iym { f1: 149 },
-            /// the f10 of that offer and nothing else of it.
+            /// The row of InfiniteDreamRewardsDataRoot: the f10, and what the client buys it by.
             /// </summary>
             public int Tag { get; init; }
 
             /// <summary>The f7: left out when zero.</summary>
             public int Rarity { get; init; }
 
-            /// <summary>The f1: <see cref="RewardKindBonus"/> or <see cref="RewardKindPoints"/>.</summary>
-            public int Kind { get; init; }
+            /// <summary>The astral storms it gives: the f1.</summary>
+            public int Storms { get; init; }
 
-            /// <summary>The dream points a kind-1 reward gives: the f5.</summary>
+            /// <summary>The Draconiros sand it gives: the f2, INFERRED.</summary>
+            public int Sand { get; init; }
+
+            /// <summary>The dreamer levels it gives: the f4.</summary>
+            public int Levels { get; init; }
+
+            /// <summary>The dream points it gives: the f5.</summary>
             public int Points { get; init; }
 
             /// <summary>What it costs in dream points at the fountain: the f8. Nothing in a room.</summary>
@@ -284,20 +448,16 @@ namespace Jondo.Unity.Server.Managers
             public IReadOnlyList<Bono> Bonuses { get; init; } = Array.Empty<Bono>();
         }
 
-        public const int RewardKindBonus = 0;
-        public const int RewardKindPoints = 1;
-
         /// <summary>
-        /// What rooms give: the nine rewards the rooms of the captures' graphs offer, each with the
-        /// id, the f10 and the rarity it always carries there.
+        /// What rooms give: the twelve rewards the rooms of the captures' graphs offer, each with
+        /// the icon, the row and the rarity it always carries there.
         /// </summary>
         /// <remarks>
         /// Counted over every room of every graph of the fifteen captures -- 14798 in 270 rooms,
-        /// 14804 in 194, 14931 in 152 and so on down to 14808 in 16. Three more rooms appear
-        /// with no bonus and a points field of 15 or 30 (14811, 14812, 14895); what they give is
-        /// not in the captures, so they are not handed out. The rooms used to draw from the twenty
-        /// (effect, value) pairs of the f15 lists, which also hold what the shop sells, and sent a
-        /// MapMobs group in the f9.
+        /// 14804 in 194, 14931 in 152 and so on down to 14808 in 16. The last three -- 15 and 30
+        /// dream points, 50 dreamer levels -- used to be left out because what they give was not
+        /// known; the client's reward rows say it (see <see cref="Reward"/>), and the guide lists
+        /// them among its special rooms: 15 or 30 dream points, the 30 rare, or a storm and 5.
         /// </remarks>
         internal static readonly Reward[] RoomRewards =
         {
@@ -309,8 +469,33 @@ namespace Jondo.Unity.Server.Managers
             new Reward { Id = 14808, Tag = 157, Rarity = 2, Bonuses = new[] { new Bono(291, 1, true) } },
             new Reward { Id = 14850, Tag = 111, Rarity = 2, Bonuses = new[] { new Bono(281, 1, true) } }, // max range
             new Reward { Id = 15026, Tag = 126, Rarity = 2, Bonuses = new[] { new Bono(128, 1) } },     // MP
-            new Reward { Id = 14931, Tag = 118, Rarity = 1, Kind = RewardKindPoints, Points = 5 },
+            new Reward { Id = 14931, Tag = 118, Rarity = 1, Storms = 1, Points = 5 },                    // a storm
+            new Reward { Id = 14812, Tag = 4, Points = 15 },                                             // "Puntos de sueño"
+            new Reward { Id = 14811, Tag = 76, Points = 30 },                                            // "Bolsa de puntos de sueño"
+            new Reward { Id = 14895, Tag = 154, Rarity = 1, Levels = 50 },                              // "50 niveles de soñador"
         };
+
+        /// <summary>
+        /// The dream favour's third choice, always the last: "L'un des 3 choix (le dernier) est
+        /// forcément une petite bourse qui donne 10 points de rêve", the guide says. It is the
+        /// client's reward 143, "Bolsa de puntos de sueño", ten dream-point actions.
+        /// </summary>
+        /// <remarks>
+        /// Its icon is INFERRED: 14811, the icon of reward 76, the thirty-point "Bolsa de puntos
+        /// de sueño" of the same name. No capture shows 143 on the wire.
+        /// </remarks>
+        internal static readonly Reward FavorPurse = new Reward { Id = 14811, Tag = 143, Points = 10 };
+
+        /// <summary>
+        /// What the dream favour draws its two free bonuses from: the bonuses of the captures whose
+        /// values are measured and that a fight here knows how to apply (<see cref="ApplyTo"/>) --
+        /// the rooms' eight and the shop's critical hits. The guide: "un choix entre 3 bonus
+        /// gratuits". Which rewards the real favour draws from is not captured.
+        /// </summary>
+        internal static readonly Reward[] FavorBonuses =
+            RoomRewards.Where(r => r.Bonuses.Count > 0)
+                       .Append(new Reward { Id = 14813, Tag = 124, Rarity = 2, Bonuses = new[] { new Bono(115, 25) } })
+                       .ToArray();
 
         /// <summary>
         /// What the fountain sells: the five offers of the one fountain of the captures, in their
@@ -370,16 +555,32 @@ namespace Jondo.Unity.Server.Managers
             public Bono? Regalo => Reward != null && Reward.Bonuses.Count > 0 ? Reward.Bonuses[0] : null;
 
             /// <summary>
-            /// What a fountain has left to sell: the shop's offers, stocked the first time it is
-            /// entered, each gone once bought. Null anywhere else.
+            /// What a fountain has left to sell, or what a dream favour offers: stocked the first
+            /// time the room is entered, a fountain's offers each gone once bought, a favour's all
+            /// gone once one is chosen. Null anywhere else.
             /// </summary>
             public List<Reward>? Offers { get; set; }
 
             /// <summary>Whether the Rey Gob stands in this fountain. See <see cref="ReyGobOneIn"/>.</summary>
             public bool HasReyGob { get; set; }
 
-            /// <summary>Whether his favor -- the dream points times one and a half -- was taken here.</summary>
+            /// <summary>Whether the Rey Gob's favor -- the dream points times one and a half -- was taken here.</summary>
             public bool FavorTaken { get; set; }
+
+            /// <summary>
+            /// A dream favour, the guide's Faveur Onirique: a room with no fight and one NPC, the
+            /// Dispensador de favores, who offers three free rewards. Room kind 2.
+            /// </summary>
+            /// <remarks>
+            /// MEASURED in the invitation capture's five-band graph: rooms "15", "29" and "41", on
+            /// rows 7, 12 and 17, each { f5: 2, f6: the row, f7: 0 } and nothing else -- no score,
+            /// no dream points, no reward -- and each with a single exit. The player's path runs
+            /// through all three.
+            /// </remarks>
+            public bool EsFavor { get; set; }
+
+            /// <summary>Whether the favour of this room was chosen: until then its doors stay shut.</summary>
+            public bool FavorChosen { get; set; }
 
             /// <summary>El efecto que modifica la sala, y cuánto. Cero: sin modificación.</summary>
             [JsonIgnore] public int Efecto => Regalo?.Efecto ?? 0;
@@ -411,18 +612,16 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>Sala señalada. El f7, que vale 1 en 8 de las 89 y siempre con Clase 15.</summary>
             public bool Senalada { get; set; }
 
-            /// <summary>Si esta sala es la Fuente Onírica: la tienda, y siempre la última.</summary>
+            /// <summary>Si esta sala es la Fuente Onírica: la tienda, y siempre la última de su franja.</summary>
             /// <remarks>
-            /// Censadas las 665 salas de las quince capturas, el tipo -el f5- no admite dudas:
-            /// las filas 1, 2 y 3 valen 1 en las 529, y la fila 4 vale 3 en las 68. O sea que
-            /// TODA sala de en medio es de pelea y la última es SIEMPRE la fuente.
+            /// The kind, the f5, over the 293 distinct rooms of the captures' graphs: 244 of kind 1
+            /// (fights), 24 of kind 3 (fountains, the last row of every band but band IV's), 6 of
+            /// kind 2 (the three dream favours of the invitation capture, in two captures) and 2 of
+            /// kind 4 (its Fin du rêve). A census of rows 1 to 4 alone, 665 rooms of kinds 1 and 3,
+            /// was taken for the whole dream for a time.
             ///
             /// El propio cliente lo dice al pasar el ratón: «Fuente onírica - TIENDA - te permite
             /// intercambiar tus puntos de sueño por bonus». Lo saca de este número.
-            ///
-            /// Aquí no hay sala de jefe: en las 665 no sale ni una. El «Fin del Sueño» de la guía
-            /// tiene que estar al final del sueño entero, después de varias franjas, y de eso no
-            /// hay captura.
             /// </remarks>
             public bool EsFuente { get; set; }
 
@@ -459,7 +658,11 @@ namespace Jondo.Unity.Server.Managers
             /// </summary>
             public int DreamPoints { get; set; }
 
-            /// <summary>The bonus to experience and loot now, in percent: the f8.</summary>
+            /// <summary>
+            /// The bonus to experience and loot now, in percent: the f8. The loot bonus of the
+            /// last room with a fight one entered (<see cref="LootBonusOf"/>), the difficulty's at
+            /// first.
+            /// </summary>
             public int Bonus { get; set; }
 
             /// <summary>The difficulty's bonus, which never moves: the f22.</summary>
@@ -476,6 +679,14 @@ namespace Jondo.Unity.Server.Managers
 
             /// <summary>Tormentas astrales que quedan. Es el f7, y el número del botón.</summary>
             public int Tormentas { get; set; } = 1;
+
+            /// <summary>
+            /// The dreamer levels gained: the f14 of the izg, 50 in the invitation capture once
+            /// the room of reward 154, "50 niveles de soñador", is behind. What they do in a fight
+            /// is not known ("Mejora los efectos de los soñadores vinculados al nivel"), so they are
+            /// counted and shown, and applied nowhere.
+            /// </summary>
+            public int DreamerLevels { get; set; }
 
             /// <summary>Draconiros arenas, the retries: the f17. See <see cref="StartingArenas"/>.</summary>
             /// <remarks>
@@ -735,7 +946,8 @@ namespace Jondo.Unity.Server.Managers
         public static void Initialize()
         {
             Cargar();
-            Console.WriteLine($"[Sueños] {GruposDisponibles} grupos para plantar en las salas.");
+            Console.WriteLine($"[Sueños] {GruposDisponibles} grupos para plantar en las salas; " +
+                              $"{DreamData.Loot.Count} lines of dream loot.");
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -905,6 +1117,25 @@ namespace Jondo.Unity.Server.Managers
                 porFila.Add(deLaFila);
             }
 
+            // A dream favour: in bands II to IV, three bands in four, one room of a fight row. In
+            // the invitation capture's five bands it is rooms "15", "29" and "41", one in each of
+            // bands II, III and IV and on their third, second and first fight rows; bands I --
+            // eleven of them in the captures -- and V have none, and the long capture's band II
+            // has none either. The guide: "De manière plus rare, vous pouvez également croiser une
+            // salle où se trouve un seul PNJ". Three in four is those four middle bands, no more.
+            if (sueno.Franja >= FirstFavorBand && sueno.Franja <= LastFavorBand && anchos.Length > 0)
+            {
+                bool favour;
+                int row, which;
+                lock (_azar)
+                {
+                    favour = _azar.Next(FavorBandsOutOf) < FavorBandsWith;
+                    row = 1 + _azar.Next(anchos.Length);
+                    which = _azar.Next(porFila[row].Count);
+                }
+                if (favour) porFila[row][which].EsFavor = true;
+            }
+
             if (sueno.Franja == Bands - 1)
             {
                 // Band IV closes on one fight room alone, which opens band V.
@@ -953,11 +1184,13 @@ namespace Jondo.Unity.Server.Managers
                     continue;
                 }
 
+                // A dream favour opens one way on: "15 -> 19", "29 -> 32", "41 -> 44", the three of
+                // the invitation capture.
                 for (int i = 0; i < esta.Count; i++)
                 {
                     int primero = i * abajo.Count / esta.Count;
                     esta[i].Salidas.Add(abajo[primero].Id);
-                    if (primero + 1 < abajo.Count) esta[i].Salidas.Add(abajo[primero + 1].Id);
+                    if (primero + 1 < abajo.Count && !esta[i].EsFavor) esta[i].Salidas.Add(abajo[primero + 1].Id);
                 }
 
                 // Y que no quede ninguna sin padre. Una sala a la que no se puede llegar se dibuja
@@ -967,8 +1200,9 @@ namespace Jondo.Unity.Server.Managers
                     if (esta.Exists(x => x.Salidas.Contains(abajo[j].Id))) continue;
 
                     // Al que tenga sitio: ninguna sala puede ofrecer más salidas que puertas hay
-                    // en su mapa, o la de más no se podría pulsar.
-                    var padre = esta.Find(x => x.Salidas.Count < PuertasPorSala)
+                    // en su mapa, o la de más no se podría pulsar. Not a favour: it keeps its one.
+                    var padre = esta.Find(x => !x.EsFavor && x.Salidas.Count < PuertasPorSala)
+                                ?? esta.Find(x => !x.EsFavor)
                                 ?? esta[Math.Min(j, esta.Count - 1)];
                     padre.Salidas.Add(abajo[j].Id);
                 }
@@ -976,15 +1210,15 @@ namespace Jondo.Unity.Server.Managers
 
             RepartirMapas(sueno);
 
-            // Every room past the entry fights but a fountain and the end: the band's middle rows,
-            // and band IV's lone closing room. Medido: tipo 1 en las 529 de las filas de pelea.
-            // Band V's give 10 dream points, row 22's included -- "dp10" in all of them in the
-            // invitation capture -- where the others give 5, and 15 the marked ones.
+            // Every room past the entry fights but a fountain, a favour and the end: the band's
+            // middle rows, and band IV's lone closing room. Band V's give 10 dream points, row
+            // 22's included -- "dp10" in all of them in the invitation capture -- where the others
+            // give 5, and 15 the marked ones. A favour gives none: its f3 is not written.
             for (int i = 1; i < porFila.Count; i++)
             {
                 foreach (var sala in porFila[i])
                 {
-                    if (sala.EsFuente || sala.EsFinal) continue;
+                    if (sala.EsFuente || sala.EsFinal || sala.EsFavor) continue;
                     if (sala.Miembros.Count > 0) continue;
                     Poblar(sala, nivel, sueno.Dificultad);
 
@@ -1020,13 +1254,74 @@ namespace Jondo.Unity.Server.Managers
                 dream.DreamPoints += room.DreamPoints;
                 if (room.Reward != null)
                 {
-                    if (room.Reward.Kind == RewardKindPoints) dream.DreamPoints += room.Reward.Points;
-                    foreach (var bonus in room.Reward.Bonuses) Gain(dream, bonus);
+                    Pay(dream, room.Reward);
                     gained = room.Regalo;
                 }
             }
+
+            // The loot bonus is the room's where there is a fight: the fountain of row 4 of the
+            // long capture leaves f8 at the 50 of row 3, and row 5 takes it to 55.
+            if (room.Miembros.Count > 0 || room.EsFinal)
+                dream.Bonus = LootBonusOf(dream.Dificultad, room.Fila, room.Senalada);
+
             if (room.EsFuente && room.Offers == null) room.Offers = new List<Reward>(ShopOffers);
+            if (room.EsFavor && !room.FavorChosen && room.Offers == null) room.Offers = DrawFavor();
             return room;
+        }
+
+        /// <summary>
+        /// What a reward gives, into the dream: its dream points, its storms, its sand, its
+        /// dreamer levels and its bonuses. A room's on entering, a fountain's on buying, a
+        /// favour's on choosing.
+        /// </summary>
+        private static void Pay(Sueno dream, Reward reward)
+        {
+            dream.DreamPoints += reward.Points;
+            dream.Tormentas += reward.Storms;
+            dream.Arena += reward.Sand;
+            dream.DreamerLevels += reward.Levels;
+            foreach (var bonus in reward.Bonuses) Gain(dream, bonus);
+        }
+
+        /// <summary>
+        /// The three choices of a dream favour: two bonuses drawn from <see cref="FavorBonuses"/>,
+        /// different ones, and the purse of ten dream points last -- "Le choix n°3 est toujours
+        /// une petite bourse de 10 Points de rêve". All three free: the shop window the client
+        /// opens on them says "Gratis" where a fountain says its price
+        /// (InfiniteDreamShopUi.BindRewardLine, "ui.shop.free").
+        /// </summary>
+        internal static List<Reward> DrawFavor()
+        {
+            var pool = FavorBonuses.ToList();
+            var drawn = new List<Reward>();
+            lock (_azar)
+            {
+                while (drawn.Count < FavorBonusesOffered && pool.Count > 0)
+                {
+                    var pick = pool[_azar.Next(pool.Count)];
+                    drawn.Add(pick);
+                    pool.RemoveAll(r => r.Tag == pick.Tag);
+                }
+            }
+            drawn.Add(FavorPurse);
+            return drawn;
+        }
+
+        /// <summary>How many bonuses a favour offers before its purse: "3 bonus gratuits", the last the purse.</summary>
+        public const int FavorBonusesOffered = 2;
+
+        /// <summary>
+        /// Whether one may leave a room: a room with a fight once it is won, a dream favour once
+        /// its favour is chosen -- the guide: one of the three has to be chosen to go on -- and
+        /// any other room at once. A fight room whose group is no longer planted counts as won,
+        /// the way a dream continued after a disconnection finds it.
+        /// </summary>
+        public static bool CanLeave(Sala room)
+        {
+            if (room.EsFavor) return room.FavorChosen;
+            if (room.Miembros.Count == 0) return true;
+            if (room.Hecha) return true;
+            return room.Plantado == 0;
         }
 
         /// <summary>What <see cref="SkipTo"/> made of it.</summary>
@@ -1089,18 +1384,30 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// Buys at the fountain one stands at: the offer named by its f10 -- what the client sends,
-        /// measured the first time a purchase was tried -- or else by its reward id or its place in
-        /// the shop. Its price comes off the dream points, its bonuses join the ones gained, and it
-        /// leaves the shop. Null when it cannot be bought, and why in <paramref name="refusal"/>.
+        /// Buys at the fountain one stands at, or chooses at the dream favour: the offer named by
+        /// its f10 -- what the client sends, measured the first time a purchase was tried -- or
+        /// else by its icon or its place in the shop. Its price comes off the dream points, what it
+        /// gives goes into the dream, and it leaves the shop; at a favour the other two go with it,
+        /// the favour being one choice. Null when it cannot be had, and why in
+        /// <paramref name="refusal"/>.
         /// </summary>
+        /// <remarks>
+        /// The favour's choice comes in the same way as a purchase: its three rewards are shown in
+        /// the client's shop window, which the client opens in favour mode by itself when the room
+        /// one stands in is of kind 2 (InfiniteDreamShopUi.Setup @0x18288A1F8 compares the current
+        /// room's kind with 2 for the "isFavor" class and the "ui.infiniteDreams.dreamFavor"
+        /// title). INFERRED that its button sends the fountain's iym: the window is the same one.
+        /// </remarks>
         public static Reward? Buy(Sueno dream, int which, out string refusal)
         {
             refusal = "";
             var room = dream.SalaActual;
-            if (room == null || !room.EsFuente || room.Offers == null)
+            bool favour = room != null && room.EsFavor;
+            if (room == null || !(room.EsFuente || favour) || room.Offers == null)
             {
-                refusal = "not at a fountain";
+                refusal = room != null && room.EsFavor && room.FavorChosen
+                    ? "the favour was chosen already"
+                    : "not at a fountain or a favour";
                 return null;
             }
 
@@ -1119,9 +1426,28 @@ namespace Jondo.Unity.Server.Managers
             }
 
             dream.DreamPoints -= offer.Price;
-            foreach (var bonus in offer.Bonuses) Gain(dream, bonus);
+            Pay(dream, offer);
             room.Offers.Remove(offer);
+            if (favour)
+            {
+                room.FavorChosen = true;
+                room.Offers = null;
+            }
             return offer;
+        }
+
+        /// <summary>
+        /// The astral storm on a dream favour not yet chosen: its two bonuses drawn again, the
+        /// purse still last. The client's reward 24, "Tormenta astral": "Permite reiniciar todos
+        /// los monstruos presentes en una sala, todos los artículos de la fuente, así como el
+        /// favor", and the guide: a Tempête astrale rerolls the favour's options. False where
+        /// there is no favour to reroll.
+        /// </summary>
+        public static bool RerollFavor(Sala room)
+        {
+            if (!room.EsFavor || room.FavorChosen) return false;
+            room.Offers = DrawFavor();
+            return true;
         }
 
         /// <summary>
@@ -1282,6 +1608,14 @@ namespace Jondo.Unity.Server.Managers
                     continue;
                 }
 
+                // A dream favour on the map made for one -- see MapasDeFavor.
+                var favores = MapasDeFavor();
+                if (sala.EsFavor && favores.Count > 0)
+                {
+                    sala.MapaDeLaSala = favores[dado.Next(favores.Count)];
+                    continue;
+                }
+
                 int i = dado.Next(libres.Count);
                 sala.MapaDeLaSala = libres[i];
                 libres.RemoveAt(i);
@@ -1305,7 +1639,14 @@ namespace Jondo.Unity.Server.Managers
             foreach (long mapa in MapasDeSala()) yield return mapa;
             foreach (long mapa in MapasDeFuente()) yield return mapa;
             foreach (long mapa in MapasDeFinal()) yield return mapa;
+            foreach (long mapa in MapasDeFavor()) yield return mapa;
         }
+
+        /// <summary>
+        /// Whether an element of a dream's map is one the client can use: a door, or the fountain.
+        /// The favour room's centrepiece is neither, and declaring it a door made it one more exit.
+        /// </summary>
+        public static bool IsDoorOrFountain(int gfx) => DoorGfx.Contains(gfx) || gfx == FountainGfx;
 
         /// <summary>
         /// The graphics of a room's doors: 90166, the pools of 69 maps, and 65148, the jets of 22
@@ -1336,6 +1677,31 @@ namespace Jondo.Unity.Server.Managers
 
         private static List<long>? _mapasDeFuente;
         private static List<long>? _mapasDeFinal;
+        private static List<long>? _mapasDeFavor;
+
+        /// <summary>
+        /// The maps a dream favour can be on: those of subarea 904 with their three doors and one
+        /// more element that is neither a door nor the fountain. There is one, 237787188, whose
+        /// fourth element, 540939 (graphic 306053), stands on cell 313 -- the fountain's own cell
+        /// on the five fountain maps, of which it has the layout -- by a campfire.
+        /// </summary>
+        /// <remarks>
+        /// INFERRED: no capture stands in a favour room, so no jru names its map. It is the one
+        /// map of the dream's that no other kind of room can use, and a room "où se trouve un seul
+        /// PNJ" needs a map without a fight's to stand on. With no such map, a favour goes on a
+        /// fight room's map.
+        /// </remarks>
+        internal static List<long> MapasDeFavor()
+        {
+            if (_mapasDeFavor != null) return _mapasDeFavor;
+            var salen = MapasDeLaSubarea()
+                .Where(m => DoorsOf(m).Count == PuertasPorSala
+                            && Interactives.ElementsOf(m).Count == PuertasPorSala + 1
+                            && Interactives.ElementsOf(m).Any(e => !IsDoorOrFountain(e.Gfx)))
+                .OrderBy(m => m).ToList();
+            if (salen.Count > 0) _mapasDeFavor = salen;
+            return salen;
+        }
 
         /// <summary>The three maps of subarea 904 with one door and nothing else: 237785140, 237785159 and 237789236.</summary>
         private static List<long> MapasDeFinal()
@@ -1366,6 +1732,15 @@ namespace Jondo.Unity.Server.Managers
         /// at a fountain. He used to stand in every one, where the shop is what belongs.
         /// </summary>
         public const int ReyGobOneIn = 4;
+
+        /// <summary>
+        /// The bands a dream favour can be in, II to IV, and how often one is: three bands in
+        /// four -- see <see cref="MontarUnaFranja"/>.
+        /// </summary>
+        public const int FirstFavorBand = 2;
+        public const int LastFavorBand = 4;
+        public const int FavorBandsWith = 3;
+        public const int FavorBandsOutOf = 4;
 
         /// <summary>The maps of subarea 904, the dream's.</summary>
         private static HashSet<long> MapasDeLaSubarea()
@@ -1437,6 +1812,32 @@ namespace Jondo.Unity.Server.Managers
         public const int ReyGob = 7850;
         public const int CasillaDelReyGob = 232;
         public const int OrientacionDelReyGob = 3;
+
+        /// <summary>
+        /// The Dispensador de favores, who stands in a dream favour: NPC 7835 of the client's
+        /// templates, named 1149844 "Dispensador de favores". The guide calls him the same.
+        /// </summary>
+        /// <remarks>
+        /// His template has the whole conversation: 59655 "La suerte te sonríe ... Déjame hacerte
+        /// un favor", answered 81584 "Acepto el favor." or 81585 "No, gracias."; 59657 "La suerte
+        /// ya te ha sonreído. No puedo hacerte otro favor por ahora."; and 59656, the favour for the
+        /// owner of the dream, for a group this server does not make. The tree is in
+        /// content/npcs/dialogues.json.
+        ///
+        /// Where he stands is INFERRED: on cell 232 facing 3, where the Rey Gob stands in the
+        /// fountain maps (measured), whose layout the favour map has -- its centrepiece on the
+        /// fountain's cell 313. No capture stands in a favour room.
+        /// </remarks>
+        public const int FavorNpc = 7835;
+        public const int FavorNpcCell = 232;
+        public const int FavorNpcOrientation = 3;
+
+        /// <summary>His offer, "La suerte te sonríe...", and the line once it is taken.</summary>
+        public const int FavorOfferMessage = 59655;
+        public const int FavorGivenMessage = 59657;
+
+        /// <summary>"Acepto el favor.", the reply that opens the three choices.</summary>
+        public const int FavorAcceptReply = 81584;
 
         /// <summary>Le pone a una sala su grupo y su modificación.</summary>
         /// <remarks>

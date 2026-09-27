@@ -91,15 +91,27 @@ namespace Jondo.Unity.Server.Handlers
         /// each one in his own session. A dream's fights are not cut: in the four-player dream
         /// capture every player gets the same experience and the same items.
         /// </summary>
+        /// <remarks>
+        /// And a dream's fights pay the dream's loot, not the monsters' (see <see cref="DreamLootOf"/>):
+        /// in the jyg of the invitation capture (frame 5572) each of the four players has 17 dream
+        /// reflections, one of them a Runa astral legendaria too, and none of them a kama or
+        /// anything of the monsters'. The Fin du rêve is won once its minimum of waves has fallen,
+        /// whoever is standing at its end -- the client's own words for it, "Una vez pasado el
+        /// umbral, la victoria es definitiva" (1178499) -- so its players are paid then even when
+        /// the last wave had the better of them.
+        /// </remarks>
         private static void PlanRewards(FightInstance fight)
         {
             if (!fight.Reglas.ReparteBotin || fight.Reglas.PagaElKoliseo) return;
+
+            bool won = fight.Azul.Concat(fight.Rojo).Any(f => !f.IsMonster && !f.EsInvocado && fight.HaGanado(f.Id));
+            var dream = DreamHandler.PayOf(fight, won);
 
             var winners = new List<(Fighter Fighter, GameSession Session)>();
             foreach (var fighter in fight.Azul.Concat(fight.Rojo))
             {
                 if (fighter.IsMonster || fighter.EsInvocado || fighter.EsIlusion) continue;
-                if (!fight.HaGanado(fighter.Id)) continue;
+                if (!fight.HaGanado(fighter.Id) && dream?.Finished != true) continue;
                 var session = SessionRegistry.FindByCharacter(fighter.Id);
                 if (session != null) winners.Add((fighter, session));
             }
@@ -120,15 +132,23 @@ namespace Jondo.Unity.Server.Handlers
             {
                 var (fighter, session) = winners[i];
                 Dictionary<int, int> loot;
-                using (SessionContext.Push(session)) loot = RollLoot(fight, extra);
+                if (dream != null) loot = DreamLootOf(fight, dream);
+                else using (SessionContext.Push(session)) loot = RollLoot(fight, extra);
                 plan[fighter.Id] = new Reward
                 {
                     Xp = shared ? XpShare(xpAlone, levels[i], levels, strongest) : xpAlone,
-                    Kamas = shared ? KamasShare(kamasAlone, prospectings[i], prospectings) : kamasAlone,
+                    Kamas = dream != null ? 0 : shared ? KamasShare(kamasAlone, prospectings[i], prospectings) : kamasAlone,
                     Loot = loot,
                 };
             }
             _rewards[fight.FightId] = plan;
+
+            if (dream != null)
+            {
+                Program.LogDebug($"[Sueños] Fight #{fight.FightId} pays {winners.Count} dreamer(s) at a loot bonus of " +
+                                 $"{dream.LootBonus}: {Dreams.ReflectionsFor(dream.LootBonus)} reflection(s) each" +
+                                 (dream.Finished ? $", {dream.Fragments} dream fragment(s) for {dream.Waves} wave(s)." : "."));
+            }
 
             if (winners.Count > 1)
             {
@@ -136,6 +156,27 @@ namespace Jondo.Unity.Server.Handlers
                                  string.Join(", ", plan.Select(p => $"{p.Key} {p.Value.Xp} xp {p.Value.Kamas} kamas " +
                                                                     $"{p.Value.Loot.Sum(l => l.Value)} objeto(s)")));
             }
+        }
+
+        /// <summary>
+        /// What a dream's fight drops for one of its winners: the dream's loot at the room's loot
+        /// bonus (<see cref="Dreams.LootOf"/>), the Jondo coin every monster pays on this server,
+        /// and, when the fight finished the dream, the dream fragments of its waves.
+        /// </summary>
+        private static Dictionary<int, int> DreamLootOf(FightInstance fight, DreamHandler.DreamPay dream)
+        {
+            var loot = Dreams.LootOf(dream.Difficulty, dream.Row, dream.LootBonus, TirarPorcentaje);
+            void Add(int item, int count)
+            {
+                if (count <= 0) return;
+                loot.TryGetValue(item, out int had);
+                loot[item] = had + count;
+            }
+
+            Add(Managers.JondoCoin.TemplateId,
+                fight.Rojo.Where(m => m.IsMonster && !m.EsInvocado).Sum(m => Managers.JondoCoin.RewardFor(m.Level)));
+            Add(Dreams.FragmentItem, dream.Fragments);
+            return loot;
         }
 
         /// <summary>This player's share of the fight, if it was planned.</summary>

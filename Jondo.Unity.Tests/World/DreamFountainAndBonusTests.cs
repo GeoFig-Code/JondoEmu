@@ -115,7 +115,10 @@ namespace Jondo.Unity.Tests.World
                          Convert.ToHexString(DreamProtocol.BuildPositions(237898760, 237765632, attackers, defenders)).ToLowerInvariant());
         }
 
-        /// <summary>The room's loot table opens with the coin every monster pays, at 100%.</summary>
+        /// <summary>
+        /// The room's loot table opens with the coin every monster pays, at 100%, and goes on with
+        /// the dream's own: the reflections, x12 at a Paradoja I's 120, and the other 60 lines.
+        /// </summary>
         [Fact]
         public void The_loot_table_is_the_fight_s()
         {
@@ -123,11 +126,13 @@ namespace Jondo.Unity.Tests.World
             var dream = New();
             var room = dream.Salas.First(r => r.Miembros.Count > 0);
 
-            var drops = DreamHandler.DropsOf(room);
+            var drops = DreamHandler.DropsOf(room, 120);
             Assert.NotEmpty(drops);
             Assert.Equal(JondoCoin.TemplateId, drops[0].Item);
             Assert.Equal(100.0, drops[0].Percent);
             Assert.True(drops[0].Quantity > 0);
+            Assert.Equal(12, drops.Single(d => d.Item == Dreams.ReflectionItem).Quantity);
+            Assert.Equal(62, drops.Count);
             Assert.Empty(DreamHandler.DropsOf(dream.Buscar(0)));
         }
 

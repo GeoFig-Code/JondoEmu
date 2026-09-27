@@ -192,6 +192,9 @@ namespace Jondo.Unity.Server.Managers
             {
                 foreach (var puerta in Interactives.ElementsOf(sala))
                 {
+                    // The favour room's centrepiece is neither a door nor a fountain: left alone.
+                    if (!Dreams.IsDoorOrFountain(puerta.Gfx)) continue;
+
                     // The Fontaine onirique of a fountain room is not a door: skill 355,
                     // "Consultar", as the long capture declares element 539708.
                     int skill = puerta.Gfx == Dreams.FountainGfx ? Dreams.FountainSkill : Dreams.HabilidadDelPozo;

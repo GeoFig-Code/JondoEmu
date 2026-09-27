@@ -210,6 +210,7 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(100, map);
             Assert.Equal(200, cell);
             Assert.Contains("5 oleada", notice);
+            Assert.Contains("250 retazo", notice);   // 50 dream fragments a wave in a Rêve II
             Assert.Null(Dreams.De(Dreamer));
         });
 
