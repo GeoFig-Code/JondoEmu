@@ -16,7 +16,7 @@ namespace Jondo.Unity.Tests.Combat
     {
         private const long Player = 8_950_000_101;
 
-        /// <summary>A player against a megabot, in the megabot's turn.</summary>
+        /// <summary>A player against a JondoBot, in the JondoBot's turn.</summary>
         private static FightInstance AgainstABot(out Fighter human, out Fighter bot)
         {
             var fight = new FightInstance(8_950_101, 1, 1);

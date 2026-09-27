@@ -404,7 +404,7 @@ namespace Jondo.Unity.Server.Handlers
                                                         IReadOnlyList<Fighter>? blueBots = null,
                                                         IReadOnlyList<Fighter>? redBots = null)
         {
-            // Koliseo megabots fill sides with no session behind them; somebody real still fights.
+            // Koliseo JondoBots fill sides with no session behind them; somebody real still fights.
             blueBots ??= Array.Empty<Fighter>();
             redBots ??= Array.Empty<Fighter>();
             if (blue.Count + blueBots.Count == 0 || red.Count + redBots.Count == 0) return false;
@@ -509,7 +509,7 @@ namespace Jondo.Unity.Server.Handlers
                 }
             }
 
-            // The megabots, after the people: placed like them, ready from the start.
+            // The JondoBots, after the people: placed like them, ready from the start.
             foreach (var bot in blueBots) fight.AddPlayer(bot);
             foreach (var bot in redBots) fight.AddOpponent(bot);
 
@@ -556,7 +556,7 @@ namespace Jondo.Unity.Server.Handlers
 
             Console.WriteLine($"[{(koliseo ? "Koliseo" : "PvP")}] Combate #{fightId} en el mapa " +
                               $"{arenaMapId}: {blue.Count + blueBots.Count} contra {red.Count + redBots.Count}" +
-                              (blueBots.Count + redBots.Count > 0 ? $", {blueBots.Count + redBots.Count} megabot(s)." : "."));
+                              (blueBots.Count + redBots.Count > 0 ? $", {blueBots.Count + redBots.Count} JondoBot(s)." : "."));
             return true;
         }
 
@@ -578,7 +578,7 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// A character fighter's look, class and sex: from his row, or -- a Koliseo megabot has
+        /// A character fighter's look, class and sex: from his row, or -- a Koliseo JondoBot has
         /// none -- from the fighter itself.
         /// </summary>
         private static (byte[] Look, int Breed, int Sex) CharacterLookOf(Fighter fighter)
@@ -3100,7 +3100,7 @@ namespace Jondo.Unity.Server.Handlers
             await EngancheAsync(stream, fight, fighter, Managers.EffectEngine.AlEmpezarElTurno);
             fighter.LeHanPegado = false;
 
-            // A poison can kill here, at the start of its victim's turn -- a megabot Sram's
+            // A poison can kill here, at the start of its victim's turn -- a JondoBot Sram's
             // Arsénico does. Nothing looked: the dead player was handed his turn and the fight
             // stood until his clock ran out.
             if (!fighter.IsAlive || !fight.SigueVivo(FightInstance.Azules) || !fight.SigueVivo(FightInstance.Rojos))
@@ -3169,7 +3169,7 @@ namespace Jondo.Unity.Server.Handlers
             bool deUnMonstruo = invocador is { IsMonster: true } || invocador is { IsBot: true };
             if (fighter.IsBot || (fighter.IsMonster && (!fighter.EsInvocado || fighter.PlaysOnItsOwn || deUnMonstruo)))
             {
-                // A Koliseo megabot plays like a monster: nobody's client plays it, and neither
+                // A Koliseo JondoBot plays like a monster: nobody's client plays it, and neither
                 // its summons.
                 await MonsterTurnAsync(stream, fight, fighter);
             }
@@ -5143,6 +5143,18 @@ namespace Jondo.Unity.Server.Handlers
         /// Returns the simultaneous summon capacity. Player equipment is already stored in
         /// Otras[26] by RellenarLaFicha, so reading StatsHandler again would count it twice.
         /// </summary>
+        /// <summary>
+        /// Whether one more of this template fits the caster's summon limit: the check the summon
+        /// itself goes through, asked beforehand by the tactics.
+        /// </summary>
+        internal static bool FitsTheSummonLimit(FightInstance fight, Fighter caster, int template, int grade)
+        {
+            var recipe = Managers.Summons.De(template, grade);
+            if (recipe == null) return false;
+            int limit = SummonLimitFor(caster, fight.RoundNumber);
+            return !(limit > 0 && recipe.SummonCost > 0 && UsedSummonCapacity(fight, caster) + recipe.SummonCost > limit);
+        }
+
         internal static int SummonLimitFor(Fighter fighter, int round)
         {
             int innate = fighter.IsMonster ? 0 : BasePlayerSummonLimit;
@@ -7710,6 +7722,10 @@ namespace Jondo.Unity.Server.Handlers
                 Fighters = TodosLosCombatientes(fight).ToList(),
                 // The walk's own rule, so that what it plans is what it will pay.
                 TackleAt = (mover, cell, ap, mp) => TackleAt(fight, mover, cell, ap, mp).Loss,
+                // And the engine's own reading of whom a row reaches, for the class spells.
+                Reach = (row, caster, from, aim) => Managers.EffectEngine.ReachOf(fight, caster, row, from, aim),
+                // And its summon limit, as it will be checked when the summon comes out.
+                CanSummon = (caster, template, grade) => FitsTheSummonLimit(fight, caster, template, grade),
             };
         }
 
@@ -7798,6 +7814,10 @@ namespace Jondo.Unity.Server.Handlers
                     Utility = !damages && heal == 0 && removal == 0 && buff == 0 && !summons && mechanics
                         ? 25 + monster.Level / 10.0 : 0,
                     UtilityOnEnemies = mechanicsOnEnemies,
+                    // A class spell -- a JondoBot's -- is weighed row by row, as the engine reads it.
+                    Rows = Managers.PlayerSpells.Contains(spell)
+                        ? Managers.SpellEffects.De(spell, grade)
+                        : Array.Empty<Managers.SpellEffect>(),
                 });
             }
             return spells;
@@ -7862,6 +7882,23 @@ namespace Jondo.Unity.Server.Handlers
             var data = DatabaseManager.GetSpellCombatData(spell, monsterGrade);
             if (data == null) return;
 
+            // A class spell -- a JondoBot's -- lands on whoever stands on the aimed cell, as a
+            // player's does (CastAsync's VictimAt), and on nobody when it is aimed at an empty
+            // one: a lance thrown next to the enemy. Handed the caster as its target there, a
+            // row falling back on "the target" would have gone to the JondoBot itself.
+            // And its critical hit, rolled as a player's is: the spell's own chance, the
+            // character's with its buffs, and what modifies the spell. It was never rolled, and a
+            // JondoBot with 30 % of critical hits never landed one.
+            bool critico = false;
+            if (Managers.PlayerSpells.Contains(spell) && chosen.Rows.Count > 0)
+            {
+                objetivo = VictimAt(fight, monster, aim);
+                int probabilidad = LimitesDeGrado(spell, monsterGrade).CriticoPropio
+                    + ConBonos(monster, CriticoCaracteristica, monster.CriticalBonus, fight.RoundNumber)
+                    + Managers.SpellModifiers.Critical(monster, spell, fight.RoundNumber);
+                critico = TirarCritico(probabilidad);
+            }
+
             monster.CurrentAP -= data.APCost;
 
             // Y su identificador, para que su lanzamiento también diga QUÉ se lanza.
@@ -7873,8 +7910,8 @@ namespace Jondo.Unity.Server.Handlers
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildAction(
                     monster.Id, Network.FightProtocol.Cast,
-                    Network.FightProtocol.CastAt(monster.Id, objetivo.Id, aim,
-                                                 spell, spellLevel, critical: false),
+                    Network.FightProtocol.CastAt(monster.Id, objetivo?.Id ?? 0, aim,
+                                                 spell, spellLevel, critical: critico),
                     Network.FightProtocol.CastDetail)));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildAction(monster.Id,
@@ -7882,7 +7919,7 @@ namespace Jondo.Unity.Server.Handlers
                                                   Network.FightProtocol.Spent(monster.Id, data.APCost),
                                                   Network.FightProtocol.PointsDetail)));
 
-            var tirada = Managers.EffectEngine.EfectosSorteados(spell, monsterGrade, false);
+            var tirada = Managers.EffectEngine.EfectosSorteados(spell, monsterGrade, critico);
             if (!Managers.PlayerSpells.Contains(spell))
             {
                 // A monster's own spell: its rows in the order they are written.
@@ -7892,14 +7929,14 @@ namespace Jondo.Unity.Server.Handlers
             else
             {
                 await HurtAsync(stream, fight, monster, spell, monsterGrade, objetivo,
-                                aim, tirada: tirada);
+                                aim, critico, tirada: tirada);
 
                 // Y sus efectos, igual que cuando lanza el jugador. Esto faltaba: el turno del
                 // monstruo sólo calculaba daño, así que los malus que dejan sus hechizos —el
                 // alcance que quita el Picoteo, por ejemplo— no se aplicaban ni se anunciaban, y
                 // en el panel del jugador no aparecía nunca nada puesto por un bicho.
                 await AplicarEfectosAsync(stream, fight, monster, spell, monsterGrade, objetivo,
-                                          Managers.EffectEngine.AlLanzar, aim,
+                                          Managers.EffectEngine.AlLanzar, aim, critico,
                                           tirada: tirada);
             }
 
@@ -8182,7 +8219,7 @@ namespace Jondo.Unity.Server.Handlers
         /// kuf and the jyg. In the Dopeul's defeat the jwz comes 6.5 s behind the jxh, the time
         /// the monster's blows take to show. The end went out at once when a monster's turn, a
         /// turn's start or end or a trap ended the fight, and the end screen cut the blows
-        /// short: a megabot's turn that killed was seen as a fight lost out of nowhere.
+        /// short: a JondoBot's turn that killed was seen as a fight lost out of nowhere.
         /// </remarks>
         /// <param name="esperarAcuse">
         /// The closing action of the client's own sequence that ended it: its jti may end the wait

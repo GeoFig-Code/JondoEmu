@@ -87,6 +87,20 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>Cast on itself only: range zero.</summary>
             public bool OnSelf => MaxRange <= 0;
 
+            /// <summary>
+            /// The spell's own rows, as the effect engine reads them. A class spell -- a JondoBot's
+            /// -- carries them, and is weighed row by row: whom each row reaches from where the
+            /// caster stands and where it aims, and what it does to each of them (see
+            /// <see cref="ValueOfRows"/>). A monster's spell, and one made by hand for a test,
+            /// has none and is weighed by the summary above.
+            /// </summary>
+            public IReadOnlyList<SpellEffect> Rows { get; init; } = Array.Empty<SpellEffect>();
+
+            public bool HasRows => Rows.Count > 0;
+
+            /// <summary>Whether one of its rows summons: it is then aimed at free cells too.</summary>
+            public bool SummonsByRow => Rows.Any(r => EffectEngine.EsInvocacion(r.EffectId));
+
             public bool Offensive => Damage > 0 || Removal > 0;
             public bool Supportive => Heal > 0 || Buff > 0;
         }
@@ -105,6 +119,19 @@ namespace Jondo.Unity.Server.Managers
             public Func<Fighter, int, int, int, Tackle.Loss> TackleAt { get; init; } = (_, _, _, _) => Tackle.Loss.None;
 
             public bool Occupied(int cell) => Fighters.Any(f => f.IsAlive && f.CellId == cell);
+
+            /// <summary>
+            /// Whom a row reaches when the caster stands on the first cell and aims at the second:
+            /// the engine's own reading of its mask and zone (<see cref="EffectEngine.ReachOf"/>),
+            /// handed in by the fight. Without one, a plain reading of the zone and the sides.
+            /// </summary>
+            public Func<SpellEffect, Fighter, int, int, IReadOnlyList<Fighter>>? Reach { get; init; }
+
+            /// <summary>
+            /// Whether the caster may put out one more of this template at this grade: the fight's
+            /// own limit, which counts each summon by its cost. Without one, it may.
+            /// </summary>
+            public Func<Fighter, int, int, bool>? CanSummon { get; init; }
         }
 
         /// <summary>
@@ -144,7 +171,9 @@ namespace Jondo.Unity.Server.Managers
             foreach (var spell in spells)
             {
                 if (spell.Cost < 0 || spell.Cost > monster.CurrentAP) continue;
-                if (spell.Summons && summoned) continue;
+                // A javelin that hits and leaves its lance is a blow first: only the spells that
+                // do nothing but summon wait for the next turn.
+                if (spell.Summons && summoned && !spell.Offensive) continue;
                 if (spell.Cost == 0 && spell.Utility <= 0 && !spell.Offensive) continue;
                 if (monster.Recarga.TryGetValue(spell.Id, out int wait) && wait > 0) continue;
                 monster.LanzadosEsteTurno.TryGetValue(spell.Id, out int thisTurn);
@@ -160,10 +189,13 @@ namespace Jondo.Unity.Server.Managers
                     if (spell.Cost > route.ActionPoints) continue;
                     var path = route.Path;
                     double walk = 1.0 - WalkPenalty * (path.Count - 1 + route.LostToTackles(monster));
-                    foreach (var (target, aim) in Targets(spell, monster, cell, enemies, allies))
+                    var aims = spell.HasRows ? AimsByRows(board, spell, monster, cell, enemies) : Targets(spell, monster, cell, enemies, allies);
+                    foreach (var (target, aim) in aims)
                     {
                         if (!CanCast(board, spell, monster, cell, aim, target)) continue;
-                        double value = Value(spell, monster, target, aim, cell, enemies, allies, board);
+                        double value = spell.HasRows
+                            ? ValueOfRows(board, spell, monster, cell, aim, enemies)
+                            : Value(spell, monster, target, aim, cell, enemies, allies, board);
                         if (value <= 0) continue;
 
                         double score = value / Math.Max(1, spell.Cost) * walk;
@@ -172,7 +204,66 @@ namespace Jondo.Unity.Server.Managers
                     }
                 }
             }
+
+            // Power before the blow: a buff that raises its damage goes first when both can be
+            // paid -- "lancer puissance le tour d'avant", as the players' own advice goes.
+            if (best != null && best.Spell.Offensive && best.Target.TeamId != monster.TeamId)
+            {
+                var boost = BoostBefore(board, monster, spells, best);
+                if (boost != null && boost.Score >= BoostShare * best.Score) return boost;
+            }
             return best;
+        }
+
+        /// <summary>
+        /// The characteristics that make a blow hit harder, for <see cref="BoostBefore"/>: the
+        /// four elements, power, damage, critical hits and the action points to cast with.
+        /// </summary>
+        private static readonly HashSet<int> Boosting = new() { 1, 10, 13, 14, 15, 16, 18, 25 };
+
+        /// <summary>
+        /// How much of the blow's worth a buff must be worth, per AP, to go before it: one that
+        /// is not takes the AP of a blow for less than a blow gives.
+        /// </summary>
+        private const double BoostShare = 0.5;
+
+        /// <summary>
+        /// A spell of the caster's own that raises what the coming blow does, castable where it
+        /// stands and leaving the AP to strike after it -- or null.
+        /// </summary>
+        private static Action? BoostBefore(Board board, Fighter monster, IReadOnlyList<Spell> spells, Action blow)
+        {
+            Action? boost = null;
+            foreach (var spell in spells)
+            {
+                if (!spell.HasRows || spell == blow.Spell || spell.Offensive) continue;
+                if (spell.Cost < 0 || spell.Cost + blow.Spell.Cost > monster.CurrentAP) continue;
+                if (monster.Recarga.TryGetValue(spell.Id, out int wait) && wait > 0) continue;
+                monster.LanzadosEsteTurno.TryGetValue(spell.Id, out int thisTurn);
+                if (thisTurn > 0 || (spell.PerTurn > 0 && thisTurn >= spell.PerTurn)) continue;
+
+                int from = monster.CellId;
+                foreach (int aim in new[] { from }.Concat(board.Fighters.Where(f => f.IsAlive && f.TeamId == monster.TeamId).Select(f => f.CellId)).Distinct())
+                {
+                    var target = board.Fighters.FirstOrDefault(f => f.IsAlive && f.CellId == aim) ?? monster;
+                    if (!CanCast(board, spell, monster, from, aim, target)) continue;
+                    bool raises = spell.Rows.Any(row =>
+                    {
+                        var (characteristic, sign) = DatabaseManager.EffectMeta(row.EffectId);
+                        return sign > 0 && Boosting.Contains(characteristic) && Timing(row) >= 1
+                               && ReachOf(board, row, monster, from, aim).Contains(monster)
+                               && !AlreadyHas(monster, spell.Id);
+                    });
+                    if (!raises) continue;
+                    double value = ValueOfRows(board, spell, monster, from, aim,
+                                               board.Fighters.Where(f => f.IsAlive && f.TeamId != monster.TeamId).ToList());
+                    if (value <= 0) continue;
+                    double score = value / Math.Max(1, spell.Cost);
+                    if (boost == null || score > boost.Score)
+                        boost = new Action(new List<int> { from }, spell, target, aim, score);
+                }
+            }
+            return boost;
         }
 
         /// <summary>
@@ -188,6 +279,12 @@ namespace Jondo.Unity.Server.Managers
 
             int Nearest(int cell) => enemies.Min(e => MapGeometry.Distance(cell, e.CellId));
 
+            // "Le nombre de gens qui passent leur tour sur la case où ils viennent de taper est
+            // impressionnant": the turn ends where no enemy sees it, when it can, and not stuck
+            // to one of them -- whoever ends next to an enemy is tackled on his next turn.
+            bool Seen(int cell) => enemies.Any(e => board.Sees(e.CellId, cell));
+            bool Stuck(int cell) => enemies.Any(e => MapGeometry.Distance(cell, e.CellId) == 1);
+
             bool dying = monster.MaxHP > 0 && monster.CurrentHP * 100 / monster.MaxHP < 25
                          && !spells.Any(s => s.Heal > 0);
             var attack = spells.Where(s => s.Damage > 0 && !s.OnSelf).OrderByDescending(s => s.Damage / Math.Max(1, s.Cost)).FirstOrDefault();
@@ -198,14 +295,16 @@ namespace Jondo.Unity.Server.Managers
 
             if (dying)
             {
-                // Away from all of them, as far as its legs go.
-                chosen = cells.OrderByDescending(kv => Nearest(kv.Key)).ThenBy(kv => kv.Value.Count).First();
+                // Away from all of them, as far as its legs go, and out of their sight.
+                chosen = cells.OrderBy(kv => Seen(kv.Key) ? 1 : 0)
+                              .ThenByDescending(kv => Nearest(kv.Key)).ThenBy(kv => kv.Value.Count).First();
             }
             else if (ranged)
             {
                 // At the reach of its best spell from the nearest enemy, no closer than it must be.
                 int want = attack!.MaxRange + monster.Range;
-                chosen = cells.OrderBy(kv => Math.Abs(Nearest(kv.Key) - want))
+                chosen = cells.OrderBy(kv => Math.Abs(Nearest(kv.Key) - want)
+                                             + (Seen(kv.Key) ? HiddenWorth : 0) + (Stuck(kv.Key) ? StuckCost : 0))
                               .ThenByDescending(kv => Nearest(kv.Key))
                               .ThenBy(kv => kv.Value.Count).First();
             }
@@ -225,6 +324,12 @@ namespace Jondo.Unity.Server.Managers
             }
             return chosen.Value;
         }
+
+        /// <summary>What ending the turn out of every enemy's sight is worth, in cells of distance.</summary>
+        private const int HiddenWorth = 2;
+
+        /// <summary>What ending it next to an enemy costs a ranged fighter, in cells of distance.</summary>
+        private const int StuckCost = 5;
 
         /// <summary>
         /// Every cell the monster can stand on this turn, with the path there: a search over the
@@ -312,10 +417,10 @@ namespace Jondo.Unity.Server.Managers
         private static bool CanCast(Board board, Spell spell, Fighter monster, int from, int aim, Fighter target)
         {
             if (spell.OnSelf) return aim == from;
-            if (spell.Summons && target == monster && aim != from)
+            if (!spell.HasRows && spell.Summons && target == monster && aim != from)
                 return board.Walkable(aim) && !board.Occupied(aim) && MapGeometry.Distance(from, aim) <= Math.Max(1, spell.MaxRange);
 
-            if (spell.NeedsFreeCell && (board.Occupied(aim) || !board.Walkable(aim))) return false;
+            if (spell.NeedsFreeCell && (board.Occupied(aim) || aim == from || !board.Walkable(aim))) return false;
 
             int distance = MapGeometry.Distance(from, aim);
             if (distance < spell.MinRange || distance > spell.MaxRange + monster.Range) return false;
@@ -335,7 +440,7 @@ namespace Jondo.Unity.Server.Managers
             bool onEnemy = target.TeamId != monster.TeamId;
 
             // A spell that hurts whoever stands on the aimed cell is never aimed at one of its
-            // own, whatever else it gives: the megabot's Bumerán Pérfido "buffed" its own summon
+            // own, whatever else it gives: the JondoBot's Bumerán Pérfido "buffed" its own summon
             // to death.
             if (!onEnemy && target != monster && spell.Damage > 0 && Hit(spell, aim, target)) return 0;
 
@@ -382,8 +487,10 @@ namespace Jondo.Unity.Server.Managers
         /// which is what makes the whole group go for the same one.
         /// </summary>
         private static double Worth(Spell spell, Fighter monster, Fighter enemy)
+            => WorthOfBlow(Blow(spell, monster, enemy), enemy);
+
+        private static double WorthOfBlow(double blow, Fighter enemy)
         {
-            double blow = Blow(spell, monster, enemy);
             double worth = Math.Min(blow, enemy.CurrentHP);
             if (blow >= enemy.CurrentHP) worth += enemy.MaxHP * 0.5;
             if (enemy.MaxHP > 0) worth *= 1.0 + 0.5 * (1.0 - (double)enemy.CurrentHP / enemy.MaxHP);
@@ -397,11 +504,321 @@ namespace Jondo.Unity.Server.Managers
         /// resistance. An estimate to compare spells with, not the fight's own reckoning.
         /// </summary>
         public static double Blow(Spell spell, Fighter caster, Fighter target)
+            => Blow(spell.Damage, spell.Element, caster, target);
+
+        public static double Blow(double baseDamage, ElementType element, Fighter caster, Fighter target)
         {
-            int characteristic = Math.Max(0, caster.GetStatForElement(spell.Element));
-            double raw = spell.Damage * (100 + characteristic + Math.Max(0, caster.Power)) / 100.0 + caster.FlatDamage;
-            int resistance = Math.Clamp(target.GetResPctForElement(spell.Element), -100, 100);
+            int characteristic = Math.Max(0, caster.GetStatForElement(element));
+            double raw = baseDamage * (100 + characteristic + Math.Max(0, caster.Power)) / 100.0 + caster.FlatDamage;
+            int resistance = Math.Clamp(target.GetResPctForElement(element), -100, 100);
             return Math.Max(0, raw * (100 - resistance) / 100.0);
+        }
+
+        // ─── A class spell, weighed row by row ─────────────────────────────────────────────
+
+        /// <summary>
+        /// Where a spell weighed by its rows may be aimed from a cell: its own cell when it
+        /// reaches it, every fighter's cell, the free cells around the enemies -- a leap lands
+        /// there, a line thrown there passes through them -- and, for a spell that summons, the
+        /// free cells in its reach nearest to the enemy. The target is whoever stands there.
+        /// </summary>
+        /// <remarks>
+        /// A lance thrown was only ever put down on one of the four cells next to its caster,
+        /// whichever way the enemy was: the Forjalanza JondoBot threw it behind itself on its
+        /// first turn.
+        /// </remarks>
+        private static IEnumerable<(Fighter Target, int Aim)> AimsByRows(Board board, Spell spell, Fighter monster,
+                                                                          int from, List<Fighter> enemies)
+        {
+            var aims = new HashSet<int>();
+            if (spell.OnSelf || spell.MinRange == 0) aims.Add(from);
+            if (!spell.OnSelf)
+            {
+                foreach (var fighter in board.Fighters)
+                    if (fighter.IsAlive) aims.Add(fighter == monster ? from : fighter.CellId);
+                foreach (var enemy in enemies)
+                    foreach (int cell in MapGeometry.GetNeighbors(enemy.CellId))
+                        if (board.Walkable(cell) && !board.Occupied(cell)) aims.Add(cell);
+
+                if (spell.SummonsByRow && enemies.Count > 0)
+                {
+                    int reach = spell.MaxRange + monster.Range;
+                    int Nearest(int cell) => enemies.Min(e => MapGeometry.Distance(cell, e.CellId));
+                    var toward = Enumerable.Range(0, MapGeometry.MaxCells)
+                        .Where(c => c != from && board.Walkable(c) && !board.Occupied(c))
+                        .Where(c => { int d = MapGeometry.Distance(from, c); return d >= spell.MinRange && d <= reach; })
+                        .OrderBy(Nearest).Take(SummonCellsTried);
+                    foreach (int cell in toward) aims.Add(cell);
+                }
+            }
+
+            foreach (int aim in aims)
+            {
+                var there = aim == from ? monster
+                    : board.Fighters.FirstOrDefault(f => f.IsAlive && f != monster && f.CellId == aim);
+                yield return (there ?? monster, aim);
+            }
+        }
+
+        /// <summary>How many of the cells nearest to the enemy a summon is weighed on.</summary>
+        private const int SummonCellsTried = 6;
+
+        /// <summary>
+        /// What a cast of a class spell is worth, read the way the engine will apply it: row by
+        /// row, whom each one reaches from <paramref name="from"/> aimed at <paramref name="aim"/>,
+        /// and what it does to each of them.
+        /// </summary>
+        /// <remarks>
+        /// <code>
+        ///   damage    the blow of each row on each enemy it reaches, summed per enemy and then
+        ///             worth what a kill and a weak enemy make it worth; on one of its own side,
+        ///             twice its cost -- a JondoBot does not hit its own
+        ///   heal      the life given back to a wounded one of its side, and lost if it is an enemy's
+        ///   stats     each point by what it is (<see cref="StatWeight"/>): given to its side,
+        ///             taken from the enemy; a buff it already carries from the same spell, nothing
+        ///   summon    once, on a free cell, the nearer the enemy the better
+        ///   sub-cast  the child spell's own rows, cast by whom and at whom the row says
+        ///   delayed   a poison or a buff that waits on the turn's start or end, a little less
+        /// </code>
+        /// It replaces a summary that added every positive number of the spell as a buff --
+        /// Bumerán Pérfido's four random characteristics made it 640, Punzón 200 -- and cast
+        /// whatever did nothing it could weigh on itself: Eclipse, which only moves the lance,
+        /// went out with no lance on the board.
+        /// </remarks>
+        internal static double ValueOfRows(Board board, Spell spell, Fighter monster, int from, int aim, List<Fighter> enemies)
+        {
+            var blows = new Dictionary<Fighter, double>();
+            var heals = new Dictionary<Fighter, double>();
+            double value = 0;
+            int Nearest(int cell) => enemies.Count == 0 ? 0 : enemies.Min(e => MapGeometry.Distance(cell, e.CellId));
+
+            void Rows(int spellId, IReadOnlyList<SpellEffect> rows, Fighter caster, int castFrom, int castAim,
+                      double weight, int depth)
+            {
+                bool summoned = false;
+                foreach (var row in rows)
+                {
+                    if (EffectEngine.EsMarcadorDeGuion(row.EffectId) || row.ForClientOnly) continue;
+                    double timing = Timing(row);
+                    if (timing <= 0) continue;
+                    double chance = row.Probabilidad > 0 && row.Probabilidad < 100 ? row.Probabilidad / 100.0 : 1.0;
+                    double p = weight * timing * chance;
+                    int id = row.EffectId;
+
+                    if (EffectEngine.EsInvocacion(id))
+                    {
+                        // Put down where it was aimed: a free cell, and the nearer the enemy the
+                        // better. It plays every turn from then on, so it is worth a blow or two --
+                        // when the fight's limit lets it out at all.
+                        if (!summoned && castAim != castFrom && board.Walkable(castAim) && !board.Occupied(castAim)
+                            && EffectEngine.CasterMeets(caster, row)
+                            && (board.CanSummon == null || board.CanSummon(caster, row.DiceNum, Math.Max(1, row.DiceSide))))
+                        {
+                            value += p * (150 + 1.5 * monster.Level + 15 * (Nearest(castFrom) - Nearest(castAim)));
+                            summoned = true;
+                        }
+                        continue;
+                    }
+
+                    var reached = ReachOf(board, row, caster, castFrom, castAim);
+                    if (reached.Count == 0) continue;
+
+                    if (id >= Jondo.Unity.World.Combat.EffectSupport.FirstDamage && id <= Jondo.Unity.World.Combat.EffectSupport.LastDamage)
+                    {
+                        double dice = Average(row);
+                        var element = ElementOfDamage(id);
+                        foreach (var who in reached)
+                        {
+                            double blow = Blow(dice, element, caster, who) * p;
+                            if (who.TeamId != monster.TeamId)
+                            {
+                                blows.TryGetValue(who, out double had);
+                                blows[who] = had + blow;
+                                // Life stolen: half of it back to whoever stole it.
+                                if (id <= LastLifeSteal && caster.TeamId == monster.TeamId)
+                                {
+                                    heals.TryGetValue(caster, out double healed);
+                                    heals[caster] = healed + blow / 2;
+                                }
+                            }
+                            else value -= blow * (who.EsInvocado ? 1.0 : 2.0);
+                        }
+                        continue;
+                    }
+
+                    if (id == Jondo.Unity.World.Combat.EffectSupport.FireHeal || id == Jondo.Unity.World.Combat.EffectSupport.HealPercent)
+                    {
+                        foreach (var who in reached)
+                        {
+                            double amount = id == Jondo.Unity.World.Combat.EffectSupport.HealPercent
+                                ? who.MaxHP * Average(row) / 100.0
+                                : Average(row) * (100 + Math.Max(0, caster.Intelligence)) / 100.0;
+                            amount *= p;
+                            if (who.TeamId == monster.TeamId)
+                            {
+                                heals.TryGetValue(who, out double had);
+                                heals[who] = had + amount;
+                            }
+                            else value -= Math.Min(amount, who.MaxHP - who.CurrentHP);
+                        }
+                        continue;
+                    }
+
+                    if (EffectEngine.EsDeLaFamiliaDeSublanzar(id))
+                    {
+                        if (depth >= SubCastDepth || row.DiceNum <= 0) continue;
+                        var child = SpellEffects.De(row.DiceNum, Math.Max(1, row.DiceSide));
+                        bool byTheOne = EffectEngine.ComoSublanza(id).LanzaElCandidato;
+                        foreach (var who in reached)
+                        {
+                            int whoCell = who == monster ? from : who.CellId;
+                            Rows(row.DiceNum, child, byTheOne ? who : caster, byTheOne ? whoCell : castFrom, whoCell,
+                                 p * SubCastShare, depth + 1);
+                        }
+                        continue;
+                    }
+
+                    var (characteristic, sign) = DatabaseManager.EffectMeta(id);
+                    if (characteristic > 0 && sign != 0)
+                    {
+                        double amount = Average(row) * sign * StatWeight(characteristic) * p
+                                        * (row.Duration >= 2 ? 1.3 : 1.0);
+                        foreach (var who in reached)
+                        {
+                            bool mine = who.TeamId == monster.TeamId;
+                            if (mine && amount > 0 && AlreadyHas(who, spellId)) continue;
+                            double onHim = amount * (who.EsInvocado ? 0.5 : 1.0);
+                            // Holding out is worth twice as much to one of its side under half its life.
+                            if (mine && amount > 0 && Defensive.Contains(characteristic) && who.CurrentHP * 2 < who.MaxHP)
+                                onHim *= 2;
+                            // Points taken are only ever the ones he has: Influencia's "-100 MP"
+                            // is all of them, six, not a hundred.
+                            if (onHim < 0 && (characteristic == 1 || characteristic == 23))
+                            {
+                                int held = characteristic == 1 ? Math.Max(who.MaxAP, who.CurrentAP) : Math.Max(who.MaxMP, who.CurrentMP);
+                                onHim = Math.Max(onHim, -held * StatWeight(characteristic) * p);
+                            }
+                            value += mine ? onHim : -onHim;
+                        }
+                    }
+                }
+            }
+
+            Rows(spell.Id, spell.Rows, monster, from, aim, 1.0, 0);
+
+            foreach (var (enemy, blow) in blows) value += WorthOfBlow(blow, enemy);
+            foreach (var (own, healed) in heals)
+            {
+                int missing = own.MaxHP - own.CurrentHP;
+                if (missing * 10 < own.MaxHP) continue;
+                value += Math.Min(healed, missing) * (own.CurrentHP * 2 < own.MaxHP ? 1.5 : 1.0);
+            }
+            return value;
+        }
+
+        /// <summary>How deep a spell's sub-casts are followed, and how much of theirs counts.</summary>
+        private const int SubCastDepth = 2;
+        private const double SubCastShare = 0.9;
+
+        /// <summary>The life-stealing blows run from 91 to 95; 96 to 100 only hurt.</summary>
+        private const int LastLifeSteal = 95;
+
+        /// <summary>
+        /// Whether a row goes off at the cast, later -- a poison or a buff hooked on the start or
+        /// the end of a turn, worth a little less -- or on something this turn cannot count on.
+        /// </summary>
+        private static double Timing(SpellEffect row)
+        {
+            bool now = false, later = false;
+            foreach (var trigger in row.Disparadores())
+            {
+                if (string.Equals(trigger, EffectEngine.AlLanzar, StringComparison.OrdinalIgnoreCase)) now = true;
+                else if (string.Equals(trigger, EffectEngine.AlEmpezarElTurno, StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(trigger, EffectEngine.AlAcabarElTurno, StringComparison.OrdinalIgnoreCase)) later = true;
+            }
+            return now ? 1.0 : later ? 0.7 : 0;
+        }
+
+        /// <summary>
+        /// The amount a row deals or gives: its dice, as the fight rolls them. Never its value,
+        /// which is a parameter for most rows -- the state a 950 puts, the spell a 1160 casts --
+        /// and read as an amount it made every state a buff of five thousand points.
+        /// </summary>
+        private static double Average(SpellEffect row)
+            => row.DiceSide > row.DiceNum ? (row.DiceNum + row.DiceSide) / 2.0 : row.DiceNum;
+
+        /// <summary>The element of a damage effect: 91-95 steal life and 96-100 only hurt, water, earth, air, fire, neutral.</summary>
+        private static ElementType ElementOfDamage(int effect) => ((effect - 91) % 5) switch
+        {
+            0 => ElementType.Water,
+            1 => ElementType.Earth,
+            2 => ElementType.Air,
+            3 => ElementType.Fire,
+            _ => ElementType.Neutral,
+        };
+
+        /// <summary>
+        /// What one point of a characteristic is worth to a fighter of level 200 with 1,500 in
+        /// every element -- a JondoBot: an AP is a spell, a hundred of an element a few percent
+        /// of every blow, a point of resistance a point of every blow taken.
+        /// </summary>
+        private static double StatWeight(int characteristic) => characteristic switch
+        {
+            1 => 55,                   // action points
+            23 => 30,                  // movement points
+            19 => 8,                   // range
+            26 => 10,                  // summons
+            16 => 4,                   // damage
+            18 => 2,                   // critical hits
+            25 => 0.35,                // power
+            10 or 13 or 14 or 15 => 0.25, // strength, chance, agility, intelligence
+            11 => 0.2,                 // vitality
+            49 => 1.5,                 // heals
+            78 or 79 => 1.5,           // escape, lock
+            27 or 28 => 1,             // AP and MP dodge
+            82 or 83 => 1,             // AP and MP withdrawal
+            96 => 0.8,                 // shield points
+            >= 33 and <= 37 => 3,      // resistance in percent: a point off every blow taken
+            44 => 0.02,                // initiative
+            0 or 97 => 0,              // life and its loss go by the blows and heals
+            71 => 0,                   // a state: what it does is in the rows that read it
+            _ => 0.5,
+        };
+
+        /// <summary>The characteristics that keep one standing: shield, resistances, vitality.</summary>
+        private static readonly HashSet<int> Defensive = new() { 96, 33, 34, 35, 36, 37, 11 };
+
+        /// <summary>Whether a fighter already carries a row of this spell: a buff is not stacked on itself.</summary>
+        private static bool AlreadyHas(Fighter who, int spellId)
+            => who.Buffs.Puestos.Any(b => b.HechizoOrigen == spellId);
+
+        /// <summary>Whom a row reaches: the board's reading, or a plain one of its zone and sides.</summary>
+        private static IReadOnlyList<Fighter> ReachOf(Board board, SpellEffect row, Fighter caster, int from, int aim)
+        {
+            if (board.Reach != null) return board.Reach(row, caster, from, aim);
+
+            var cells = EffectEngine.CasillasDelEfecto(row, from, aim);
+            var inside = cells.Count > 0 ? new HashSet<int>(cells) : new HashSet<int> { aim };
+            var parts = (row.TargetMask ?? "").Split(',').Select(p => p.Trim())
+                                              .Where(p => p.Length > 0 && p[0] != '*').ToList();
+            var templates = parts.Where(p => p.Length > 1 && p[0] == 'F' && int.TryParse(p.Substring(1), out _))
+                                 .Select(p => int.Parse(p.Substring(1))).ToList();
+            bool self = parts.Contains("C"), own = parts.Contains("a"), other = parts.Contains("A"), mates = parts.Contains("g");
+
+            var reached = new List<Fighter>();
+            if (self) reached.Add(caster);
+            foreach (var who in board.Fighters)
+            {
+                if (!who.IsAlive || reached.Contains(who)) continue;
+                int cell = who == caster ? from : who.CellId;
+                if (!inside.Contains(cell)) continue;
+                bool mine = who.TeamId == caster.TeamId;
+                bool takes = parts.Count == 0 ? cell == aim
+                           : (own && mine) || (other && !mine) || (mates && mine && who != caster);
+                if (templates.Count > 0 && (!who.IsMonster || !templates.Contains(who.MonsterId))) takes = false;
+                if (takes) reached.Add(who);
+            }
+            return reached;
         }
 
         private static bool Hit(Spell spell, int aim, Fighter who)

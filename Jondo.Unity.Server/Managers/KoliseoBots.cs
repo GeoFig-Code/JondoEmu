@@ -7,8 +7,8 @@ using Jondo.Unity.World.Fights;
 namespace Jondo.Unity.Server.Managers
 {
     /// <summary>
-    /// The Koliseo's megabots: characters of a random class, level 200 and geared far beyond any
-    /// set, played by the server's tactics, for the Koliseo's own "1v1 against a megabot" card.
+    /// The Koliseo's JondoBots: characters of a random class, level 200 and geared far beyond any
+    /// set, played by the server's tactics, for the Koliseo's own "1v1 against a JondoBot" card.
     /// </summary>
     /// <remarks>
     /// Asked for as such (2026-09-27): a random class, always level 200, 12 AP, 6 MP, 1500 in
@@ -16,7 +16,7 @@ namespace Jondo.Unity.Server.Managers
     /// the constants below: +6 range, 30 % critical, 20 % resistance in every element, and the
     /// initiative of four 1500s.
     ///
-    /// A megabot is a fighter like a character -- shown with the character identity and the look
+    /// A JondoBot is a fighter like a character -- shown with the character identity and the look
     /// of its class, one variant of each spell pair picked at random, every spell at its level-200
     /// grade, its class's passive and initial spells -- with no session and no row in
     /// Characters; <see cref="Fighter.IsBot"/> is what tells the fight to play it with the
@@ -35,7 +35,13 @@ namespace Jondo.Unity.Server.Managers
         public const int Critical = 30;
         public const int Resistance = 20;
 
-        /// <summary>The first id a megabot gets; characters are nowhere near it.</summary>
+        /// <summary>
+        /// Summons on top of the one every character has: what a summoner's optimized set of
+        /// level 200 gives. Without them an Osamodas JondoBot had one creature out at a time.
+        /// </summary>
+        public const int Summons = 3;
+
+        /// <summary>The first id a JondoBot gets; characters are nowhere near it.</summary>
         public const long FirstId = 900_000_000_000_000;
 
         /// <summary>The classes' names as the Spanish client writes them, for the bot's own.</summary>
@@ -48,14 +54,14 @@ namespace Jondo.Unity.Server.Managers
         };
 
         /// <summary>
-        /// The looks a megabot of each class can wear: the notable NPCs of that class -- placed in
+        /// The looks a JondoBot of each class can wear: the notable NPCs of that class -- placed in
         /// the world, with something to say, and dressed (three skins or more), the class read off
         /// the body skin every humanoid look starts with. Built once, when first asked for.
         /// </summary>
         private static Dictionary<int, List<Npcs.Spawn>>? _npcLooks;
         private static readonly object _looksGate = new();
 
-        /// <summary>The notable NPCs a megabot of this class can look like; empty when there are none.</summary>
+        /// <summary>The notable NPCs a JondoBot of this class can look like; empty when there are none.</summary>
         public static IReadOnlyList<Npcs.Spawn> NpcLooksOf(int breed)
         {
             lock (_looksGate)
@@ -85,7 +91,7 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        /// <summary>One megabot: who it is before it fights.</summary>
+        /// <summary>One JondoBot: who it is before it fights.</summary>
         public sealed class Spec
         {
             public long Id { get; init; }
@@ -102,13 +108,13 @@ namespace Jondo.Unity.Server.Managers
         private static long _lastId = FirstId;
         private static readonly Random _dice = new();
 
-        /// <summary>Whether an id is a megabot's.</summary>
+        /// <summary>Whether an id is a JondoBot's.</summary>
         public static bool IsBot(long id) => id >= FirstId;
 
-        /// <summary>A megabot waiting for, or in, a fight.</summary>
+        /// <summary>A JondoBot waiting for, or in, a fight.</summary>
         public static Spec? Of(long id) => _alive.TryGetValue(id, out var spec) ? spec : null;
 
-        /// <summary>A new megabot, of a class drawn at random (or the one given).</summary>
+        /// <summary>A new JondoBot, of a class drawn at random (or the one given).</summary>
         public static Spec Create(int breed = 0)
         {
             var classes = SpellTable.ClassBreeds;
@@ -132,7 +138,7 @@ namespace Jondo.Unity.Server.Managers
                 Id = System.Threading.Interlocked.Increment(ref _lastId),
                 Breed = breed,
                 Sex = npc != null ? (BreedLookTable.Get(breed, 1)?.Skins.FirstOrDefault() == npc.Skins[0] ? 1 : 0) : sex,
-                Name = "Megabot " + (ClassNames.TryGetValue(breed, out var name) ? name : breed.ToString()),
+                Name = "JondoBot " + (ClassNames.TryGetValue(breed, out var name) ? name : breed.ToString()),
                 Choices = choices,
                 LooksLike = npc,
             };
@@ -140,14 +146,14 @@ namespace Jondo.Unity.Server.Managers
             return spec;
         }
 
-        /// <summary>A megabot gone: its fight is over, or never was.</summary>
+        /// <summary>A JondoBot gone: its fight is over, or never was.</summary>
         public static void Forget(long id) => _alive.TryRemove(id, out _);
 
-        /// <summary>The spells a megabot knows: a level-200 character's of its class, with its picks.</summary>
+        /// <summary>The spells a JondoBot knows: a level-200 character's of its class, with its picks.</summary>
         public static List<(int Spell, int Grade)> SpellsOf(Spec spec)
             => SpellTable.KnownFor(spec.Breed, Level, spec.Choices).Select(k => (k.SpellId, k.Grade)).ToList();
 
-        /// <summary>The megabot as a fighter, full of life and points, ready from the start.</summary>
+        /// <summary>The JondoBot as a fighter, full of life and points, ready from the start.</summary>
         public static Fighter BuildFighter(Spec spec)
         {
             var fighter = new Fighter
@@ -190,6 +196,7 @@ namespace Jondo.Unity.Server.Managers
             fighter.Otras[78] = Elements / 10;
             fighter.Otras[79] = Elements / 10;
             fighter.Otras[75] = Fighter.ErosionBase;
+            fighter.Otras[26] = Summons;
 
             var spells = SpellsOf(spec);
             foreach (var (spell, grade) in spells)

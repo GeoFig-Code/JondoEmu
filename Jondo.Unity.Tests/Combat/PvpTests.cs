@@ -94,7 +94,7 @@ namespace Jondo.Unity.Tests.Combat
         public void Las_tres_modalidades_estan_abiertas()
         {
             // Lo que se pedía: 1 contra 1, 2 contra 2 y 3 contra 3; y la cuarta tarjeta, 1 contra 1
-            // contra un megabot.
+            // contra un JondoBot.
             Assert.Equal(4, KoliseoHandler.CountOpen());
 
             foreach (int equipos in new[] { 1, 2, 3 })
@@ -108,7 +108,7 @@ namespace Jondo.Unity.Tests.Combat
         public void La_tabla_es_la_de_la_captura()
         {
             // Byte por byte el ltd de «koliseo completo con invitacion-koli 2vs2» en las tres
-            // primeras. La cuarta llega cerrada, un 3 contra 3; aquí es la tarjeta de los megabots,
+            // primeras. La cuarta llega cerrada, un 3 contra 3; aquí es la tarjeta de los JondoBots,
             // abierta y de 1 contra 1 (ver KoliseoBotTests).
             byte[] ltd = KoliseoHandler.BuildModes(KoliseoHandler.Modes);
 

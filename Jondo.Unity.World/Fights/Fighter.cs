@@ -130,7 +130,7 @@ namespace Jondo.Unity.World.Fights
         public bool IsReady { get; set; }
 
         /// <summary>
-        /// A Koliseo megabot: shown as a character of its class, played by the server's tactics.
+        /// A Koliseo JondoBot: shown as a character of its class, played by the server's tactics.
         /// It has no session and no row in Characters, so its look and sex travel here.
         /// </summary>
         public bool IsBot { get; set; }

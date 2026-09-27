@@ -10,7 +10,7 @@ using Xunit;
 namespace Jondo.Unity.Tests.Combat
 {
     /// <summary>
-    /// The Koliseo's megabots: the fourth card of the window, the megabot's sheet as asked for,
+    /// The Koliseo's JondoBots: the fourth card of the window, the JondoBot's sheet as asked for,
     /// and a turn thought out with its class's own spells for every class.
     /// </summary>
     [Collection("koliseo")]
@@ -26,9 +26,9 @@ namespace Jondo.Unity.Tests.Combat
         }
 
         [Fact]
-        public void The_fourth_card_is_an_open_1v1_against_megabots()
+        public void The_fourth_card_is_an_open_1v1_against_JondoBots()
         {
-            var mode = Assert.Single(KoliseoHandler.Modes, m => m.Index == KoliseoHandler.MegabotMode);
+            var mode = Assert.Single(KoliseoHandler.Modes, m => m.Index == KoliseoHandler.JondoBotMode);
             Assert.Equal((1, true, false), (mode.TeamSize, mode.Open, mode.Inner));
 
             // Its entry: mode 3, open, not a default mode, a 1v1, running for the season.
@@ -46,13 +46,13 @@ namespace Jondo.Unity.Tests.Combat
         }
 
         [Fact]
-        public void A_megabot_is_level_200_with_12_ap_6_mp_1500_everywhere_and_6666_life()
+        public void A_JondoBot_is_level_200_with_12_ap_6_mp_1500_everywhere_and_6666_life()
         {
             var spec = KoliseoBots.Create(8);
             try
             {
                 Assert.True(KoliseoBots.IsBot(spec.Id));
-                Assert.Equal("Megabot Yopuka", spec.Name);
+                Assert.Equal("JondoBot Yopuka", spec.Name);
                 var bot = KoliseoBots.BuildFighter(spec);
                 Assert.True(bot.IsBot);
                 Assert.False(bot.IsMonster);
@@ -71,11 +71,11 @@ namespace Jondo.Unity.Tests.Combat
         }
 
         /// <summary>
-        /// A megabot wears the look of a notable NPC of its class when there is one: placed in the
+        /// A JondoBot wears the look of a notable NPC of its class when there is one: placed in the
         /// world, with dialogue, dressed; its body skin is its class's.
         /// </summary>
         [Fact]
-        public void A_megabot_looks_like_a_notable_npc_of_its_class()
+        public void A_JondoBot_looks_like_a_notable_npc_of_its_class()
         {
             Npcs.Initialize();
             var withLooks = SpellTable.ClassBreeds.Where(b => KoliseoBots.NpcLooksOf(b).Count > 0).ToList();
@@ -95,9 +95,9 @@ namespace Jondo.Unity.Tests.Combat
             }
         }
 
-        /// <summary>For every class, the megabot finds something worth doing to an enemy in reach.</summary>
+        /// <summary>For every class, the JondoBot finds something worth doing to an enemy in reach.</summary>
         [Fact]
-        public void Every_class_of_megabot_plays_its_turn_with_its_spells()
+        public void Every_class_of_JondoBot_plays_its_turn_with_its_spells()
         {
             foreach (int breed in SpellTable.ClassBreeds)
             {
@@ -115,7 +115,7 @@ namespace Jondo.Unity.Tests.Combat
                     var spells = FightHandler.TacticsOf(bot);
                     Assert.True(spells.Count > 0, $"class {breed} has no spell the tactics can weigh");
                     var action = MonsterTactics.Next(new MonsterTactics.Board { Fighters = new[] { bot, enemy } }, bot, spells);
-                    Assert.True(action != null, $"a megabot of class {breed} does nothing");
+                    Assert.True(action != null, $"a JondoBot of class {breed} does nothing");
                 }
                 finally { KoliseoBots.Forget(spec.Id); }
             }

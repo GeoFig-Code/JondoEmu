@@ -3089,11 +3089,37 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// Los combatientes que pisa la zona del efecto.
-        ///
-        /// Si no se sabe a qué casilla se apuntó —las actitudes y los encadenados no apuntan a
-        /// ninguna— se cae al objetivo de siempre, que es lo que se hacía antes de haber zonas.
+        /// Whom a row would reach if <paramref name="caster"/> stood on <paramref name="from"/> and
+        /// aimed at <paramref name="aim"/>: this engine's own reading of its mask and its zone
+        /// (<see cref="AQuien"/>), for the tactics to weigh a cast before making it. Nothing is
+        /// moved or changed; everybody else is where he stands.
         /// </summary>
+        /// <summary>Whether the caster meets the conditions a row puts on him (its starred letters).</summary>
+        internal static bool CasterMeets(Fighter caster, SpellEffect row) => CasterQualifies(caster, row.TargetMask, null);
+
+        internal static List<Fighter> ReachOf(FightInstance fight, Fighter caster, SpellEffect row, int from, int aim)
+        {
+            var cells = new Dictionary<Fighter, int>();
+            Fighter onAim = null;
+            foreach (var fighter in Todos(fight))
+            {
+                if (fighter == null) continue;
+                int cell = fighter == caster ? from : fighter.CellId;
+                cells[fighter] = cell;
+                if (onAim == null && cell == aim && fighter.IsAlive && !fighter.EstaCargado) onAim = fighter;
+            }
+            try
+            {
+                return AQuien(fight, caster, onAim, row, aim, null, cells).Where(f => f != null && f.IsAlive).Distinct().ToList();
+            }
+            catch (Exception)
+            {
+                // A letter that reads the state of a resolution under way -- the telefragged, the
+                // carried -- has none to read outside one: it reaches nobody.
+                return new List<Fighter>();
+            }
+        }
+
         /// <summary>Whether a fighter is under a percentage of his maximum life.</summary>
         /// <remarks>
         /// Strictly under, in integers, without dividing: a bomb of 945 at 189 is exactly 20% and
@@ -3116,6 +3142,12 @@ namespace Jondo.Unity.Server.Managers
             return null;
         }
 
+        /// <summary>
+        /// Los combatientes que pisa la zona del efecto.
+        ///
+        /// Si no se sabe a qué casilla se apuntó —las actitudes y los encadenados no apuntan a
+        /// ninguna— se cae al objetivo de siempre, que es lo que se hacía antes de haber zonas.
+        /// </summary>
         /// <param name="celdas">
         /// Where everybody stood as the spell landed, when the caller took note: a row after a
         /// push or a pull still reaches whoever was in the zone at the cast.
