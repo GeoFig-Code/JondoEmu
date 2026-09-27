@@ -300,6 +300,11 @@ namespace Jondo.Unity.Server.Network
                 {
                     await KoliseoHandler.ReturnAsync(stream, payload);
                 }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Lsi)))
+                {
+                    // The Koliseo window's "leave the queue".
+                    await KoliseoHandler.LeaveQueueAsync(stream);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Lux)))
                 {
                     // El cliente pide las modalidades del koliseo.

@@ -167,6 +167,15 @@ public static class Op
     /// </remarks>
     public const string Lte = "lte";
 
+    /// <summary>Leaving the Koliseo queue: the window's button while it is searching. Travels empty.</summary>
+    /// <remarks>
+    /// Read from the client, with no capture of it: fff::bdyu, on the window's leave event, sets
+    /// its registered mode to -1 and sends an lsi with nothing in it. What turns the window back
+    /// to "search a fight" is an lsx with f1 false and reason 3 (fff::bdyy passes f3 on;
+    /// PvpArenaFightsUi.OnArenaRegistrationStatusUpdate: 0 searching, 3 idle).
+    /// </remarks>
+    public const string Lsi = "lsi";
+
     /// <summary>Algo del koliseo que el servidor empuja. No esta descifrado.</summary>
     /// <remarks>
     /// Dos apariciones y las dos distintas: «08012001» sin que el cliente pida nada, 27 s despues

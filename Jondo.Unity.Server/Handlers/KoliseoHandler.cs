@@ -392,6 +392,50 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
+        /// The window's "leave the queue" (lsi): out of the queue with the unit he enrolled with --
+        /// a party leaves together -- and each of them told with the lsx of leaving, which puts
+        /// the window back to "search a fight" (see <see cref="Op.Lsi"/>).
+        /// </summary>
+        /// <remarks>
+        /// On the megabot card the search is the offer itself, drawn at once: leaving withdraws it,
+        /// with no sanction, since nothing was refused. A normal mode's offer is answered from its
+        /// popup, not from here.
+        /// </remarks>
+        public static async Task LeaveQueueAsync(NetworkStream stream)
+        {
+            long yo = GameState.CharacterId;
+
+            var oferta = KoliseoOffers.Of(yo);
+            if (oferta != null && oferta.Mode == MegabotMode)
+            {
+                Console.WriteLine($"[Koliseo] {yo} deja la tarjeta de megabots antes de aceptar.");
+                await DeshacerAsync(oferta, new List<long>());
+                return;
+            }
+
+            var (mode, members) = KoliseoQueue.LeaveWithUnit(yo);
+            if (mode < 0)
+            {
+                // Not waiting anywhere: the window is set straight all the same, so that it does
+                // not stay "searching" for a search the server does not have.
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Lsx, BuildLeftQueue(KoliseoOffers.LastMode(yo))));
+                Console.WriteLine($"[Koliseo] {yo} deja una cola en la que no estaba.");
+                return;
+            }
+
+            byte[] left = ConnectionProtocol.Push(Op.Lsx, BuildLeftQueue(mode));
+            foreach (long id in members)
+            {
+                var sesion = SessionRegistry.FindByCharacter(id);
+                if (sesion != null) await Escribir(sesion, left);
+            }
+            Console.WriteLine($"[Koliseo] {yo} deja la cola del modo {mode}" +
+                              (members.Count > 1 ? $" con su grupo ({members.Count})." : ".") +
+                              $" Quedan {KoliseoQueue.CountIn(mode)} esperando.");
+        }
+
+        /// <summary>
         /// El índice de modalidad que trae una petición de apuntarse.
         /// </summary>
         /// <remarks>

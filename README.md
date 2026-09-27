@@ -657,6 +657,7 @@ Ranked PvP through a queue. Open the window, pick a format, get matched, fight, 
 - ✅ **Megabots**, on the Koliseo window's own fourth card (the client's "event" card, open and made a 1v1): enrol and a megabot is drawn at once — a random class, level 200, 12 AP, 6 MP, 1500 in every element, 6666 life, +6 range, 30 % critical, 20 % resistance everywhere, one variant of each spell pair at random at its level-200 grade, and its class's passive. Shown as a character of its class wearing the look of one of the notable NPCs of that class (placed in the world, with dialogue, dressed) when it has any, played by the server's tactics, which weigh every spell against every target and cell; its summons play themselves too. The tactics summon once a turn, on the side the enemy is on, and never aim a damaging spell at one of their own — which the monsters' turns get too. The 1v1's own flow: *searching*, the match-found popup, accept or the sanction for letting it run out. It pays as a Koliseo and does not touch the ladder; the normal modes never meet a bot
 - ✅ Enrolling (`lsm`), with the format carried as the client's own enum
 - ✅ The queue state (`lsx`) pushed back, which paints *searching* in the window
+- ✅ Leaving the queue (`lsi`, read from the client): the window's button takes out the party that enrolled together, and each window goes back to *search a fight* (`lsx` with reason 3). On the megabot card it withdraws the drawn fight without a sanction
 - ✅ Matchmaking by rating: the oldest in the queue is served first, the closest ratings are taken, and the two sides are split so their average ratings are as even as can be. The rating window starts at 150 points and widens 10 a second of waiting; the queue is looked at again every 5 seconds
 - ✅ Levels kept apart: nobody faces, or fights beside, someone more than 20 levels away — however long the wait — unless both are placed and within 100 rating points, the ladder saying they are even. A party enrolled together is one unit: never split, always one side, exempt from its own gaps
 - ✅ Everybody re-checked as still connected before anyone loses their place in the queue
@@ -1782,7 +1783,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,861 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,863 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 
