@@ -482,9 +482,11 @@ namespace Jondo.Unity.Server.Managers
             {
                 if (!EsDeDano(efecto.EffectId)) continue;
 
-                // A monster spell's poison hits when its trigger comes, not at the cast: 285 of
-                // their attack spells carry damage under TB or TE, dealt at once until now.
-                if (delMonstruo && !efecto.Disparadores().Any(d => string.Equals(d, disparador, StringComparison.OrdinalIgnoreCase)))
+                // A poison hits when its trigger comes, not at the cast: 285 monster attack spells
+                // carry damage under TB or TE, and so do 37 rows of class spells -- Arsénico's
+                // "98 under TB": in sram-arsenico.pcapng the cast only hooks the row, and the 27
+                // air damage go out at the start of each target's turn (frames of -2, -3, -4).
+                if (!efecto.Disparadores().Any(d => string.Equals(d, disparador, StringComparison.OrdinalIgnoreCase)))
                     continue;
 
                 // El elemento lo dice el propio hechizo en su effectElement; si no lo trae, el

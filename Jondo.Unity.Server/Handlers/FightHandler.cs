@@ -3625,7 +3625,19 @@ namespace Jondo.Unity.Server.Handlers
                                                     Fighter quien, bool alPisar, int celda = -1)
         {
             var dueno = fight.Buscar(glifo.Dueno) ?? quien;
-            if (celda < 0) celda = quien.CellId;
+
+            // A trap goes off at ITS CENTRE, wherever in it it was stepped on: the 306 of the
+            // Sram captures names the cell the trap was aimed at -- Deriva laid on 217 over five
+            // cells, "306 f1 217" -- and its spell is thrown from there, which is what gives its
+            // push a direction. Aimed at the cell of whoever stepped in, a push had none and
+            // moved nobody, and the zone missed the enemies around the centre.
+            if (celda < 0)
+                celda = glifo.Tipo == Managers.EffectEngine.ColocaUnaTrampa && glifo.Centro >= 0 ? glifo.Centro : quien.CellId;
+
+            // And it is spent the moment it goes off, before anything it does: its own push can
+            // put the victim back on one of its cells, and it went off twice. In the captures
+            // the 310 that takes it away comes right behind the 306, ahead of the blow.
+            if (glifo.SeGastaAlDispararse) glifo.Gastado = true;
 
             // What the sheet calls "haber sufrido los efectos del muro durante su turno": it is
             // written down here, and only a displacement ever reads it.
@@ -4468,11 +4480,18 @@ namespace Jondo.Unity.Server.Handlers
                                                  ronda, grupo.Select(c => ClaveDeFila(c.Efecto)), critico);
             }
 
-            // Every spell this cast ran that still has rows under a trigger, at its grade.
-            var conAlgoPendiente = new Dictionary<int, int>();
+            // Every spell this cast ran that still has rows under a trigger, AT ITS GRADE: one
+            // spell can run at two grades in one cast, and only the grade that has the rows is
+            // hooked, and only on who that grade left something on. Doble's 12966 runs at grade
+            // 1 on the double -- "cast 12964 at the end of the turn", which swaps it with the
+            // Sram and kills its caster -- and at grade 2 on the Sram, a state and nothing else.
+            // Keyed by the spell alone, the Sram was hooked at grade 1 too: at the end of his
+            // turn he cast 12964 at himself and died of it (sram-doble capture: 12964 is cast by
+            // the double, in its own second turn).
+            var conAlgoPendiente = new HashSet<(int Spell, int Grade)>();
             void Anotar(int cual, int enGrado)
             {
-                if (cual == 0 || conAlgoPendiente.ContainsKey(cual)) return;
+                if (cual == 0 || conAlgoPendiente.Contains((cual, enGrado))) return;
                 // A monster spell's rows are armed one by one, above.
                 if (!Managers.PlayerSpells.Contains(cual)) return;
                 foreach (var efecto in Managers.SpellEffects.De(cual, enGrado))
@@ -4481,7 +4500,7 @@ namespace Jondo.Unity.Server.Handlers
                     {
                         if (!string.Equals(d, Managers.EffectEngine.AlLanzar, StringComparison.OrdinalIgnoreCase))
                         {
-                            conAlgoPendiente[cual] = enGrado;
+                            conAlgoPendiente.Add((cual, enGrado));
                             return;
                         }
                     }
@@ -4500,9 +4519,10 @@ namespace Jondo.Unity.Server.Handlers
             foreach (var marca in consecuencias)
             {
                 if (!marca.EnganchePendiente || marca.Sobre == null) continue;
-                if (!conAlgoPendiente.ContainsKey(marca.HechizoOrigen)) continue;
+                if (!conAlgoPendiente.Contains((marca.HechizoOrigen, marca.NivelOrigen))) continue;
                 bool yaTieneFilas = consecuencias.Any(c => c.Buff != null && c.Sobre == marca.Sobre
-                                                        && c.HechizoOrigen == marca.HechizoOrigen);
+                                                        && c.HechizoOrigen == marca.HechizoOrigen
+                                                        && c.NivelOrigen == marca.NivelOrigen);
                 if (yaTieneFilas) continue;
                 marca.Sobre.Buffs.Enganchar(marca.HechizoOrigen, marca.NivelOrigen,
                     Managers.EffectEngine.CaducidadDelEnganche(marca.HechizoOrigen, marca.NivelOrigen, ronda),
@@ -4514,7 +4534,7 @@ namespace Jondo.Unity.Server.Handlers
                 var hasta = new Dictionary<Fighter, int>();
                 foreach (var c in consecuencias)
                 {
-                    if (c.Buff == null || c.Sobre == null || c.HechizoOrigen != cual) continue;
+                    if (c.Buff == null || c.Sobre == null || c.HechizoOrigen != cual || c.NivelOrigen != enGrado) continue;
                     int cuando = c.Buff.CaducaEnRonda;
                     if (!hasta.TryGetValue(c.Sobre, out int ya) || cuando < 0 || (ya >= 0 && cuando > ya))
                     {
@@ -4528,7 +4548,7 @@ namespace Jondo.Unity.Server.Handlers
                     long quienLoLanzo = lanzador;
                     foreach (var c in consecuencias)
                     {
-                        if (c.HechizoOrigen == cual && c.Sobre == quien && c.Caster != null) { quienLoLanzo = c.Caster.Id; break; }
+                        if (c.HechizoOrigen == cual && c.NivelOrigen == enGrado && c.Sobre == quien && c.Caster != null) { quienLoLanzo = c.Caster.Id; break; }
                     }
                     quien.Buffs.Enganchar(cual, enGrado, cuando, quienLoLanzo, ronda, critico);
                 }
@@ -4812,6 +4832,25 @@ namespace Jondo.Unity.Server.Handlers
                         continue;
                     }
                     var lanzador = (enganche.Lanzador != 0 ? fight.Buscar(enganche.Lanzador) : null) ?? quien;
+
+                    // Its rows under this trigger, in their order: the blows through HurtAsync, the
+                    // rest through the engine. Arsénico's "3793, then 98 under TB" is its marker and
+                    // then its 27 air damage at the start of the target's turn, as in its capture;
+                    // handed whole to the engine, the damage row was dropped as a root blow -- the
+                    // cast had dealt it already, at the wrong time.
+                    var todas = enganche.Critico
+                        ? Managers.EffectEngine.EfectosDeLaTirada(enganche.Hechizo, enganche.Grado, true)
+                        : Managers.SpellEffects.De(enganche.Hechizo, enganche.Grado);
+                    var suyas = todas.Where(f => f.Disparadores().Any(d => string.Equals(d, disparador, StringComparison.OrdinalIgnoreCase)))
+                                     .ToList();
+                    if (suyas.Count == 0) continue;
+                    if (suyas.Any(f => Managers.EffectEngine.EsDeDano(f.EffectId)))
+                    {
+                        await LanzarPorOrdenAsync(stream, fight, lanzador, enganche.Hechizo, enganche.Grado, quien,
+                                                  quien.CellId, disparador, suyas, enganche.Critico,
+                                                  rondaDelEnganche: enganche.PuestoEnRonda);
+                        continue;
+                    }
                     await AplicarEfectosAsync(stream, fight, lanzador, enganche.Hechizo, enganche.Grado,
                                               quien, disparador, quien.CellId, critico: enganche.Critico,
                                               rondaDelEnganche: enganche.PuestoEnRonda);
