@@ -17,6 +17,8 @@ namespace Jondo.Unity.Tests.Combat
     /// What losing a fight against monsters costs, against the four defeats of the captures: the
     /// energy, half the life, the message, and the way back beside the save point's zaap.
     /// </summary>
+    // Asks the dream's maps (a defeat in a dream costs nothing), which the dream tests share.
+    [Collection("MapManager")]
     public class DefeatTests
     {
         private static byte[] Hex(string hex) => Convert.FromHexString(hex);

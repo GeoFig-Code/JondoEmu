@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Jondo.Unity.World.Fights
 {
@@ -12,6 +13,13 @@ namespace Jondo.Unity.World.Fights
         public bool IsMonster { get; set; }
         public int MonsterId { get; set; }
         public int GradeIndex { get; set; } = 0;
+
+        /// <summary>
+        /// A character's class, the breed of its record: what the masks' B and b ask. Zero for a
+        /// monster or a summon, which are of no class.
+        /// </summary>
+        public int Breed { get; set; }
+
         public int Level { get; set; }
         public int LookBoneId { get; set; }
         public string Look { get; set; } = "";
@@ -211,7 +219,30 @@ namespace Jondo.Unity.World.Fights
         /// barrel. It was the owner's to play here too, which is what put a "pass turn" button
         /// on the beacon's fifteen seconds.
         /// </summary>
-        public bool PlaysOnItsOwn => EsInvocado && MaxMP <= 0 && HechizosDeInvocado.Count == 0;
+        /// <remarks>
+        /// A live 2027 row, "Toma el control de la entidad", makes it its owner's whatever it
+        /// has to play. Every summon with a step or a spell is his already -- the fight has no
+        /// hand of its own for them -- so the row only matters to one that has neither. On
+        /// somebody else's fighter it is not honoured: no class spell lays it there.
+        /// </remarks>
+        public bool PlaysOnItsOwn => EsInvocado && MaxMP <= 0 && HechizosDeInvocado.Count == 0 && !ControlTaken;
+
+        /// <summary>
+        /// The character this fighter is the double of (effect 180), or zero: his look and his
+        /// identity are what the double shows.
+        /// </summary>
+        public long DoubleOf { get; set; }
+
+        /// <summary>
+        /// The facing of his last walk, or minus one before he has walked: what one who follows
+        /// him (2184) ends up facing -- the f2 of the follower's jsj is the one of the leader's
+        /// last jsj in both follows of the Osamodas capture, frames 2091/2125 and 2133/2140.
+        /// </summary>
+        public int LastFacing { get; set; } = -1;
+
+        /// <summary>Whether a live 2027 row hands this fighter to its owner.</summary>
+        public bool ControlTaken
+            => Buffs.Puestos.Any(b => b.EffectId == Jondo.Unity.World.Combat.EffectSupport.TakesControl && !b.Pendiente);
 
         /// <summary>Who carries this fighter (effect 50), or zero. A carried fighter shares the carrier's cell and holds no cell of his own.</summary>
         public long CarriedBy { get; set; }

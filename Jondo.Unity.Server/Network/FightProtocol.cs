@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Jondo.Unity.Protocol;
 
 namespace Jondo.Unity.Server.Network
@@ -766,7 +767,7 @@ namespace Jondo.Unity.Server.Network
                 .Var(3, numero)
                 .Var(4, grado)
                 .Msg(6, Pb.New().Var(2, rondas))
-                .Str(7, disparador ?? "I")
+                .Str(7, WireTrigger(disparador))
                 .VarIfNotZero(8, effectUid)
                 // Uno si el lanzamiento salió crítico. Medido en la captura de Flecha Helada: los
                 // seis embrujos del efecto 293 son idénticos salvo el del lanzamiento crítico, que
@@ -793,6 +794,21 @@ namespace Jondo.Unity.Server.Network
                     .Var(2, quien)
                     .Var(3, efecto))
                 .Build();
+        }
+
+        /// <summary>
+        /// A trigger as a jxm carries it: what an EON or an EOFF waits on and the mask of an EK stay
+        /// behind -- "EON", "EOFF" and "EK" in all 581 of them in the class captures, never a state:
+        /// Lazo Espiritual's "EON8" and "EOFF8" go out as "EON" and "EOFF" at frames 2114-2115 of
+        /// the Osamodas capture, the Sram's "EK:m" as "EK".
+        /// </summary>
+        public static string WireTrigger(string trigger)
+        {
+            if (string.IsNullOrEmpty(trigger)) return "I";
+            if (trigger.StartsWith("EOFF", StringComparison.Ordinal)) return "EOFF";
+            if (trigger.StartsWith("EON", StringComparison.Ordinal)) return "EON";
+            int colon = trigger.IndexOf(':');
+            return colon > 0 ? trigger.Substring(0, colon) : trigger;
         }
 
         /// <summary>
@@ -829,9 +845,23 @@ namespace Jondo.Unity.Server.Network
         /// f14=406 f33{f2=28604 f4=53721170019}" after jya 36, 37 and 38 -- and eleven times
         /// on Tempestad de Potencia's, on the enemies.
         /// </summary>
-        public static byte[] BuildSpellEffectsRemoved(long author, int spell, long fromWhom)
-            => BuildAction(author, SpellEffectsRemoved,
-                           Pb.New().Var(2, spell).Var(4, fromWhom), detailField: 33);
+        /// <param name="grade">
+        /// The grade a 1406 took off, in f3, with <paramref name="effect"/> 1406: "jwe 1406
+        /// f33{f2=30842 f3=6 f4=-3}" in Aguja's capture. Zero for a 406, which takes every grade.
+        /// </param>
+        /// <param name="shown">
+        /// The 406 row is visible in the fight log -- the bit 4 of its m_flags: an f5 of 1 then, as
+        /// 17 of the 17 such removals of the class captures have it -- Resonancia's "jwe 406
+        /// f33{f2=14611 f4=-1 f5=1}" at frame 223 -- and none of the 1,397 whose row lacks the bit.
+        /// </param>
+        public static byte[] BuildSpellEffectsRemoved(long author, int spell, long fromWhom, int grade = 0,
+                                                      int effect = SpellEffectsRemoved, bool shown = false)
+            => BuildAction(author, effect,
+                           Pb.New().Var(2, spell).VarIfNotZero(3, grade).Var(4, fromWhom).VarIfNotZero(5, shown ? 1 : 0),
+                           detailField: 33);
+
+        /// <summary>The row's "visible in the fight log" bit, which puts an f5 of 1 on its 406: see BuildSpellEffectsRemoved.</summary>
+        public const int ShownRowFlag = 4;
 
         public const int SpellEffectsRemoved = 406;
 
@@ -919,6 +949,59 @@ namespace Jondo.Unity.Server.Network
             => BuildAction(owner, RemovedGlyph, Pb.New().Var(1, glyphId), detailField: 22);
 
         public const int RemovedGlyph = 310;
+
+        /// <summary>
+        /// A portal laid (the f32 of a jwe 401, as for any mark, with the f14 before it):
+        ///
+        ///   f1 { f1 { f2: 255, f3: the cell }     f2: the row's diceSide    f3: its diceNum
+        ///        f4: the mark number   f5: 3   f6: the grade   f9: the spell that laid it
+        ///        f10: the cell   f11: 1 when it is on   f12: whose it is }
+        /// </summary>
+        /// <remarks>
+        /// Measured, byte for byte, on the 21 portals of the six Selatrop captures: "poner portales
+        /// de selatrop" frame 109 is the first one, alone and off, with no f11; frame 131 the
+        /// second, on. The dice go where a spell glyph carries the spell it casts and its grade --
+        /// f3 the 2 of "+2% per cell", f2 the 44338 that is Teleportal's level. The colour is 255
+        /// on all 21 and in no data: a constant here. The f5 is the kind of mark -- 2 on the bomb
+        /// walls, none on the glyphs, 3 on every portal.
+        /// </remarks>
+        public static byte[] BuildPortal(long owner, int portalId, int cell, int diceNum, int diceSide,
+                                         int grade, int layingSpell, bool active)
+            => Pb.New()
+                .Var(3, owner)
+                .Var(14, PlacedGlyph)
+                .Msg(32, Pb.New().Msg(1, Pb.New()
+                    .Msg(1, Pb.New().Var(2, PortalColour).Var(3, cell))
+                    .VarIfNotZero(2, diceSide)
+                    .VarIfNotZero(3, diceNum)
+                    .Var(4, portalId)
+                    .Var(5, PortalMark)
+                    .Var(6, grade)
+                    .Var(9, layingSpell)
+                    .Var(10, cell)
+                    .VarIfNotZero(11, active ? 1 : 0)
+                    .Var(12, owner)))
+                .Build();
+
+        /// <summary>The colour every portal of the captures carries: 0x0000FF.</summary>
+        public const int PortalColour = 255;
+
+        /// <summary>The kind of mark of a portal, the f5 of its jwe 401.</summary>
+        public const int PortalMark = 3;
+
+        /// <summary>
+        /// A portal turned on or off (jwe 1181): f3 who does it, f17 { f1: the portal, f2: 1 when
+        /// it is on }. 58 of them across the Selatrop captures; see Jondo.Unity.World.Fights.PortalNetwork
+        /// for when each goes out.
+        /// </summary>
+        public static byte[] BuildPortalState(long author, int portalId, bool active)
+            => Pb.New()
+                .Var(3, author)
+                .Var(14, PortalState)
+                .Msg(17, Pb.New().Var(1, portalId).VarIfNotZero(2, active ? 1 : 0))
+                .Build();
+
+        public const int PortalState = 1181;
 
         /// <summary>
         /// A glyph a SPELL lays down -- a trap, a turn-start or turn-end glyph, an aura: the same
@@ -1167,9 +1250,23 @@ namespace Jondo.Unity.Server.Network
         /// 3; Paso de Cacería, Disparos Lejanos, Tiros Potentes y Flecha de Expiación mandan un 2
         /// y valen 2 en el grado que juega el personaje de la captura.
         /// </param>
+        /// <param name="noTarget">
+        /// A cast on an empty cell names nobody: no f2 at all, where a target of zero otherwise
+        /// stands for the caster himself. "poner portales de selatrop", frames 104 to 352, and the
+        /// Osamodas' teleport at frame 1906 -- every cast aimed at an empty cell of the captures.
+        /// </param>
+        /// <param name="chained">
+        /// A spell another one set off (792, 1160...): no f8. See FightHandler.AnunciarElEncadenadoAsync.
+        /// </param>
+        /// <param name="portals">
+        /// The portals a cast went through, the one aimed at first, packed in the spell's f1; the
+        /// cell is then where it landed. "jwe 300 f6=344 f7{f1=[10,9,8,7] f2=14593}" for Audacia
+        /// aimed at the portal on 303, "pegar a traves de diferentes portales", frame 16.
+        /// </param>
         public static Pb CastAt(long caster, long target, int cell, int spell, int spellLevel,
                                 bool critical, int sobreEseObjetivo = 0, int esteTurno = 0,
-                                int intervalo = 0, int arma = 0)
+                                int intervalo = 0, int arma = 0, bool noTarget = false,
+                                IReadOnlyList<int> portals = null, bool chained = false)
         {
             var suyo = Pb.New();
             if (sobreEseObjetivo > 0 && target != 0)
@@ -1180,9 +1277,9 @@ namespace Jondo.Unity.Server.Network
                 .VarIfNotZero(3, intervalo)
                 .Var(4, caster);
 
-            var detalle = Pb.New()
-                .Var(2, target != 0 ? target : caster)
-                .Msg(4, suyo)
+            var detalle = Pb.New();
+            if (target != 0 || !noTarget) detalle.Var(2, target != 0 ? target : caster);
+            detalle.Msg(4, suyo)
                 .VarIfNotZero(5, critical ? 1 : 0)
                 .Var(6, cell);
             if (spell != 0)
@@ -1190,8 +1287,11 @@ namespace Jondo.Unity.Server.Network
                 // Un HECHIZO lleva el hechizo y NO lleva el campo del arma. Escribirlo aunque
                 // fuera a cero cambiaba los bytes, y el auto-test del protocolo lo cazó a la
                 // primera comparando contra la captura: por eso el if envuelve a los dos.
-                detalle.Msg(7, Pb.New().Var(2, spell).VarIfNotZero(3, spellLevel));
-                return detalle.Var(8, 1);
+                var delHechizo = Pb.New();
+                if (portals != null && portals.Count > 0) delHechizo.Packed(1, portals.Select(p => (long)p));
+                detalle.Msg(7, delHechizo.Var(2, spell).VarIfNotZero(3, spellLevel));
+                // The f8 is a cast somebody made; a chained one goes without it.
+                return chained ? detalle : detalle.Var(8, 1);
             }
 
             // Y un golpe CUERPO A CUERPO lleva lo contrario: sin hechizo, y con el arma.
@@ -1399,6 +1499,17 @@ namespace Jondo.Unity.Server.Network
                 .Build();
 
         /// <summary>
+        /// Points given (jwe 120, "devuelve N PA"): the same f20 as a loss with the amount
+        /// positive. "18..70 78 a201 09 0801 10.." at frame 11 of "usar neutral en portales".
+        /// </summary>
+        public static byte[] BuildPointsGiven(long author, int efecto, long quien, int cuantos)
+            => Pb.New()
+                .Var(3, author)
+                .Var(14, efecto)
+                .Msg(20, Pb.New().Var(1, Math.Abs(cuantos)).Var(2, quien))
+                .Build();
+
+        /// <summary>
         /// Se le han quitado puntos a alguien (jwe): { f3: quién, f14: cuál, f20 { f1: cuántos,
         /// f2: a quién } }.
         ///
@@ -1510,6 +1621,51 @@ namespace Jondo.Unity.Server.Network
 
         /// <summary>El número de efecto de "Invoca: #1" en el catálogo.</summary>
         public const int Invoca = 181;
+
+        /// <summary>
+        /// A double of a character comes out (jwe 180): the summon's block, with the character's
+        /// look where a monster's names its template and his name and level where a monster
+        /// names template and grade --
+        ///
+        ///   f3 { the look, as the character's own fighter block carries it }
+        ///   f5 { f2 { f1: name, f2: level } }
+        ///
+        /// -- and the sheet in the monsters' mould, as for any summon. Frame 16 of "sram-doble":
+        /// the Sram's look and "KTAS5625" at 200, on 258 facing 5, as -4.
+        /// </summary>
+        public static byte[] BuildDouble(long quienInvoca, long quienEs, int celda, int orientacion,
+                                         byte[] look, string nombre, int nivel,
+                                         IEnumerable<(int Characteristic, long Base, long Gear)> ficha)
+        {
+            var stats = Pb.New()
+                .Var(1, quienInvoca)
+                .Var(3, SheetKind)
+                .Var(4, 1);
+            foreach (var (caracteristica, valor, equipo) in ficha)
+            {
+                stats.Msg(5, SheetEntry(caracteristica, valor, equipo, isMonster: true));
+            }
+
+            var cuerpo = Pb.New()
+                .Msg(1, Pb.New()
+                    .Var(3, 1)
+                    .Msg(4, Pb.New()
+                        .Msg(1, Pb.New().Var(1, celda).VarIfNotZero(2, orientacion).Var(4, 0))
+                        .Var(3, quienEs)))
+                .Var(2, 0)
+                .Bytes(3, look ?? Array.Empty<byte>())
+                .Msg(5, Pb.New().Msg(2, Pb.New().Str(1, nombre ?? "").Var(2, nivel)))
+                .Msg(6, stats);
+
+            return Pb.New()
+                .Msg(1, Pb.New().Msg(1, Pb.New().Msg(1, cuerpo)))
+                .Var(3, quienInvoca)
+                .Var(14, InvocaUnDoble)
+                .Build();
+        }
+
+        /// <summary>"Invoca un doble del lanzador".</summary>
+        public const int InvocaUnDoble = 180;
 
         /// <summary>
         /// A alguien lo mueven de sitio sin que ande (jwe con el f14 al número del efecto):
@@ -2327,11 +2483,17 @@ namespace Jondo.Unity.Server.Network
         /// Medido en «ocra-disparos lejanos»: f4 = 13 con f3 = 3, y f4 = 12 con f3 = 6, que son
         /// justo el «+3 de alcance mínimo» y el «+6 de alcance máximo» de ese hechizo.
         /// </summary>
-        public static byte[] BuildSpellModifier(long quien, int modificador, int hechizo, long cuanto)
+        /// <param name="accion">
+        /// Add (1), take away (2) or set (3): Bestialidad's pinned ranges go out as
+        /// "f2=3 f3=2 f4=12", and a pin to zero with no f3 at all -- a zero total is not written.
+        /// See <see cref="Managers.SpellModifiers"/>.
+        /// </param>
+        public static byte[] BuildSpellModifier(long quien, int modificador, int hechizo, long cuanto,
+                                                int accion = Managers.SpellModifiers.Add)
             => Pb.New()
                 .Msg(1, Pb.New()
-                    .Var(2, 1)
-                    .Var(3, cuanto)
+                    .Var(2, accion)
+                    .VarIfNotZero(3, cuanto)
                     .Var(4, modificador)
                     .Var(5, hechizo))
                 .Var(2, quien)
@@ -2344,10 +2506,11 @@ namespace Jondo.Unity.Server.Network
         ///
         ///   f1: qué modificador     f2: 1     f3: el hechizo     f5: de quién
         /// </summary>
-        public static byte[] BuildSpellModifierDeclared(long quien, int modificador, int hechizo)
+        public static byte[] BuildSpellModifierDeclared(long quien, int modificador, int hechizo,
+                                                        int accion = Managers.SpellModifiers.Add)
             => Pb.New()
                 .Var(1, modificador)
-                .Var(2, 1)
+                .Var(2, accion)
                 .Var(3, hechizo)
                 .Var(5, quien)
                 .Build();

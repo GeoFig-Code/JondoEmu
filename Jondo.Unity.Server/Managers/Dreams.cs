@@ -790,8 +790,13 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Whether a map is one of the dream's: the entrance, a fight room or a fountain.</summary>
         public static bool IsDreamMap(long mapId)
         {
-            if (_mapasDelSueno == null) _mapasDelSueno = new HashSet<long>(TodosLosMapasDeSala());
-            return _mapasDelSueno.Contains(mapId);
+            if (_mapasDelSueno != null) return _mapasDelSueno.Contains(mapId);
+            var todos = new HashSet<long>(TodosLosMapasDeSala());
+            // Kept only once the interactives are read -- the fountain and end rooms are known by
+            // their elements. Asked before (a test of another collection, a call at start-up), the
+            // set was the entrance and little else, and it stayed so for good.
+            if (MapasDeFuente().Count > 0 && MapasDeFinal().Count > 0) _mapasDelSueno = todos;
+            return todos.Contains(mapId);
         }
 
         private static HashSet<long>? _mapasDelSueno;

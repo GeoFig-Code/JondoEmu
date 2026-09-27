@@ -428,11 +428,15 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Equal("Invulnerable", SpellStates.Of(269).Name);
         }
 
-        /// <summary>The client's catalogue: 103 flagged states, 97 among the pinned ones.</summary>
+        /// <summary>
+        /// The client's catalogue: 103 flagged states, 97 among the pinned ones, and 678
+        /// "Teleportal Imposible", whose effect 33 keeps its bearer out of the portals.
+        /// </summary>
         [Fact]
         public void The_flagged_states_come_from_the_client()
         {
-            Assert.Equal(103, SpellStates.Count);
+            Assert.Equal(104, SpellStates.Count);
+            Assert.True(SpellStates.Of(678).CantUsePortals);
             Assert.True(SpellStates.Of(97).CantBeMoved);
             Assert.True(SpellStates.Of(6).CantBePushed);
             Assert.Null(SpellStates.Of(3643));

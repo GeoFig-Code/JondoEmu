@@ -129,12 +129,18 @@ namespace Jondo.Unity.Server.Handlers
         /// The facing every jsj of the walk carries: the client's own when a person walks, and
         /// by default the way the path's last step goes.
         /// </param>
+        /// <param name="stream">
+        /// The acting session's stream, for what going through a portal sets off (PT, CPT).
+        /// </param>
         internal static async Task<List<int>> WalkPathAsync(FightInstance fight, Fighter mover, IReadOnlyList<int> path,
-                                                            int facing = -1)
+                                                            int facing = -1, System.Net.Sockets.NetworkStream stream = null)
         {
             var walked = new List<int> { path[0] };
             if (path.Count < 2) return walked;
+            // A walk ends on the first portal of it that takes him on (FightPortals.cs).
+            path = StopAtThePortal(fight, mover, path);
             if (facing < 0) facing = StepOrientation(path[path.Count - 2], path[path.Count - 1]);
+            mover.LastFacing = facing;
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                 Network.FightProtocol.BuildSequenceStart(mover.Id, Network.FightProtocol.WalkSequence)));
@@ -164,14 +170,19 @@ namespace Jondo.Unity.Server.Handlers
             }
             if (stretch.Count > 1) await AnnounceStretchAsync(fight, mover, stretch, facing);
 
+            // Once for the whole walk, so that effect 1100 -- back to the previous position --
+            // undoes the walk and not only its last stretch. And a portal he has walked onto
+            // takes him on inside the walk's own sequence, after its 129: "pegar a traves de
+            // diferentes portales", frames 185-190.
+            bool onAPortal = walked.Count > 1 && PortalCatches(fight, mover, walked[walked.Count - 1]);
+            mover.MoverA(walked[walked.Count - 1]);
+            CarriedFollows(fight, mover);
+            if (onAPortal) await CrossPortalAsync(stream, fight, mover, walkedIn: true);
+            else if (walked.Count > 1) await RefreshPortalsAsync(fight);
+
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                 Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), mover.Id,
                                                        Network.FightProtocol.WalkSequence)));
-
-            // Once for the whole walk, so that effect 1100 -- back to the previous position --
-            // undoes the walk and not only its last stretch.
-            mover.MoverA(walked[walked.Count - 1]);
-            CarriedFollows(fight, mover);
             return walked;
         }
 

@@ -19,6 +19,36 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>A copy of the row, for changing what firing or arming it reads -- its delay, its mask.</summary>
         internal SpellEffect Copia() => (SpellEffect)MemberwiseClone();
+
+        /// <summary>
+        /// The same row under another effect number, everything else kept: a share of a blow
+        /// goes out as the one of its family in the blow's element (1223 as 1227).
+        /// </summary>
+        internal SpellEffect ComoEfecto(int effectId) => new SpellEffect
+        {
+            EffectId = effectId,
+            EffectUid = EffectUid,
+            Value = Value,
+            DiceNum = DiceNum,
+            DiceSide = DiceSide,
+            Duration = Duration,
+            Delay = Delay,
+            Element = Element,
+            Dispellable = Dispellable,
+            Triggers = Triggers,
+            TargetMask = TargetMask,
+            CeldasFijas = CeldasFijas,
+            Forma = Forma,
+            Tamano = Tamano,
+            TamanoMinimo = TamanoMinimo,
+            ParaEnElObjetivo = ParaEnElObjetivo,
+            PasoDeCaida = PasoDeCaida,
+            TopeDeCaida = TopeDeCaida,
+            MaxStack = MaxStack,
+            Probabilidad = Probabilidad,
+            Sorteo = Sorteo,
+            Flags = Flags,
+        };
         public int EffectUid { get; init; }
         public int Value { get; init; }
         public int DiceNum { get; init; }

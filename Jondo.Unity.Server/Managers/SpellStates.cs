@@ -36,6 +36,15 @@ namespace Jondo.Unity.Server.Managers
             public bool PreventsFight { get; init; }
             public bool CantTackle { get; init; }
             public bool CantBeTackled { get; init; }
+
+            /// <summary>
+            /// Keeps its bearer out of the portals: the client lists effect 33 on this state, and
+            /// the one state that carries it is 678, "Teleportal Imposible" -- what the Selatrop's
+            /// passive puts on every enemy for the first round, "los luchadores enemigos no pueden
+            /// usar un portal en el primer turno de juego". That 33 means that is INFERRED from
+            /// the name and the sheet.
+            /// </summary>
+            public bool CantUsePortals { get; init; }
         }
 
         private static Dictionary<int, State>? _states;
@@ -109,6 +118,17 @@ namespace Jondo.Unity.Server.Managers
             return false;
         }
 
+        /// <summary>Whether one of the fighter's states keeps him from going through a portal.</summary>
+        public static bool KeepsOutOfPortals(Fighter who)
+        {
+            foreach (int stateId in who.Buffs.Estados)
+            {
+                var state = Of(stateId);
+                if (state != null && state.CantUsePortals) return true;
+            }
+            return false;
+        }
+
         /// <summary>For the tests: read the file again.</summary>
         internal static void Forget()
         {
@@ -152,6 +172,7 @@ namespace Jondo.Unity.Server.Managers
                                 PreventsFight = Flag(v, "preventsFight"),
                                 CantTackle = Flag(v, "cantTackle"),
                                 CantBeTackled = Flag(v, "cantBeTackled"),
+                                CantUsePortals = Flag(v, "cantUsePortals"),
                             };
                         }
                     }

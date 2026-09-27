@@ -296,6 +296,12 @@ namespace Jondo.Unity.World.Fights
         public DamageSource CurrentDamageSource { get; set; } = DamageSource.Direct;
 
         /// <summary>
+        /// The kind of glyph going off right now (its effect: 400 a trap, 401 a glyph...), zero
+        /// the rest of the time: a trap's blow sets off "DT" on whoever it hurts.
+        /// </summary>
+        public int CurrentGlyphType { get; set; }
+
+        /// <summary>
         /// Who dealt the blow whose triggers are firing right now, for as long as they fire;
         /// null the rest of the time. It is what the target mask letter "O" points at: the
         /// push of Remisión, "repele a sus atacantes", goes to whoever hit the bearer in melee,
@@ -856,6 +862,20 @@ namespace Jondo.Unity.World.Fights
         public int DanoDelDisparo { get; set; }
 
         /// <summary>
+        /// The element of that same blow: a share of it returned (1223, 1123) goes out in it --
+        /// the Xelor's cómplice returns a 92 of air as a 69 of air, "jwe 1225".
+        /// </summary>
+        public int ElementoDelDisparo { get; set; }
+
+        /// <summary>
+        /// Who began the resolution going on right now -- the caster of the cast, or the owner of
+        /// the hook that a trigger set off -- whatever sub-casts it runs through. A share of a
+        /// blow returned is his: Masacre's 30% goes out in the Yopuka's name although the enemy
+        /// who carries it casts the spell that returns it.
+        /// </summary>
+        public Fighter RootCaster { get; set; }
+
+        /// <summary>
         /// While above zero, a cast's triggered rows are not armed on anybody: an attitude fires
         /// its own rows itself, and a player's passives keep the hooks their captures measured.
         /// </summary>
@@ -868,6 +888,40 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public HashSet<long> TeleportsFallidos { get; set; } = new HashSet<long>();
 
+        /// <summary>
+        /// Whether the cast being resolved went through a portal: what the masks' R and r ask,
+        /// set for as long as a spell cast at a portal is resolved at the other end.
+        /// </summary>
+        public bool CastThroughPortal { get; set; }
+
+        /// <summary>
+        /// The bonus, in percent, of the damage and the healing of the cast being resolved when it
+        /// went through portals (PortalNetwork.BonusPercent); zero the rest of the time.
+        /// </summary>
+        public int PortalBonusPercent { get; set; }
+
+        /// <summary>The portals of this fight (effect 1181): see <see cref="PortalNetwork"/>.</summary>
+        public PortalNetwork Portales { get; } = new PortalNetwork();
+
+        /// <summary>
+        /// Who stands on a cell -- alive, and not carried on somebody else's -- or zero: what keeps
+        /// a portal off.
+        /// </summary>
+        public long OccupantOf(int cell)
+        {
+            foreach (var f in Todos)
+            {
+                if (f != null && f.IsAlive && !f.EstaCargado && f.CellId == cell) return f.Id;
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// Whom the caster of the spell being resolved carried as it began, for the masks' K:
+        /// a Pandawa's throw lands the one he carried before its rows hurt or heal him.
+        /// </summary>
+        public (long Caster, long Carried) CarriedAtCast { get; set; }
+
         private int _siguienteGlifo;
 
         /// <summary>Pone algo en el suelo y le da su identificador.</summary>
@@ -877,6 +931,12 @@ namespace Jondo.Unity.World.Fights
             Glifos.Add(glifo);
             return glifo;
         }
+
+        /// <summary>
+        /// A mark number for a portal. Glyphs and portals go out through the same jwe 401 and 310,
+        /// so they are numbered from one count -- INFERRED: no capture lays both in one fight.
+        /// </summary>
+        public int SiguienteMarca() => ++_siguienteGlifo;
 
         /// <summary>Lo que se dispara con alguien pisando esa casilla.</summary>
         public List<Glifo> LosQuePisa(int casilla)

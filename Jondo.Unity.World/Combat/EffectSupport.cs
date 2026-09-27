@@ -112,6 +112,14 @@ namespace Jondo.Unity.World.Combat
         public const int EndsTheTurn = 1031;
 
         /// <summary>
+        /// 2027, "Toma el control de la entidad": a row on a summon that makes it its owner's to
+        /// play (Fighter.PlaysOnItsOwn). The Steamer's Evolución III lays it on his turrets,
+        /// the Sram's Doble on the double, Dominio de Invocaciones on the summons -- row 248585
+        /// in the Steamer captures, family 0, for good.
+        /// </summary>
+        public const int TakesControl = 2027;
+
+        /// <summary>
         /// 1033 and 1078, minus and plus a percentage of VITALITY. Measured on Último Aliento:
         /// -50% on 1150 vitality goes out as the sheet's vitality hole f8 = -575 and a buff of
         /// effect 153 ("-#1 vitalidad") worth 575, so the percentage is of the characteristic and

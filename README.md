@@ -667,15 +667,15 @@ Ranked PvP through a queue. Open the window, pick a format, get matched, fight, 
 One engine for all eighteen classes, driven entirely by client data: everything comes out of
 `SpellLevels.EffectsJson` and the `Effects` catalogue, and each thing a spell can do — push, shield,
 carry, summon, copy — is one primitive that every spell using it shares. Of the **179 effects the
-836 class spells use, 71 have a branch in the engine, 69 need no code** — they are characteristics
-read from the `Effects` table — **and 39 are missing**. The table, effect by effect with how many
-spells each touches, is [`docs/effect-coverage.txt`](docs/effect-coverage.txt).
+836 class spells use, 116 have a branch in the engine and 63 need no code** — they are
+characteristics read from the `Effects` table — **and none is missing**. The table, effect by effect
+with how many spells each touches, is [`docs/effect-coverage.txt`](docs/effect-coverage.txt).
 
-- ✅ Effects, triggers and target masks read from the spell — `I` on cast, `TB` turn start, `TE` turn end, `DBE` when hit by an enemy, `DM`/`DR` when hurt in melee or at range, `X` on death, `CCMPARR` per tile walked; `a` allies (the caster included when he stands in his own zone), `A` enemies, `g` the other allies, `c` the caster when he is in the zone, `l`/`L` the players, `m`/`M` the monsters, `i`/`I` and `j`/`J` the summons — lower case the caster's side, upper case the other —, `O` whoever dealt the triggering blow, `P`/`p` the caster's own summons, `h` the caster's summoner, `E<n>`/`e<n>` gated on a state, `V<n>`/`v<n>` on a life threshold, `*E<n>`/`*e<n>` conditions on the caster. States and positions are judged on one snapshot taken before the cast: a row after a pull still reaches whoever was in the zone
+- ✅ Effects, triggers and target masks read from the spell — `I` on cast, `TB` turn start, `TE` turn end, `DBE` when hit by an enemy, `DM`/`DR` when hurt in melee or at range, `DS` by a spell, `DT` by a trap, `X` on death, `CCMPARR`/`CMPARR` per tile walked, `CI` on summoning, `CC` on a critical hit, `K` on a kill, `CS` on putting a shield, `DIS` on being dispelled, `MA`/`MS`/`PO`/`CPD` pulled, swapped, moving somebody, dealing push damage, `CAPAS`/`CMPAS` on taking AP or MP, `R` on losing range, `PT` on crossing a portal, `CPT` when somebody crosses one of the bearer's, `PST` on casting through one; `a` allies (the caster included when he stands in his own zone), `A` enemies, `g` the other allies, `c` the caster when he is in the zone, `l`/`L` and `H` the players, `m`/`M` the monsters, `i`/`I` and `j`/`J` the summons — lower case the caster's side, upper case the other —, `O`/`o` whoever dealt the triggering blow, `u` the summon whose coming set it off, `K` the one the caster carried, `P`/`p` the caster's own summons, `h` the caster's summoner, `T`/`W`/`U` the telefragged, the teleport that found no cell and the one just summoned, `B<n>`/`b<n>` a class or not, `PB`/`pb` with a shield or without, `R`/`r` through a portal or not, `E<n>`/`e<n>` gated on a state, `V<n>`/`v<n>` on a life threshold, `*E<n>`/`*e<n>` conditions on the caster. States and positions are judged on one snapshot taken before the cast: a row after a pull still reaches whoever was in the zone. Many of the triggers are read off the sheets that name them and fire in no capture; the code says which
 - ✅ Rows for the client only are not read — the client's `ForClientOnly` bit marks the sheet's copy of what a spell does through a sub-cast (Furor's "+20", Vitalidad's "+N%", Manticolmillo's "+15 huida", Virtud's shield); the real server sends none of them
 - ✅ One draw per cast — the `random` shares of a spell level add up to 100 and one draw picks a row and everything in its `group`: Bumerán Pérfido steals in one element and boosts that element's characteristic
 - ✅ Stack limits — a spell level's `maxStack` says how many equivalent rows live together: `-1` without limit (Fervor, Tumulto), `1` the new row replaces the old (Espada del Juicio, announced gone before the new one), `2` and up a cap (Presión, Espada Destructora)
-- ✅ States need no code — effect 950 sets a number, 951 clears it, the masks do the rest; the 103 states the client flags — invulnerable, cannot be moved or pushed, incurable — are read from `datos/spell_states.json`: an invulnerable target takes no blow at all, a pinned one no push
+- ✅ States need no code — effect 950 sets a number, 951 clears it, the masks do the rest; the 104 states the client flags — invulnerable, cannot be moved or pushed, incurable, kept out of the portals — are read from `datos/spell_states.json`: an invulnerable target takes no blow at all, a pinned one no push
 - ✅ Area shapes from `zoneDescr`, every letter the way the client's own zone factory builds it: the crosses `P X Q + # *` (`Q` and `#` without their centre, `param2` counted in steps along each ray), the circles `C O I`, the lines `L /`, the bars `T -`, the line from the caster `l` (its first step and its length), `U` bent back towards the caster, the cone `V`, the fork `F`, the squares `G W`, the boomerang `B`, the checkerboard `D`, the rectangle `R`, the outside circle `Z`, the cells named outright `;` and the whole map — with each spell's own per-tile falloff
 - ✅ Displacement — push, pull, step back, step forward, push without damage, and push or pull to the aimed cell (783/1043); direction taken from the centre of the area, stopping at walls, holes and fighters
 - ✅ Teleports — to a cell, back to the previous position, symmetrical around the caster or the target — and position swaps
@@ -693,7 +693,8 @@ spells each touches, is [`docs/effect-coverage.txt`](docs/effect-coverage.txt).
 - ✅ Summons as real fighters — own sheet, behaviour spell, lifetime, and they all fall when their summoner dies. Whether one plays is bit 6 of its template's `m_flags`; those that do are driven by their owner from his own client. Capacity is the template's `summonCost` added up
 - ✅ Bombs — a summon that costs nothing against the limit, stays out of the carousel, detonates through its own explosion (1009) once per chain, climbs a combo through spells 20497 and 20500, and lines up into walls of two or three with one to six cells between them, charged on entry and at turn start. The +1 AP per living bomb and the chain reaction are not done
 - ✅ Class passives — each class casts its own initial spell before the first turn (*La Astucia del Tymador*, *El Alcance de Ocra*, *La Sombra de Sram*, *El Escudo de Feca*…), kept in `content/fights/class_passives.json`. The initial spells of a character's own choices go with it
-- ✅ Hooked spells fire on every trigger — turn start, turn end, when hit, on death and per step walked — from their original caster, chained spells included, inside one sequence of the bearer's; a hooked row with a delay waits that many rounds (Furor's decay fires at the end of the turn after the cast, and hooks the grade it falls to); every chained cast is announced once per grade before the first thing it does, and a 406 after the rows it takes
+- ✅ Hooked spells fire on every trigger — turn start, turn end, when hit, on death and per step walked — from their original caster, chained spells included, inside one sequence of the bearer's; a hooked row with a delay waits that many rounds (Furor's decay fires at the end of the turn after the cast, and hooks the grade it falls to); every chained cast is announced once per grade before the first thing it does — on the cell it was aimed at and without the f8 of a cast somebody made, as 18,526 chained casts of the captures go —, and a 406 after the rows it takes, with an f5 when its row carries the bit 4 of its flags (17 of 17)
+- ❌ The hooks themselves go out, in the real server, as hidden rows of their own — one per trigger, "jxm 1160 'D'" and "'XD'" on Resonancia's target — that come off with a jya; this server keeps its hooks off the panel. A jxm's state trigger goes out bare, `EON`/`EOFF`/`EK` as in all 581 of the captures
 - ✅ Delayed effects — a `delay` in the catalogue is a hidden row with trigger `Y` that fires at the first turn of its round (the survival beacon's lifetime, Paso de Cacería's +1 MP)
 - ✅ Points and rows across turns — a turn starts with the maximum plus the live point buffs; an expired row falls at the start of its caster's turn
 - ✅ AP and MP removal against dodge — rolled point by point with the game's own odds, `(points left / maximum) × (retira + 2) / (esquiva + 2) × ½`, between 10% and 90%; *retira* and *esquiva* are a tenth of wisdom plus the gear (410–413, 160–163) and the live rows, monsters carry their grade's `paDodge`/`pmDodge`. What is dodged goes out as `jwe 308/309`, what lands as a `-N PA/PM` row (168/169)
@@ -703,10 +704,16 @@ spells each touches, is [`docs/effect-coverage.txt`](docs/effect-coverage.txt).
 - ✅ Appearance-changing spells — the transform replaces the root bones and keeps colours, skins, scale and pets, through combat action 149
 - ✅ Script markers 3792 and 3793 do nothing: their value is a script id, not an effect
 - ✅ The characteristic sheet in the shape the client expects: 53 entries in a fixed order, and a single-characteristic refresh replaces its entry
-- ❌ A cooldown pinned to a number of turns (1045), a spell's own basic-healing bonus (2935), damage as a share of the damage taken (1223), best-element healing (3002), damage sharing and interception, portals, revealing invisibles, MP steal — the full list is in the coverage table
-- ❌ The target-mask letters the check-list below names
+- ✅ AP given back (120) go out as the real server sends them: the AP sheet in its short sequence, then "jwe 120" with the points — 117 of them in 35 captures
+- ✅ Spell modifiers, the catalogue's category 3 — AP cost, cast interval, critical, casts per turn and per target, ranges added, taken away or pinned, the cell needed, line of sight, base healing — held as rows and told as the client computes with them: hnd for the total, hnk to take it away, the numbering read off the captures
+- ✅ Steals go out as two rows, the malus on the target and the bonus on the caster, as the 26 of the captures; and a double of the caster (180), invisibility revealed (202), a share of the final damage taken (1223), heals out of the blow (786, 2973, 2020), best-element healing (3002), rolls maximised and minimised (782, 781), damage by the MP left (1012–1016), one grade of a spell taken off (1406)
+- ✅ Portals (1181, 1182, 1183), checked frame for frame against the six Selatrop captures — four a Selatrop, the fifth pushing the oldest out (jwe 310, then its jwe 401); a portal on when it can be used and another of its network can too, off when crossed this turn, switched off by a 1183 until its caster's next turn, or stood on; each change a "jwe 1181", and a turn start bringing back what it can in a sequence of its own. Walked or pushed onto one that is on, a fighter goes through the network — from each portal the nearest usable one not yet taken, the newest between two as near, the last one the way out —, and a walk ends there; a Teleportal (1182) takes whoever stands on one. A spell aimed at a portal comes out of the last one, landing where the caster's aim leads from there, the cast naming the portals it crossed; a spell about portals is not projected. The enemies' first-round state, "Teleportal Imposible", keeps them out
+- 🟡 What a spell through portals gains, "+#3% daños, +#1% por casilla que separe entre 2 portales" — the entry's value and 2% a cell between portals, on its damage and its healing — is the effect's own text: no capture holds a blow of known stats both ways
+- 🟡 Interception (765) and damage sharing (1061): the rows go out as captured — hidden, under "D" or "DM", in the name of whoever cast them —, but what a blow does with them is the sheets' words, since no capture holds an intercepted blow or a linked fighter hit: an interceptor takes the blow in the place of the one hit, against his own resistances and shield; linked fighters take equal shares of it, what does not divide staying on the one hit
+- ✅ Lazo Espiritual's bond (2184): the bound walk up to the Osamodas as far as its die, into contact, in walks of their own with his facing — its capture, frame for frame
+- 🟡 2017, Recursividad's: 1017 with its value capping the candidates, read off its sheet — a turret in contact throws the enemy over it and pushes him on
 
-> Only the **Ocra**, the **Tymador** and the **Yopuka** have been checked against the real client spell by spell; the check-list below says which spells. A spell only works when all of its effects resolve, and the gaps concentrate in a handful of effect families.
+> The **Ocra**, the **Tymador** and the **Yopuka** have been checked against the real client spell by spell, and three of the **Selatrop**'s against their own captures; the check-list below says which spells. Every class spell now resolves on paper; what the paper cannot say is in the notes after the dashes.
 
 ### 🔬 Spell check-list
 
@@ -719,36 +726,36 @@ on paper and has not been checked yet. A ✅ with "unread on paper" after the da
 game while a letter of its sheet is still not read.
 
 The list is generated from `world.db` and the engine's own source by `tools/spell_checklist.py`;
-the ✅ are set by hand in it. Rows for the client only are left out of the count. Most crosses
-come from the target-mask letters the engine does not read yet (`T`, `R`, `U`, `r`, `b<n>`,
-`PB`/`pb`, `H`/`h`, `D`/`d`), then the area shape `G`, and only then the effects: a cooldown pinned
-to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised random rolls
-(782), damage as a share of the damage taken (1223).
+the ✅ and the notes are set by hand in it. Rows for the client only are left out of the count.
+**Every one of the 836 resolves on paper.** What a ❌ says after its dash is what the paper cannot
+settle: a mechanic read off the spell's own sheet with no capture to hold it to — interception,
+shared damage, the tarot's K and CS, Recursividad's turret, the triggers of the portals — or the one
+difference left against its capture.
 
 | Class | Seen working | Resolve on paper | Spells |
 |---|:---:|:---:|:---:|
-| Feca | 0 | 29 | 44 |
-| Osamodas | 0 | 37 | 44 |
-| Anutrof | 0 | 40 | 44 |
-| Sram | 0 | 38 | 44 |
-| Xelor | 0 | 10 | 44 |
-| Zurcarák | 0 | 6 | 44 |
-| Aniripsa | 0 | 29 | 44 |
-| Yopuka | 22 | 42 | 44 |
-| Ocra | 7 | 32 | 44 |
-| Sadida | 0 | 31 | 44 |
-| Sacrógrito | 0 | 35 | 44 |
-| Pandawa | 0 | 35 | 44 |
-| Tymador | 13 | 42 | 44 |
-| Zobal | 0 | 37 | 44 |
-| Steamer | 0 | 25 | 44 |
-| Selatrop | 0 | 11 | 44 |
-| Hipermago | 0 | 8 | 44 |
-| Uginak | 0 | 4 | 44 |
-| Forjalanza | 0 | 33 | 44 |
-| **All** | **42** | **524** | **836** |
+| Feca | 0 | 44 | 44 |
+| Osamodas | 0 | 44 | 44 |
+| Anutrof | 0 | 44 | 44 |
+| Sram | 0 | 44 | 44 |
+| Xelor | 0 | 44 | 44 |
+| Zurcarák | 0 | 44 | 44 |
+| Aniripsa | 0 | 44 | 44 |
+| Yopuka | 22 | 44 | 44 |
+| Ocra | 7 | 44 | 44 |
+| Sadida | 0 | 44 | 44 |
+| Sacrógrito | 0 | 44 | 44 |
+| Pandawa | 0 | 44 | 44 |
+| Tymador | 13 | 44 | 44 |
+| Zobal | 0 | 44 | 44 |
+| Steamer | 0 | 44 | 44 |
+| Selatrop | 3 | 44 | 44 |
+| Hipermago | 0 | 44 | 44 |
+| Uginak | 0 | 44 | 44 |
+| Forjalanza | 0 | 44 | 44 |
+| **All** | **45** | **836** | **836** |
 
-<details><summary><b>Feca</b> — 0 of 44 seen working, 29 resolve on paper</summary>
+<details><summary><b>Feca</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
 - ❌ Somnolencia
 - ❌ Maniobra
@@ -762,12 +769,12 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Chaparrón
 - ❌ Barricada
 - ❌ Pavés
-- ❌ Recelo — effect 402 (places an end-of-turn glyph), mask `U`
-- ❌ Parapeto — effect 1165 (places to glyph), effect 2018 (dispels glyphs), mask `U`
+- ❌ Recelo
+- ❌ Parapeto
 - ❌ Letargo
 - ❌ Reagrupamiento
 - ❌ Nimbo
-- ❌ Estrato — shape `G`
+- ❌ Estrato
 - ❌ Bastión
 - ❌ Tregua
 - ❌ Puñalada
@@ -778,26 +785,26 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Cayado
 - ❌ Sopor
 - ❌ Escapadita
-- ❌ Aprisco — shape `G`
-- ❌ Excursión — effect 1165 (places to glyph)
-- ❌ Escudo feca — mask `b1`
-- ❌ Posición Defensiva — effect 1026 (triggers glyphs), mask `b1`
+- ❌ Aprisco
+- ❌ Excursión
+- ❌ Escudo feca
+- ❌ Posición Defensiva
 - ❌ Refuerzo
 - ❌ Ataraxia
-- ❌ Prado — shape `*`
-- ❌ Pasto — effect 2018 (dispels glyphs)
+- ❌ Prado
+- ❌ Pasto
 - ❌ Valle
-- ❌ Escarcha — effect 2018 (dispels glyphs), shape `G`
+- ❌ Escarcha
 - ❌ Tierra Batida
-- ❌ Refugio — effect 2018 (dispels glyphs)
-- ❌ Trashumancia — effect 1026 (triggers glyphs)
-- ❌ Égida — effect 765 (intercepts damage), mask `b1`
-- ❌ Tierra Quemada — shape `G`
-- ❌ Vigía — effect 2018 (dispels glyphs)
+- ❌ Refugio
+- ❌ Trashumancia
+- ❌ Égida — no capture holds an intercepted blow: who takes it is the sheet's word (765)
+- ❌ Tierra Quemada
+- ❌ Vigía
 
 </details>
 
-<details><summary><b>Osamodas</b> — 0 of 44 seen working, 37 resolve on paper</summary>
+<details><summary><b>Osamodas</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
 - ❌ Grito de Cuerbok
 - ❌ Colmillos de Milubo
@@ -805,22 +812,22 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Desplume
 - ❌ Dientes de Piranya
 - ❌ Corazón Salvaje
-- ❌ Grito del Oso — shape `G`
-- ❌ Baba de Sapo — shape `G`
+- ❌ Grito del Oso
+- ❌ Baba de Sapo
 - ❌ Látigo
 - ❌ Fusta
 - ❌ Tofu
 - ❌ Garras de Chtigre
 - ❌ Jalató
-- ❌ Garras de Buitre — effect 786 (heals the attacker for #1% of the damage), shape `F`
+- ❌ Garras de Buitre
 - ❌ Saponito
 - ❌ Vellocino de Oro
 - ❌ Dragún
 - ❌ Mordedura de Serpiente
-- ❌ Séquito Salvaje — effect 285 (#1: -#3 AP)
-- ❌ Pacto Bestial — effect 1045 (#1: cooldown pinned to #3 turns), mask `u`
+- ❌ Séquito Salvaje
+- ❌ Pacto Bestial
 - ❌ Chute Motivador
-- ❌ Comunión Animal — effect 1061 (shares damage)
+- ❌ Comunión Animal — no capture holds a linked fighter hit: the equal shares are the sheet's word (1061)
 - ❌ Salta la Ranadina
 - ❌ Tornado de Plumas
 - ❌ Soplido Dracónico
@@ -839,14 +846,14 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Azufrénix
 - ❌ Dragonito
 - ❌ Escararrayo
-- ❌ Lazo Espiritual — effect 2184 (Sigue to the lanzador)
+- ❌ Lazo Espiritual — its follow and its hooks' state triggers are its capture's; the hooks go out there as hidden rows, not here
 - ❌ Relevo Espiritual
 - ❌ Espíritu Glotón
 - ❌ Espíritu Burlón
 
 </details>
 
-<details><summary><b>Anutrof</b> — 0 of 44 seen working, 40 resolve on paper</summary>
+<details><summary><b>Anutrof</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
 - ❌ Lanzamiento de Monedas
 - ❌ Moneda sonante
@@ -861,7 +868,7 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Fiebre del Oro
 - ❌ Andador
 - ❌ Caja de Pandora
-- ❌ Caja de Herramientas — mask `u`
+- ❌ Caja de Herramientas
 - ❌ Fuerza de la Edad
 - ❌ Búsqueda de Oro
 - ❌ Llave del Tesoro
@@ -876,8 +883,8 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Turbera
 - ❌ Torpeza
 - ❌ Edad de Oro
-- ❌ Terraplenado — mask `D`, mask `H`, mask `d`
-- ❌ Fuego de Mina — effect 786 (heals the attacker for #1% of the damage)
+- ❌ Terraplenado
+- ❌ Fuego de Mina
 - ❌ Oportunidad
 - ❌ Explosión de Grisú
 - ❌ Debilitación
@@ -887,7 +894,7 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Corrupción
 - ❌ Túnel de Fortuna
 - ❌ Caducidad
-- ❌ Tamizado — shape `G`
+- ❌ Tamizado
 - ❌ Pala de los Ancianos
 - ❌ Filón
 - ❌ Cofre Animado
@@ -895,12 +902,12 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 
 </details>
 
-<details><summary><b>Sram</b> — 0 of 44 seen working, 38 resolve on paper</summary>
+<details><summary><b>Sram</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
 - ❌ Invisibilidad
 - ❌ Bruma
 - ❌ Trampas solapadas
-- ❌ Zalagarda — effect 786 (heals the attacker for #1% of the damage)
+- ❌ Zalagarda
 - ❌ Truhanería
 - ❌ Abrojo
 - ❌ Arsénico
@@ -909,14 +916,14 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Trampa Espeluznante
 - ❌ Engaño
 - ❌ Rebanacuellos
-- ❌ Doble — effect 180 (summons to double of the caster), effect 2027 (Toma el control de la entidad), mask `D`, mask `H`, mask `U`
-- ❌ Conspirador — effect 180 (summons to double of the caster), effect 2027 (Toma el control de la entidad), mask `D`, mask `H`, mask `U`
+- ❌ Doble
+- ❌ Conspirador
 - ❌ Trampa Fangosa
-- ❌ Epidemia — mask `D`, mask `H`
+- ❌ Epidemia
 - ❌ Extorsión
 - ❌ Registro
 - ❌ Crueldad
-- ❌ Mala Sombra — effect 2973 (heals #1-#2% of the damage dealt), effect 781 (minimises the target random rolls)
+- ❌ Mala Sombra
 - ❌ Trampa Funesta
 - ❌ Efracción
 - ❌ Trampa de Inmovilización
@@ -934,7 +941,7 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Concentración de Chakra
 - ❌ Artimaña
 - ❌ Trampas mortales
-- ❌ Calamidad — shape `G`
+- ❌ Calamidad
 - ❌ Escapatoria
 - ❌ Marca Mortuoria
 - ❌ Trampa de Deriva
@@ -944,121 +951,121 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 
 </details>
 
-<details><summary><b>Xelor</b> — 0 of 44 seen working, 10 resolve on paper</summary>
+<details><summary><b>Xelor</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
-- ❌ Teletransportación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Astrolabio — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Perturbación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Rueda Dentada — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Recuerdo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Permutación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Teletransportación
+- ❌ Astrolabio
+- ❌ Perturbación
+- ❌ Rueda Dentada
+- ❌ Recuerdo
+- ❌ Permutación
 - ❌ Marchitación
-- ❌ Aguja — effect 1406 (removes the effects of grade #1 of spell #2)
-- ❌ Rebobinamiento — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1099 (teleports to the turn-start position), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Remanencia — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Refracción — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Regulador — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), effect 290 (#1: +#3 cast(s) per turn), mask `T`
+- ❌ Aguja
+- ❌ Rebobinamiento
+- ❌ Remanencia
+- ❌ Refracción
+- ❌ Regulador
 - ❌ Cómplice
 - ❌ Esfera de Xelor
-- ❌ Congelación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Polvo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Congelación
+- ❌ Polvo
 - ❌ Ralentización
-- ❌ Reloj de Arena de Xelor — effect 1406 (removes the effects of grade #1 of spell #2)
-- ❌ Engranaje — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Cuentagotas — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Reloj de Arena de Xelor
+- ❌ Engranaje
+- ❌ Cuentagotas
 - ❌ Borroso Temporal
 - ❌ Conservación
-- ❌ Distorsión — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`, shape `G`
-- ❌ Arenas del Tiempo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ El Tiempo Vuela — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Premonición — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1101 (teleports o intercambia posiciones), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Rayo Oscuro — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Desecamiento — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Paradoja — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Falla — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`, mask `u`
+- ❌ Distorsión
+- ❌ Arenas del Tiempo
+- ❌ El Tiempo Vuela
+- ❌ Premonición
+- ❌ Rayo Oscuro
+- ❌ Desecamiento
+- ❌ Paradoja
+- ❌ Falla
 - ❌ Syncro
-- ❌ Tañido — shape `G`
-- ❌ Petrificación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), effect 285 (#1: -#3 AP), mask `T`
-- ❌ Reloj de Bolsillo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), effect 2018 (dispels glyphs), mask `T`
-- ❌ Reloj — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Reloj de Agua — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Golpe de Xelor — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Péndulo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
-- ❌ Momificación — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Tañido
+- ❌ Petrificación
+- ❌ Reloj de Bolsillo
+- ❌ Reloj
+- ❌ Reloj de Agua
+- ❌ Golpe de Xelor
+- ❌ Péndulo
+- ❌ Momificación
 - ❌ 25ª Hora
-- ❌ Rolbac — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Rolbac
 - ❌ Inestabilidad
 - ❌ Desincronización
-- ❌ Espaciotiempo — effect 1026 (triggers glyphs), effect 1045 (#1: cooldown pinned to #3 turns), effect 1223 (damage: #1-#2% of the final damage taken), mask `T`
+- ❌ Espaciotiempo
 
 </details>
 
-<details><summary><b>Zurcarák</b> — 0 of 44 seen working, 6 resolve on paper</summary>
+<details><summary><b>Zurcarák</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
-- ❌ Espíritu Felino — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Kraps — effect 782 (Maximiza los efectos aleatorios en el objetivo)
+- ❌ Espíritu Felino
+- ❌ Kraps
 - ❌ Garra Invocadora
 - ❌ Caricia Invocadora
-- ❌ Golpe de Fortuna — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Redistribución — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Olfato — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Rueda de la Fortuna — effect 2935 (#1: +#3 basic healing on that spell), effect 781 (minimises the target random rolls), effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Reflejos — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Lametazo — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Truco — effect 285 (#1: -#3 AP), effect 287 (#1: +#3% de crítico), effect 2935 (#1: +#3 basic healing on that spell), effect 296 (#1: +#3 AP), effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Todo o Nada — effect 3002 (#1-#2 best-element healing), effect 782 (Maximiza los efectos aleatorios en el objetivo)
+- ❌ Golpe de Fortuna
+- ❌ Redistribución
+- ❌ Olfato
+- ❌ Rueda de la Fortuna
+- ❌ Reflejos
+- ❌ Lametazo
+- ❌ Truco
+- ❌ Todo o Nada
 - ❌ Salto del Felino
 - ❌ Trenzado
-- ❌ Topkaj — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Garra Juguetona — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Jass — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Desdicha — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Cara o Cruz — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Fantasmada — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Segunda Oportunidad — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Nueve Vidas — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Farol — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo)
+- ❌ Topkaj
+- ❌ Garra Juguetona
+- ❌ Jass
+- ❌ Desdicha
+- ❌ Cara o Cruz
+- ❌ Fantasmada
+- ❌ Segunda Oportunidad
+- ❌ Nueve Vidas
+- ❌ Farol
 - ❌ Rekop
-- ❌ Almohadillas — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Bufido — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Yams — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Lengua Raspadora — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Belote — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Peligro — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Baraka — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Osadía — effect 782 (Maximiza los efectos aleatorios en el objetivo)
+- ❌ Almohadillas
+- ❌ Bufido
+- ❌ Yams
+- ❌ Lengua Raspadora
+- ❌ Belote
+- ❌ Peligro
+- ❌ Baraka
+- ❌ Osadía
 - ❌ Ruleta
-- ❌ Tarot de Zurcarák — effect 1045 (#1: cooldown pinned to #3 turns), effect 1099 (teleports to the turn-start position), effect 285 (#1: -#3 AP), effect 290 (#1: +#3 cast(s) per turn), effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Castillo de Naipes — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Buena Estrella — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Blakjak — effect 2935 (#1: +#3 basic healing on that spell), effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Destino de Zurcarák — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Percepción — effect 202 (reveals invisible entities)
-- ❌ Predación — effect 202 (reveals invisible entities)
-- ❌ Ovillo — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Garra de Ceangal — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Feliación — effect 782 (Maximiza los efectos aleatorios en el objetivo)
-- ❌ Desventura — effect 782 (Maximiza los efectos aleatorios en el objetivo)
+- ❌ Tarot de Zurcarák — the cards' K and CS are their own words; no capture fires either
+- ❌ Castillo de Naipes
+- ❌ Buena Estrella
+- ❌ Blakjak
+- ❌ Destino de Zurcarák
+- ❌ Percepción
+- ❌ Predación
+- ❌ Ovillo
+- ❌ Garra de Ceangal
+- ❌ Feliación
+- ❌ Desventura
 
 </details>
 
-<details><summary><b>Aniripsa</b> — 0 of 44 seen working, 29 resolve on paper</summary>
+<details><summary><b>Aniripsa</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
 - ❌ Palabra de Amistad
-- ❌ Palabra Alquímica — effect 290 (#1: +#3 cast(s) per turn), mask `x`
+- ❌ Palabra Alquímica
 - ❌ Palabra Escandalosa
 - ❌ Grito Ensordecedor
 - ❌ Palabra Juguetona
 - ❌ Palabra Maliciosa
 - ❌ Palabra Vampírica
-- ❌ Sollozos — effect 2973 (heals #1-#2% of the damage dealt)
+- ❌ Sollozos
 - ❌ Palabra Estimulante
-- ❌ Palabra de Declive — effect 2935 (#1: +#3 basic healing on that spell)
+- ❌ Palabra de Declive
 - ❌ Blasfemia
 - ❌ Ungüento Ancestral
 - ❌ Pintura de Guerra
-- ❌ Palabra Secreta — effect 2935 (#1: +#3 basic healing on that spell)
-- ❌ Lamentos — effect 2973 (heals #1-#2% of the damage dealt)
+- ❌ Palabra Secreta
+- ❌ Lamentos
 - ❌ Demencia
 - ❌ Palabra Turbulenta
 - ❌ Palabra Furiosa
@@ -1066,32 +1073,32 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Palabra Galvanizadora
 - ❌ Palabra Bromista
 - ❌ Palabra Censurada
-- ❌ Palabra Florida — shape `*`
+- ❌ Palabra Florida
 - ❌ Bosquecillo Encantado
 - ❌ Palabra de Juventud
-- ❌ Palabra Deprimente — effect 2935 (#1: +#3 basic healing on that spell)
+- ❌ Palabra Deprimente
 - ❌ Grito de Guerra
 - ❌ Palabra Ritual
 - ❌ Palabra Prohibida
-- ❌ Palabra Exangüe — effect 786 (heals the attacker for #1% of the damage)
-- ❌ Palabra Abrumadora — effect 2935 (#1: +#3 basic healing on that spell)
-- ❌ Palabra Desanimadora — effect 2935 (#1: +#3 basic healing on that spell)
-- ❌ Ladronceo — effect 320 (steals #1-#2 range)
+- ❌ Palabra Exangüe
+- ❌ Palabra Abrumadora
+- ❌ Palabra Desanimadora
+- ❌ Ladronceo
 - ❌ Palabra Entretenida
 - ❌ Palabra de Vuelo
-- ❌ Fuente de Juventud — effect 402 (places an end-of-turn glyph)
+- ❌ Fuente de Juventud
 - ❌ Pincel Tribal
-- ❌ Coro Estridente — effect 2935 (#1: +#3 basic healing on that spell)
+- ❌ Coro Estridente
 - ❌ Crioterapia
-- ❌ Murmullo — effect 77 (Roba #1-#2 MP)
+- ❌ Murmullo
 - ❌ Palabra de Pavor
-- ❌ Escalpelo — effect 3002 (#1-#2 best-element healing)
+- ❌ Escalpelo
 - ❌ Palabra de Reconstitución
 - ❌ Palabra de Solidaridad
 
 </details>
 
-<details><summary><b>Yopuka</b> — 22 of 44 seen working, 42 resolve on paper</summary>
+<details><summary><b>Yopuka</b> — 22 of 44 seen working, 44 resolve on paper</summary>
 
 - ✅ Machete
 - ❌ Acumulación
@@ -1120,11 +1127,11 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ✅ Potencia
 - ❌ Vindicta
 - ✅ Virtud — 29723's rows alone: the shield around, 550% on a critical, and one -50 per ally in contact
-- ❌ Masacre — effect 1223 (damage: #1-#2% of the final damage taken)
+- ❌ Masacre
 - ✅ Tempestad de Potencia
 - ❌ Casca
 - ✅ Espada Celeste
-- ❌ Cénit — effect 1013 (#1-#2 air damage (% MP restantes))
+- ❌ Cénit
 - ✅ Vitalidad — 25215's row alone: +20% of the maximum life on oneself, +10% on the others
 - ❌ Violencia
 - ✅ Espada de Yopuka
@@ -1140,56 +1147,56 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 
 </details>
 
-<details><summary><b>Ocra</b> — 7 of 44 seen working, 32 resolve on paper</summary>
+<details><summary><b>Ocra</b> — 7 of 44 seen working, 44 resolve on paper</summary>
 
 - ✅ Flecha Helada — the critical roll, measured
 - ❌ Flecha Acosante
 - ❌ Flecha de Pelea
-- ❌ Diamantes Destructores — shape `F`
+- ❌ Diamantes Destructores
 - ❌ Flecha Azotadora
 - ❌ Flecha Asaltante
 - ❌ Flecha Vagabunda
 - ❌ Flecha Evasiva
 - ✅ Paso de Cacería — the jump, and the +1 MP the turn after
 - ❌ Baliza Táctica
-- ❌ Disparos Lejanos — mask `b9`
+- ❌ Disparos Lejanos
 - ❌ Tiro Penetrante
 - ❌ Flecha Detonadora
 - ❌ Flecha Ralentizante
-- ❌ Flecha de Abolición — mask `PB`, mask `pb`
+- ❌ Flecha de Abolición
 - ❌ Flecha Perseguidora
 - ❌ Flecha de Retroceso
 - ❌ Flecha Impactante
-- ❌ Flecha Inmovilizadora — effect 77 (Roba #1-#2 MP)
+- ❌ Flecha Inmovilizadora
 - ❌ Flecha Tiránica
 - ❌ Tiros Potentes
-- ❌ Flechas Amorosas — effect 1061 (shares damage), mask `d`
+- ❌ Flechas Amorosas — no capture holds a linked fighter hit: the equal shares are the sheet's word (1061)
 - ❌ Flecha de Dispersión
 - ❌ Flechas Flamígeras
 - ❌ Flecha Explosiva
 - ❌ Flecha Masacrante
-- ❌ Ojo de Topo — effect 202 (reveals invisible entities)
+- ❌ Ojo de Topo
 - ❌ Lluvia de Flechas
 - ❌ Ojo por Ojo
-- ❌ Flecha Paralizadora — shape `G`
+- ❌ Flecha Paralizadora
 - ✅ Baliza de Supervivencia — she plays her turn on her own and dies two rounds later through her own 141
 - ✅ Represalias
 - ✅ Tiro de Repliegue
 - ❌ Vendetta
 - ✅ Flecha Castigadora — its start, measured
-- ❌ Flecha del Juicio — effect 1016 (#1-#2 earth damage (% MP restantes))
+- ❌ Flecha del Juicio
 - ❌ Flecha de Expiación
-- ❌ Flecha de Redención — effect 1406 (removes the effects of grade #1 of spell #2)
-- ❌ Flecha Percutiente — mask `PB`, mask `pb`
+- ❌ Flecha de Redención
+- ❌ Flecha Percutiente
 - ❌ Flecha Búmeran
 - ❌ Flecha Voraz
 - ✅ Flecha Fulminante — the rebound, measured from both sides
-- ❌ Agudeza Absoluta — effect 289 (#1: line of sight disabled)
-- ❌ Centinela — effect 202 (reveals invisible entities)
+- ❌ Agudeza Absoluta
+- ❌ Centinela
 
 </details>
 
-<details><summary><b>Sadida</b> — 0 of 44 seen working, 31 resolve on paper</summary>
+<details><summary><b>Sadida</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
 - ❌ La Loca
 - ❌ La Loca Transmutada
@@ -1197,34 +1204,34 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Árbol Frondoso
 - ❌ Zarza
 - ❌ Zarza Insolente
-- ❌ Plaga — shape `G`
-- ❌ Bosque Encantado — shape `G`
+- ❌ Plaga
+- ❌ Bosque Encantado
 - ❌ La Bloqueadora
 - ❌ La Bloqueadora Transmutada
-- ❌ Lágrima de Sadida — effect 786 (heals the attacker for #1% of the damage)
-- ❌ Subida de Savia — effect 2973 (heals #1-#2% of the damage dealt), effect 786 (heals the attacker for #1% of the damage), shape `G`
+- ❌ Lágrima de Sadida
+- ❌ Subida de Savia
 - ❌ Savia Paralizante
 - ❌ Miasmas
-- ❌ Zarza Tranquilizadora — effect 3002 (#1-#2 best-element healing)
+- ❌ Zarza Tranquilizadora
 - ❌ Trasplante
-- ❌ Potencia Silvestre — effect 2796 (kills the target and replaces it with summon: #1)
-- ❌ Influencia Vegetal — effect 2796 (kills the target and replaces it with summon: #1)
+- ❌ Potencia Silvestre
+- ❌ Influencia Vegetal
 - ❌ La Sacrificada
 - ❌ La Sacrificada Transmutada
-- ❌ Temblor — effect 202 (reveals invisible entities)
+- ❌ Temblor
 - ❌ Mandrágora
-- ❌ Don Natural — effect 1061 (shares damage), effect 3002 (#1-#2 best-element healing), mask `d`
-- ❌ Armonía — effect 1061 (shares damage)
-- ❌ Sacrificio Vudú — effect 1045 (#1: cooldown pinned to #3 turns)
+- ❌ Don Natural — no capture holds a linked fighter hit: the equal shares are the sheet's word (1061)
+- ❌ Armonía — no capture holds a linked fighter hit: the equal shares are the sheet's word (1061)
+- ❌ Sacrificio Vudú
 - ❌ Cardos Ardientes
 - ❌ Contagio
-- ❌ Manglar — effect 786 (heals the attacker for #1% of the damage)
+- ❌ Manglar
 - ❌ Inoculación
 - ❌ Fuerza de la Naturaleza
 - ❌ La Hinchable
 - ❌ La Hinchable Transmutada
 - ❌ Zarzas Agresivas
-- ❌ Fetiches Calcinados — effect 1223 (damage: #1-#2% of the final damage taken)
+- ❌ Fetiches Calcinados
 - ❌ Árbol de Vida
 - ❌ Altruismo Vegetal
 - ❌ Matorral Ardiente
@@ -1238,7 +1245,7 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 
 </details>
 
-<details><summary><b>Sacrógrito</b> — 0 of 44 seen working, 35 resolve on paper</summary>
+<details><summary><b>Sacrógrito</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
 - ❌ Mutilación
 - ❌ Pacto de Sangre
@@ -1254,32 +1261,32 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Aflujo
 - ❌ Hostilidad
 - ❌ Proyección
-- ❌ Corona de Espinas — effect 1223 (damage: #1-#2% of the final damage taken)
+- ❌ Corona de Espinas
 - ❌ Picota
-- ❌ Transfusión — effect 89 (neutral damage: #1-#2% of the caster HP)
+- ❌ Transfusión
 - ❌ Lazos de Sangre
 - ❌ Hecatombe
 - ❌ Corte
-- ❌ Baño de Sangre — shape `G`
+- ❌ Baño de Sangre
 - ❌ Inmolación
-- ❌ Sacrificio — effect 765 (intercepts damage)
+- ❌ Sacrificio — no capture holds an intercepted blow: who takes it is the sheet's word (765)
 - ❌ Penitencia
 - ❌ Desolación
-- ❌ Desencadenamiento — shape `G`
+- ❌ Desencadenamiento
 - ❌ Disolución
 - ❌ Carnicería
 - ❌ Libación
-- ❌ Castigo — effect 89 (neutral damage: #1-#2% of the caster HP)
+- ❌ Castigo
 - ❌ Berserker
-- ❌ Ritual de Jashin — effect 1223 (damage: #1-#2% of the final damage taken)
+- ❌ Ritual de Jashin
 - ❌ Absorción
 - ❌ Furia
-- ❌ Suplicio — effect 786 (heals the attacker for #1% of the damage)
+- ❌ Suplicio
 - ❌ Nerviosismo
 - ❌ Estasis
 - ❌ Escozor
 - ❌ Atracción
-- ❌ Perfusión — effect 2020 (heals #1-#2% of the damage taken)
+- ❌ Perfusión
 - ❌ Punición
 - ❌ Locura Sanguinaria
 - ❌ Hemorragia
@@ -1287,10 +1294,10 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 
 </details>
 
-<details><summary><b>Pandawa</b> — 0 of 44 seen working, 35 resolve on paper</summary>
+<details><summary><b>Pandawa</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
-- ❌ Palma Explosiva — effect 296 (#1: +#3 AP)
-- ❌ Destilación — shape `G`
+- ❌ Palma Explosiva
+- ❌ Destilación
 - ❌ Resaca
 - ❌ Soplido Flamígero
 - ❌ Comilona
@@ -1308,35 +1315,35 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Ebriedad
 - ❌ Embriaguez
 - ❌ Estabilización
-- ❌ Escalada — effect 290 (#1: +#3 cast(s) per turn), effect 291 (#1: +#3 lanzamiento(s) per objetivo)
+- ❌ Escalada
 - ❌ Enlace Espirituoso
 - ❌ Bambú
 - ❌ Etilo
 - ❌ Entumecimiento
-- ❌ Aguardiente — mask `K`
+- ❌ Aguardiente
 - ❌ Aguachirle
 - ❌ Deshonra
 - ❌ Maceración
 - ❌ Fermentación
 - ❌ Bambusería
-- ❌ Propulsión — mask `K`
+- ❌ Propulsión
 - ❌ Absenta
-- ❌ Camilla — mask `K`
+- ❌ Camilla
 - ❌ Alcoshu
-- ❌ Pandikulación — mask `K`
+- ❌ Pandikulación
 - ❌ Licor
 - ❌ Náuseas
-- ❌ Cascada — mask `K`
+- ❌ Cascada
 - ❌ Leche de Bambú
 - ❌ Interdicción
 - ❌ Frasco Explosivo
 - ❌ Pandatak
 - ❌ Pandenkulo
-- ❌ Mano de Pandawa — effect 297 (#1: casilla ocupada necesaria desactivada), effect 299 (#1: casilla libre necesaria activada)
+- ❌ Mano de Pandawa
 
 </details>
 
-<details><summary><b>Tymador</b> — 13 of 44 seen working, 42 resolve on paper</summary>
+<details><summary><b>Tymador</b> — 13 of 44 seen working, 44 resolve on paper</summary>
 
 - ✅ Detonador
 - ❌ Estopín
@@ -1348,12 +1355,12 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Ardid
 - ❌ Extracción
 - ❌ Cadencia
-- ❌ Imantación — mask `b12`; does nothing on an empty cell, as it should
+- ❌ Imantación — does nothing on an empty cell, as it should
 - ❌ Cruce
 - ✅ Fusil
 - ❌ Obliteración
 - ❌ Jugarreta
-- ❌ Bomba Ambulante — mask `U`
+- ❌ Bomba Ambulante
 - ✅ Bombas de agua
 - ❌ Bomba de Agua Resiliente
 - ✅ Tymobot — and its own Empujoncito, Aspirador and Pinzas, driven from the owner's client; it dies at the end of its turn
@@ -1385,20 +1392,20 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 
 </details>
 
-<details><summary><b>Zobal</b> — 0 of 44 seen working, 37 resolve on paper</summary>
+<details><summary><b>Zobal</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
 - ❌ Boliche
 - ❌ Ronda
 - ❌ Catalepsia
 - ❌ Apostasía
-- ❌ Máscara Eskérdikat — effect 1036 (#1: -#3 cooldown), effect 1045 (#1: cooldown pinned to #3 turns), mask `b14`
-- ❌ Máscara de Cobarde — effect 1036 (#1: -#3 cooldown), effect 1045 (#1: cooldown pinned to #3 turns), mask `b14`
+- ❌ Máscara Eskérdikat
+- ❌ Máscara de Cobarde
 - ❌ Brincadeira
 - ❌ Picado
 - ❌ Apoyo
 - ❌ Pivote
-- ❌ Máscara Sáikopat — effect 1036 (#1: -#3 cooldown), effect 1045 (#1: cooldown pinned to #3 turns), mask `b14`
-- ❌ Máscara de Histérico — effect 1036 (#1: -#3 cooldown), effect 1045 (#1: cooldown pinned to #3 turns), mask `b14`
+- ❌ Máscara Sáikopat
+- ❌ Máscara de Histérico
 - ❌ Furial
 - ❌ Bocciara
 - ❌ Cabriola
@@ -1412,7 +1419,7 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Coraza
 - ❌ Ginga
 - ❌ Fogosidad
-- ❌ Mascarada — effect 279 (damage neutrales: #1-#2% HP faltantes of the lanzador), effect 89 (neutral damage: #1-#2% of the caster HP)
+- ❌ Mascarada
 - ❌ Desbandada
 - ❌ Comedia
 - ❌ Parafuso
@@ -1427,224 +1434,224 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Distancia
 - ❌ Carnavalo
 - ❌ Transfiguración
-- ❌ Máscara de Intrépido — effect 1036 (#1: -#3 cooldown), effect 1045 (#1: cooldown pinned to #3 turns), mask `b14`
-- ❌ Máscara de Incansable — effect 1036 (#1: -#3 cooldown), effect 1045 (#1: cooldown pinned to #3 turns), mask `b14`
+- ❌ Máscara de Intrépido
+- ❌ Máscara de Incansable
 - ❌ Mueca
 - ❌ Difracción
 
 </details>
 
-<details><summary><b>Steamer</b> — 0 of 44 seen working, 25 resolve on paper</summary>
+<details><summary><b>Steamer</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
 - ❌ Torpedo
-- ❌ Timón — shape `*`
+- ❌ Timón
 - ❌ Catalejo
 - ❌ Corrosión
 - ❌ Amarre
-- ❌ Ventalla — effect 1036 (#1: -#3 cooldown), effect 2027 (Toma el control de la entidad)
-- ❌ Evolución — effect 2027 (Toma el control de la entidad)
-- ❌ Sobretensión — effect 2027 (Toma el control de la entidad)
-- ❌ Albarrama — effect 765 (intercepts damage)
-- ❌ Recursividad — effect 1023 (Intercambio de posiciones (forzado)), effect 2017 (#1)
+- ❌ Ventalla
+- ❌ Evolución
+- ❌ Sobretensión
+- ❌ Albarrama — no capture holds an intercepted blow: who takes it is the sheet's word (765)
+- ❌ Recursividad — 2017 is read off its sheet: its capture only casts it with no turret in contact
 - ❌ Escafandra
 - ❌ Blindaje
 - ❌ Anclaje
-- ❌ Cortocircuito — effect 2027 (Toma el control de la entidad)
+- ❌ Cortocircuito
 - ❌ Guardianas
 - ❌ Perforadora
 - ❌ Corriente
 - ❌ Harmatán
-- ❌ Sabotaje — effect 1036 (#1: -#3 cooldown), effect 2027 (Toma el control de la entidad)
+- ❌ Sabotaje
 - ❌ Periscopio
 - ❌ Asistencia
-- ❌ Derivación — effect 1023 (Intercambio de posiciones (forzado))
+- ❌ Derivación
 - ❌ Aspiración
 - ❌ Pistón
 - ❌ Tactiquillas
 - ❌ Batiscafo
 - ❌ Arponeras
 - ❌ Arrastrero
-- ❌ Socorrismo — effect 3002 (#1-#2 best-element healing)
+- ❌ Socorrismo
 - ❌ Salvamento
-- ❌ Tridente — shape `F`
-- ❌ Cabestrante — shape `G`
-- ❌ Sónar — effect 202 (reveals invisible entities)
+- ❌ Tridente
+- ❌ Cabestrante
+- ❌ Sónar
 - ❌ Emboscada
-- ❌ Compás — effect 1023 (Intercambio de posiciones (forzado))
-- ❌ Brújula — effect 1023 (Intercambio de posiciones (forzado))
-- ❌ Turbina — effect 2027 (Toma el control de la entidad)
-- ❌ Piratería — shape `G`
+- ❌ Compás
+- ❌ Brújula
+- ❌ Turbina
+- ❌ Piratería
 - ❌ Buceo
 - ❌ Zambullida
 - ❌ Resacón
 - ❌ Espuma de Mar
-- ❌ Marea — effect 1045 (#1: cooldown pinned to #3 turns), effect 290 (#1: +#3 cast(s) per turn), effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3)
-- ❌ Vapor — effect 2027 (Toma el control de la entidad)
+- ❌ Marea
+- ❌ Vapor
 
 </details>
 
-<details><summary><b>Selatrop</b> — 0 of 44 seen working, 11 resolve on paper</summary>
+<details><summary><b>Selatrop</b> — 3 of 44 seen working, 44 resolve on paper</summary>
 
-- ❌ Portal — effect 1181 (places a portal (+#3% damage, +#1% per cell travelled))
-- ❌ Errancia — effect 1181 (places a portal (+#3% damage, +#1% per cell travelled))
-- ❌ Insulto — mask `r`
+- ✅ Portal — laid, turned on, the fifth pushing the first out, walked through and back at the next turn
+- ❌ Errancia — Portal's rows at another grade, with no capture of its own
+- ❌ Insulto
 - ❌ Desprecio
-- ❌ Audacia — mask `R`, mask `r`
+- ❌ Audacia
 - ❌ Tribulación
-- ❌ Shock — mask `R`, mask `r`
+- ❌ Shock
 - ❌ Convulsión
 - ❌ Rayo de Wakfu
-- ❌ Resplandor — mask `R`, mask `r`
-- ❌ Neutral — effect 1183 (deactivates a portal)
-- ❌ Interrupción — effect 1183 (deactivates a portal)
-- ❌ Afrenta — mask `R`
-- ❌ Aplomo — mask `R`
-- ❌ Trascendencia — effect 290 (#1: +#3 cast(s) per turn)
-- ❌ Exilio — effect 1181 (places a portal (+#3% damage, +#1% per cell travelled)), effect 1182 (Teleportal)
+- ❌ Resplandor
+- ✅ Neutral — the portal off, its AP back, and the portal on again at the Selatrop's next turn
+- ❌ Interrupción — Neutral's 1183 on the whole map, with no capture of its own
+- ❌ Afrenta
+- ❌ Aplomo
+- ❌ Trascendencia
+- ❌ Exilio — a portal under the target and a Teleportal, as Resonancia's; no capture of its own
 - ❌ Terapia
-- ❌ Puño Relámpago — mask `R`, mask `r`
-- ❌ Distribución — effect 2973 (heals #1-#2% of the damage dealt)
-- ❌ Soberbia — effect 1223 (damage: #1-#2% of the final damage taken)
-- ❌ Estela — effect 1181 (places a portal (+#3% damage, +#1% per cell travelled))
-- ❌ Estupor — effect 1181 (places a portal (+#3% damage, +#1% per cell travelled))
-- ❌ Acoso — mask `R`, mask `r`
-- ❌ Cataclismo — effect 2973 (heals #1-#2% of the damage dealt), shape `G`
+- ❌ Puño Relámpago
+- ❌ Distribución
+- ❌ Soberbia
+- ✅ Estela — the portal under him, off while he stands on it, his jump, and the portal on again
+- ❌ Estupor — two portals and a swap; no capture of its own
+- ❌ Acoso
+- ❌ Cataclismo
 - ❌ Sanación
-- ❌ Conjuro — mask `R`
-- ❌ Insolencia — mask `R`, mask `r`
-- ❌ Desdén — mask `R`
+- ❌ Conjuro
+- ❌ Insolencia
+- ❌ Desdén
 - ❌ Odisea
 - ❌ Éxodo
-- ❌ Cábala — mask `R`, mask `r`
-- ❌ Resiliencia — mask `R`
-- ❌ Aflicción — mask `R`
+- ❌ Cábala
+- ❌ Resiliencia
+- ❌ Aflicción
 - ❌ Ofensiva
-- ❌ Resonancia — effect 1181 (places a portal (+#3% damage, +#1% per cell travelled)), effect 1182 (Teleportal)
+- ❌ Resonancia — its 406, portal and Teleportal are its capture's, frame for frame; its hook goes out there as hidden rows, not here
 - ❌ Vestigio
-- ❌ Mofa — effect 320 (steals #1-#2 range), mask `R`, mask `r`
-- ❌ Sinecura — mask `R`
-- ❌ Extinción — mask `R`
-- ❌ Sermón — mask `R`, mask `r`
-- ❌ Ridículo — mask `R`
-- ❌ Sarcasmo — mask `R`
-- ❌ Ayuda Mutua
-- ❌ Coalición — mask `R`, mask `r`
+- ❌ Mofa
+- ❌ Sinecura
+- ❌ Extinción
+- ❌ Sermón
+- ❌ Ridículo
+- ❌ Sarcasmo
+- ❌ Ayuda Mutua — CPT fires on the owner of the portal crossed, read off its sheet; no capture of it
+- ❌ Coalición — PT fires on whoever crosses, read off its sheet; no capture of it
 
 </details>
 
-<details><summary><b>Hipermago</b> — 0 of 44 seen working, 8 resolve on paper</summary>
+<details><summary><b>Hipermago</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
-- ❌ Onda Sísmica — effect 320 (steals #1-#2 range)
-- ❌ Tizón — effect 320 (steals #1-#2 range)
-- ❌ Éter — effect 320 (steals #1-#2 range)
-- ❌ Catarata — effect 320 (steals #1-#2 range)
-- ❌ Runificación — effect 2023 (triggers runes)
-- ❌ Manifestación — effect 2023 (triggers runes)
-- ❌ Lanzallamas — effect 320 (steals #1-#2 range)
-- ❌ Lanzas Telúricas — effect 320 (steals #1-#2 range)
-- ❌ Estalagmita — effect 320 (steals #1-#2 range)
-- ❌ Onda Celeste — effect 320 (steals #1-#2 range)
-- ❌ Tormenta — effect 320 (steals #1-#2 range)
-- ❌ Huracán — effect 320 (steals #1-#2 range)
-- ❌ Lanza Solar — effect 320 (steals #1-#2 range)
-- ❌ Cometa — effect 320 (steals #1-#2 range)
+- ❌ Onda Sísmica
+- ❌ Tizón
+- ❌ Éter
+- ❌ Catarata
+- ❌ Runificación
+- ❌ Manifestación
+- ❌ Lanzallamas
+- ❌ Lanzas Telúricas
+- ❌ Estalagmita
+- ❌ Onda Celeste
+- ❌ Tormenta
+- ❌ Huracán
+- ❌ Lanza Solar
+- ❌ Cometa
 - ❌ Polaridad
 - ❌ Convección
-- ❌ Trazo Flamígero — effect 320 (steals #1-#2 range)
-- ❌ Estalactita — effect 320 (steals #1-#2 range)
-- ❌ Glaciar — effect 320 (steals #1-#2 range)
-- ❌ Volcán — effect 320 (steals #1-#2 range)
-- ❌ Propagación — effect 320 (steals #1-#2 range)
-- ❌ Prisma Rúnico — effect 2023 (triggers runes)
-- ❌ Escudo Elemental — effect 320 (steals #1-#2 range), mask `H`, mask `o`
+- ❌ Trazo Flamígero
+- ❌ Estalactita
+- ❌ Glaciar
+- ❌ Volcán
+- ❌ Propagación
+- ❌ Prisma Rúnico
+- ❌ Escudo Elemental
 - ❌ Guardián Elemental
-- ❌ Hoja Astral — effect 320 (steals #1-#2 range)
-- ❌ Deflagración — effect 320 (steals #1-#2 range)
+- ❌ Hoja Astral
+- ❌ Deflagración
 - ❌ Contribución
-- ❌ Impronta — effect 798 (#1: objetivo visible necesario activado)
-- ❌ Diluvio — effect 320 (steals #1-#2 range)
-- ❌ Asteroide — effect 320 (steals #1-#2 range)
-- ❌ Sobrecarga Rúnica — effect 2023 (triggers runes)
-- ❌ Sublimación — effect 320 (steals #1-#2 range)
-- ❌ Ráfaga — effect 320 (steals #1-#2 range)
-- ❌ Brecha — effect 320 (steals #1-#2 range)
-- ❌ Meteoro — effect 320 (steals #1-#2 range)
-- ❌ Avalancha — effect 320 (steals #1-#2 range)
-- ❌ Ciclo Elemental — effect 320 (steals #1-#2 range)
-- ❌ Corriente Cuadramental — effect 320 (steals #1-#2 range)
+- ❌ Impronta
+- ❌ Diluvio
+- ❌ Asteroide
+- ❌ Sobrecarga Rúnica
+- ❌ Sublimación
+- ❌ Ráfaga
+- ❌ Brecha
+- ❌ Meteoro
+- ❌ Avalancha
+- ❌ Ciclo Elemental
+- ❌ Corriente Cuadramental
 - ❌ Travesía
-- ❌ Repulsión Rúnica — effect 2023 (triggers runes)
+- ❌ Repulsión Rúnica
 - ❌ Drenaje Elemental
 - ❌ Tributo
-- ❌ Supernova — effect 320 (steals #1-#2 range)
+- ❌ Supernova
 - ❌ Torrente Arcano
 
 </details>
 
-<details><summary><b>Uginak</b> — 0 of 44 seen working, 4 resolve on paper</summary>
+<details><summary><b>Uginak</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
 - ❌ Convergencia
 - ❌ Busca
-- ❌ Presa — effect 1045 (#1: cooldown pinned to #3 turns), effect 786 (heals the attacker for #1% of the damage)
-- ❌ Animal de Caza — effect 1045 (#1: cooldown pinned to #3 turns)
-- ❌ Moloso — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3), shape `G`
-- ❌ Mandíbula — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3), shape `G`
-- ❌ Cúbito — shape `G`
-- ❌ Calcáneo — shape `G`
-- ❌ Carcasa — shape `G`
-- ❌ Batida — shape `G`
-- ❌ Ojeo — effect 77 (Roba #1-#2 MP), shape `G`
-- ❌ Ladrar — shape `G`
-- ❌ Amaine — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3)
-- ❌ Afección — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3)
-- ❌ Lanzagozquetes — mask `U`
-- ❌ Gangrena — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3)
-- ❌ Dogo — shape `G`
-- ❌ Restos — shape `G`
-- ❌ Tibia — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3), shape `G`
-- ❌ Húmero — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3), shape `G`
-- ❌ Rastreo — shape `G`
-- ❌ Despiece — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3), shape `G`
-- ❌ Sabueso — shape `G`
-- ❌ Tetanización — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3), shape `G`
-- ❌ Arcanino — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3)
-- ❌ Caninos — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3)
-- ❌ Pelaje Protector — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3)
+- ❌ Presa
+- ❌ Animal de Caza
+- ❌ Moloso
+- ❌ Mandíbula
+- ❌ Cúbito
+- ❌ Calcáneo
+- ❌ Carcasa
+- ❌ Batida
+- ❌ Ojeo
+- ❌ Ladrar
+- ❌ Amaine
+- ❌ Afección
+- ❌ Lanzagozquetes
+- ❌ Gangrena
+- ❌ Dogo
+- ❌ Restos
+- ❌ Tibia
+- ❌ Húmero
+- ❌ Rastreo
+- ❌ Despiece
+- ❌ Sabueso
+- ❌ Tetanización
+- ❌ Arcanino
+- ❌ Caninos
+- ❌ Pelaje Protector
 - ❌ Ferocidad
-- ❌ Carroña — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3), shape `G`
-- ❌ Radio — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3), shape `G`
-- ❌ Hueso con Tuétano — shape `G`
-- ❌ Bozal — effect 1019 (#1), shape `G`
+- ❌ Carroña
+- ❌ Radio
+- ❌ Hueso con Tuétano
+- ❌ Bozal
 - ❌ Pánico
-- ❌ Caza — effect 1165 (places to glyph)
-- ❌ Amarok — shape `G`
-- ❌ Cerbero — shape `G`
-- ❌ Ladrido — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3)
-- ❌ Enojo — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3)
-- ❌ Cacería — shape `G`
-- ❌ Vértebra — shape `G`
-- ❌ Olfacción — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3)
-- ❌ Ensañamiento — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3)
-- ❌ Clamor de la Manada — effect 1036 (#1: -#3 cooldown)
-- ❌ Luna Nueva — effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3)
+- ❌ Caza
+- ❌ Amarok
+- ❌ Cerbero
+- ❌ Ladrido
+- ❌ Enojo
+- ❌ Cacería
+- ❌ Vértebra
+- ❌ Olfacción
+- ❌ Ensañamiento
+- ❌ Clamor de la Manada
+- ❌ Luna Nueva
 
 </details>
 
-<details><summary><b>Forjalanza</b> — 0 of 44 seen working, 33 resolve on paper</summary>
+<details><summary><b>Forjalanza</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
 - ❌ Lanza del Lago
-- ❌ Chuzo Sísmico — shape `R`
+- ❌ Chuzo Sísmico
 - ❌ Lanzapiedras
 - ❌ Jabalina Rayo
 - ❌ Epílogo
 - ❌ Anticipación
 - ❌ Lanza de Incendios
-- ❌ Lluvia Dorena — shape `G`
+- ❌ Lluvia Dorena
 - ❌ Carga Heroica
 - ❌ Galantería
-- ❌ Colapso — shape `*`
+- ❌ Colapso
 - ❌ Lanza Ciclón
-- ❌ Al Tridente — shape `F`
+- ❌ Al Tridente
 - ❌ Maelstrom
 - ❌ Falange
 - ❌ Oriflama
@@ -1659,21 +1666,21 @@ to a number of turns (1045), a spell's own basic-healing bonus (2935), maximised
 - ❌ Kyrja
 - ❌ Vajra
 - ❌ Muspel
-- ❌ Ydra — shape `*`
+- ❌ Ydra
 - ❌ Punzón
-- ❌ Abrazo de Valquíride — mask `H`
-- ❌ Tierra Media — shape `G`
+- ❌ Abrazo de Valquíride
+- ❌ Tierra Media
 - ❌ Despeje
 - ❌ Caballería
 - ❌ Renombre
 - ❌ Jormun
-- ❌ Cadena Candente — shape `G`
+- ❌ Cadena Candente
 - ❌ Preludio al Hierro
 - ❌ Crepúsculo
-- ❌ Noa — shape `G`
+- ❌ Noa
 - ❌ Elding
-- ❌ Eclipse — effect 1036 (#1: -#3 cooldown), effect 289 (#1: line of sight disabled), effect 2905 (#1: alcance máximo fijado en #3), effect 2906 (#1: alcance mínimo fijado en #3), effect 299 (#1: casilla libre necesaria activada), effect 314 (#1: casilla ocupada necesaria activada)
-- ❌ Holmgang — effect 2018 (dispels glyphs)
+- ❌ Eclipse
+- ❌ Holmgang
 - ❌ Jabalina Keatina
 - ❌ Molino Rojo
 
@@ -1763,7 +1770,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,757 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,839 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 

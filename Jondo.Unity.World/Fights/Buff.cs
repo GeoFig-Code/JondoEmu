@@ -19,6 +19,60 @@ namespace Jondo.Unity.World.Fights
         DanoBase = 293,
         AlcanceMinimo = 280,
         AlcanceMaximo = 281,
+
+        // The rest of the catalogue's category 3, "a modifier of one spell", all of the same
+        // shape: the spell in the dice, the amount -- or 1, for a switch -- in the value.
+
+        /// <summary>282, "#1: alcance modificable".</summary>
+        RangeModifiable = 282,
+
+        /// <summary>285, "#1: -#3 PA": the spell costs that much less.</summary>
+        ApCostDown = 285,
+
+        /// <summary>286, "#1: -#3 de reactivación": that much off the spell's cast interval.</summary>
+        CastIntervalDown = 286,
+
+        /// <summary>287, "#1: +#3% de crítico".</summary>
+        CriticalUp = 287,
+
+        /// <summary>289, "#1: línea de visión desactivada".</summary>
+        LineOfSightOff = 289,
+
+        /// <summary>290, "#1: +#3 lanzamiento(s) por turno".</summary>
+        CastsPerTurnUp = 290,
+
+        /// <summary>291, "#1: +#3 lanzamiento(s) por objetivo".</summary>
+        CastsPerTargetUp = 291,
+
+        /// <summary>294, "#1: -#3 de alcance máximo".</summary>
+        MaxRangeDown = 294,
+
+        /// <summary>295, "#1: -#3 de alcance mínimo".</summary>
+        MinRangeDown = 295,
+
+        /// <summary>296, "#1: +#3 PA": the spell costs that much more.</summary>
+        ApCostUp = 296,
+
+        /// <summary>297, "#1: casilla ocupada necesaria desactivada".</summary>
+        OccupiedCellOff = 297,
+
+        /// <summary>299, "#1: casilla libre necesaria activada".</summary>
+        FreeCellOn = 299,
+
+        /// <summary>314, "#1: casilla ocupada necesaria activada".</summary>
+        OccupiedCellOn = 314,
+
+        /// <summary>798, "#1: objetivo visible necesario activado".</summary>
+        VisibleTargetOn = 798,
+
+        /// <summary>2905, "#1: alcance máximo fijado en #3": the maximum IS that, whatever else.</summary>
+        MaxRangeSet = 2905,
+
+        /// <summary>2906, "#1: alcance mínimo fijado en #3".</summary>
+        MinRangeSet = 2906,
+
+        /// <summary>2935, "#1: +#3 de curas básicas": the heal's twin of 293.</summary>
+        BaseHeal = 2935,
     }
 
     /// <summary>
@@ -296,6 +350,9 @@ namespace Jondo.Unity.World.Fights
         /// <summary>Quita los enganches cumplidos.</summary>
         public void BarrerEnganches(int ronda) => ActiveSpells.RemoveAll(e => !e.Vivo(ronda));
 
+        /// <summary>A spell's hooks go, and nothing else of it: for a hook that lives for one cast.</summary>
+        public int Desenganchar(int hechizo) => ActiveSpells.RemoveAll(e => e.Hechizo == hechizo);
+
         public IReadOnlyList<Buff> Puestos => _puestos;
         /// <summary>
         /// The states that count: the ones put, less the ones a live 952 has switched off. The
@@ -404,6 +461,25 @@ namespace Jondo.Unity.World.Fights
                 if (quitado.Estado == 0 || quitado.EffectId == Jondo.Unity.World.Combat.EffectSupport.DisableState) continue;
                 if (!SigueHabiendo(quitado.Estado))
                     _estados.Remove(quitado.Estado);
+            }
+            return quitados;
+        }
+
+        /// <summary>
+        /// The rows of one grade of a spell, its states and its hooks at that grade: effect 1406.
+        /// Aguja takes its own poison's grade 6 off so, and leaves every other grade alone.
+        /// </summary>
+        public List<Buff> QuitarDelHechizo(int hechizo, int grado)
+        {
+            bool delGrado(Buff e) => e.HechizoOrigen == hechizo && e.NivelOrigen == grado;
+            var quitados = _puestos.FindAll(delGrado);
+            _puestos.RemoveAll(delGrado);
+            ActiveSpells.RemoveAll(e => e.Hechizo == hechizo && e.Grado == grado);
+
+            foreach (var quitado in quitados)
+            {
+                if (quitado.Estado == 0 || quitado.EffectId == Jondo.Unity.World.Combat.EffectSupport.DisableState) continue;
+                if (!SigueHabiendo(quitado.Estado)) _estados.Remove(quitado.Estado);
             }
             return quitados;
         }
@@ -552,6 +628,25 @@ namespace Jondo.Unity.World.Fights
             return alguno ? (int)Math.Round(total * 100) : 100;
         }
 
+        /// <summary>
+        /// The live rows of an effect that a blow of these kinds reads: registered under a damage
+        /// trigger ("D", "DM"...), one of whose triggers is among the blow's kinds.
+        /// </summary>
+        public List<Buff> LeidasPorElGolpe(int efecto, int ronda, IReadOnlyCollection<string> clasesDelGolpe)
+        {
+            var fuera = new List<Buff>();
+            foreach (var e in _puestos)
+            {
+                if (e.EffectId != efecto || e.Pendiente || !e.Vivo(ronda)) continue;
+                if (string.IsNullOrEmpty(e.Disparador)) continue;
+                foreach (var d in e.Disparador.Split('|'))
+                {
+                    if (clasesDelGolpe.Contains(d.Trim())) { fuera.Add(e); break; }
+                }
+            }
+            return fuera;
+        }
+
         /// <summary>Lo que suman los embrujos a un hechizo concreto: daño base o alcance.</summary>
         public int DelHechizo(int hechizo, SpellAspect que, int ronda)
         {
@@ -562,6 +657,24 @@ namespace Jondo.Unity.World.Fights
             }
             return total;
         }
+
+        /// <summary>
+        /// What a "set" modifier pins a spell's number to -- 2905, 2906 -- or null when no live
+        /// row pins it. The latest row wins: a pin is not a sum.
+        /// </summary>
+        public int? FijadoDelHechizo(int hechizo, SpellAspect que, int ronda)
+        {
+            for (int i = _puestos.Count - 1; i >= 0; i--)
+            {
+                var e = _puestos[i];
+                if (e.Sobre == que && e.HechizoAfectado == hechizo && e.Vivo(ronda)) return e.Cuanto;
+            }
+            return null;
+        }
+
+        /// <summary>Whether a live row of a switch modifier (289, 297, 299, 314, 798) holds for a spell.</summary>
+        public bool TieneDelHechizo(int hechizo, SpellAspect que, int ronda)
+            => FijadoDelHechizo(hechizo, que, ronda).HasValue;
 
         /// <summary>La última apariencia temporal que siga activa, o cero.</summary>
         public int AparienciaEn(int ronda)
