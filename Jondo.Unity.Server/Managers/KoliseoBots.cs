@@ -102,6 +102,143 @@ namespace Jondo.Unity.Server.Managers
 
             /// <summary>The NPC it looks like, if its class has a notable one; else its class's look.</summary>
             public Npcs.Spawn? LooksLike { get; init; }
+
+            /// <summary>What it wears that shows: the hat, cape and shield of one set (see <see cref="Outfits"/>).</summary>
+            public Outfit? Wears { get; init; }
+
+            /// <summary>What it rides: a mount of mounts.json, or an appearance one.</summary>
+            public Mounts.Look? Rides { get; init; }
+            public Cosmetics.PieceLook? RidesAppearance { get; init; }
+        }
+
+        // ─── What it wears and rides ────────────────────────────────────────────────────
+
+        /// <summary>A JondoBot's size, in percent of a character's: half again as big.</summary>
+        public const int Size = 150;
+
+        /// <summary>The item types that show on a character: hat, cape and shield.</summary>
+        public static readonly int[] VisibleTypes = { 16, 17, 82 };
+
+        /// <summary>The least level of a set a JondoBot wears: the epic ones, not a beginner's.</summary>
+        public const int OutfitLevel = 100;
+
+        /// <summary>The visible pieces of one set, each with the skin it puts on.</summary>
+        public sealed record Outfit(int SetId, int Level, IReadOnlyList<(int Type, int Item, int Skin)> Pieces);
+
+        private static List<Outfit>? _outfits;
+        private static readonly object _outfitsGate = new();
+
+        /// <summary>
+        /// The outfits a JondoBot can wear: the sets of level 100 or more with two visible pieces
+        /// or more whose skin is known (equipment_skins.json, its doubtful rows left out) -- a whole
+        /// set's hat, cape and shield rather than three pieces of three sets.
+        /// </summary>
+        public static IReadOnlyList<Outfit> Outfits
+        {
+            get
+            {
+                lock (_outfitsGate)
+                {
+                    if (_outfits != null) return _outfits;
+                    var found = new List<Outfit>();
+                    foreach (int setId in ItemSets.Ids)
+                    {
+                        if (!ItemSets.TryGetItems(setId, out var items)) continue;
+                        var pieces = new List<(int Type, int Item, int Skin)>();
+                        int level = 0;
+                        foreach (int item in items)
+                        {
+                            var template = Forgemagic.TemplateOf(item);
+                            if (template == null) continue;
+                            level = Math.Max(level, template.Level);
+                            int skin = EquipmentSkins.SkinOf(item);
+                            if (skin > 0 && VisibleTypes.Contains(template.Type) && pieces.All(p => p.Type != template.Type))
+                                pieces.Add((template.Type, item, skin));
+                        }
+                        if (pieces.Count >= 2 && level >= OutfitLevel) found.Add(new Outfit(setId, level, pieces));
+                    }
+                    return _outfits = found;
+                }
+            }
+        }
+
+        /// <summary>A set to wear and a mount to ride, drawn for a new JondoBot.</summary>
+        private static (Outfit? Wears, Mounts.Look? Rides, Cosmetics.PieceLook? RidesAppearance) Dress()
+        {
+            var outfits = Outfits;
+            var mounts = Mounts.AllLooks;
+            // Appearance mounts that paint themselves in their rider's colours are left out: the
+            // look has no rider's colours to give them.
+            var appearance = Cosmetics.MountLooks.Where(m => m.Bones != 0 && !m.ColorsFromWearer).ToList();
+            lock (_dice)
+            {
+                var wears = outfits.Count > 0 ? outfits[_dice.Next(outfits.Count)] : null;
+                int pool = mounts.Count + appearance.Count;
+                if (pool == 0) return (wears, null, null);
+                int pick = _dice.Next(pool);
+                return pick < mounts.Count ? (wears, mounts[pick], null) : (wears, null, appearance[pick - mounts.Count]);
+            }
+        }
+
+        /// <summary>
+        /// A JondoBot's look: its NPC's body (or its class's), the set it wears over it -- each
+        /// piece in place of whatever the NPC had on that slot, not on top of it --, half again as
+        /// big, and on its mount, as big too.
+        /// </summary>
+        public static byte[] LookOf(Spec spec)
+        {
+            long bones;
+            List<long> skins, colors, scales;
+            if (spec.LooksLike != null)
+            {
+                bones = spec.LooksLike.Bones;
+                skins = spec.LooksLike.Skins.ToList();
+                colors = spec.LooksLike.Colors.ToList();
+                scales = spec.LooksLike.Scales.ToList();
+            }
+            else
+            {
+                var breed = BreedLookTable.Get(spec.Breed, spec.Sex);
+                bones = breed?.Bones ?? 1;
+                skins = breed?.Skins.ToList() ?? new List<long>();
+                int head = HeadTable.SkinFor(HeadTable.DefaultHeadId(spec.Breed, spec.Sex), spec.Breed, spec.Sex);
+                if (head > 0) skins.Add(head);
+                colors = BreedLookTable.IndexedColors(spec.Breed, spec.Sex);
+                scales = breed?.Scales.ToList() ?? new List<long>();
+            }
+
+            if (spec.Wears != null)
+            {
+                var covered = new HashSet<int>(spec.Wears.Pieces.Select(p => p.Type));
+                // The body keeps its first skin whatever: it is the body, which picks the rig.
+                for (int i = skins.Count - 1; i >= 1; i--)
+                {
+                    int skin = (int)skins[i];
+                    int type = EquipmentSkins.TypeOfSkin(skin);
+                    if (type == 0) type = Cosmetics.ItemTypeOfSkin(skin);
+                    if (covered.Contains(type)) skins.RemoveAt(i);
+                }
+                skins.AddRange(spec.Wears.Pieces.Select(p => (long)p.Skin));
+            }
+
+            if (scales.Count == 0) scales.Add(100);
+            scales = scales.Select(s => s * Size / 100).ToList();
+
+            Mounts.Look? rides = spec.Rides == null ? null : new Mounts.Look
+            {
+                MountId = spec.Rides.MountId,
+                Bones = spec.Rides.Bones,
+                Scale = (spec.Rides.Scale > 0 ? spec.Rides.Scale : 100) * Size / 100,
+                Colors = spec.Rides.Colors,
+            };
+            Cosmetics.PieceLook? appearance = spec.RidesAppearance == null ? null : new Cosmetics.PieceLook
+            {
+                Bones = spec.RidesAppearance.Bones,
+                Scale = (spec.RidesAppearance.Scale > 0 ? spec.RidesAppearance.Scale : 100) * Size / 100,
+                Skin = spec.RidesAppearance.Skin,
+                Colors = spec.RidesAppearance.Colors,
+            };
+            return BreedLookTable.Composed(bones, skins, colors, scales, rides, appearance);
         }
 
         private static readonly ConcurrentDictionary<long, Spec> _alive = new();
@@ -159,6 +296,7 @@ namespace Jondo.Unity.Server.Managers
             var looks = NpcLooksOf(breed);
             Npcs.Spawn? npc = null;
             if (looks.Count > 0) lock (_dice) npc = looks[_dice.Next(looks.Count)];
+            var (wears, rides, ridesAppearance) = Dress();
             var spec = new Spec
             {
                 Id = System.Threading.Interlocked.Increment(ref _lastId),
@@ -167,6 +305,9 @@ namespace Jondo.Unity.Server.Managers
                 Name = "JondoBot " + (ClassNames.TryGetValue(breed, out var name) ? name : breed.ToString()),
                 Choices = choices,
                 LooksLike = npc,
+                Wears = wears,
+                Rides = rides,
+                RidesAppearance = ridesAppearance,
             };
             _alive[spec.Id] = spec;
             return spec;
@@ -211,10 +352,7 @@ namespace Jondo.Unity.Server.Managers
                 IsMonster = false,
                 IsBot = true,
                 IsReady = true,
-                BotLook = spec.LooksLike != null
-                    ? Network.ConnectionProtocol.BuildNpcLook(spec.LooksLike.Bones, spec.LooksLike.Skins,
-                                                              spec.LooksLike.Colors, spec.LooksLike.Scales)
-                    : BreedLookTable.BuildLook(spec.Breed, spec.Sex, 0, null, spec.Id),
+                BotLook = LookOf(spec),
             };
 
             // The rest of the sheet as a character's is filled: flee and tackle a tenth of agility,
