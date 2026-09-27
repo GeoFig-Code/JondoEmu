@@ -898,6 +898,16 @@ namespace Jondo.Unity.Server.Network
                     // A marketplace open to sell: a lot goes on sale.
                     await MarketplaceHandler.SellAsync(payload);
                 }
+                else if (payloadStr.Contains(Op.Uri(Op.Kch)))
+                {
+                    // A marketplace open to sell: a new price for a lot on sale.
+                    await MarketplaceHandler.ChangePriceAsync(payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Lar)))
+                {
+                    // The sales history window opened: the account's history.
+                    await MarketplaceHandler.SalesHistoryAsync();
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Kew)))
                 {
                     // A recipe picked in the workshop's list.

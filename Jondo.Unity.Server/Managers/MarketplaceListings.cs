@@ -32,6 +32,10 @@ namespace Jondo.Unity.Server.Managers
     /// MarketplaceListings and MarketplaceSales in world.db, created at start. A lot leaves the
     /// seller's inventory when it goes on sale, so its row here is the only place it exists
     /// until someone buys it, its seller takes it back or its time runs out.
+    ///
+    /// MarketplaceHistory is the seller's side of it: every lot of an account that was sold or
+    /// that came back unsold, for the client's sales history window (see <see cref="HistoryOf"/>).
+    /// MarketplaceSales stays the buyers' side, the one average prices are read from.
     /// </remarks>
     public static class MarketplaceListings
     {
@@ -78,6 +82,30 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>No listing left: the offer is gone.</summary>
             public bool Gone { get; init; }
         }
+
+        /// <summary>
+        /// One line of a seller's sales history: a lot sold, or come back unsold, and when. What
+        /// a laq of the client's las carries.
+        /// </summary>
+        public sealed class HistoryEntry
+        {
+            public int House { get; init; }
+            public int Gid { get; init; }
+            public int Quantity { get; init; }
+            public string Effects { get; init; } = "";
+
+            /// <summary>What the lot was on sale for: the kamas of a sale.</summary>
+            public long Kamas { get; init; }
+
+            public bool Sold { get; init; }
+            public DateTime AtUtc { get; init; }
+        }
+
+        /// <summary>How far back a history goes when it is sent. INFERRED: no capture has one.</summary>
+        public static readonly TimeSpan HistoryDepth = TimeSpan.FromDays(30);
+
+        /// <summary>The most lines a history is sent with, the newest. INFERRED as well.</summary>
+        public const int HistoryLimit = 1000;
 
         private sealed class Offer
         {
@@ -155,7 +183,7 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// The two tables. Created here and not in DatabaseManager's migration because a world.db
+        /// The three tables. Created here and not in DatabaseManager's migration because a world.db
         /// fresh out of datos/world.zip -- the CI's -- has never met them, and whatever touches
         /// the marketplaces first must find them.
         /// </summary>
@@ -192,7 +220,20 @@ namespace Jondo.Unity.Server.Managers
                     BuyerCharacterId INTEGER NOT NULL,
                     SoldAt INTEGER NOT NULL
                 );
-                CREATE INDEX IF NOT EXISTS idx_marketplace_sales_gid ON MarketplaceSales(Gid);";
+                CREATE INDEX IF NOT EXISTS idx_marketplace_sales_gid ON MarketplaceSales(Gid);
+                CREATE TABLE IF NOT EXISTS MarketplaceHistory (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    SellerAccountId INTEGER NOT NULL,
+                    House INTEGER NOT NULL,
+                    Gid INTEGER NOT NULL,
+                    Quantity INTEGER NOT NULL,
+                    Effects TEXT,
+                    Kamas INTEGER NOT NULL,
+                    Sold INTEGER NOT NULL,
+                    At INTEGER NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_marketplace_history_seller
+                    ON MarketplaceHistory(SellerAccountId, At);";
             create.ExecuteNonQuery();
             return connection;
         }
@@ -428,6 +469,59 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
+        /// <summary>
+        /// A new price for one of an account's lots, written before it is known. The lot keeps its
+        /// id, its lot size and its time on sale. Null when it is not theirs, not in this
+        /// marketplace, gone, or could not be written.
+        /// </summary>
+        public static (Listing Before, Listing After, OfferView Offer)? ChangePrice(
+            Marketplaces.House house, long accountId, int listingId, long newPrice)
+        {
+            lock (Gate)
+            {
+                Load();
+                if (newPrice <= 0 || !_listings.TryGetValue(listingId, out var before)) return null;
+                if (before.House != house.Id || before.SellerAccountId != accountId) return null;
+                try
+                {
+                    using var connection = Open();
+                    using var command = connection.CreateCommand();
+                    command.CommandText = "UPDATE MarketplaceListings SET Price = $p WHERE Id = $i;";
+                    command.Parameters.AddWithValue("$p", newPrice);
+                    command.Parameters.AddWithValue("$i", listingId);
+                    if (command.ExecuteNonQuery() == 0) return null;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Marketplaces] Could not change the price of listing {listingId}: {ex.Message}");
+                    return null;
+                }
+
+                var after = new Listing
+                {
+                    Id = before.Id,
+                    House = before.House,
+                    SellerCharacterId = before.SellerCharacterId,
+                    SellerAccountId = before.SellerAccountId,
+                    Gid = before.Gid,
+                    ItemType = before.ItemType,
+                    Quantity = before.Quantity,
+                    Effects = before.Effects,
+                    Price = newPrice,
+                    ListedUtc = before.ListedUtc,
+                    ExpiresUtc = before.ExpiresUtc,
+                };
+                _listings[after.Id] = after;
+                if (_offerOfListing.TryGetValue(after.Id, out int offerId) && _offersById.TryGetValue(offerId, out var offer))
+                {
+                    int at = offer.Listings.FindIndex(l => l.Id == after.Id);
+                    if (at >= 0) offer.Listings[at] = after;
+                    return (before, after, View(offer, house.Lots));
+                }
+                return (before, after, new OfferView { Gid = after.Gid, ItemType = after.ItemType, Gone = true });
+            }
+        }
+
         // ─── Buying ─────────────────────────────────────────────────────────────────────────
 
         public enum Refusal { None, NoSuchOffer, PriceChanged }
@@ -468,6 +562,7 @@ namespace Jondo.Unity.Server.Managers
                     return null;
                 }
                 Record(cheapest, buyerCharacterId, nowUtc);
+                Remember(cheapest, sold: true, nowUtc);
                 return (cheapest, Unindex(cheapest, house.Lots));
             }
         }
@@ -489,7 +584,9 @@ namespace Jondo.Unity.Server.Managers
                         "ItemType, Quantity, Effects, Price, ListedAt, ExpiresAt) VALUES ($i, $h, $c, $a, $g, " +
                         "$t, $q, $e, $p, $l, $x); " +
                         "DELETE FROM MarketplaceSales WHERE Id = (SELECT MAX(Id) FROM MarketplaceSales " +
-                        "WHERE Gid = $g AND BuyerCharacterId = $b AND Price = $p);";
+                        "WHERE Gid = $g AND BuyerCharacterId = $b AND Price = $p); " +
+                        "DELETE FROM MarketplaceHistory WHERE Id = (SELECT MAX(Id) FROM MarketplaceHistory " +
+                        "WHERE SellerAccountId = $a AND Gid = $g AND Kamas = $p AND Sold = 1);";
                     command.Parameters.AddWithValue("$i", listing.Id);
                     command.Parameters.AddWithValue("$h", listing.House);
                     command.Parameters.AddWithValue("$c", listing.SellerCharacterId);
@@ -528,10 +625,52 @@ namespace Jondo.Unity.Server.Managers
                 {
                     if (!Marketplaces.TryGet(listing.House, out var house)) continue;
                     if (!Delete(listing.Id)) continue;
+                    Remember(listing, sold: false, nowUtc);
                     gone.Add((listing, Unindex(listing, house.Lots)));
                 }
             }
             return gone;
+        }
+
+        // ─── A seller's history ─────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// An account's sales history, newest first: what was sold and what came back unsold since
+        /// <paramref name="sinceUtc"/>, at most <see cref="HistoryLimit"/> lines.
+        /// </summary>
+        public static IReadOnlyList<HistoryEntry> HistoryOf(long accountId, DateTime sinceUtc)
+        {
+            var lines = new List<HistoryEntry>();
+            try
+            {
+                using var connection = Open();
+                using var command = connection.CreateCommand();
+                command.CommandText =
+                    "SELECT House, Gid, Quantity, Effects, Kamas, Sold, At FROM MarketplaceHistory " +
+                    "WHERE SellerAccountId = $a AND At >= $s ORDER BY At DESC, Id DESC LIMIT $n;";
+                command.Parameters.AddWithValue("$a", accountId);
+                command.Parameters.AddWithValue("$s", new DateTimeOffset(DateTime.SpecifyKind(sinceUtc, DateTimeKind.Utc)).ToUnixTimeSeconds());
+                command.Parameters.AddWithValue("$n", HistoryLimit);
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    lines.Add(new HistoryEntry
+                    {
+                        House = reader.GetInt32(0),
+                        Gid = reader.GetInt32(1),
+                        Quantity = reader.GetInt32(2),
+                        Effects = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                        Kamas = reader.GetInt64(4),
+                        Sold = reader.GetInt64(5) != 0,
+                        AtUtc = DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64(6)).UtcDateTime,
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Marketplaces] Could not read the sales history of account {accountId}: {ex.Message}");
+            }
+            return lines;
         }
 
         /// <summary>For tests: an account's lots and sales, gone from the book and the database.</summary>
@@ -544,7 +683,8 @@ namespace Jondo.Unity.Server.Managers
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = "DELETE FROM MarketplaceListings WHERE SellerAccountId = $a; " +
-                                          "DELETE FROM MarketplaceSales WHERE SellerAccountId = $a;";
+                                          "DELETE FROM MarketplaceSales WHERE SellerAccountId = $a; " +
+                                          "DELETE FROM MarketplaceHistory WHERE SellerAccountId = $a;";
                     command.Parameters.AddWithValue("$a", accountId);
                     command.ExecuteNonQuery();
                 }
@@ -572,6 +712,32 @@ namespace Jondo.Unity.Server.Managers
             {
                 Console.WriteLine($"[Marketplaces] Could not take listing {listingId} off sale: {ex.Message}");
                 return false;
+            }
+        }
+
+        /// <summary>A line of the seller's history: the lot, sold or back unsold, and when.</summary>
+        private static void Remember(Listing listing, bool sold, DateTime nowUtc)
+        {
+            try
+            {
+                using var connection = Open();
+                using var command = connection.CreateCommand();
+                command.CommandText =
+                    "INSERT INTO MarketplaceHistory (SellerAccountId, House, Gid, Quantity, Effects, Kamas, Sold, At) " +
+                    "VALUES ($a, $h, $g, $q, $e, $k, $s, $t);";
+                command.Parameters.AddWithValue("$a", listing.SellerAccountId);
+                command.Parameters.AddWithValue("$h", listing.House);
+                command.Parameters.AddWithValue("$g", listing.Gid);
+                command.Parameters.AddWithValue("$q", listing.Quantity);
+                command.Parameters.AddWithValue("$e", listing.Effects ?? "");
+                command.Parameters.AddWithValue("$k", listing.Price);
+                command.Parameters.AddWithValue("$s", sold ? 1 : 0);
+                command.Parameters.AddWithValue("$t", new DateTimeOffset(DateTime.SpecifyKind(nowUtc, DateTimeKind.Utc)).ToUnixTimeSeconds());
+                command.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Marketplaces] Could not remember listing {listing.Id} in its seller's history: {ex.Message}");
             }
         }
 

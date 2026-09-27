@@ -93,9 +93,17 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>
         /// «Banco: + $quantity{0} kamas (venta: $quantity{3} $item{2}).» Info, to the seller of a
-        /// lot. Its twin 65 carries a link to a sales history this server does not keep.
+        /// lot. Its twin <see cref="MarketplaceSoldLinked"/> is the one sent now.
         /// </summary>
         public const int MarketplaceSold = 73;
+
+        /// <summary>
+        /// «Banco: + $quantity{0} kamas ({{salesHistory,0,false,true::venta}}: $quantity{3}
+        /// $item{2}).» Info, to the seller of a lot: the same words as 73, with "venta" a link
+        /// that opens the sales history on this session's sales. Which of the twins the real
+        /// server sends is INFERRED: this is the one with a history behind it.
+        /// </summary>
+        public const int MarketplaceSoldLinked = 65;
 
         /// <summary>«No tienes el nivel de oficio necesario.» Va con <see cref="Warning"/>.</summary>
         public const int JobLevelTooLow = 284;

@@ -83,10 +83,28 @@ namespace Jondo.Unity.Server.Managers
             }
 
             /// <summary>
-            /// The tax to put a lot on sale. 999 kamas cost 20 in the equipment capture, 2 % of it
-            /// rounded UP -- the only measurement, which a rounding to nearest would match too.
+            /// The tax to put a lot on sale, as the client works it out to show it
+            /// (AuctionHouseSell.UpdateTax): the price times the percentage over a hundred, in
+            /// single precision, rounded to the nearest with halves to even, and never under 1 --
+            /// nothing at all when the percentage is 0. 999 kamas cost 20 in the equipment capture,
+            /// the one measurement, which this matches.
             /// </summary>
-            public long Tax(long price) => (long)Math.Ceiling(price * (double)TaxPercentage / 100.0);
+            public long Tax(long price) => TaxAt(price, TaxPercentage);
+
+            /// <summary>
+            /// The tax to change the price of a lot on sale, the same window's other branch: the
+            /// whole tax on the new price when it goes up, the modification percentage (kdw f7,
+            /// 1.0) on the new price when it stays or goes down.
+            /// </summary>
+            public long ModificationTax(long oldPrice, long newPrice)
+                => TaxAt(newPrice, oldPrice < newPrice ? TaxPercentage : TaxModificationPercentage);
+
+            private static long TaxAt(long price, float percentage)
+            {
+                if (percentage == 0f || price <= 0) return 0;
+                float share = (float)price * percentage / 100f;
+                return (long)Math.Max(Math.Round((double)share, MidpointRounding.ToEven), 1.0);
+            }
 
             public TimeSpan OnSale => TimeSpan.FromHours(HoursOnSale);
         }

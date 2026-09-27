@@ -35,7 +35,8 @@ namespace Jondo.Unity.Server.Handlers
 
     /// <summary>
     /// The marketplaces: opening one at its counter, browsing, buying a lot, putting one on sale,
-    /// taking it back, and the seller being paid into the bank.
+    /// changing its price, taking it back, the seller being paid into the bank, and the seller's
+    /// sales history.
     /// </summary>
     /// <remarks>
     /// ─── What is measured ─────────────────────────────────────────────────────────────────
@@ -68,19 +69,27 @@ namespace Jondo.Unity.Server.Handlers
     /// ─── What is not, and is inferred ─────────────────────────────────────────────────────
     ///
     /// No capture takes a lot back, sells one of the player's, lets one run out of time, lists a
-    /// seller's lots in kby, or refuses anything. So:
+    /// seller's lots in kby, changes a price, shows a sales history, or refuses anything. What
+    /// follows is read off the client's own code (tools/cliente: the handlers of its marketplace
+    /// frame, emz, and the windows that raise its requests) or inferred, and says which:
     ///
     ///   * Taking back: kcr { f1: -n, f2: the listing } in sell mode, the move the client makes
     ///     for everything it drags out of an exchange (its sender, eoy, is the one that sends kge).
-    ///     The lot returns to the bag, and the sell window is opened again with the measured
-    ///     switch -- khd, ivx, hlm, kby, ivx, hlm -- so that the list is the book's. The client
-    ///     class that handles the marketplace (emz) also takes ken, which may be the dedicated
-    ///     answer; nothing measured says so, so it is not sent.
+    ///     The lot returns to the bag, and ken { f1: the listing } takes it off the seller's list:
+    ///     the frame removes from that list the lot whose id is ken's f1 and redraws it.
+    ///   * A new price: kch { f1: the listing, f2: price, f3: how many }, raised by the sell
+    ///     window's OnConfirmModifyObject, one per lot. Its tax is the window's own reckoning (see
+    ///     <see cref="Marketplaces.House.ModificationTax"/>); the answer is ivf, then ken and kes,
+    ///     since the frame appends whatever a kes brings and never replaces a lot in place.
     ///   * A sale: the price goes to the seller's bank, connected or not, and a connected seller
-    ///     reads lqn 73 "Banco: + {0} kamas (venta: {3} {2})". Their open sell window is not
-    ///     told: that message was not captured.
-    ///   * Time: after the marketplace's 672 hours a lot goes back to its seller's bag. The real
-    ///     game puts it in the bank (text 67), but this server's bank takes kamas only.
+    ///     reads lqn 65 "Banco: + {0} kamas ({{salesHistory::venta}}: {3} {2})", whose "venta"
+    ///     opens the sales history; an open sell window loses the lot with a ken.
+    ///   * The sales history: las { f3: a laq per lot sold or come back unsold }, the whole of it
+    ///     every time -- the frame rebuilds the window's lists from each las. Sent at world entry,
+    ///     to a connected seller after each of his lots is sold or runs out, and in answer to lar,
+    ///     the empty request the window sends when it opens. How far back it goes is INFERRED.
+    ///   * Time: after the marketplace's 672 hours a lot goes back to its seller's bank, as the
+    ///     real game sends unsold lots there (text 67), and into his sales history as unsold.
     ///   * Refusals: the client's own texts, lqn type 1 (see <see cref="InfoMessages"/>).
     ///   * The items of a type appearing or going away are not pushed to whoever follows it: no
     ///     capture shows a kda after the first; a new kdk gets the list as it is.
@@ -327,8 +336,9 @@ namespace Jondo.Unity.Server.Handlers
             var seller = SessionRegistry.FindByCharacter(listing.SellerCharacterId);
             if (seller == null || !seller.IsInWorld) return;
             await SendAsync(seller, Op.Lqn, ConnectionProtocol.BuildInfoMessage(
-                InfoMessages.Info, InfoMessages.MarketplaceSold,
+                InfoMessages.Info, InfoMessages.MarketplaceSoldLinked,
                 listing.Price.ToString(), "", listing.Gid.ToString(), listing.Quantity.ToString()));
+            await TellSellerAsync(listing);
         }
 
         // ─── Selling ────────────────────────────────────────────────────────────────────────
@@ -445,9 +455,92 @@ namespace Jondo.Unity.Server.Handlers
                 await SendAsync(me, Op.Iun, ConnectionProtocol.BuildPods(0, Capacity(me)));
             }
             await OfferChangedAsync(house, offer, added: false);
-            await SwitchAsync(me, window, house, selling: true);
+            await SendAsync(me, Op.Ken, MarketplaceProtocol.BuildSellerRemoved(listing.Id));
             Console.WriteLine($"[Marketplaces] {me.CharacterId} takes back listing {listing.Id} ({listing.Gid} x{listing.Quantity}).");
             return true;
+        }
+
+        /// <summary>
+        /// kch: a new price for one of the seller's lots, the tax paid now. See the remarks: read
+        /// off the client, no capture changes a price.
+        /// </summary>
+        public static async Task ChangePriceAsync(byte[] payload)
+        {
+            var me = SessionContext.Current;
+            var window = WindowOf(me, out var house);
+            byte[]? kch = ConnectionProtocol.ReadPayload(payload, Op.Kch);
+            if (window == null || kch == null || !window.Selling) return;
+            long id = VarOf(kch, 1);
+            long price = VarOf(kch, 2);
+            int lot = (int)VarOf(kch, 3);
+            if (id <= 0 || id > int.MaxValue || price <= 0) return;
+
+            long account = AccountOf(me);
+            var listing = MarketplaceListings.OfAccount(house.Id, account).FirstOrDefault(l => l.Id == id);
+            if (listing == null || (lot > 0 && lot != listing.Quantity) || listing.Price == price)
+            {
+                Console.WriteLine($"[Marketplaces] {me.CharacterId} cannot price listing {id} x{lot} at {price}.");
+                return;
+            }
+
+            long tax = house.ModificationTax(listing.Price, price);
+            if (me.State.Kamas < tax)
+            {
+                await SendAsync(me, Op.Lqn, ConnectionProtocol.BuildInfoMessage(
+                    InfoMessages.Warning, InfoMessages.MarketplaceCannotPayTax));
+                return;
+            }
+
+            var changed = MarketplaceListings.ChangePrice(house, account, listing.Id, price);
+            if (changed == null) return;
+            var (before, after, offer) = changed.Value;
+
+            me.State.Kamas -= tax;
+            DatabaseManager.SaveCurrentCharacter();
+
+            await SendAsync(me, Op.Ivf, ConnectionProtocol.BuildKamas(me.State.Kamas));
+            await SendAsync(me, Op.Ken, MarketplaceProtocol.BuildSellerRemoved(after.Id));
+            await SendAsync(me, Op.Kes, MarketplaceProtocol.BuildListed(after, after.SecondsLeft(Clock())));
+            await OfferChangedAsync(house, offer, added: false);
+            Console.WriteLine($"[Marketplaces] {me.CharacterId} prices listing {after.Id} ({after.Gid} x{after.Quantity}) " +
+                              $"at {price}, was {before.Price} (tax {tax}).");
+        }
+
+        // ─── The sales history ──────────────────────────────────────────────────────────────
+
+        /// <summary>lar: the sales history window opened, and gets the account's history.</summary>
+        public static async Task SalesHistoryAsync()
+        {
+            var me = SessionContext.Current;
+            await SendAsync(me, Op.Las, SalesHistoryOf(AccountOf(me)));
+        }
+
+        /// <summary>An account's sales history as las carries it, as far back as it is kept.</summary>
+        public static byte[] SalesHistoryOf(long accountId)
+            => MarketplaceProtocol.BuildSalesHistory(
+                MarketplaceListings.HistoryOf(accountId, Clock() - MarketplaceListings.HistoryDepth));
+
+        /// <summary>The las a character is given at world entry: null when there is nothing in it.</summary>
+        public static byte[]? SalesHistoryAtEntry(long characterId, long sessionAccountId)
+        {
+            long account = DatabaseManager.AccountIdOfCharacter(characterId);
+            if (account <= 0) account = sessionAccountId;
+            var lines = MarketplaceListings.HistoryOf(account, Clock() - MarketplaceListings.HistoryDepth);
+            return lines.Count == 0 ? null : MarketplaceProtocol.BuildSalesHistory(lines);
+        }
+
+        /// <summary>
+        /// One of a seller's lots left the book while he is here: an open sell window of that
+        /// marketplace loses it (ken), and his sales history is sent again.
+        /// </summary>
+        private static async Task TellSellerAsync(MarketplaceListings.Listing listing)
+        {
+            var seller = SessionRegistry.FindByCharacter(listing.SellerCharacterId);
+            if (seller == null || !seller.IsInWorld) return;
+            var window = seller.State.Marketplace;
+            if (window != null && window.Selling && window.House == listing.House)
+                await SendAsync(seller, Op.Ken, MarketplaceProtocol.BuildSellerRemoved(listing.Id));
+            await SendAsync(seller, Op.Las, SalesHistoryOf(listing.SellerAccountId));
         }
 
         // ─── Everybody else ─────────────────────────────────────────────────────────────────
@@ -483,6 +576,7 @@ namespace Jondo.Unity.Server.Handlers
             {
                 await ReturnAsync(listing);
                 if (Marketplaces.TryGet(listing.House, out var house)) await OfferChangedAsync(house, offer, added: false);
+                await TellSellerAsync(listing);
                 Console.WriteLine($"[Marketplaces] Listing {listing.Id} ({listing.Gid} x{listing.Quantity}) ran out of " +
                                   $"time; back to the bank of account {listing.SellerAccountId}.");
             }

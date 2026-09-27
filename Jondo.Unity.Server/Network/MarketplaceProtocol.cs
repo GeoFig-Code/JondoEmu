@@ -1,6 +1,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Globalization;
 using Jondo.Unity.Server.Managers;
 using ItemEffect = Jondo.Unity.Server.Managers.Equipment.ItemEffect;
 
@@ -128,6 +129,46 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         public static byte[] BuildListed(MarketplaceListings.Listing listing, long secondsLeft)
             => Pb.New().Msg(1, ListedItem(listing)).VarIfNotZero(2, listing.Price).VarIfNotZero(4, secondsLeft).Build();
+
+        /// <summary>
+        /// One of the seller's lots is off sale (ken): { f1: the listing }. Read off the client:
+        /// the marketplace's frame (emz) takes a ken by removing from the seller's list the lot
+        /// whose id is its f1, and redraws the list; its f2 is not read there, so it is not sent.
+        /// </summary>
+        public static byte[] BuildSellerRemoved(int listingId) => Pb.New().Var(1, listingId).Build();
+
+        /// <summary>
+        /// A seller's sales history (las): every line in f3, newest first. f1 and f2 are not read
+        /// by the frame that takes it (emz), so they do not travel.
+        /// </summary>
+        /// <remarks>
+        /// Read off the client, no capture has one: the frame turns each laq of f3 that has an item
+        /// into a line of the sales history window --
+        ///
+        ///   laq { f1: kamas, f3: the date, as text, f4: 0 sold / 1 unsold,
+        ///         f5 { f1: item, f2: how many, f4: effects }, f6: the marketplace }
+        ///
+        /// The date goes through DateTime.Parse and then ToLocalTime, so it is sent in UTC; the
+        /// window adds up the kamas of the sold lines only, and f6 is looked up in the client's
+        /// AuctionHousesDataRoot, whose ids the marketplaces are (1261 to 1267).
+        /// </remarks>
+        public static byte[] BuildSalesHistory(IEnumerable<MarketplaceListings.HistoryEntry> lines)
+        {
+            var las = Pb.New();
+            foreach (var line in lines)
+            {
+                var item = Pb.New().Var(1, line.Gid).VarIfNotZero(2, line.Quantity);
+                ConnectionProtocol.AddEffects(item, 4, Equipment.ParseEffects(line.Effects));
+                las.Msg(3, Pb.New()
+                    .VarIfNotZero(1, line.Kamas)
+                    .Str(3, DateTime.SpecifyKind(line.AtUtc, DateTimeKind.Utc)
+                                    .ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture))
+                    .VarIfNotZero(4, line.Sold ? 0 : 1)
+                    .Msg(5, item)
+                    .Var(6, line.House));
+            }
+            return las.Build();
+        }
 
         /// <summary>
         /// A listed lot as kes and kby carry it: { f1: the listing, f2: effects, f3: item, f4: how

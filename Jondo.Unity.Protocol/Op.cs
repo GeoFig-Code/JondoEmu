@@ -1629,6 +1629,25 @@ public static class Op
     /// </summary>
     public const string Kes = "kes";
 
+    /// <summary>
+    /// Client to server, a marketplace in sell mode: a new price for a lot on sale, { f1: the
+    /// listing, f2: the new price, f3: how many }. Read off the client: its sell window's
+    /// OnConfirmModifyObject is what raises it. No capture.
+    /// </summary>
+    public const string Kch = "kch";
+
+    /// <summary>
+    /// Server to client, a marketplace: one of the seller's lots is off sale, { f1: the listing }.
+    /// Read off the client, no capture.
+    /// </summary>
+    public const string Ken = "ken";
+
+    /// <summary>
+    /// Server to client: the seller's sales history, { f3 (repeated): laq { f1: kamas, f3: date,
+    /// f4: 0 sold / 1 unsold, f5: the item, f6: the marketplace } }. Read off the client.
+    /// </summary>
+    public const string Las = "las";
+
     /// <summary>El cofre se cerro.</summary>
     public const string Khd = "khd";
 
@@ -2051,7 +2070,11 @@ public static class Op
     /// <summary>Ajuste del panel de retos: { f1: int64, f2: ... }. C->S, sin respuesta.</summary>
     public const string Kxb = "kxb";
 
-    /// <summary>Sin identificar. 1 uso en el emulador.</summary>
+    /// <summary>
+    /// Client to server, empty: the sales history window was opened, and wants its lines (las).
+    /// Read off the client: the one request that window's OnEnable sends, and the marketplace
+    /// sender's empty message. No capture.
+    /// </summary>
     public const string Lar = "lar";
 
     /// <summary>Sin identificar. 1 uso en el emulador.</summary>

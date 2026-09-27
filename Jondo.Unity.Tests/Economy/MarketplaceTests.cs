@@ -87,6 +87,16 @@ namespace Jondo.Unity.Tests.Economy
             Assert.Equal(66139715 - 66139695, house.Tax(999));
             Assert.Equal(20, house.Tax(1000));
             Assert.Equal(1, house.Tax(1));
+            // The client's own reckoning (AuctionHouseSell.UpdateTax): to the nearest, halves to
+            // even, never under 1.
+            Assert.Equal(435, house.Tax(21760));     // 435.2
+            Assert.Equal(20, house.Tax(1025));       // 20.5
+            Assert.Equal(22, house.Tax(1075));       // 21.5
+            Assert.Equal(1, house.Tax(10));          // 0.2
+            // A new price: the whole tax on a dearer one, 1 % on a cheaper or the same one.
+            Assert.Equal(40, house.ModificationTax(1000, 2000));
+            Assert.Equal(9, house.ModificationTax(1000, 900));
+            Assert.Equal(10, house.ModificationTax(1000, 1000));
             Assert.Equal(672, house.HoursOnSale);
             Assert.Equal(2419200, (long)house.OnSale.TotalSeconds);
         }
@@ -302,9 +312,9 @@ namespace Jondo.Unity.Tests.Economy
             Assert.Equal(new[] { new Effect(123, 7, 0, 0) }.Select(e => (e.Effect, e.Value)), back.Effects.Select(e => (e.Effect, e.Value)));
             Assert.NotNull(HavenBagStore.FromInventory(seller.CharacterId, back.Uid));
             Assert.Equal(980, seller.State.Kamas);
-            // And the sell window again, with nothing in it.
-            Assert.Contains(scene.To(seller), s => s.Opcode == Op.Kby
-                && s.Body.SequenceEqual(MarketplaceProtocol.BuildSellerOpened(House(EquipmentHouse), Array.Empty<(MarketplaceListings.Listing, long)>())));
+            // And ken, which takes the lot off the seller's list.
+            Assert.Equal(MarketplaceProtocol.BuildSellerRemoved(listing.Id), scene.To(seller).Last().Body);
+            Assert.Equal(Op.Ken, scene.To(seller).Last().Opcode);
         }
 
         /// <summary>
@@ -326,7 +336,7 @@ namespace Jondo.Unity.Tests.Economy
             await Sell(seller, 2200, runes, 10);
             await Sell(seller, 21760, runes, 100);
             Assert.Equal(121 - 121, Bag(seller).Sum(i => i.Quantity));
-            Assert.Equal(100_000 - 4 - 43 - 44 - 436, seller.State.Kamas);
+            Assert.Equal(100_000 - 4 - 43 - 44 - 435, seller.State.Kamas);
 
             // The buyer sees one offer, the cheapest lot of each size.
             await As(buyer, () => MarketplaceHandler.OpenAsync(522693, Marketplaces.Skill));
@@ -350,9 +360,14 @@ namespace Jondo.Unity.Tests.Economy
             Assert.Equal(new[] { Op.Kgp, Op.Ivf, Op.Iua, Op.Iun, Op.Lqn, Op.Kcx }, told);
             Assert.Contains(scene.To(buyer), s => s.Opcode == Op.Lqn
                 && s.Body.SequenceEqual(MarketplaceProtocol.BuildPurchaseNotice(1523, got.Uid, 10, 2150)));
-            // And the seller, who is here, that his bank got it: lqn 73.
+            // And the seller, who is here, that his bank got it: lqn 65, "venta" a link to the
+            // sales history, and the history itself, sold for 2150.
             Assert.Contains(scene.To(seller), s => s.Opcode == Op.Lqn
-                && s.Body.SequenceEqual(ConnectionProtocol.BuildInfoMessage(InfoMessages.Info, InfoMessages.MarketplaceSold, "2150", "", "1523", "10")));
+                && s.Body.SequenceEqual(ConnectionProtocol.BuildInfoMessage(InfoMessages.Info, InfoMessages.MarketplaceSoldLinked, "2150", "", "1523", "10")));
+            var history = MarketplaceListings.HistoryOf(seller.AccountId, DateTime.UtcNow.AddDays(-1));
+            var line = Assert.Single(history);
+            Assert.Equal((RuneHouse, 1523, 10, 2150L, true), (line.House, line.Gid, line.Quantity, line.Kamas, line.Sold));
+            Assert.Equal(MarketplaceProtocol.BuildSalesHistory(history), scene.To(seller).Last(s => s.Opcode == Op.Las).Body);
 
             // The second lot of ten is the last one: bought, the price for ten is none.
             await Buy(buyer, offer.Id, 2200, 10);
@@ -501,6 +516,137 @@ namespace Jondo.Unity.Tests.Economy
             }
             finally { ClearBank(seller.AccountId); }
         }
+
+        /// <summary>
+        /// A new price: the tax of the client's own reckoning paid, the lot the same one at its new
+        /// price -- ken then kes to the seller -- and the offer's price for its lot size with it.
+        /// </summary>
+        [Fact]
+        public async Task A_lot_on_sale_changes_price_and_pays_the_clients_tax()
+        {
+            using var scene = new Scene();
+            var seller = scene.Player(9_000_000_161, 9_000_000_161, 1_000);
+            var buyer = scene.Player(9_000_000_162, 9_000_000_162, 10_000);
+            long ring = scene.Give(seller, 853, 1, "[[123,7,0,0]]");
+            await OpenToSell(seller, 522691);
+            await Sell(seller, 999, ring, 1);
+            var listing = Assert.Single(MarketplaceListings.OfAccount(EquipmentHouse, seller.AccountId));
+            await As(buyer, () => MarketplaceHandler.OpenAsync(522691, Marketplaces.Skill));
+            await Follow(buyer, 853);
+
+            // Cheaper: 1 % of 800.
+            await ChangePrice(seller, listing.Id, 800, 1);
+            Assert.Equal(1_000 - 20 - 8, seller.State.Kamas);
+            var cheaper = Assert.Single(MarketplaceListings.OfAccount(EquipmentHouse, seller.AccountId));
+            Assert.Equal((listing.Id, 800L, listing.ExpiresUtc), (cheaper.Id, cheaper.Price, cheaper.ExpiresUtc));
+            var told = scene.To(seller).SkipWhile(s => s.Opcode != Op.Ken).ToList();
+            Assert.Equal(new[] { Op.Ken, Op.Kes }, told.Select(s => s.Opcode));
+            Assert.Equal(MarketplaceProtocol.BuildSellerRemoved(listing.Id), told[0].Body);
+            Assert.Equal(MarketplaceProtocol.BuildListed(cheaper, cheaper.SecondsLeft(MarketplaceHandler.Clock())), told[1].Body);
+            Assert.Equal(ConnectionProtocol.BuildKamas(972), scene.To(seller).Last(s => s.Opcode == Op.Ivf).Body);
+            var offer = MarketplaceListings.OffersOf(House(EquipmentHouse), 853).Single();
+            Assert.Equal(800, offer.Prices[0]);
+            Assert.Contains(scene.To(buyer), s => s.Opcode == Op.Kgp && s.Body.SequenceEqual(MarketplaceProtocol.BuildOfferUpdated(offer)));
+
+            // Dearer: the whole 2 % of 1500.
+            await ChangePrice(seller, listing.Id, 1500, 1);
+            Assert.Equal(972 - 30, seller.State.Kamas);
+            Assert.Equal(1500, MarketplaceListings.OfAccount(EquipmentHouse, seller.AccountId).Single().Price);
+
+            // Not with a tax it cannot pay, not the same price, not a lot size it does not have,
+            // not somebody else's lot.
+            seller.State.Kamas = 10;
+            await ChangePrice(seller, listing.Id, 5_000, 1);
+            Assert.Contains(scene.To(seller), s => s.Opcode == Op.Lqn
+                && s.Body.SequenceEqual(ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, InfoMessages.MarketplaceCannotPayTax)));
+            await ChangePrice(seller, listing.Id, 1500, 1);
+            await ChangePrice(seller, listing.Id, 900, 10);
+            await OpenToSell(buyer, 522691);
+            await ChangePrice(buyer, listing.Id, 900, 1);
+            Assert.Equal(10, seller.State.Kamas);
+            Assert.Equal(10_000, buyer.State.Kamas);
+            Assert.Equal(1500, MarketplaceListings.OfAccount(EquipmentHouse, seller.AccountId).Single().Price);
+        }
+
+        /// <summary>
+        /// The sales history: a lot sold and one that came back unsold, as las carries them, sent
+        /// to a connected seller as they happen and to whoever opens the window (lar).
+        /// </summary>
+        [Fact]
+        public async Task The_sales_history_has_what_was_sold_and_what_came_back()
+        {
+            using var scene = new Scene();
+            var seller = scene.Player(9_000_000_171, 9_000_000_171, 100_000);
+            var buyer = scene.Player(9_000_000_172, 9_000_000_172, 100_000);
+            ClearBank(seller.AccountId);
+            try
+            {
+                long runes = scene.Give(seller, 1523, 11, "[[125,5,0,0]]");
+                await OpenToSell(seller, 522693);
+                await Sell(seller, 2150, runes, 10);
+                await Sell(seller, 198, runes, 1);
+                var ten = MarketplaceListings.OfAccount(RuneHouse, seller.AccountId).First(l => l.Quantity == 10);
+                var one = MarketplaceListings.OfAccount(RuneHouse, seller.AccountId).First(l => l.Quantity == 1);
+
+                // Bought while the seller's window is open: it loses the lot, and the history comes.
+                await As(buyer, () => MarketplaceHandler.OpenAsync(522693, Marketplaces.Skill));
+                await Buy(buyer, MarketplaceListings.OffersOf(House(RuneHouse), 1523).Single().Id, 2150, 10);
+                Assert.Contains(scene.To(seller), s => s.Opcode == Op.Ken && s.Body.SequenceEqual(MarketplaceProtocol.BuildSellerRemoved(ten.Id)));
+
+                // The other one runs out of time.
+                var listed = MarketplaceHandler.Clock();
+                MarketplaceHandler.Clock = () => listed.AddHours(672);
+                Assert.Equal(1, await MarketplaceHandler.SweepExpiredAsync());
+                Assert.Contains(scene.To(seller), s => s.Opcode == Op.Ken && s.Body.SequenceEqual(MarketplaceProtocol.BuildSellerRemoved(one.Id)));
+
+                var history = MarketplaceListings.HistoryOf(seller.AccountId, listed.AddDays(-1));
+                Assert.Equal(new[] { (1, 198L, false), (10, 2150L, true) }, history.Select(h => (h.Quantity, h.Kamas, h.Sold)));
+                byte[] las = MarketplaceProtocol.BuildSalesHistory(history);
+                Assert.Equal(las, scene.To(seller).Last(s => s.Opcode == Op.Las).Body);
+
+                // Asked for by the window.
+                await As(seller, () => MarketplaceHandler.SalesHistoryAsync());
+                Assert.Equal(las, scene.To(seller).Last(s => s.Opcode == Op.Las).Body);
+                Assert.Equal(las, MarketplaceHandler.SalesHistoryAtEntry(seller.CharacterId, seller.AccountId));
+            }
+            finally { ClearBank(seller.AccountId); }
+        }
+
+        /// <summary>ken and las as the client's frame reads them.</summary>
+        [Fact]
+        public void The_seller_messages_are_what_the_client_reads()
+        {
+            Assert.Equal(Hex("08cbdcce01"), MarketplaceProtocol.BuildSellerRemoved(3386955));
+
+            var at = new DateTime(2026, 9, 27, 8, 30, 0, DateTimeKind.Utc);
+            var las = ProtoMessage.Parse(MarketplaceProtocol.BuildSalesHistory(new[]
+            {
+                new MarketplaceListings.HistoryEntry { House = 1264, Gid = 1523, Quantity = 10, Effects = "[[125,5,0,0]]", Kamas = 2150, Sold = true, AtUtc = at },
+                new MarketplaceListings.HistoryEntry { House = 1262, Gid = 853, Quantity = 1, Kamas = 999, Sold = false, AtUtc = at },
+            }));
+            var lines = las.Fields.Where(f => f.FieldNumber == 3).Select(f => ProtoMessage.Parse(f.BytesValue)).ToList();
+            Assert.Equal(2, lines.Count);
+            Assert.DoesNotContain(las.Fields, f => f.FieldNumber != 3);
+
+            var sold = lines[0];
+            Assert.Equal(2150, sold.Fields.Single(f => f.FieldNumber == 1).VarIntValue);
+            Assert.Equal("2026-09-27T08:30:00Z", System.Text.Encoding.UTF8.GetString(sold.Fields.Single(f => f.FieldNumber == 3).BytesValue));
+            Assert.DoesNotContain(sold.Fields, f => f.FieldNumber == 4);                  // 0, sold
+            Assert.Equal(1264, sold.Fields.Single(f => f.FieldNumber == 6).VarIntValue);
+            var item = ProtoMessage.Parse(sold.Fields.Single(f => f.FieldNumber == 5).BytesValue);
+            Assert.Equal(1523, item.Fields.Single(f => f.FieldNumber == 1).VarIntValue);
+            Assert.Equal(10, item.Fields.Single(f => f.FieldNumber == 2).VarIntValue);
+            Assert.Single(item.Fields, f => f.FieldNumber == 4);
+
+            Assert.Equal(1, lines[1].Fields.Single(f => f.FieldNumber == 4).VarIntValue);   // unsold
+            Assert.True(DateTime.TryParse("2026-09-27T08:30:00Z", System.Globalization.CultureInfo.GetCultureInfo("es-ES"),
+                                          System.Globalization.DateTimeStyles.None, out var parsed));
+            Assert.Equal(at, parsed.ToUniversalTime());
+        }
+
+        private static Task ChangePrice(GameSession session, int listing, long price, int lot)
+            => As(session, () => MarketplaceHandler.ChangePriceAsync(ConnectionProtocol.Push(Op.Kch,
+                Pb.New().Var(1, listing).Var(2, price).Var(3, lot).Build())));
 
         /// <summary>A test account's bank emptied, before and after: a stack left over would be stacked onto.</summary>
         private static void ClearBank(long accountId)

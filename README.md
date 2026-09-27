@@ -235,8 +235,11 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The guild chest, in the **24 banks** that have one: the guild's own, kept in the base, opened as in the Bonta capture (`ivl`, `kbk`, `iwb`, `jlo`, `jlq`), with the ranks' rights to look, put in and take out — the client's own rights table, tab by tab
 - ❌ The bank's level condition; the guild chest's extra tabs (bought with the guild hall's evolutions), its kamas and its history
 - ✅ The marketplaces: the client's seven — resources, equipment, consumables, runes, creatures, souls and cosmetics — each one shared by every counter of its kind, **39 counters** in Bonta, Brakmar, Astrub, Pandala, Frigost, Sufokia, Incarnam and two more towns. Browse by type and by item, buy a lot of 1, 10, 100 or 1000 — into the bag, and its price into the seller's bank whether they are connected or not — put a lot on sale for the 2 % tax, take it back; 672 hours on sale. Measured in the five captures that open one
-- 🟡 Inferred rather than captured: taking a lot back, the seller's sale notice, the end of a lot's time (it returns to the seller's bank), the refusals, and what resources and consumables take. Six of the client's 45 marketplace hints have no counter we can tell apart from a door, and are left out
-- ❌ Changing a listing's price and the sales history, which no capture shows
+- 🟡 Changing the price of a lot on sale, one or several at once from the sell window: the tax is the client's own reckoning — the whole 2 % on a dearer price, 1 % on a cheaper one — and the lot keeps its time on sale. Read off the client's code (`kch`, answered `ken` + `kes`), no capture changes a price
+- 🟡 The sales history window: every lot of the account sold, or come back unsold, over the last 30 days, with its kamas, date and marketplace — sent at login, after each sale or expiry while connected, and when the window opens (`lar` → `las`); the sale notice in the chat now carries the client's "venta" link that opens it. A seller's open sell window loses a lot as soon as it is sold, taken back or runs out (`ken`). Read off the client's code, no capture shows one
+- ✅ The sale tax is the client's own: to the nearest kama (halves to even), never under 1 — the one captured sale, 999 kamas for 20, agrees
+- 🟡 Inferred rather than captured: taking a lot back, the end of a lot's time (it returns to the seller's bank), the refusals, and what resources and consumables take. Six of the client's 45 marketplace hints have no counter we can tell apart from a door, and are left out
+- ❌ Merchant mode: this 3.6 client has no screen for it — no window, menu entry or asset to set up a stall, manage its stock or buy from one — so it cannot be reached from the game and is not implemented
 
 ### 💬 Social
 
@@ -1770,7 +1773,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,839 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,842 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 

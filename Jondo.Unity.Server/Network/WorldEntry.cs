@@ -789,6 +789,11 @@ namespace Jondo.Unity.Server.Network
             // Back on a dream's map: the dream again, or out of it when there is none to go back to.
             await Handlers.DreamHandler.OnWorldEntryAsync(stream);
 
+            // What the account sold in the marketplaces, and what came back unsold, for the sales
+            // history window: its "last connection" box is the part since the last logout.
+            byte[]? sales = Handlers.MarketplaceHandler.SalesHistoryAtEntry(character.Id, SessionContext.Current.AccountId);
+            if (sales != null) await EnviarAsync(stream, ConnectionProtocol.Push(Op.Las, sales));
+
             // And in place of the characteristics of the capture, the ones of this character.
             await EnviarAsync(stream, ConnectionProtocol.Push(Op.Kub, ConnectionProtocol.BuildCharacteristics()));
             Console.WriteLine($"[World] Characteristics sent for {character.Name}: level " +
