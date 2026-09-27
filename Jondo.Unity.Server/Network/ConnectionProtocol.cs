@@ -1358,6 +1358,21 @@ namespace Jondo.Unity.Server.Network
         private const int LookKind = 3;
 
         /// <summary>
+        /// An NPC's look as the actor block carries it: { f1: packed colours, f2: 3, f3: bones,
+        /// f5: packed scales, f6: packed skins }. The same bytes the map's NPCs go out with.
+        /// </summary>
+        public static byte[] BuildNpcLook(long bones, long[] skins, long[] colors, long[] scales)
+        {
+            var look = Pb.New();
+            if (colors.Length > 0) look.Packed(1, colors);
+            look.Var(2, LookKind);
+            look.VarIfNotZero(3, bones);
+            if (scales.Length > 0) look.Packed(5, scales);
+            if (skins.Length > 0) look.Packed(6, skins);
+            return look.Build();
+        }
+
+        /// <summary>
         /// El grado de un monstruo, de 1 a 5, o hasta 6 si el monstruo declara seis.
         ///
         /// El tope de cinco es lo que importa: en trescientos y pico monstruos silvestres de las

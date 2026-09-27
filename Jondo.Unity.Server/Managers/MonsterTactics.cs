@@ -137,9 +137,14 @@ namespace Jondo.Unity.Server.Managers
             var reach = Routes(board, monster);
             Action? best = null;
 
+            // One summon a turn, whichever spell brings it: a Feca with three of them spent a whole
+            // turn putting out barricades.
+            bool summoned = spells.Any(s => s.Summons && monster.LanzadosEsteTurno.TryGetValue(s.Id, out int n) && n > 0);
+
             foreach (var spell in spells)
             {
                 if (spell.Cost < 0 || spell.Cost > monster.CurrentAP) continue;
+                if (spell.Summons && summoned) continue;
                 if (spell.Cost == 0 && spell.Utility <= 0 && !spell.Offensive) continue;
                 if (monster.Recarga.TryGetValue(spell.Id, out int wait) && wait > 0) continue;
                 monster.LanzadosEsteTurno.TryGetValue(spell.Id, out int thisTurn);
@@ -329,6 +334,11 @@ namespace Jondo.Unity.Server.Managers
             double value = 0;
             bool onEnemy = target.TeamId != monster.TeamId;
 
+            // A spell that hurts whoever stands on the aimed cell is never aimed at one of its
+            // own, whatever else it gives: the megabot's Bumerán Pérfido "buffed" its own summon
+            // to death.
+            if (!onEnemy && target != monster && spell.Damage > 0 && Hit(spell, aim, target)) return 0;
+
             if (spell.Damage > 0 && (onEnemy || spell.OnSelf))
             {
                 foreach (var hit in enemies.Where(e => Hit(spell, aim, e)))
@@ -354,7 +364,12 @@ namespace Jondo.Unity.Server.Managers
                 value += 10 + spell.Buff * 2 + monster.Level / 10.0;
 
             if (spell.Summons && target == monster && aim != from)
-                value += 40 + monster.Level / 2.0;
+            {
+                // On the side the enemy is on, between them, not behind: a barricade behind its
+                // caster shields him from nothing.
+                int Nearest(int cell) => enemies.Count == 0 ? 0 : enemies.Min(e => MapGeometry.Distance(cell, e.CellId));
+                value += 40 + monster.Level / 2.0 + 15 * (Nearest(from) - Nearest(aim));
+            }
 
             if (spell.Utility > 0 && (spell.UtilityOnEnemies ? onEnemy : target == monster))
                 value += spell.Utility;

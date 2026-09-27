@@ -47,6 +47,44 @@ namespace Jondo.Unity.Server.Managers
             [17] = "Hipermago", [18] = "Uginak", [20] = "Forjalanza",
         };
 
+        /// <summary>
+        /// The looks a megabot of each class can wear: the notable NPCs of that class -- placed in
+        /// the world, with something to say, and dressed (three skins or more), the class read off
+        /// the body skin every humanoid look starts with. Built once, when first asked for.
+        /// </summary>
+        private static Dictionary<int, List<Npcs.Spawn>>? _npcLooks;
+        private static readonly object _looksGate = new();
+
+        /// <summary>The notable NPCs a megabot of this class can look like; empty when there are none.</summary>
+        public static IReadOnlyList<Npcs.Spawn> NpcLooksOf(int breed)
+        {
+            lock (_looksGate)
+            {
+                // Not kept empty: asked before the NPCs are read, it is built again once they are.
+                if (_npcLooks == null || (_npcLooks.Count == 0 && Npcs.Count > 0))
+                {
+                    var bodies = new Dictionary<long, int>();
+                    foreach (int b in SpellTable.ClassBreeds)
+                        for (int sex = 0; sex < 2; sex++)
+                        {
+                            var look = BreedLookTable.Get(b, sex);
+                            if (look != null && look.Skins.Count > 0) bodies[look.Skins[0]] = b;
+                        }
+                    _npcLooks = new Dictionary<int, List<Npcs.Spawn>>();
+                    var seen = new HashSet<int>();
+                    foreach (var spawn in Npcs.AllSpawns)
+                    {
+                        if (spawn.Bones != 1 || spawn.Skins.Length < 3 || !seen.Add(spawn.NpcId)) continue;
+                        if (!bodies.TryGetValue(spawn.Skins[0], out int of)) continue;
+                        if ((Npcs.TemplateOf(spawn.NpcId)?.DialogMessageId ?? 0) == 0) continue;
+                        if (!_npcLooks.TryGetValue(of, out var list)) _npcLooks[of] = list = new List<Npcs.Spawn>();
+                        list.Add(spawn);
+                    }
+                }
+                return _npcLooks.TryGetValue(breed, out var found) ? found : new List<Npcs.Spawn>();
+            }
+        }
+
         /// <summary>One megabot: who it is before it fights.</summary>
         public sealed class Spec
         {
@@ -55,6 +93,9 @@ namespace Jondo.Unity.Server.Managers
             public int Sex { get; init; }
             public string Name { get; init; } = "";
             public IReadOnlyDictionary<int, int> Choices { get; init; } = new Dictionary<int, int>();
+
+            /// <summary>The NPC it looks like, if its class has a notable one; else its class's look.</summary>
+            public Npcs.Spawn? LooksLike { get; init; }
         }
 
         private static readonly ConcurrentDictionary<long, Spec> _alive = new();
@@ -83,13 +124,17 @@ namespace Jondo.Unity.Server.Managers
                     choices[pair.Id] = _dice.Next(2) == 0 ? pair.Base : pair.Variant;
                 sex = _dice.Next(2);
             }
+            var looks = NpcLooksOf(breed);
+            Npcs.Spawn? npc = null;
+            if (looks.Count > 0) lock (_dice) npc = looks[_dice.Next(looks.Count)];
             var spec = new Spec
             {
                 Id = System.Threading.Interlocked.Increment(ref _lastId),
                 Breed = breed,
-                Sex = sex,
+                Sex = npc != null ? (BreedLookTable.Get(breed, 1)?.Skins.FirstOrDefault() == npc.Skins[0] ? 1 : 0) : sex,
                 Name = "Megabot " + (ClassNames.TryGetValue(breed, out var name) ? name : breed.ToString()),
                 Choices = choices,
+                LooksLike = npc,
             };
             _alive[spec.Id] = spec;
             return spec;
@@ -134,7 +179,10 @@ namespace Jondo.Unity.Server.Managers
                 IsMonster = false,
                 IsBot = true,
                 IsReady = true,
-                BotLook = BreedLookTable.BuildLook(spec.Breed, spec.Sex, 0, null, spec.Id),
+                BotLook = spec.LooksLike != null
+                    ? Network.ConnectionProtocol.BuildNpcLook(spec.LooksLike.Bones, spec.LooksLike.Skins,
+                                                              spec.LooksLike.Colors, spec.LooksLike.Scales)
+                    : BreedLookTable.BuildLook(spec.Breed, spec.Sex, 0, null, spec.Id),
             };
 
             // The rest of the sheet as a character's is filled: flee and tackle a tenth of agility,

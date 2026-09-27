@@ -434,6 +434,16 @@ namespace Jondo.Unity.Server.Managers
 
         public static IEnumerable<long> Maps => _byMap.Keys;
 
+        /// <summary>Every NPC placed in the world, map by map.</summary>
+        public static IEnumerable<Spawn> AllSpawns
+        {
+            get
+            {
+                foreach (var here in _byMap.Values)
+                    foreach (var spawn in here) yield return spawn;
+            }
+        }
+
         public static IReadOnlyList<Spawn> Of(long mapId)
             => _byMap.TryGetValue(mapId, out var here) ? here : (IReadOnlyList<Spawn>)Array.Empty<Spawn>();
 

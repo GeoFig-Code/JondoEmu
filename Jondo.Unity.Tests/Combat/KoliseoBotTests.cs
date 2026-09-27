@@ -70,6 +70,31 @@ namespace Jondo.Unity.Tests.Combat
             finally { KoliseoBots.Forget(spec.Id); }
         }
 
+        /// <summary>
+        /// A megabot wears the look of a notable NPC of its class when there is one: placed in the
+        /// world, with dialogue, dressed; its body skin is its class's.
+        /// </summary>
+        [Fact]
+        public void A_megabot_looks_like_a_notable_npc_of_its_class()
+        {
+            Npcs.Initialize();
+            var withLooks = SpellTable.ClassBreeds.Where(b => KoliseoBots.NpcLooksOf(b).Count > 0).ToList();
+            Assert.True(withLooks.Count >= 10, $"only {withLooks.Count} classes have a notable NPC");
+            foreach (int breed in withLooks)
+            {
+                var spec = KoliseoBots.Create(breed);
+                try
+                {
+                    Assert.NotNull(spec.LooksLike);
+                    var npc = spec.LooksLike!;
+                    Assert.Contains(npc.Skins[0], new[] { BreedLookTable.Get(breed, 0)!.Skins[0], BreedLookTable.Get(breed, 1)!.Skins[0] });
+                    var bot = KoliseoBots.BuildFighter(spec);
+                    Assert.Equal(ConnectionProtocol.BuildNpcLook(npc.Bones, npc.Skins, npc.Colors, npc.Scales), bot.BotLook);
+                }
+                finally { KoliseoBots.Forget(spec.Id); }
+            }
+        }
+
         /// <summary>For every class, the megabot finds something worth doing to an enemy in reach.</summary>
         [Fact]
         public void Every_class_of_megabot_plays_its_turn_with_its_spells()
