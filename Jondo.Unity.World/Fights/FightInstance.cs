@@ -97,17 +97,18 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public AnnouncedTurn LastAnnouncedTurn { get; set; }
 
+        /// <param name="Carried">The tenths carried from the fighter's last turn, on top of <paramref name="Deciseconds"/>.</param>
         public readonly record struct AnnouncedTurn(long FighterId, int Index, int Round,
-                                                    int Deciseconds, DateTime StartedUtc)
+                                                    int Deciseconds, DateTime StartedUtc, int Carried = 0)
         {
             public bool Announced => FighterId != 0;
 
-            /// <summary>What is left of it, in tenths of a second; never below zero.</summary>
+            /// <summary>What is left of it, carried time and all, in tenths of a second; never below zero.</summary>
             public int RemainingDeciseconds(DateTime nowUtc)
             {
                 if (!Announced) return 0;
                 long gone = (long)(nowUtc - StartedUtc).TotalMilliseconds / 100;
-                return (int)Math.Max(0, Deciseconds - gone);
+                return (int)Math.Max(0, Deciseconds + Carried - gone);
             }
         }
 

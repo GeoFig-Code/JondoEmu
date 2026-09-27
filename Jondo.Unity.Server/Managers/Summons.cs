@@ -49,6 +49,22 @@ namespace Jondo.Unity.Server.Managers
         public int ResistenciaAgua { get; init; }
         public int ResistenciaAire { get; init; }
 
+        /// <summary>
+        /// The grade's four characteristics (<c>strength</c>, <c>intelligence</c>, <c>chance</c>,
+        /// <c>agility</c>) and its <c>bonusCharacteristics</c> ones, and the best of its bonus
+        /// damages: what <see cref="CaracteristicaDelInvocado"/> and
+        /// <see cref="PotenciaDelInvocado"/> make of them at the summoner's level.
+        /// </summary>
+        public int Fuerza { get; init; }
+        public int Inteligencia { get; init; }
+        public int Suerte { get; init; }
+        public int Agilidad { get; init; }
+        public int BonusFuerza { get; init; }
+        public int BonusInteligencia { get; init; }
+        public int BonusSuerte { get; init; }
+        public int BonusAgilidad { get; init; }
+        public int BonusDeDanos { get; init; }
+
         /// <summary>El hechizo que gobierna al bicho, y en qué grado.</summary>
         public int HechizoPropio { get; init; }
         public int GradoDelHechizoPropio { get; init; }
@@ -112,6 +128,33 @@ namespace Jondo.Unity.Server.Managers
         public static int VidaDelInvocado(int bonusDeVida, int nivelDelInvocador, int vidaFija = 0)
             => vidaFija + (int)(bonusDeVida * (Math.Max(1, nivelDelInvocador) + 10) / 20.0);
 
+        /// <summary>
+        /// A summon's characteristic at its summoner's level: the grade's own, times one plus a
+        /// hundredth of the level, and its bonus on top as it is.
+        /// </summary>
+        /// <remarks>
+        /// Measured on the sheets the real server sends with every summon (the jwe 181), summoners
+        /// of level 200: the grade's 300 comes out 900 -- Aniripsa's 7370, Hipermago's 5129, the
+        /// Ocra's 2630 --, 220 comes out 660 (246, 262), 400 and 200 come out 1,200 and 600 (the
+        /// Sacrógrito's sword 434), 135 comes out 405 (5845), 350 and 100 come out 1,050 and 300
+        /// (5898), 250 comes out 750 (5840). The Osamodas' animals carry theirs in the bonus only
+        /// and it comes out as it is: the Tofu's 50 of agility is 50, the 75 and 100 of the
+        /// others 75 and 100. They were all zero here, and a JondoBot Osamodas' Tofu pecked for ten.
+        /// </remarks>
+        public static int CaracteristicaDelInvocado(int propia, int bonus, int nivelDelInvocador)
+            => propia * (100 + Math.Max(1, nivelDelInvocador)) / 100 + bonus;
+
+        /// <summary>
+        /// A summon's power: three fifths of the grade's bonus damage.
+        /// </summary>
+        /// <remarks>
+        /// The Osamodas' animals, on the same sheets: 50 of air damage make 30 of power (the Tofu
+        /// 8070), 75 make 45 (8071), 100 make 60 (8078) -- the twelve of them alike. The
+        /// Aniripsa's flask (7371, 100 of earth damage) shows none in its one capture, of another
+        /// player: it goes by what the animals say.
+        /// </remarks>
+        public static int PotenciaDelInvocado(int bonusDeDanos) => bonusDeDanos * 3 / 5;
+
         // ─── Cuánto vive ────────────────────────────────────────────────────────
         //
         // Nothing here any more: how long a summon lives is the DELAY of the 141 its own spell
@@ -169,9 +212,17 @@ namespace Jondo.Unity.Server.Managers
                 // globo pintaba 0/0, no entraba en el orden de turnos, no salía en el carrusel, no
                 // ocupaba casilla —se podía andar a través de él— y no hacía nada.
                 int vidaFija = Math.Max(0, Entero(gr, "lifePoints"));
-                int bonusVida = 0;
+                int bonusVida = 0, bonusFuerza = 0, bonusInteligencia = 0, bonusSuerte = 0, bonusAgilidad = 0, bonusDanos = 0;
                 if (gr.TryGetProperty("bonusCharacteristics", out var bonus))
+                {
                     bonusVida = Entero(bonus, "lifePoints");
+                    bonusFuerza = Entero(bonus, "strength");
+                    bonusInteligencia = Entero(bonus, "intelligence");
+                    bonusSuerte = Entero(bonus, "chance");
+                    bonusAgilidad = Entero(bonus, "agility");
+                    bonusDanos = Math.Max(Math.Max(Entero(bonus, "bonusEarthDamage"), Entero(bonus, "bonusFireDamage")),
+                                          Math.Max(Entero(bonus, "bonusWaterDamage"), Entero(bonus, "bonusAirDamage")));
+                }
 
                 // El hechizo con el que se porta: el startingSpellId es un SpellLevels.Id.
                 int nivelDelHechizo = Entero(gr, "startingSpellId");
@@ -199,6 +250,15 @@ namespace Jondo.Unity.Server.Managers
                     ResistenciaFuego = Entero(gr, "fireResistance"),
                     ResistenciaAgua = Entero(gr, "waterResistance"),
                     ResistenciaAire = Entero(gr, "airResistance"),
+                    Fuerza = Math.Max(0, Entero(gr, "strength")),
+                    Inteligencia = Math.Max(0, Entero(gr, "intelligence")),
+                    Suerte = Math.Max(0, Entero(gr, "chance")),
+                    Agilidad = Math.Max(0, Entero(gr, "agility")),
+                    BonusFuerza = Math.Max(0, bonusFuerza),
+                    BonusInteligencia = Math.Max(0, bonusInteligencia),
+                    BonusSuerte = Math.Max(0, bonusSuerte),
+                    BonusAgilidad = Math.Max(0, bonusAgilidad),
+                    BonusDeDanos = Math.Max(0, bonusDanos),
                     HechizoPropio = hechizo,
                     GradoDelHechizoPropio = gradoDelHechizo,
                     Juega = juega,

@@ -537,13 +537,33 @@ namespace Jondo.Unity.Server.Network
         /// El f7 es lo que ordena el carrusel: no hay ninguna lista de iniciativa aparte, cada
         /// turno dice qué puesto ocupa el que lo juega.
         /// </summary>
-        public static byte[] BuildTurnStart(long fighterId, int deciseconds, int index, int round)
+        /// <param name="carried">The tenths he kept from his last turn (f4): see <see cref="SavedAfter"/>.</param>
+        public static byte[] BuildTurnStart(long fighterId, int deciseconds, int index, int round, int carried = 0)
             => Pb.New()
                 .Var(1, fighterId)
                 .Var(2, deciseconds)
+                .VarIfNotZero(4, carried)
                 .VarIfNotZero(7, index)
                 .VarIfNotZero(8, round)
                 .Build();
+
+        /// <summary>
+        /// What a character keeps of the turn he passes: half of what was left of it, and never so
+        /// much that his next turn, with it, goes beyond <see cref="MaxTurnDeciseconds"/>.
+        /// </summary>
+        /// <remarks>
+        /// Measured in "bastante pelea con hipermago", a turn of 360 after another: he passes with
+        /// 83 tenths left and the jyt keeps 41, the next jzc carries them in its f4; 401 to use,
+        /// 158 used, 121 kept; 481, 137, 172. Across the captures f2 + f4 never goes beyond 600 --
+        /// a turn of 370 carries 230 at most, one of 430 carries 170 -- and this server goes to
+        /// 900, a minute and a half, which is what its owner asked for. Passed by the clock,
+        /// nothing is left and nothing is kept.
+        /// </remarks>
+        public static int SavedAfter(int remainingDeciseconds, int baseDeciseconds)
+            => Math.Max(0, Math.Min(remainingDeciseconds / 2, MaxTurnDeciseconds - baseDeciseconds));
+
+        /// <summary>The longest a character's turn can be, carried time and all: a minute and a half.</summary>
+        public const int MaxTurnDeciseconds = 900;
 
         /// <summary>
         /// The same jzc for somebody who comes back in the middle of the turn: f6 is what is
@@ -551,10 +571,11 @@ namespace Jondo.Unity.Server.Network
         /// capture the turn of 350 had started 21.8 seconds before the burst and f6 says 132.
         /// That frame carries no f7, so neither does this one.
         /// </summary>
-        public static byte[] BuildTurnResumed(long fighterId, int deciseconds, int remaining, int round)
+        public static byte[] BuildTurnResumed(long fighterId, int deciseconds, int remaining, int round, int carried = 0)
             => Pb.New()
                 .Var(1, fighterId)
                 .Var(2, deciseconds)
+                .VarIfNotZero(4, carried)
                 .VarIfNotZero(6, remaining)
                 .VarIfNotZero(8, round)
                 .Build();

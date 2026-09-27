@@ -114,13 +114,39 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A JondoBot waiting for, or in, a fight.</summary>
         public static Spec? Of(long id) => _alive.TryGetValue(id, out var spec) ? spec : null;
 
-        /// <summary>A new JondoBot, of a class drawn at random (or the one given).</summary>
-        public static Spec Create(int breed = 0)
+        /// <summary>How many of the classes a player last faced are left out of his next draw.</summary>
+        public const int RecentClasses = 8;
+
+        /// <summary>The classes each player has faced last, newest last.</summary>
+        private static readonly ConcurrentDictionary<long, List<int>> _faced = new();
+
+        /// <summary>
+        /// A new JondoBot, of a class drawn at random (or the one given). Drawn for a player, it is
+        /// none of the last <see cref="RecentClasses"/> he faced: a fair draw among nineteen gave
+        /// the same player four Forjalanzas in nine fights, twice two in a row.
+        /// </summary>
+        public static Spec Create(int breed = 0, long against = 0)
         {
             var classes = SpellTable.ClassBreeds;
             if (breed == 0 || !classes.Contains(breed))
             {
-                lock (_dice) breed = classes.Count > 0 ? classes[_dice.Next(classes.Count)] : 8;
+                lock (_dice)
+                {
+                    var recent = against != 0 && _faced.TryGetValue(against, out var faced) ? faced : new List<int>();
+                    var fresh = classes.Where(c => !recent.Contains(c)).ToList();
+                    if (fresh.Count == 0) fresh = classes.ToList();
+                    breed = fresh.Count > 0 ? fresh[_dice.Next(fresh.Count)] : 8;
+                }
+            }
+            if (against != 0)
+            {
+                var faced = _faced.GetOrAdd(against, _ => new List<int>());
+                lock (faced)
+                {
+                    faced.Remove(breed);
+                    faced.Add(breed);
+                    if (faced.Count > RecentClasses) faced.RemoveAt(0);
+                }
             }
             var choices = new Dictionary<int, int>();
             int sex;

@@ -135,6 +135,12 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public bool IsBot { get; set; }
 
+        /// <summary>
+        /// The tenths of a second this fighter kept from the turn he passed, for his next one
+        /// (FightProtocol.SavedAfter). Only a character keeps any.
+        /// </summary>
+        public int SavedTurnTime { get; set; }
+
         /// <summary>A bot's sex, for its identity (a character reads it from his row).</summary>
         public int Sex { get; set; }
 

@@ -2386,7 +2386,7 @@ namespace Jondo.Unity.Server.Handlers
                 await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jzc,
                     Network.FightProtocol.BuildTurnResumed(announced.FighterId, announced.Deciseconds,
                                                            announced.RemainingDeciseconds(DateTime.UtcNow),
-                                                           announced.Round)));
+                                                           announced.Round, announced.Carried)));
             }
 
             if (fight.Reglas.HayRetos) await ChallengeHandler.SendFinalListAsync(stream, fight);
@@ -2858,11 +2858,14 @@ namespace Jondo.Unity.Server.Handlers
 
             // A los dos. Es lo que enciende el reloj del turno, y como salia solo por el socket de
             // quien confirmaba, el otro se quedaba con el combate empezado y sin cuenta atras.
+            // And what he kept of the turn he passed (FightProtocol.SavedAfter): in the f4, and on
+            // the clock.
+            int carried = KeepsTurnTime(fighter) ? fighter.SavedTurnTime : 0;
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzc,
                 Network.FightProtocol.BuildTurnStart(fighter.Id, duration,
-                                                     fight.CurrentTurnIndex, fight.RoundNumber)));
+                                                     fight.CurrentTurnIndex, fight.RoundNumber, carried)));
             fight.LastAnnouncedTurn = new FightInstance.AnnouncedTurn(
-                fighter.Id, fight.CurrentTurnIndex, fight.RoundNumber, duration, DateTime.UtcNow);
+                fighter.Id, fight.CurrentTurnIndex, fight.RoundNumber, duration, DateTime.UtcNow, carried);
 
             // The portals this turn brings back, right behind the jzc (FightPortals.cs).
             await PortalsAtTurnStartAsync(fight, fighter);
@@ -3146,7 +3149,7 @@ namespace Jondo.Unity.Server.Handlers
                              $"{duration} décimas, puesto {fight.CurrentTurnIndex}.");
 
             // Y el reloj, con la MISMA duración que se le acaba de decir al cliente.
-            ArrancarElReloj(stream, fight, fighter, duration);
+            ArrancarElReloj(stream, fight, fighter, duration + carried);
 
             // El monstruo juega solo: no hay nadie que pulse por él. And a summon with nothing
             // to play hands the turn on at once: what its own spell does at turn start has gone
@@ -4257,6 +4260,14 @@ namespace Jondo.Unity.Server.Handlers
             invocado.Otras[Fighter.CaracteristicaDeErosion] = Fighter.ErosionBase;
             invocado.MaxHP = Managers.Summons.VidaDelInvocado(receta.Vida, quienInvoca.Level,
                                                               receta.VidaFija);
+
+            // And its characteristics, which it went without: every summon hit with its spells'
+            // bare dice. See Summons.CaracteristicaDelInvocado.
+            invocado.Strength = Managers.Summons.CaracteristicaDelInvocado(receta.Fuerza, receta.BonusFuerza, quienInvoca.Level);
+            invocado.Intelligence = Managers.Summons.CaracteristicaDelInvocado(receta.Inteligencia, receta.BonusInteligencia, quienInvoca.Level);
+            invocado.Chance = Managers.Summons.CaracteristicaDelInvocado(receta.Suerte, receta.BonusSuerte, quienInvoca.Level);
+            invocado.Agility = Managers.Summons.CaracteristicaDelInvocado(receta.Agilidad, receta.BonusAgilidad, quienInvoca.Level);
+            invocado.Power = Managers.Summons.PotenciaDelInvocado(receta.BonusDeDanos);
             invocado.CurrentHP = invocado.MaxHP;
 
             // ¿Le toca turno? Sólo si su hechizo tiene algo que hacer al empezarlo. La Baliza de
@@ -7595,7 +7606,7 @@ namespace Jondo.Unity.Server.Handlers
         /// No es que dejen de contar para el final del combate: es que desaparecen. Una baliza no
         /// sobrevive a su Ocra ni llega a jugar el turno que tuviera pendiente.
         /// </summary>
-        private static async Task CaenSusInvocadosAsync(NetworkStream stream, FightInstance fight,
+        internal static async Task CaenSusInvocadosAsync(NetworkStream stream, FightInstance fight,
                                                         Fighter muerto)
         {
             if (muerto != null && !fight.Muertos.Contains(muerto)) fight.Muertos.Add(muerto);
@@ -7603,7 +7614,13 @@ namespace Jondo.Unity.Server.Handlers
             // A monster's doing goes with it: its rows on everybody, the states only they held and
             // the rows it armed. A Pépite's mark on Crunchidor, an Éclat's invulnerability on its
             // escort, a Malamibe's lock on the next one stayed after they died.
-            if (muerto != null && EsDelBandoDeLosMonstruos(fight, muerto))
+            // And a summon's, whoever's it is. A Tymador's bomb puts "+1 AP to Explobomba" on its
+            // owner as it comes out (Encendimiento, duration -1), and the real server takes it off
+            // when the bomb dies: "explobomba-...-explotandolas", frames 3799-3819, each bomb's
+            // death (jwe 103) and then a jya of its row on the Tymador, 15, 18 and 12. Kept, every
+            // bomb of the fight went on raising the cost, and by the third turn a second bomb could
+            // not be paid for.
+            if (muerto != null && (EsDelBandoDeLosMonstruos(fight, muerto) || muerto.EsInvocado))
             {
                 foreach (var otro in TodosLosCombatientes(fight).ToList())
                 {
@@ -8834,6 +8851,13 @@ namespace Jondo.Unity.Server.Handlers
         ///   jto / jxc / jwi   el bloque de cierre
         ///   jxh   y a por el siguiente
         /// </summary>
+        /// <summary>
+        /// Whether a fighter keeps what he leaves of his turns: a character does. In the captures
+        /// only a character's jyt carries an f1; monsters, summons and a JondoBot play theirs at once.
+        /// </summary>
+        internal static bool KeepsTurnTime(Fighter fighter)
+            => fighter != null && !fighter.IsMonster && !fighter.EsInvocado && !fighter.IsBot;
+
         public static async Task PassTurnAsync(NetworkStream stream)
         {
             var fight = GetCurrentFight();
@@ -8852,8 +8876,14 @@ namespace Jondo.Unity.Server.Handlers
             // and the Tymobot's own death -- its passive's 141 on the TE trigger -- went out
             // before the turn had ended and outside any sequence, and the client left it standing
             // on the board. Measured: "jyt -12" first, then "jto{-12,3} jwe 300 … jwe 103 … jwi".
+            // What he keeps of it for his next turn: half of what is left, in the jyt's f1.
+            var announced = fight.LastAnnouncedTurn;
+            int saved = KeepsTurnTime(ending) && announced.FighterId == ending.Id && announced.Round == fight.RoundNumber
+                ? Network.FightProtocol.SavedAfter(announced.RemainingDeciseconds(DateTime.UtcNow), announced.Deciseconds)
+                : 0;
+            ending.SavedTurnTime = saved;
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jyt,
-                Network.FightProtocol.BuildTurnEnd(ending.Id)));
+                Network.FightProtocol.BuildTurnEnd(ending.Id, saved)));
 
             // Lo que las actitudes tengan que hacer al acabar el turno. Aquí es donde el Amarillo
             // Ocre se quita el estado de "me han pegado", para que el turno siguiente vuelva a

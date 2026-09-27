@@ -586,7 +586,7 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static async Task StartJondoBotAsync(GameSession human)
         {
-            var bot = KoliseoBots.Create();
+            var bot = KoliseoBots.Create(against: human.State.CharacterId);
             var oferta = KoliseoOffers.Open(JondoBotMode, 1, new List<long> { human.State.CharacterId },
                                             new List<long> { bot.Id });
             KoliseoOffers.Accept(oferta, bot.Id);
