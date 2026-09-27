@@ -652,7 +652,8 @@ Player against player, on the map, by challenging somebody standing there.
 
 Ranked PvP through a queue. Open the window, pick a format, get matched, fight, get paid.
 
-- ✅ The format table (`lux` → `ltd`) — 1v1, 2v2, 3v3 open and a fourth closed
+- ✅ The format table (`lux` → `ltd`) — 1v1, 2v2, 3v3 and a fourth card, **1v1 against a megabot**
+- ✅ **Megabots**, on the Koliseo window's own fourth card (the client's "event" card, open and made a 1v1): enrol and a megabot is drawn at once — a random class, level 200, 12 AP, 6 MP, 1500 in every element, 6666 life, +6 range, 30 % critical, 20 % resistance everywhere, one variant of each spell pair at random at its level-200 grade, and its class's passive. Shown as a character of its class, played by the server's tactics, which weigh every spell against every target and cell; its summons play themselves too. The 1v1's own flow: *searching*, the match-found popup, accept or the sanction for letting it run out. It pays as a Koliseo and does not touch the ladder; the normal modes never meet a bot
 - ✅ Enrolling (`lsm`), with the format carried as the client's own enum
 - ✅ The queue state (`lsx`) pushed back, which paints *searching* in the window
 - ✅ Matchmaking by rating: the oldest in the queue is served first, the closest ratings are taken, and the two sides are split so their average ratings are as even as can be. The rating window starts at 150 points and widens 10 a second of waiting; the queue is looked at again every 5 seconds
@@ -1777,7 +1778,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,853 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,856 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 

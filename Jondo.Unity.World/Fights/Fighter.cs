@@ -129,6 +129,18 @@ namespace Jondo.Unity.World.Fights
         public bool IsAlive => CurrentHP > 0;
         public bool IsReady { get; set; }
 
+        /// <summary>
+        /// A Koliseo megabot: shown as a character of its class, played by the server's tactics.
+        /// It has no session and no row in Characters, so its look and sex travel here.
+        /// </summary>
+        public bool IsBot { get; set; }
+
+        /// <summary>A bot's sex, for its identity (a character reads it from his row).</summary>
+        public int Sex { get; set; }
+
+        /// <summary>A bot's look, built once when it is made.</summary>
+        public byte[]? BotLook { get; set; }
+
         // Spells available to this fighter
         public List<int> SpellIds { get; set; } = new List<int>();
 

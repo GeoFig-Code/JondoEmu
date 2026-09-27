@@ -93,8 +93,9 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void Las_tres_modalidades_estan_abiertas()
         {
-            // Lo que se pedía: 1 contra 1, 2 contra 2 y 3 contra 3.
-            Assert.Equal(3, KoliseoHandler.CountOpen());
+            // Lo que se pedía: 1 contra 1, 2 contra 2 y 3 contra 3; y la cuarta tarjeta, 1 contra 1
+            // contra un megabot.
+            Assert.Equal(4, KoliseoHandler.CountOpen());
 
             foreach (int equipos in new[] { 1, 2, 3 })
             {
@@ -106,14 +107,14 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void La_tabla_es_la_de_la_captura()
         {
-            // Byte por byte el ltd de «koliseo completo con invitacion-koli 2vs2». Las tres
-            // primeras abiertas y la cuarta cerrada, que es como llega: encenderla sería inventar
-            // una modalidad que nadie ha visto funcionar.
+            // Byte por byte el ltd de «koliseo completo con invitacion-koli 2vs2» en las tres
+            // primeras. La cuarta llega cerrada, un 3 contra 3; aquí es la tarjeta de los megabots,
+            // abierta y de 1 contra 1 (ver KoliseoBotTests).
             byte[] ltd = KoliseoHandler.BuildModes(KoliseoHandler.Modes);
 
-            Assert.Equal("0a0812040801200118010a0a080112040801200218010a0a0802120408012003" +
-                         "18010a06080312022003",
-                         Convert.ToHexString(ltd).ToLowerInvariant());
+            Assert.StartsWith("0a0812040801200118010a0a080112040801200218010a0a0802120408012003" +
+                              "18010a",
+                              Convert.ToHexString(ltd).ToLowerInvariant());
         }
 
         // ------------------------------------------------------ la preparación de cada cliente

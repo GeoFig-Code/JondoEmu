@@ -400,14 +400,17 @@ namespace Jondo.Unity.Server.Handlers
         public static async Task<bool> InitiatePvpAsync(IReadOnlyList<GameSession> blue,
                                                         IReadOnlyList<GameSession> red,
                                                         long mapId, int pvpId = 0,
-                                                        bool koliseo = false, int koliseoMode = -1)
+                                                        bool koliseo = false, int koliseoMode = -1,
+                                                        IReadOnlyList<Fighter>? blueBots = null,
+                                                        IReadOnlyList<Fighter>? redBots = null)
         {
-            if (blue.Count == 0 || red.Count == 0) return false;
+            // Koliseo megabots fill sides with no session behind them; somebody real still fights.
+            blueBots ??= Array.Empty<Fighter>();
+            redBots ??= Array.Empty<Fighter>();
+            if (blue.Count + blueBots.Count == 0 || red.Count + redBots.Count == 0) return false;
+            if (blue.Count + red.Count == 0) return false;
             foreach (var sesion in blue) if (sesion.State.CharacterId == 0) return false;
             foreach (var sesion in red) if (sesion.State.CharacterId == 0) return false;
-
-            var challenger = blue[0];
-            var target = red[0];
 
             // El combate se identifica con el id del DESAFIO, que es lo que hace la captura: el
             // 494 del hqc reaparece en el kam, en los dos kae y en el ilh.
@@ -418,7 +421,7 @@ namespace Jondo.Unity.Server.Handlers
             // rol. Se elige una al azar de las que tengan sitio para este tamano de equipo: las de
             // duelo son pequenas -37 de 85 con una sola casilla por bando- y meter ahi un tres
             // contra tres no cabe. Sin el fichero de arenas, al de siempre.
-            var arenaKoliseo = koliseo ? Managers.KoliseoMaps.PickFor(blue.Count) : null;
+            var arenaKoliseo = koliseo ? Managers.KoliseoMaps.PickFor(blue.Count + blueBots.Count) : null;
             long arenaMapId = arenaKoliseo?.MapId ?? MapManager.ResolveArenaMapId(mapId);
 
             var fight = new FightInstance(fightId, mapId, arenaMapId)
@@ -448,7 +451,7 @@ namespace Jondo.Unity.Server.Handlers
 
             // Contra quien se pelea, que es lo que nombra el kmu de la entrada. En un desafio es
             // una persona y no un grupo de bichos.
-            fight.DefenderLeaderId = target.State.CharacterId;
+            fight.DefenderLeaderId = red.Count > 0 ? red[0].State.CharacterId : redBots[0].Id;
 
             var todos = new List<(GameSession Sesion, bool Azul)>();
             foreach (var sesion in blue) todos.Add((sesion, true));
@@ -506,6 +509,10 @@ namespace Jondo.Unity.Server.Handlers
                 }
             }
 
+            // The megabots, after the people: placed like them, ready from the start.
+            foreach (var bot in blueBots) fight.AddPlayer(bot);
+            foreach (var bot in redBots) fight.AddOpponent(bot);
+
             _activeFights[fightId] = fight;
 
             // Y la entrada, a cada uno por su socket y desde su contexto: el primer frame nombra a
@@ -548,7 +555,8 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             Console.WriteLine($"[{(koliseo ? "Koliseo" : "PvP")}] Combate #{fightId} en el mapa " +
-                              $"{arenaMapId}: {blue.Count} contra {red.Count}.");
+                              $"{arenaMapId}: {blue.Count + blueBots.Count} contra {red.Count + redBots.Count}" +
+                              (blueBots.Count + redBots.Count > 0 ? $", {blueBots.Count + redBots.Count} megabot(s)." : "."));
             return true;
         }
 
@@ -562,16 +570,25 @@ namespace Jondo.Unity.Server.Handlers
         /// </remarks>
         private static byte[] BuildPlayerAppearance(FightInstance fight, Fighter fighter)
         {
+            var (look, breed, sex) = CharacterLookOf(fighter);
+            return Network.FightProtocol.BuildFighter(
+                fighter.CellId, FacingOf(fight, fighter), fighter.Id, PlacementSheetOf(fighter), look,
+                Network.FightProtocol.PlayerIdentity(breed, fighter.Name, sex, fighter.Level),
+                isMonster: false);
+        }
+
+        /// <summary>
+        /// A character fighter's look, class and sex: from his row, or -- a Koliseo megabot has
+        /// none -- from the fighter itself.
+        /// </summary>
+        private static (byte[] Look, int Breed, int Sex) CharacterLookOf(Fighter fighter)
+        {
+            if (fighter.IsBot) return (fighter.BotLook ?? Array.Empty<byte>(), fighter.Breed, fighter.Sex);
             var ficha = DatabaseManager.GetCharacterById(fighter.Id);
             byte[] look = ficha != null
                 ? Managers.BreedLookTable.BuildLook(ficha.Breed, ficha.Sex, ficha.HeadId, null, ficha.Id)
                 : Array.Empty<byte>();
-
-            return Network.FightProtocol.BuildFighter(
-                fighter.CellId, FacingOf(fight, fighter), fighter.Id, PlacementSheetOf(fighter), look,
-                Network.FightProtocol.PlayerIdentity(ficha?.Breed ?? 0, fighter.Name,
-                                                     ficha?.Sex ?? 0, fighter.Level),
-                isMonster: false);
+            return (look, ficha?.Breed ?? 0, ficha?.Sex ?? 0);
         }
 
         /// <summary>La ficha completa de un combatiente para el jxb, sea persona o bicho.</summary>
@@ -593,15 +610,10 @@ namespace Jondo.Unity.Server.Handlers
                     isMonster: true);
             }
 
-            var ficha = DatabaseManager.GetCharacterById(fighter.Id);
-            byte[] look = ficha != null
-                ? Managers.BreedLookTable.BuildLook(ficha.Breed, ficha.Sex, ficha.HeadId, null, ficha.Id)
-                : Array.Empty<byte>();
-
+            var (look, breed, sex) = CharacterLookOf(fighter);
             return Network.FightProtocol.FighterBlock(
                 fighter.CellId, FacingOf(fight, fighter), fighter.Id, FullSheetOf(fighter), look,
-                Network.FightProtocol.PlayerIdentity(ficha?.Breed ?? 0, fighter.Name,
-                                                    ficha?.Sex ?? 0, fighter.Level),
+                Network.FightProtocol.PlayerIdentity(breed, fighter.Name, sex, fighter.Level),
                 isMonster: false);
         }
 
@@ -1515,6 +1527,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             // A double (180) wears the look of the character it copies.
             if (fighter.IsMonster && fighter.DoubleOf == 0) return MonsterLook(fighter);
+            if (fighter.IsBot) return fighter.BotLook ?? Array.Empty<byte>();
 
             var character = DatabaseManager.GetCharacterById(fighter.DoubleOf != 0 ? fighter.DoubleOf : fighter.Id);
             return character != null
@@ -3134,9 +3147,12 @@ namespace Jondo.Unity.Server.Handlers
 
             // A monster's summon plays itself, as its summoner does: nobody's client plays it.
             // Handed on at once before, whatever it could do.
-            bool deUnMonstruo = fighter.EsInvocado && fight.Buscar(fighter.Invocador) is { IsMonster: true };
-            if (fighter.IsMonster && (!fighter.EsInvocado || fighter.PlaysOnItsOwn || deUnMonstruo))
+            var invocador = fighter.EsInvocado ? fight.Buscar(fighter.Invocador) : null;
+            bool deUnMonstruo = invocador is { IsMonster: true } || invocador is { IsBot: true };
+            if (fighter.IsBot || (fighter.IsMonster && (!fighter.EsInvocado || fighter.PlaysOnItsOwn || deUnMonstruo)))
             {
+                // A Koliseo megabot plays like a monster: nobody's client plays it, and neither
+                // its summons.
                 await MonsterTurnAsync(stream, fight, fighter);
             }
             else if (fighter.EsInvocado && owner != null)

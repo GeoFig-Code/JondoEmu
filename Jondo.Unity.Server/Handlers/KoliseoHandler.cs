@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Jondo.Unity.Protocol;
 using Jondo.Unity.Server.Managers;
 using Jondo.Unity.Server.Network;
+using Jondo.Unity.World.Fights;
 
 namespace Jondo.Unity.Server.Handlers
 {
@@ -69,8 +70,22 @@ namespace Jondo.Unity.Server.Handlers
             new Mode(0, 1, true, true),
             new Mode(1, 2, true, true),
             new Mode(2, 3, true, true),
-            new Mode(3, 3, false, false),
+            new Mode(MegabotMode, 1, true, false),
         };
+
+        /// <summary>
+        /// The fourth card of the Koliseo window: 1v1 against a megabot (<see cref="KoliseoBots"/>).
+        /// </summary>
+        /// <remarks>
+        /// The client's window has a fourth card besides 1v1, 2v2 and 3v3, its "event" one
+        /// (ctr_pvpEventLeagueInfo, UpdateEventMode): the entry of the ltd whose settings are
+        /// not the default ones (no f1 in its lsz). It shows when that mode is open and its
+        /// texts are the client's own. Measured closed, as a 3v3, in the capture; here it is open,
+        /// a 1v1, and every enrolment in it is a fight against a megabot at once -- the 1v1's own
+        /// "searching", its match-found popup, its accept, its sanction for letting it run out.
+        /// It pays as a Koliseo and leaves the ladder alone.
+        /// </remarks>
+        public const int MegabotMode = 3;
 
         /// <summary>El cliente pide la tabla (lux). Se le contesta con el ltd.</summary>
         /// <remarks>
@@ -147,6 +162,19 @@ namespace Jondo.Unity.Server.Handlers
 
             var grupo = Parties.Of(yo);
             var quienes = grupo != null ? Parties.MembersOf(grupo) : new List<long> { yo };
+
+            // The megabot card: each of them against a megabot of his own, now.
+            if (indice == MegabotMode)
+            {
+                foreach (long miembro in quienes)
+                {
+                    var suya = SessionRegistry.FindByCharacter(miembro);
+                    if (suya == null || !suya.IsInWorld || KoliseoOffers.Of(miembro) != null) continue;
+                    if (suya.State.IsInFight || KoliseoQueue.Waits(miembro)) continue;
+                    await StartMegabotAsync(suya);
+                }
+                return;
+            }
 
             // A party that fits one side waits, and fights, as one unit; one that does not (three
             // enrolling for 1v1) goes in one by one.
@@ -247,6 +275,11 @@ namespace Jondo.Unity.Server.Handlers
 
             foreach (long quien in oferta.Everybody)
             {
+                if (KoliseoBots.IsBot(quien))
+                {
+                    KoliseoBots.Forget(quien);
+                    continue;
+                }
                 var sesion = SessionRegistry.FindByCharacter(quien);
 
                 if (castigados.Contains(quien))
@@ -258,7 +291,7 @@ namespace Jondo.Unity.Server.Handlers
                             BuildSanction(new DateTimeOffset(hasta).ToUnixTimeSeconds())));
                     }
                 }
-                else
+                else if (oferta.Mode != MegabotMode)
                 {
                     // El que si dijo que si no pierde el sitio por culpa de otro.
                     KoliseoQueue.Enrol(quien, oferta.Mode);
@@ -274,7 +307,7 @@ namespace Jondo.Unity.Server.Handlers
 
             // Los que se quedaron pueden emparejarse con otros que estuvieran esperando.
             var modo = FindMode(oferta.Mode);
-            if (modo != null) await TryMatchAsync(oferta.Mode, modo.Value.TeamSize);
+            if (modo != null && oferta.Mode != MegabotMode) await TryMatchAsync(oferta.Mode, modo.Value.TeamSize);
         }
 
         /// <summary>Todos han dicho que si: se monta el combate.</summary>
@@ -282,19 +315,13 @@ namespace Jondo.Unity.Server.Handlers
         {
             var azul = new List<GameSession>();
             var rojo = new List<GameSession>();
+            var azulBots = new List<Fighter>();
+            var rojoBots = new List<Fighter>();
 
-            foreach (long id in oferta.Blue)
-            {
-                var sesion = SessionRegistry.FindByCharacter(id);
-                if (sesion != null && sesion.IsInWorld) azul.Add(sesion);
-            }
-            foreach (long id in oferta.Red)
-            {
-                var sesion = SessionRegistry.FindByCharacter(id);
-                if (sesion != null && sesion.IsInWorld) rojo.Add(sesion);
-            }
+            foreach (long id in oferta.Blue) Juntar(id, azul, azulBots);
+            foreach (long id in oferta.Red) Juntar(id, rojo, rojoBots);
 
-            if (azul.Count != oferta.TeamSize || rojo.Count != oferta.TeamSize)
+            if (azul.Count + azulBots.Count != oferta.TeamSize || rojo.Count + rojoBots.Count != oferta.TeamSize)
             {
                 Console.WriteLine("[Koliseo] Alguien se fue entre aceptar y empezar; se deshace.");
                 await DeshacerAsync(oferta, new List<long>(), yaCerrada: true);
@@ -303,7 +330,23 @@ namespace Jondo.Unity.Server.Handlers
 
             Console.WriteLine($"[Koliseo] Todos aceptan: partida de {oferta.TeamSize} contra " +
                               $"{oferta.TeamSize}.");
-            await FightHandler.InitiatePvpAsync(azul, rojo, azul[0].MapId, koliseo: true, koliseoMode: oferta.Mode);
+            long mapa = azul.Count > 0 ? azul[0].MapId : rojo[0].MapId;
+            await FightHandler.InitiatePvpAsync(azul, rojo, mapa, koliseo: true, koliseoMode: oferta.Mode,
+                                                blueBots: azulBots, redBots: rojoBots);
+        }
+
+        /// <summary>One of an offer's fighters: his session, or the megabot built for the fight.</summary>
+        private static void Juntar(long id, List<GameSession> sesiones, List<Fighter> bots)
+        {
+            if (KoliseoBots.IsBot(id))
+            {
+                var spec = KoliseoBots.Of(id);
+                if (spec != null) bots.Add(KoliseoBots.BuildFighter(spec));
+                KoliseoBots.Forget(id);
+                return;
+            }
+            var sesion = SessionRegistry.FindByCharacter(id);
+            if (sesion != null && sesion.IsInWorld) sesiones.Add(sesion);
         }
 
         /// <summary>Escribe a una sesion sin que un socket caido se lleve por delante a los demas.</summary>
@@ -432,7 +475,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             foreach (var modo in Modes)
             {
-                if (!modo.Open || KoliseoQueue.CountIn(modo.Index) < modo.TeamSize * 2) continue;
+                if (!modo.Open || modo.Index == MegabotMode || KoliseoQueue.CountIn(modo.Index) < modo.TeamSize * 2) continue;
                 int before;
                 do
                 {
@@ -484,6 +527,31 @@ namespace Jondo.Unity.Server.Handlers
                     .VarIfNotZero(10, s.DayFights));
             }
             return lty.Build();
+        }
+
+        private static string IsoDate(DateTime utc)
+            => DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'",
+                                                                      System.Globalization.CultureInfo.InvariantCulture);
+
+        // ─── The megabots ───────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Enrolled on the megabot card: a megabot drawn for him and the 1v1's match-found popup,
+        /// the megabot's yes already given. What follows is the Koliseo's own: his accept starts
+        /// the fight (<see cref="EmpezarAsync"/>), his no or the clock undoes it.
+        /// </summary>
+        private static async Task StartMegabotAsync(GameSession human)
+        {
+            var bot = KoliseoBots.Create();
+            var oferta = KoliseoOffers.Open(MegabotMode, 1, new List<long> { human.State.CharacterId },
+                                            new List<long> { bot.Id });
+            KoliseoOffers.Accept(oferta, bot.Id);
+
+            await Escribir(human, ConnectionProtocol.Push(Op.Lsx, BuildQueueState(MegabotMode, true)));
+            await Escribir(human, ConnectionProtocol.Push(Op.Lsh, BuildOffer(KoliseoOffers.Segundos)));
+            Console.WriteLine($"[Koliseo] {human.State.CharacterId} against {bot.Name} (level {KoliseoBots.Level}): " +
+                              $"{KoliseoOffers.Segundos} s to accept.");
+            _ = VencerAsync(oferta);
         }
 
         private static Mode? FindMode(int index)
@@ -566,8 +634,16 @@ namespace Jondo.Unity.Server.Handlers
 
             foreach (var modo in modes)
             {
+                // lsz { f1: default mode, f2: start, f3: end, f4: team size }, as the client's
+                // ArenaStateModeWrapper reads it. The event one runs for the season.
                 var dentro = Pb.New();
                 if (modo.Inner) dentro.Var(1, 1);
+                if (!modo.Inner && modo.Open)
+                {
+                    var season = KoliseoLadder.Current();
+                    dentro.Str(2, IsoDate(season.StartUtc));
+                    dentro.Str(3, IsoDate(season.StartUtc + KoliseoLadder.SeasonLength));
+                }
                 dentro.Var(4, modo.TeamSize);
 
                 var entrada = Pb.New();
