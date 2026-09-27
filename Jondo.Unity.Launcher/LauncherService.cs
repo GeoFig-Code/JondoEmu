@@ -388,6 +388,9 @@ namespace Jondo.Unity.Launcher
 
                 string arguments = ClientArguments(area.Width, area.Height, instanceId, hash, language, packFlags);
 
+                // The client's mod, as the emulator ships it.
+                InstallMod(clientPath);
+
                 var startInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = clientPath,
@@ -465,6 +468,48 @@ namespace Jondo.Unity.Launcher
 
             // Same place as in Ankama's zaap.yml: after the connection arguments, with no value.
             return packFlags.Length > 0 ? arguments + " " + packFlags : arguments;
+        }
+
+        /// <summary>
+        /// The emulator's JondoFix into the client's Mods, when it differs from the one there.
+        /// </summary>
+        /// <remarks>
+        /// What the mod changes in the client -- the Koliseo window with the JondoBots' card, among
+        /// the rest -- comes with the emulator, not with a new client: whoever has a client with
+        /// MelonLoader gets it at the next launch. A client without MelonLoader is left alone. A
+        /// client already open holds the file; it is then updated at the next launch.
+        /// </remarks>
+        internal static void InstallMod(string clientPath)
+        {
+            try
+            {
+                string shipped = Path.Combine(Paths.Root, "JondoFix", "JondoFix.dll");
+                string clientDir = Path.GetDirectoryName(clientPath) ?? "";
+                if (!File.Exists(shipped) || !Directory.Exists(Path.Combine(clientDir, "MelonLoader"))) return;
+
+                string mods = Path.Combine(clientDir, "Mods");
+                string installed = Path.Combine(mods, "JondoFix.dll");
+                if (File.Exists(installed) && SameContent(installed, shipped)) return;
+
+                Directory.CreateDirectory(mods);
+                File.Copy(shipped, installed, overwrite: true);
+                Console.WriteLine($"[Launcher] JondoFix updated in {mods}.");
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                Console.WriteLine($"[Launcher] JondoFix could not be updated now (is a client open?): {ex.Message}");
+            }
+        }
+
+        internal static bool SameContent(string a, string b)
+        {
+            var infoA = new FileInfo(a);
+            var infoB = new FileInfo(b);
+            if (infoA.Length != infoB.Length) return false;
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            using var streamA = File.OpenRead(a);
+            using var streamB = File.OpenRead(b);
+            return sha.ComputeHash(streamA).AsSpan().SequenceEqual(sha.ComputeHash(streamB));
         }
 
         /// <summary>

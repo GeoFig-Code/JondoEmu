@@ -62,7 +62,7 @@ The official client talks to Ankama's servers and checks their SSL certificates.
 
 1. Get **MelonLoader 0.7.x** from [its releases page](https://github.com/LavaGang/MelonLoader/releases). 0.7.x is published as *Open-Beta*, so it shows up as a **pre-release** and the page's "Latest" tag points at 0.6.x. **0.6.x does not work with this client** — tick *show pre-releases* and take 0.7.x. This repository is tested against **0.7.3**.
 2. Run the installer and point it at your **`Dofus.exe`**. MelonLoader detects the rest (`Game Type: Il2cpp`, `Game Arch: x64`, `Runtime Type: net6`, Unity `6000.3.16f1`).
-3. Copy **`JondoFix/JondoFix.dll`** from this repository into the **`Mods/`** folder of your Dofus installation, next to `Dofus.exe`. MelonLoader creates that folder the first time the game starts; if it is not there yet, create it yourself.
+3. Nothing to copy: every time the **launcher** starts the client it puts this repository's **`JondoFix/JondoFix.dll`** into the client's **`Mods/`** folder if the one there differs, so a client with MelonLoader gets the mod's changes with the emulator, never with a new client. Only if you start the client some other way, copy that file into `Mods/` yourself (next to `Dofus.exe`; create the folder if it is not there).
 
 > The mod ships **already compiled**; `JondoFix/` also carries its source.
 
@@ -70,7 +70,7 @@ Afterwards:
 * The installer drops a **`version.dll`** next to `Dofus.exe`, which loads MelonLoader. Renaming it to `version.dll.disabled` turns the whole thing off so you can play the official game; renaming it back turns it on again.
 * MelonLoader writes a log per run under **`MelonLoader/Logs/`**. If the client starts but never reaches the emulator, look there first.
 
-What JondoFix does: intercepts sockets, Named Pipes and DNS queries and sends them to `localhost` (ports `8888`, `5555`, `15881`, `6337`); stops HTTPS requests from failing against the local self-signed certificate; and injects the environment variables the client expects (`ZAAP_PORT`, `ZAAP_HASH`, and so on).
+What JondoFix does: intercepts sockets, Named Pipes and DNS queries and sends them to `localhost` (ports `8888`, `5555`, `15881`, `6337`); stops HTTPS requests from failing against the local self-signed certificate; and injects the environment variables the client expects (`ZAAP_PORT`, `ZAAP_HASH`, and so on). In the Koliseo window it makes room for the fourth card, names it after the JondoBots in the client's language and opens their rules in a window of the client's own (see [Koliseo](#%EF%B8%8F-koliseo)).
 
 ### Step 4 — Run it
 
@@ -663,6 +663,7 @@ Ranked PvP through a queue. Open the window, pick a format, get matched, fight, 
 
 - ✅ The format table (`lux` → `ltd`) — 1v1, 2v2, 3v3 and a fourth card, **1v1 against a JondoBot**
 - ✅ **JondoBots**, on the Koliseo window's own fourth card (the client's "event" card, open and made a 1v1): enrol and a JondoBot is drawn at once — a random class, none of the last eight that player faced, level 200, 12 AP, 6 MP, 1500 in every element, 6666 life, +6 range, 30 % critical (rolled on every cast, as a player's), 20 % resistance everywhere, +3 summons, one variant of each spell pair at random at its level-200 grade, and its class's passive. Shown as a character of its class wearing the look of one of the notable NPCs of that class (placed in the world, with dialogue, dressed) when it has any, played by the server's tactics; its summons play themselves too The 1v1's own flow: *searching*, the match-found popup, accept or the sanction for letting it run out. It pays as a Koliseo and does not touch the ladder; the normal modes never meet a bot
+- ✅ The Koliseo window, through JondoFix: with four cards shown it is widened from 1,328 to 1,760 so each keeps the 416 it is laid out for (read off the client's own UXML), and kept centred; the fourth card is called *JondoBots Mortales* / *JondoBots of Doom* (and in French, Portuguese and German) with its one-line description, in the language the launcher starts the client in; its *view the rules* button, which asked for a guide article this client lacks and showed the Abono's, opens the JondoBots' rules in a WindowFigma — the client's own window, frame, title bar and close button
 - ✅ **The JondoBots' tactics read their spells as the fight will apply them**, row by row: which cells each row covers (lines, crosses, circles) from where the bot would stand, whom it touches there by the engine's own reading of its mask — sides, a template such as the Forjalanza's lance, states, class — and what it does to each: the blows summed per enemy (a kill and a weak enemy worth more), heals to a wounded ally, each point of a characteristic by what it is (an AP is a spell, a hundred of an element a few percent of every blow; points taken only up to the ones the enemy has), a summon once, toward the enemy and only within the fight's summon limit, and the sub-spells a row casts, followed. Poisons and hooks count a little less. A buff that raises the coming blow goes first when it is worth half of it; a ranged bot ends its turn out of the enemy's sight and not stuck to him; defence is worth twice as much under half the life. What it replaced read every positive number of a spell as a buff — every state became five thousand points — and threw the Forjalanza's lance on the cells next to it, behind itself on its first turn
 - ✅ Enrolling (`lsm`), with the format carried as the client's own enum
 - ✅ The queue state (`lsx`) pushed back, which paints *searching* in the window
@@ -1792,7 +1793,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,898 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,900 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 
