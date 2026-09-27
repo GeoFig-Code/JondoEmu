@@ -19,6 +19,7 @@ namespace Jondo.Unity.Tests.Combat
     /// Lo que más importa fijar aquí es que aceptar y rechazar NO son dos opcodes distintos: los
     /// separa un solo campo del hpu, y confundirlos haría que rechazar montase el combate.
     /// </remarks>
+    [Collection("koliseo")]
     public class PvpTests
     {
         public PvpTests()

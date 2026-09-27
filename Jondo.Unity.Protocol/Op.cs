@@ -188,7 +188,11 @@ public static class Op
     /// </remarks>
     public const string Lsh = "lsh";
 
-    /// <summary>Acompana al lte de la vuelta del koliseo. 151 bytes, sin descifrar.</summary>
+    /// <summary>
+    /// Server to client: the Koliseo ladder, { f2: season start, f3 (repeated): per mode { f1: mode,
+    /// f3: league, f4: placement fights left, f5/f6: season wins/fights, f7: day wins, f8 { f1:
+    /// best league }, f10: day fights } }. At world entry and after the lte of a Koliseo's end.
+    /// </summary>
     public const string Lty = "lty";
 
     /// <summary>Acompana al lte de la vuelta del koliseo. Viaja vacio, en la raiz f3.</summary>

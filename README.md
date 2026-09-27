@@ -655,14 +655,18 @@ Ranked PvP through a queue. Open the window, pick a format, get matched, fight, 
 - ✅ The format table (`lux` → `ltd`) — 1v1, 2v2, 3v3 open and a fourth closed
 - ✅ Enrolling (`lsm`), with the format carried as the client's own enum
 - ✅ The queue state (`lsx`) pushed back, which paints *searching* in the window
-- ✅ Matchmaking on enrolment, one queue per format, drawn under a lock
+- ✅ Matchmaking by rating: the oldest in the queue is served first, the closest ratings are taken, and the two sides are split so their average ratings are as even as can be. The rating window starts at 150 points and widens 10 a second of waiting; the queue is looked at again every 5 seconds
+- ✅ Levels kept apart: nobody faces, or fights beside, someone more than 20 levels away — however long the wait — unless both are placed and within 100 rating points, the ladder saying they are even. A party enrolled together is one unit: never split, always one side, exempt from its own gaps
 - ✅ Everybody re-checked as still connected before anyone loses their place in the queue
 - ✅ The fight itself, with the Koliseo rulebook, and both sides returned to roleplay at the end
 - ✅ The winner is paid — kamas, Kolichas (item 12736), Vitorichas (34478) and experience. The loser gets nothing
 - 🟡 The amounts are constants, not a formula; experience is 6.67% of the winner's level band
 - 🚧 The *match found* popup with accept and refuse
 - 🚧 Fights are held on an ordinary arena; the real game picks one of the Koliseo maps at random
-- ❌ Rankings (`iqt`, `irc`)
+- ✅ The ladder of the current game (the December 2023 rework): one hidden rating per mode, and the league it sets — the client's **26 leagues**, Bronze, Silver, Gold, Platinum and Diamond in five divisions each, and Legend, straight from its `ArenaLeaguesDataRoot`. Each division overlaps the next by 50 points, the official "buffer": a player keeps his division while his rating stays inside it, and goes up or down when it leaves it
+- ✅ Five placement fights per mode before the first league, as the captures show; wins and fights of the season and of the day; the season's best league. All of it in the Koliseo window through `lty`, at world entry and after each fight — the world entry's byte for byte for an unplaced character
+- 🟡 Inferred, the official figures being qualitative: the rating moves on the Elo curve, 45 points for an even fight (K = 90, twice that in placement), so that 3–4 wins change a division as Ankama says; the starting rating is five a level (1000 at 200); a season lasts 91 days and starts everything again. Levels gained outside the Koliseo and a change of class do not move the rating; the season's ornament and title are not given
+- ❌ The Legend ranking lists (`iqt`, `irc`)
 - ❌ The `lst` redirect to a separate Koliseo server. Jondo is one server and holds the fight in place
 
 ### ✨ Spell effect engine
@@ -1773,7 +1777,7 @@ The full plan is in **`docs/world-editor.md`**.
 
 ## 🧪 Tests
 
-`Jondo.Unity.Tests` — **1,842 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
+`Jondo.Unity.Tests` — **1,853 xUnit tests**, grouped by domain: `Auth`, `Combat`, `Commands`,
 `Content`, `Diagnostics`, `Economy`, `Launcher`, `Movement`, `Network`, `Protocol`, `Quests`,
 `Security`, `Sessions`, `Sprites`, `Studio`, `World`. They run in about half a minute.
 

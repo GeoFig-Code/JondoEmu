@@ -159,6 +159,9 @@ namespace Jondo.Unity.World.Fights
         public List<Fighter> Azul { get; } = new List<Fighter>();
         public List<Fighter> Rojo { get; } = new List<Fighter>();
 
+        /// <summary>The Koliseo mode this fight was matched in, for the ladder; -1 for none.</summary>
+        public int KoliseoMode { get; set; } = -1;
+
         public List<int> BluePlacementCells { get; } = new List<int>();
         public List<int> RedPlacementCells { get; } = new List<int>();
 

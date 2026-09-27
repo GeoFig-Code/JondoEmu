@@ -400,7 +400,7 @@ namespace Jondo.Unity.Server.Handlers
         public static async Task<bool> InitiatePvpAsync(IReadOnlyList<GameSession> blue,
                                                         IReadOnlyList<GameSession> red,
                                                         long mapId, int pvpId = 0,
-                                                        bool koliseo = false)
+                                                        bool koliseo = false, int koliseoMode = -1)
         {
             if (blue.Count == 0 || red.Count == 0) return false;
             foreach (var sesion in blue) if (sesion.State.CharacterId == 0) return false;
@@ -424,6 +424,7 @@ namespace Jondo.Unity.Server.Handlers
             var fight = new FightInstance(fightId, mapId, arenaMapId)
             {
                 Reglas = koliseo ? FightRules.Koliseo : FightRules.Desafio,
+                KoliseoMode = koliseo ? koliseoMode : -1,
             };
 
             if (arenaKoliseo != null)
@@ -8131,6 +8132,7 @@ namespace Jondo.Unity.Server.Handlers
 
             var gente = Publico(fight);
             PlanRewards(fight);
+            RecordLadder(fight);
             await ACadaUnoAsync(fight, sesion =>
             {
                 return TerminarParaUnoAsync(sesion.Stream, fight,

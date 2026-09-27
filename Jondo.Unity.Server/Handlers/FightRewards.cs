@@ -159,6 +159,27 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
+        /// A Koliseo fight is over: the ladder moves every player of both sides (see
+        /// <see cref="KoliseoLadder"/>). Summons and illusions are nobody's rating.
+        /// </summary>
+        private static void RecordLadder(FightInstance fight)
+        {
+            if (!fight.Reglas.PagaElKoliseo || fight.KoliseoMode < 0) return;
+            var players = fight.Azul.Concat(fight.Rojo)
+                               .Where(f => !f.IsMonster && !f.EsInvocado && !f.EsIlusion)
+                               .ToList();
+            var winners = players.Where(f => fight.HaGanado(f.Id)).Select(f => (f.Id, f.Level)).ToList();
+            var losers = players.Where(f => !fight.HaGanado(f.Id)).Select(f => (f.Id, f.Level)).ToList();
+            var after = KoliseoLadder.Record(fight.KoliseoMode, winners, losers);
+            if (after.Count > 0)
+            {
+                Program.LogDebug($"[Koliseo] Ladder after #{fight.FightId}, mode {fight.KoliseoMode}: " +
+                                 string.Join(", ", after.Select(s => $"{s.CharacterId} {s.Rating} " +
+                                     (s.Placed ? $"league {s.League}" : $"{s.PlacementLeft} placement left"))));
+            }
+        }
+
+        /// <summary>
         /// What a dream's fight drops for one of its winners: the dream's loot at the room's loot
         /// bonus (<see cref="Dreams.LootOf"/>), the Jondo coin every monster pays on this server,
         /// and, when the fight finished the dream, the dream fragments of its waves.

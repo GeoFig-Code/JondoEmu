@@ -218,6 +218,16 @@ namespace Jondo.Unity.Server
                 _ => { try { Network.ClientLaunchRegistry.SoltarLosCaducados(TimeSpan.FromMinutes(5)); } catch { } },
                 null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
 
+            // The Koliseo's queues, looked at again every few seconds: the rating window widens
+            // with the wait, so a match that was not possible at enrolment may be now.
+            var koliseo = new System.Threading.Timer(
+                _ =>
+                {
+                    try { Handlers.KoliseoHandler.TickAsync().GetAwaiter().GetResult(); }
+                    catch (Exception ex) { Console.WriteLine($"[Koliseo] The queue tick failed: {ex.Message}"); }
+                },
+                null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+
             // Y su ventana: el registro y las cifras. Si no se pudiera abrir —sin escritorio, por
             // ejemplo— el servidor sigue funcionando igual: la ventana es para mirar, no para que
             // las cosas pasen.
@@ -230,6 +240,7 @@ namespace Jondo.Unity.Server
 
             await _shutdown.Task;
             await barrendero.DisposeAsync();
+            await koliseo.DisposeAsync();
 
             StopServices();
 

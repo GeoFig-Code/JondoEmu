@@ -298,7 +298,7 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Lte)))
                 {
-                    await KoliseoHandler.ReturnAsync(stream);
+                    await KoliseoHandler.ReturnAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Lux)))
                 {

@@ -439,6 +439,13 @@ namespace Jondo.Unity.Server.Network
                 return ConnectionProtocol.Push(Op.Irq, SendJobs(frame));
             }
 
+            // The Koliseo ladder: the captured one was the capturer's, unplaced in the season of
+            // 14/03/2025. This character's own leagues, in this server's season.
+            if (ConnectionProtocol.ReadPayload(frame, Op.Lty) != null)
+            {
+                return ConnectionProtocol.Push(Op.Lty, Handlers.KoliseoHandler.BuildRanks(character.Id, character.Level));
+            }
+
             // The artisan settings of every job. The captured ones were the capturer's -- a
             // minimum level of 150 for the miner, 69 for the farmer -- handed to everybody.
             if (ConnectionProtocol.ReadPayload(frame, Op.Isd) != null)
