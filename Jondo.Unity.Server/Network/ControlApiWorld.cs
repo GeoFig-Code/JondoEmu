@@ -184,6 +184,53 @@ namespace Jondo.Unity.Server.Network
             return match == null ? Mal(404, "sin-mapa") : Bien(new { mapa = match.Map.MapId });
         }
 
+        /// <summary>POST /api/visitar-carcel: the caller to the prison's corridor.</summary>
+        private static Respuesta VisitarCarcel(long administrador)
+        {
+            var own = OwnCharacter(administrador);
+            if (own == null) return Mal(404, "personaje-desconectado");
+            var refusal = Jail.VisitAsync(own).GetAwaiter().GetResult();
+            return refusal == Jail.Refusal.None ? Bien(new { bien = true, mapa = Jail.MapId }) : Mal(Code(refusal), Reason(refusal));
+        }
+
+        /// <summary>
+        /// POST /api/ficha: a connected character's level, base characteristics and kamas, as the
+        /// character tab shows them before anything is changed. <code>  { personaje } </code>, empty
+        /// for the caller's own.
+        /// </summary>
+        private static Respuesta Ficha(string cuerpo, long administrador)
+        {
+            string name = Texto(cuerpo, "personaje");
+            var who = name.Length > 0 ? SessionRegistry.FindByName(name) : OwnCharacter(administrador);
+            if (who == null || !who.IsInWorld) return Mal(404, "personaje-desconectado");
+            var s = who.State;
+            return Bien(new
+            {
+                personaje = s.CharacterName ?? "",
+                nivel = s.CharacterLevel,
+                vitalidad = s.StatVitality,
+                sabiduria = s.StatWisdom,
+                fuerza = s.StatStrength,
+                inteligencia = s.StatIntelligence,
+                suerte = s.StatChance,
+                agilidad = s.StatAgility,
+                kamas = s.Kamas,
+            });
+        }
+
+        /// <summary>
+        /// POST /api/buscar-mapas: maps from part of an area's or a subarea's name, a coordinate or
+        /// a map id (<see cref="MapSearch"/>). <code>  { texto } -> { mapas: [ { mapa, x, y, zona, subzona, exterior } ] }  </code>
+        /// </summary>
+        private static Respuesta BuscarMapas(string cuerpo)
+            => Bien(new
+            {
+                mapas = MapSearch.Find(Texto(cuerpo, "texto")).Select(p => new
+                {
+                    mapa = p.MapId, x = p.X, y = p.Y, zona = p.Area, subzona = p.SubArea, exterior = p.Outdoor,
+                }),
+            });
+
         /// <summary>POST /api/presos: who is in jail, with the seconds left and whether he is connected.</summary>
         private static Respuesta Presos(long administrador)
             => Bien(new

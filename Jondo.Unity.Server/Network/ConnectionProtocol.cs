@@ -949,9 +949,7 @@ namespace Jondo.Unity.Server.Network
                 creatures.Msg(1, Pb.New()
                     .Var(1, member.Monster.Id)
                     .VarIfNotZero(2, LevelOf(member))
-                    .Msg(3, Pb.New()
-                        .Var(2, LookKind)
-                        .VarIfNotZero(3, BonesOf(member.Monster.Look)))
+                    .Msg(3, MonsterLook(member.Monster.Look))
                     .VarIfNotZero(4, GradeOf(member)));
             }
 
@@ -970,10 +968,36 @@ namespace Jondo.Unity.Server.Network
                         .Var(1, 1)
                         .Msg(2, creatures)
                         .Var(5, -1)))
-                    .Msg(3, Pb.New()
-                        .Var(2, LookKind)
-                        .VarIfNotZero(3, BonesOf(leader.Monster.Look))))
+                    .Msg(3, MonsterLook(leader.Monster.Look)))
                 .Var(3, group.MobId);
+        }
+
+        /// <summary>
+        /// A monster's look as a group carries it: its colours, bones, scale and skins, the same
+        /// block an NPC's look is (<see cref="BuildNpcLook"/>).
+        /// </summary>
+        /// <remarks>
+        /// It used to be the bones alone, read off a belief that the captures sent nothing else.
+        /// They do: of the 2,372 monster groups in the 756 captures' jss, 1,799 carry their scale
+        /// (f5) and 113 their colours (f1) -- "{706|...|115}" goes out with f5 = 115. Without it the
+        /// client draws every monster at 100: the Conde Kontatrás, "{2069|||150}", came out a third
+        /// smaller than a person, and 2,478 other monsters with a scale of their own were drawn off
+        /// it too.
+        /// </remarks>
+        internal static Pb MonsterLook(string look)
+        {
+            var variants = string.IsNullOrEmpty(look) ? null : Managers.Npcs.Variantes(look);
+            if (variants == null || variants.Count == 0)
+                return Pb.New().Var(2, LookKind).VarIfNotZero(3, BonesOf(look));
+
+            var first = variants[0];
+            var pb = Pb.New();
+            if (first.Colors.Length > 0) pb.Packed(1, first.Colors);
+            pb.Var(2, LookKind);
+            pb.VarIfNotZero(3, first.Bones);
+            if (first.Scales.Length > 0) pb.Packed(5, first.Scales);
+            if (first.Skins.Length > 0) pb.Packed(6, first.Skins);
+            return pb;
         }
 
         /// <summary>

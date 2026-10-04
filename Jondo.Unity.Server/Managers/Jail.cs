@@ -311,6 +311,27 @@ namespace Jondo.Unity.Server.Managers
             return Refusal.None;
         }
 
+        /// <summary>
+        /// An administrator going to see the prison: to the corridor, on the square nearest the
+        /// cells that nobody stands on.
+        /// </summary>
+        public static async Task<Refusal> VisitAsync(GameSession visitor)
+        {
+            if (visitor?.Stream == null || !visitor.IsInWorld) return Refusal.NotConnected;
+            if (visitor.State.IsInFight) return Refusal.InFight;
+            if (IsJailed(visitor.CharacterId)) return Refusal.AlreadyIn;
+            var layout = MapManager.WalkableCells.TryGetValue(MapId, out var floor) ? LayoutOf(floor) : null;
+            if (layout == null) return Refusal.NoPrison;
+
+            var occupied = new HashSet<int>(SessionRegistry.OnMap(MapId).Select(s => s.State.CellId));
+            var (_, outside) = PlacesFor(layout, occupied);
+            return await InTurnAsync(visitor, async () =>
+            {
+                await EscortAsync(visitor.Stream!, MapId, outside);
+                return Refusal.None;
+            });
+        }
+
         /// <summary>Every few seconds: whoever's time is up goes out.</summary>
         private static async Task TickAsync()
         {

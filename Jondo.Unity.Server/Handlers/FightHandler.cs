@@ -1220,6 +1220,7 @@ namespace Jondo.Unity.Server.Handlers
             {
                 Id = monFighterId,
                 Name = $"Monster_{monsterId}",
+                Look = look,
                 TeamId = 1,
                 CellId = monCellId,
                 IsMonster = true,
@@ -1516,11 +1517,16 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>El aspecto de un monstruo: el mismo bloque que lleva en el mapa.</summary>
+        /// <summary>
+        /// A monster's look in a fight: the whole of it when its look string is known -- colours,
+        /// bones, scale, skins, as on the map (ConnectionProtocol.MonsterLook) and as the real
+        /// server sends it in jxg and jxb, 213 times with the scale in the fight captures --, the
+        /// bones alone otherwise.
+        /// </summary>
         private static byte[] MonsterLook(Fighter fighter)
-            => Network.Pb.New()
-                .Var(2, 3)
-                .VarIfNotZero(3, fighter.LookBoneId)
-                .Build();
+            => string.IsNullOrEmpty(fighter.Look)
+                ? Network.Pb.New().Var(2, 3).VarIfNotZero(3, fighter.LookBoneId).Build()
+                : ConnectionProtocol.MonsterLook(fighter.Look).Build();
 
         /// <summary>El aspecto normal que el combatiente llevaba al entrar en esta pelea.</summary>
         private static byte[] NormalFightLook(Fighter fighter)

@@ -146,12 +146,19 @@ namespace Jondo.Unity.Server.Handlers
 
             HavenBagStore.SaveTheme(Jondo.Unity.Server.Network.SessionContext.State.CharacterId, Merkasako.ThemeOfMap(target));
 
+            long left = Jondo.Unity.Server.Network.SessionContext.State.MapId;
             Jondo.Unity.Server.Network.SessionContext.State.MapId = target;
 
             // Al lado del zaap, que es donde deja a uno el juego al entrar.
             var zaap = Merkasako.ZaapOf(target);
             Jondo.Unity.Server.Network.SessionContext.State.CellId = MapManager.GetNearestWalkableCell(target, zaap.Cell);
             DatabaseManager.SaveCurrentCharacter();
+
+            // Whoever stays on the map he left stops seeing him there. This was missing: going
+            // into the haven bag left him standing on the street, drawn, for everybody on it.
+            // Only the leaving is told -- a haven bag is nobody else's to be told about.
+            if (left != target)
+                await SessionRegistry.RemoveFromMapAsync(left, SessionContext.Current.CharacterId, SessionContext.Current.Id);
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.BuildActorLeft(Jondo.Unity.Server.Network.SessionContext.State.CharacterId));
