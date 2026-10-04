@@ -1746,6 +1746,8 @@ its cross, to close it.
 It started as [JimmyMtl's item window](https://github.com/Keka-Bron/JondoEmu/pull/49) and grew
 into five tabs.
 
+<img width="2050" height="1426" alt="image" src="https://github.com/user-attachments/assets/e126bd4c-00ef-4266-ab2a-10c57cd872fa" />
+
 ### What it needs
 
 - **An administrator account** (role 5, see `docs/role.md`). The test account `keka` / `test` is one;
@@ -1829,6 +1831,8 @@ Ten minutes in the game's own GM prison, for a player who needs a break.
   up, or when they are released, they go back exactly where they were taken from — at their next
   login if they are offline.
 - **Go to the jail** takes you to the corridor alone, to talk to a prisoner.
+
+<img width="2560" height="1498" alt="image" src="https://github.com/user-attachments/assets/1b35bc2b-56b6-41ce-af52-6f43f79cc6d5" />
 
 **The GM prison has three maps**, all at [66,6] and joined by nothing on the world map: the jail in
 the clouds, a dungeon underneath and a desert island. They are linked in a round. The **trapdoor**
