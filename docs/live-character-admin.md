@@ -108,8 +108,11 @@ connected character to give it to, a quantity, and two buttons — maximum chara
 rolled ones — and, in its other tabs, the routes above (`JondoFix/AdminWorldUi.cs`). It is these
 routes and nothing else: the launcher hands the client its account's
 token in `JONDO_CONTROL_TOKEN` (administrators only), the mod posts it, and the server checks
-token and role on every request. The control API is on loopback, so the window works when the
-server runs on the same machine as the client. Implementation: `JondoFix/AdminItemsUi.cs`.
+token and role on every request. The control API listens on loopback, so the window works when the
+server runs on the same machine as the client; a server opened with `JONDO_PUBLIC_BIND=1` listens on
+every interface, and the launcher's remote mode relays 8888 with the game's ports, so it works
+there too. Implementation: `JondoFix/AdminItemsUi.cs` and `JondoFix/AdminWorldUi.cs`. What it offers,
+tab by tab, is in the README's "Admin window (F10)".
 
 ## Errors
 

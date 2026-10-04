@@ -28,7 +28,7 @@ High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** writte
 
 - ⚔️ &nbsp;**Combat** &nbsp;— &nbsp;[One engine, four rulebooks](#%EF%B8%8F-one-engine-four-rulebooks) · [PvM](#-pvm-combat) · [Duels](#-duels) · [Koliseo](#%EF%B8%8F-koliseo) · [Spell effect engine](#-spell-effect-engine) · [Spell check-list](#-spell-check-list) · [Combat challenges](#-combat-challenges)
 
-- 🔎 &nbsp;**Tools** &nbsp;— &nbsp;[Jondo Studio](#%EF%B8%8F-jondo-studio) · [Surviving the next patch](#-surviving-the-next-patch)
+- 🔎 &nbsp;**Tools** &nbsp;— &nbsp;[Admin window (F10)](#-admin-window-f10) · [Jondo Studio](#%EF%B8%8F-jondo-studio) · [Surviving the next patch](#-surviving-the-next-patch)
 
 - 🤝 &nbsp;**Community** &nbsp;— &nbsp;[Community projects](#-community-projects)
 
@@ -85,7 +85,7 @@ Account: keka
 Password: test
 ```
 
-`keka` is an **administrator**, so every command and the item window (F10) can be tried with it, and it comes with its characters already made — `[#KEKA-BRON#]` at level 204, `Test`, `Tymaviejas` and `Bron` — with their equipment. For a player account of your own, use **CREATE ACCOUNT** in the launcher.
+`keka` is an **administrator**, so every command and the [admin window (F10)](#-admin-window-f10) can be tried with it, and it comes with its characters already made — `[#KEKA-BRON#]` at level 204, `Test`, `Tymaviejas` and `Bron` — with their equipment. For a player account of your own, use **CREATE ACCOUNT** in the launcher.
 
 > ⚠️ The password of `keka` is published right here. Before opening a server to other machines (`JONDO_PUBLIC_BIND=1`), change it or delete the account: anybody who knows it is an administrator.
 
@@ -369,14 +369,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
   lost fights against monsters; it never drops below 1, so nobody becomes a ghost
 - ❌ Energy coming back — with rest or consumables; no capture measures the rate
 - ✅ Commands — `.teleport [x,y]` or `.teleport <map id>`, `.kamas`, `.shop`, `.size`, `.level`, `.item`, `.itemset`, `.receta`, `.sueno`, `.gremio`, `.raid`; they answer with an information line only their author sees
-- ✅ The administrator's window, on **F10** in the client, built from the client's own pieces — its window, tabs (`DofusTabGroup`), buttons in their primary and secondary styles, text fields — in five tabs. It is resized from its bottom right corner and remembers its size; it turns see-through while the pointer is off it, so the map behind can be watched. The connected characters are picked from a drop-down:
-  - **Items**: the client's own catalogue with its icons, a search, a category filter and a type filter under it, pages of 40, the item's lines, the connected character to give it to, and two buttons — maximum characteristics or rolled ones. `.item <id> [quantity] random` rolls too
-  - **Character**: level, the six characteristics and kamas of oneself or any connected character, filled in with what they have now when the character is picked (only what is changed is sent), and a mount
-  - **Teleport**: oneself or anyone, to a map id or to coordinates `x,y`, or to a place found by name as in Jondo Studio's map field — `bonta` lists Bonta's maps with their area, subarea and coordinates, and the one clicked goes into the map field; go to a player, or bring him here
-  - **Spawn**: any NPC, or a group of up to eight monsters at the grades picked, from the client's catalogues with each grade's level as the server fights it, on the cell the administrator stands on and seen at once by everyone on the map; and what stands on that map, each with its button to take it off. Until the server restarts, as a map's groups are; a map emptied by hand stays empty
-  - **Jail**: ten minutes in a cell of the game's own GM prison (subarea 751, its map 105121026 read as a corridor and four cells walled off from it), the administrator to the corridor beside the bars — or there alone, with **Go to the jail**. Inside, no teleport by any road, no command, no channel but the general one and private messages, and a lost fight sends him back to his cell instead of his save point. The time runs offline too and survives a restart; when it is up, or an administrator lets him out, he goes back where he was
-
-  Clicks on it do not reach the map. Every action goes through the control API, which checks the administrator's role each time
+- ✅ The administrator's window, on **F10** in the client: items, a character's level, characteristics and kamas, teleports, NPCs and monsters spawned and removed, and the jail — see **[Admin window (F10)](#-admin-window-f10)**
 - ✅ Monsters at their size: groups on the map and fighters carry the look's colours, scale and skins as the official server sends them, so Conde Kontatrás is as tall as a person and not a doll
 - ✅ Live administration over HTTP — `POST /api/personaje` sets characteristics, kamas and level, grants items (at their maximum or rolled) or a mount, and teleports a connected character without a reconnect. `POST /api/rol` changes account roles. Administrator only, loopback only
 - 🟡 `.level` repaints the in-fight spell bar, but the fighter's own level is not updated until the next fight
@@ -1740,6 +1733,119 @@ difference left against its capture.
 - ✅ Dungeon and anomaly challenges are imposed at 0% and carry achievements, written once and never offered again
 - ❌ *Hired Killer* (35), which needs the server to designate and re-designate the target
 - ❌ Challenges without a known percentage: the client ships no bonus field for them
+
+---
+
+## 🔑 Admin window (F10)
+
+An administration panel inside the game. Press **F10** with an administrator's character in the
+world and a window opens over the map, drawn with the client's own pieces — the same window frame,
+tabs, buttons and text fields as Dofus's menus — so it looks like one of them. Press F10 again, or
+its cross, to close it.
+
+It started as [JimmyMtl's item window](https://github.com/Keka-Bron/JondoEmu/pull/49) and grew
+into five tabs.
+
+### What it needs
+
+- **An administrator account** (role 5, see `docs/role.md`). The test account `keka` / `test` is one;
+  another account is promoted with `POST /api/rol`.
+- **The game started from the Jondo launcher.** The launcher installs the JondoFix mod into the
+  client's `Mods` folder and hands the client the account's token, to administrators only.
+- The server on the same machine, or on another one opened with `JONDO_PUBLIC_BIND=1`: the launcher
+  relays the window's port (8888) along with the game's.
+
+### The window
+
+- Resized from its bottom right corner, down to 960 × 620; it keeps its size between openings.
+- See-through while the pointer is elsewhere, so what happens on the map can be watched; nearly
+  solid while the pointer is on it.
+- Clicks on it never reach the map behind.
+- Wherever a character is chosen, the connected characters are in a drop-down, with their level and
+  whether they are in jail; **Refresh** reads them again.
+- The line at the bottom of each tab says what the server answered: done, or why not — not
+  connected, in a fight, already in jail…
+
+### Items
+
+The client's own item catalogue, with its icons.
+
+- **Search** by name, type, id, or a level range such as `190-200`; filter by category and then by
+  type; pages of 40.
+- Pick an item to see its lines, choose **to whom** (yourself or any connected character) and the
+  **quantity**.
+- **Give · MAX stats** gives it with every characteristic at the top of its range; **Give · RANDOM
+  stats** rolls each one, as a drop would (up to 100 items at a time). `.item <id> [quantity]
+  random` does the same from the chat.
+
+### Character
+
+For yourself or any connected character.
+
+- **Level**, the six base characteristics (vitality, wisdom, strength, intelligence, chance,
+  agility) and **kamas**. When a character is picked, the fields fill in with what they have now;
+  change what you want and press **Apply** — only what changed is sent, and the fields read the
+  result back.
+- **Give mount**: a mount by its item id, put on at once.
+
+Everything changes live, without reconnecting; a fight in progress blocks it.
+
+### Teleport
+
+Moves yourself or the character picked in the drop-down.
+
+- **Find a place**: type part of a name — `bonta`, `astrub`, `barrio de los herreros` — and the
+  maps of that area or subarea are listed with their coordinates, outdoor ones first, as Jondo
+  Studio's map field does. Coordinates (`4,-18`) and map ids work too. Clicking one puts it in the
+  map field.
+- Or type a **map id** or **coordinates `x,y`**, and optionally a **cell**, and press **Teleport**.
+- **Go to them** takes you to the picked player's map and cell; **Bring here** brings them to yours.
+
+### Spawn
+
+NPCs and monsters on the map you stand on, on your own cell, seen at once by everyone on the map.
+
+- Switch between **Monsters** and **NPCs**; search by name, id, or (monsters) a level range such as
+  `1-50`; pages of 30, with each monster's levels.
+- **An NPC**: pick it and press **Spawn NPC here**.
+- **A group of monsters**: pick a monster and click one of its grades (each with its level) to add
+  it; up to eight, mixed as you like. Click a member to take it out, then **Spawn group here**.
+- **On this map** lists every NPC and monster group standing on your map, each with **Remove**.
+
+What you spawn or remove lasts until the server restarts, like everything else that happens on a
+map; a map emptied by hand is not refilled with fresh groups meanwhile.
+
+### Jail
+
+Ten minutes in the game's own GM prison, for a player who needs a break.
+
+- Pick the player and press **Jail**. They go into one of the prison's four cells and you to the
+  corridor beside its bars; a second prisoner gets a cell of their own.
+- While inside, a prisoner cannot leave by any road — zaap, zaapi, haven bag, house, dungeon,
+  Koliseo, teleports, passages — cannot use commands, and cannot speak but on the general channel
+  and in private messages. A lost fight sends them back to their cell, not to their save point.
+- **In jail** lists the prisoners with their time left, counting down, and **Release** lets one out
+  early. The time keeps running while they are offline and survives a server restart. When it is
+  up, or when they are released, they go back exactly where they were taken from — at their next
+  login if they are offline.
+- **Go to the jail** takes you to the corridor alone, to talk to a prisoner.
+
+**The GM prison has three maps**, all at [66,6] and joined by nothing on the world map: the jail in
+the clouds, a dungeon underneath and a desert island. They are linked in a round. The **trapdoor**
+in the middle of the jail's corridor goes down to the dungeon; stepping into the dungeon's
+**hanging cage** lifts you to the island; opening the island's **treasure chest** brings you back
+to the jail, at the foot of the trapdoor. A prisoner cannot use any of them.
+
+### How it works
+
+The window is not a reworked client screen: JondoFix (a MelonLoader mod) builds it at runtime out
+of the client's own interface components — `WindowFigma`, `DofusTabGroup`, `DofusButtonCustom`,
+`TextInput` — and adds it to the client's interface layer, so it takes the game's look by itself.
+
+The window decides nothing. Every button is a request to the server's control API, signed with the
+account's launcher token, and the server checks the token and the administrator's role on every
+one of them. The routes are documented in **[`docs/live-character-admin.md`](docs/live-character-admin.md)**,
+and can be called by any other tool the same way.
 
 ---
 
