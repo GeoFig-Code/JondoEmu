@@ -250,36 +250,33 @@ namespace Jondo.Unity.Server
                     Console.WriteLine($"[DatabaseManager] {puestas} cuenta(s) sin fecha de abono; " +
                                       $"se les pone un año.");
 
-                // Aquí se sembraban 'keka' y 'dragonlord' como ADMINISTRADOR con la clave
-                // 'test'. Toda base recién hecha nacía con dos cuentas de mando y la contraseña
-                // escrita en el código fuente, que además está publicado: quien arrancase el
-                // servidor tal cual lo tenía abierto de par en par sin saberlo.
+                // The test account, keka / test, administrator, on every installation: whoever
+                // downloads the emulator signs in with it, finds keka's characters -- the ones
+                // datos/world.zip carries, at their level and with their items -- and has the
+                // administration commands to try it out. It is created through the same path as
+                // any account -- the password hashed, the subscription written --, under the id
+                // those characters belong to, and only when there is no keka yet, so an existing
+                // one keeps its own password.
                 //
-                // Ya no se siembra nada. Las dos cuentas se dan de alta desde el lanzador como
-                // cualquier otra, con la contraseña que ponga cada uno, y el UPDATE de abajo les
-                // devuelve el rol en cuanto existen. El resultado para nosotros es el mismo; lo
-                // que desaparece es la clave conocida.
-                //
-                // Y si esas dos cuentas ya existían de antes, se les pone el rol: son las de los
-                // dos que llevan el servidor. Al resto no se le toca nada.
-                //
-                // DECIDIDO A PROPÓSITO, 28/08/2026, y anotado aquí porque una revisión lo señala
-                // cada vez que se hace. Lo que se está diciendo con estas dos líneas es: en
-                // CUALQUIER instalación de Jondo, quien consiga registrar el login «keka» o
-                // «dragonlord» es administrador en el arranque siguiente. Y /api/crear-cuenta no
-                // pide autenticación, así que en el servidor de un tercero eso lo hace cualquiera
-                // —y el README publica el nombre, de modo que no hay ni que adivinarlo—.
-                //
-                // Se acepta mientras esto sea una prueba pública en la máquina de casa, donde los
-                // cinco listeners van a loopback salvo que se ponga JONDO_PUBLIC_BIND=1 y las dos
-                // cuentas ya existen, así que el alta se rechaza. El día que alguien más lo
-                // despliegue, o el día que se abra al exterior, esto se quita: el rol se da con
-                // /api/rol desde una cuenta que ya sea administrador, que es el camino que
-                // ControlApi ya ofrece.
-                //
-                // AssertNoSeededCredentials no lo ve, y no es un descuido suyo: busca «INSERT INTO
-                // Accounts» y esto es un UPDATE. Se deja así a posta —cazarlo haría fallar la
-                // guardia por algo que hoy queremos—, pero conviene saber que ese hueco existe.
+                // DECIDED ON PURPOSE, 04/10/2026, and written down here because a review flags it
+                // every time. It was taken out on 28/08/2026 because the password is published in
+                // this repository: on a server reachable from outside, anybody can sign in as
+                // administrator with it. Santiago brought it back: it is a test account, and
+                // without it nobody who downloads the emulator can try the administration
+                // commands. Whoever opens a server to the outside (JONDO_PUBLIC_BIND=1) has to
+                // change that password or delete the account first; the README says so.
+                if (!AccountExists(TestAccountLogin))
+                {
+                    if (RegisterNewAccount(TestAccountLogin, TestAccountPassword, "Keka", "", out string porQue,
+                                           id: TestAccountId))
+                        Console.WriteLine($"[DatabaseManager] Cuenta de prueba creada: {TestAccountLogin} / {TestAccountPassword}.");
+                    else
+                        Console.WriteLine($"[DatabaseManager] No se ha podido crear la cuenta de prueba: {porQue}");
+                }
+
+                // And the two who run the server are administrators: keka, and dragonlord once he
+                // has signed up. In ANY installation, whoever holds one of those two logins is an
+                // administrator at the next start -- the same caveat as the test account's.
                 var duenos = authConnection.CreateCommand();
                 duenos.CommandText = "UPDATE Accounts SET Role = $admin " +
                                      "WHERE Login IN ('keka', 'dragonlord') AND Role < $admin;";
@@ -1457,7 +1454,33 @@ namespace Jondo.Unity.Server
             }
         }
 
-        public static bool RegisterNewAccount(string login, string password, string nickname, string clientIp, out string errorMessage)
+        /// <summary>The test account every installation comes with: see where Initialize creates it.</summary>
+        public const string TestAccountLogin = "keka", TestAccountPassword = "test";
+
+        /// <summary>
+        /// Its id: the one the characters of keka that datos/world.zip carries belong to, and the
+        /// one the account always had (the first of the two the old seed wrote, 188940901).
+        /// </summary>
+        public const long TestAccountId = 188940901;
+
+        /// <summary>Whether an account with that login exists, whatever its case.</summary>
+        public static bool AccountExists(string login)
+        {
+            using var connection = new SqliteConnection(AuthConnectionString);
+            connection.Open();
+            var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM Accounts WHERE LOWER(Login) = $login;";
+            command.Parameters.AddWithValue("$login", (login ?? "").Trim().ToLowerInvariant());
+            return (long)(command.ExecuteScalar() ?? 0L) > 0;
+        }
+
+        /// <param name="id">
+        /// The account's id, for the test account only: its characters in the shipped world.db
+        /// belong to it. Zero, as for anybody who signs up, lets the table pick; one already taken
+        /// does too.
+        /// </param>
+        public static bool RegisterNewAccount(string login, string password, string nickname, string clientIp, out string errorMessage,
+                                              long id = 0)
         {
             errorMessage = "";
 
@@ -1497,10 +1520,21 @@ namespace Jondo.Unity.Server
                 // cuenta creada con el servidor ya en marcha nacía con la columna vacía y tiraba
                 // del valor por defecto hasta que alguien reiniciase: funcionaba, pero entonces la
                 // fecha que el jugador ve no está en ninguna parte y no se le puede cambiar.
+                if (id > 0)
+                {
+                    var taken = connection.CreateCommand();
+                    taken.CommandText = "SELECT COUNT(*) FROM Accounts WHERE Id = $id;";
+                    taken.Parameters.AddWithValue("$id", id);
+                    if ((long)(taken.ExecuteScalar() ?? 0L) > 0) id = 0;
+                }
+
                 var insertCmd = connection.CreateCommand();
-                insertCmd.CommandText =
-                    "INSERT INTO Accounts (Login, Password, Nickname, SubscriptionEnd) " +
-                    "VALUES ($login, $pass, $nick, $hasta);";
+                insertCmd.CommandText = id > 0
+                    ? "INSERT INTO Accounts (Id, Login, Password, Nickname, SubscriptionEnd) " +
+                      "VALUES ($id, $login, $pass, $nick, $hasta);"
+                    : "INSERT INTO Accounts (Login, Password, Nickname, SubscriptionEnd) " +
+                      "VALUES ($login, $pass, $nick, $hasta);";
+                if (id > 0) insertCmd.Parameters.AddWithValue("$id", id);
                 insertCmd.Parameters.AddWithValue("$login", login);
                 insertCmd.Parameters.AddWithValue("$pass", Managers.Claves.Cifrar(password));
                 insertCmd.Parameters.AddWithValue("$nick", nickname);

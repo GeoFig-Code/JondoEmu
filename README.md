@@ -83,6 +83,12 @@ Account: keka
 Password: test
 ```
 
+`keka` is an **administrator**, so every command and the item window (F10) can be tried with it, and it comes with its characters already made — `[#KEKA-BRON#]` at level 204, `Test`, `Tymaviejas` and `Bron` — with their equipment. For a player account of your own, use **CREATE ACCOUNT** in the launcher.
+
+> ⚠️ The password of `keka` is published right here. Before opening a server to other machines (`JONDO_PUBLIC_BIND=1`), change it or delete the account: anybody who knows it is an administrator.
+
+`world.zip` is only unpacked when there is no `bases/world.db` yet. To get the characters of a newer download over an older installation, delete `bases/world.db` (and with it the characters made on it) before starting.
+
 By default the emulator looks for the client next to itself, in a `Cliente 3.6.10.11` folder beside the emulator folder — or `Cliente 3.6.10.10`, whichever it finds first. If yours lives somewhere else, set it in **Settings**. The choice is remembered.
 
 The **ES / EN / FR** switch sets the language of the launcher *and* of the game: the client is started with that `--langCode`.
