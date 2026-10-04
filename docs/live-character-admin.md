@@ -90,6 +90,10 @@ token. "The caller's" is the character his account has in the world.
 | `POST /api/liberar` | `{ "personaje" }` | Out before his time, back where he was taken from (at his next login if he is offline). |
 | `POST /api/presos` | — | `{ presos: [{ nombre, quedan, conectado }] }`, `quedan` in seconds. |
 | `POST /api/coordenadas` | `{ "x", "y" }` | `{ mapa }`: the map `.teleport [x,y]` would take. |
+| `POST /api/buscar-mapas` | `{ "texto" }` | `{ mapas: [{ mapa, x, y, zona, subzona, exterior }] }`: up to 60 maps whose area or subarea has every word typed (accents and case aside), or at coordinates `x,y`, or whose id has the digits typed; outdoor ones first. |
+| `POST /api/ficha` | `{ "personaje" }`, empty for the caller's own | `{ personaje, nivel, vitalidad, sabiduria, fuerza, inteligencia, suerte, agilidad, kamas }`: what the character tab fills its fields with. |
+| `POST /api/niveles-monstruos` | — | `{ niveles: { "31": [16, 17, 18, 19, 20], ... } }`: each monster's level at grades 1, 2, …, as the server fights it. The client's catalogue has 1 at every grade. |
+| `POST /api/visitar-carcel` | — | The caller to the prison's corridor, nobody locked up. `{ bien, mapa }`. |
 
 `/api/conectados` also gives each character's `mapa`, `celda` and whether he is `preso`.
 
@@ -100,8 +104,9 @@ while it runs. A sentence does not: it is kept in the `Jail` table of `world.db`
 
 JondoFix opens a window on **F10** for an administrator: the client's own item catalogue with a
 search (name, type, id, or a level range such as `190-200`), the lines of the item picked, the
-connected characters to give it to, a quantity, and two buttons — maximum characteristics or
-rolled ones. It is these two routes and nothing else: the launcher hands the client its account's
+connected character to give it to, a quantity, and two buttons — maximum characteristics or
+rolled ones — and, in its other tabs, the routes above (`JondoFix/AdminWorldUi.cs`). It is these
+routes and nothing else: the launcher hands the client its account's
 token in `JONDO_CONTROL_TOKEN` (administrators only), the mod posts it, and the server checks
 token and role on every request. The control API is on loopback, so the window works when the
 server runs on the same machine as the client. Implementation: `JondoFix/AdminItemsUi.cs`.

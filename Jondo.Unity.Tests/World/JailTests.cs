@@ -155,5 +155,31 @@ namespace Jondo.Unity.Tests.World
                 if (Jail.IsJailed(prisonerId)) await Jail.ReleaseAsync(prisonerId, "prueba");
             }
         }
+
+        /// <summary>
+        /// The administrator's "Ir a la cárcel": to the corridor, as when he takes somebody in,
+        /// but nobody is locked up -- and from there he leaves as from any map.
+        /// </summary>
+        [Fact]
+        public async Task A_visitor_goes_to_the_corridor_and_is_free_to_leave()
+        {
+            if (!MapManager.WalkableCells.ContainsKey(Jail.MapId)) MapManager.Initialize();
+            if (MapManager.GetMapInfo(Jail.MapId) == null) return;   // no world data
+
+            Jail.Initialize();
+            const long visitorId = 990_000_107;
+            const long astrub = 191105026;
+            await using var visitor = await ClientPipe.OpenAsync(990_000_107, visitorId, astrub, "Visita");
+
+            Assert.Equal(Jail.Refusal.None, await Jail.VisitAsync(visitor.Session));
+            var layout = Jail.LayoutOf(MapManager.WalkableCells[Jail.MapId])!;
+            Assert.Equal(Jail.MapId, visitor.Session.State.MapId);
+            Assert.Contains(visitor.Session.State.CellId, layout.Corridor);
+            Assert.False(Jail.IsJailed(visitorId));
+
+            using (SessionContext.Push(visitor.Session))
+                Assert.NotEqual(-1, await TeleportHandler.ToMapAsync(visitor.ToClient, astrub, 300));
+            Assert.Equal(astrub, visitor.Session.State.MapId);
+        }
     }
 }

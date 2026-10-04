@@ -119,7 +119,7 @@ namespace JondoFix
                 ["category.4"] = L("Otros", "Other", "Autres"),
                 ["loading"] = L("El catálogo todavía no está cargado.", "The catalogue is not loaded yet.",
                                 "Le catalogue n'est pas encore chargé."),
-                ["sending"] = L("Enviando…", "Sending…", "Envoi…"),
+                ["sending"] = L("Enviando...", "Sending...", "Envoi..."),
                 ["given"] = L("{0} x{1} entregado a {2} ({3}).", "{0} x{1} given to {2} ({3}).",
                               "{0} x{1} donné à {2} ({3})."),
                 ["mode.max"] = L("máximas", "max", "max"),
@@ -175,7 +175,14 @@ namespace JondoFix
                 else Open();
             }
 
-            if (_window != null) AdminWorldUi.Tick();
+            if (_window != null)
+            {
+                AdminWorldUi.Tick();
+                TickResize();
+                // See-through while the pointer is elsewhere, so the map behind can be watched;
+                // nearly solid while it is on the window, so it can be read.
+                try { _window.style.opacity = new StyleFloat(_resizing || PointerOver ? 0.97f : 0.78f); } catch { }
+            }
 
             if (_window == null || _search == null) return;
 
@@ -236,11 +243,11 @@ namespace JondoFix
                 window.showCloseButton = true;
                 window.name = "JondoAdminItems";
                 window.style.position = new StyleEnum<Position>(Position.Absolute);
-                window.style.width = new StyleLength(Width);
-                window.style.height = new StyleLength(Height);
+                window.style.width = new StyleLength(_width);
+                window.style.height = new StyleLength(_height);
                 float layerWidth = layer.resolvedStyle.width, layerHeight = layer.resolvedStyle.height;
-                window.style.left = new StyleLength(float.IsNaN(layerWidth) || layerWidth <= 0 ? 370f : (layerWidth - Width) / 2f);
-                window.style.top = new StyleLength(float.IsNaN(layerHeight) || layerHeight <= 0 ? 180f : (layerHeight - Height) / 2f);
+                window.style.left = new StyleLength(float.IsNaN(layerWidth) || layerWidth <= 0 ? 370f : Math.Max(0f, (layerWidth - _width) / 2f));
+                window.style.top = new StyleLength(float.IsNaN(layerHeight) || layerHeight <= 0 ? 180f : Math.Max(0f, (layerHeight - _height) / 2f));
 
                 // The tabs, as the client's own windows have them: a DofusTabGroup with its
                 // SubHeader class and one DofusTab each (GuildUnsetUi, AppearanceUI...), and under
@@ -248,16 +255,21 @@ namespace JondoFix
                 _tabs = new DofusTabGroup();
                 _tabs.AddToClassList("SubHeader");
                 try { _tabs.size = DofusTab.TabSize.large; } catch { }
+                _tabList.Clear();
                 for (int i = 0; i < TabKeys.Length; i++)
                 {
                     int index = i;
-                    _tabs.Add(new DofusTab(Do(() => ShowTab(index)), T("tab." + TabKeys[i]), NoIcon()));
+                    var tab = new DofusTab(Do(() => ShowTab(index)), T("tab." + TabKeys[i]), NoIcon());
+                    _tabList.Add(tab);
+                    _tabs.Add(tab);
                 }
                 window.Add(_tabs);
 
                 _tabPage = new VisualElement();
                 _tabPage.style.flexGrow = new StyleFloat(1f);
                 window.Add(_tabPage);
+
+                window.Add(Grip());
 
                 layer.Add(window);
                 window.BringToFront();
@@ -287,10 +299,135 @@ namespace JondoFix
         internal static Il2CppAnkama.AddressableUtilities.Runtime.AddressableEntry NoIcon()
             => new Il2CppAnkama.AddressableUtilities.Runtime.AddressableEntry();
 
+        // ─── Size ───────────────────────────────────────────────────────────────────────
+
+        /// <summary>The window's size, kept between openings; and its smallest.</summary>
+        private static float _width = Width, _height = Height;
+        private const float MinWidth = 960f, MinHeight = 620f;
+
+        private static bool _resizing;
+        private static UnityEngine.Vector2 _resizeFrom;
+        private static float _widthFrom, _heightFrom;
+
+        /// <summary>
+        /// The grip in the bottom right corner that resizes the window, as the client's windows
+        /// can be. WindowFigma has no resizing of its own: a press on the grip starts it, and the
+        /// mouse is then followed every frame until the button is let go (<see cref="TickResize"/>)
+        /// -- read off the input system directly, so it goes on when the pointer leaves the grip.
+        /// </summary>
+        private static VisualElement Grip()
+        {
+            var grip = new VisualElement();
+            grip.name = "JondoAdminResize";
+            grip.style.position = new StyleEnum<Position>(Position.Absolute);
+            grip.style.right = new StyleLength(4f);
+            grip.style.bottom = new StyleLength(4f);
+            grip.style.width = new StyleLength(22f);
+            grip.style.height = new StyleLength(22f);
+            foreach (float size in new[] { 16f, 9f })
+            {
+                var corner = new VisualElement();
+                corner.style.position = new StyleEnum<Position>(Position.Absolute);
+                corner.style.right = new StyleLength(2f);
+                corner.style.bottom = new StyleLength(2f);
+                corner.style.width = new StyleLength(size);
+                corner.style.height = new StyleLength(size);
+                corner.style.borderRightWidth = new StyleFloat(2f);
+                corner.style.borderBottomWidth = new StyleFloat(2f);
+                var color = new UnityEngine.Color(1f, 1f, 1f, 0.6f);
+                corner.style.borderRightColor = new StyleColor(color);
+                corner.style.borderBottomColor = new StyleColor(color);
+                corner.pickingMode = PickingMode.Ignore;
+                grip.Add(corner);
+            }
+            try
+            {
+                grip.RegisterCallback<PointerDownEvent>(DelegateSupport.ConvertDelegate<EventCallback<PointerDownEvent>>(
+                    new Action<PointerDownEvent>(e =>
+                    {
+                        try { e.StopPropagation(); } catch { }
+                        StartResize();
+                    })), TrickleDown.NoTrickleDown);
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[JondoFix] Admin window: no resize grip ({ex.Message}).");
+            }
+            return grip;
+        }
+
+        private static bool PanelPointer(out UnityEngine.Vector2 at)
+        {
+            at = default;
+            try
+            {
+                var mouse = UnityEngine.InputSystem.Mouse.current;
+                var panel = _window?.panel;
+                if (mouse == null || panel == null) return false;
+                var screen = mouse.position.ReadValue();
+                at = RuntimePanelUtils.ScreenToPanel(panel, new UnityEngine.Vector2(screen.x, UnityEngine.Screen.height - screen.y));
+                return true;
+            }
+            catch { return false; }
+        }
+
+        private static void StartResize()
+        {
+            if (_window == null || !PanelPointer(out _resizeFrom)) return;
+            _widthFrom = _window.resolvedStyle.width;
+            _heightFrom = _window.resolvedStyle.height;
+            _resizing = true;
+        }
+
+        private static void TickResize()
+        {
+            if (!_resizing || _window == null) return;
+            bool held;
+            try { held = UnityEngine.InputSystem.Mouse.current?.leftButton.isPressed ?? false; }
+            catch { held = false; }
+            if (!held || !PanelPointer(out var at))
+            {
+                _resizing = false;
+                return;
+            }
+            _width = Math.Max(MinWidth, _widthFrom + at.x - _resizeFrom.x);
+            _height = Math.Max(MinHeight, _heightFrom + at.y - _resizeFrom.y);
+            _window.style.width = new StyleLength(_width);
+            _window.style.height = new StyleLength(_height);
+        }
+
         /// <summary>The tabs, in order: their text is "tab." and the key, in every language.</summary>
         private static readonly string[] TabKeys = { "items", "character", "teleport", "spawn", "jail" };
 
         private static DofusTabGroup _tabs;
+        private static readonly List<DofusTab> _tabList = new List<DofusTab>();
+
+        /// <summary>
+        /// Each tab told whether it is the one shown, and the others' text in white.
+        /// </summary>
+        /// <remarks>
+        /// On each tab and not through the group: DofusTabGroup.SetValueWithoutNotify lit the tab
+        /// after the one asked for -- the content was Spawn's with Jail lit. And the client's grey
+        /// for a tab not picked was hard to read on this window, so those go white; the one picked
+        /// keeps the client's own colour.
+        /// </remarks>
+        private static void MarkTabs()
+        {
+            for (int i = 0; i < _tabList.Count; i++)
+            {
+                var tab = _tabList[i];
+                try { tab.SetValueWithoutNotify(i == _tab); } catch { }
+                try
+                {
+                    var text = tab.textContainer;
+                    if (text == null) continue;
+                    text.style.color = i == _tab
+                        ? new StyleColor(StyleKeyword.Null)
+                        : new StyleColor(UnityEngine.Color.white);
+                }
+                catch { }
+            }
+        }
 
         /// <summary>The page under the tabs, and which tab it shows. The tab is kept between openings.</summary>
         private static VisualElement _tabPage;
@@ -301,7 +438,7 @@ namespace JondoFix
         {
             if (_tabPage == null) return;
             _tab = Math.Clamp(index, 0, TabKeys.Length - 1);
-            try { _tabs?.SetValueWithoutNotify(_tab); } catch { }
+            MarkTabs();
 
             ForgetItemsPage();
             AdminWorldUi.Reset();
@@ -448,7 +585,9 @@ namespace JondoFix
 
             _targets = Row();
             _targets.style.flexWrap = new StyleEnum<Wrap>(Wrap.Wrap);
-            _targets.style.marginBottom = new StyleLength(10f);
+            _targets.style.alignItems = new StyleEnum<Align>(Align.FlexStart);
+            _targets.style.marginTop = new StyleLength(6f);
+            _targets.style.marginBottom = new StyleLength(12f);
             column.Add(_targets);
 
             var quantityRow = Row();
@@ -465,6 +604,7 @@ namespace JondoFix
             column.Add(quantityRow);
 
             var buttons = Row();
+            buttons.style.flexWrap = new StyleEnum<Wrap>(Wrap.Wrap);
             var max = Button(Do(() => Give(false)), T("max"), null, true);
             max.style.marginRight = new StyleLength(12f);
             buttons.Add(max);
@@ -1220,17 +1360,13 @@ namespace JondoFix
             _targets.Clear();
             _connected = connected;
 
-            foreach (var character in connected)
-            {
-                string name = character.Name;
-                bool own = character.Own;
-                bool picked = own ? _target.Length == 0 : _target == name;
-                var pick = Button(Do(() => { _target = own ? "" : name; ShowTarget(); ShowTargets(_connected); }),
-                                                 $"{name} ({character.Level})", null, picked);
-                pick.style.marginRight = new StyleLength(8f);
-                pick.style.marginBottom = new StyleLength(6f);
-                _targets.Add(pick);
-            }
+            // A drop-down rather than a chip each: twenty connected characters do not fit in a row.
+            var choices = connected
+                .Select(c => (Key: c.Own ? "" : c.Name, Text: $"{c.Name} ({c.Level})" + (c.Own ? " · " + T("me") : "")))
+                .ToList();
+            var picker = AdminDropdown.Make(choices, _target, key => { _target = key; ShowTarget(); }, T("me"), 340f);
+            picker.style.marginRight = new StyleLength(10f);
+            _targets.Add(picker);
             _targets.Add(Button(Do(RefreshTargets), T("refresh"), null));
 
             // Whoever was picked and has since left: back to one's own, rather than a give that

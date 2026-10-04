@@ -21,8 +21,9 @@ namespace JondoFix
     /// Built from the client's own pieces, as its menus are: DofusButtonCustom with the client's
     /// primary and secondary styles for what acts, TextInput for what is typed, Divider between
     /// sections. Everything it does is asked of the server's control API with the account's
-    /// token -- /api/personaje, /api/conectados, /api/coordenadas, /api/mapa, /api/invocar,
-    /// /api/quitar, /api/carcel, /api/liberar, /api/presos -- and the server checks the
+    /// token -- /api/personaje, /api/ficha, /api/conectados, /api/coordenadas, /api/buscar-mapas,
+    /// /api/mapa, /api/invocar, /api/quitar, /api/niveles-monstruos, /api/carcel, /api/liberar,
+    /// /api/visitar-carcel, /api/presos -- and the server checks the
     /// administrator's role on every request; nothing here decides anything.
     /// </remarks>
     internal static class AdminWorldUi
@@ -36,11 +37,11 @@ namespace JondoFix
                 ["me"] = AdminItemsUi.L("yo", "me", "moi"),
                 ["refresh"] = AdminItemsUi.L("Actualizar", "Refresh", "Actualiser"),
                 ["jailed"] = AdminItemsUi.L("preso", "jailed", "en prison"),
-                ["working"] = AdminItemsUi.L("Enviando…", "Sending…", "Envoi…"),
+                ["working"] = AdminItemsUi.L("Enviando...", "Sending...", "Envoi..."),
                 ["done"] = AdminItemsUi.L("Hecho.", "Done.", "Fait."),
 
                 ["char.title"] = AdminItemsUi.L("Nivel, características y kamas", "Level, characteristics and kamas", "Niveau, caractéristiques et kamas"),
-                ["char.hint"] = AdminItemsUi.L("Lo que se deje en blanco no cambia.", "What is left blank does not change.", "Ce qui reste vide ne change pas."),
+                ["char.hint"] = AdminItemsUi.L("Están sus valores de ahora; sólo se envía lo que cambies.", "Their current values are shown; only what you change is sent.", "Ses valeurs actuelles sont affichées ; seul ce que vous changez est envoyé."),
                 ["char.level"] = AdminItemsUi.L("Nivel", "Level", "Niveau"),
                 ["char.vitality"] = AdminItemsUi.L("Vitalidad", "Vitality", "Vitalité"),
                 ["char.wisdom"] = AdminItemsUi.L("Sabiduría", "Wisdom", "Sagesse"),
@@ -61,6 +62,12 @@ namespace JondoFix
                 ["tp.go_to"] = AdminItemsUi.L("Ir donde está", "Go to them", "Aller jusqu'à lui"),
                 ["tp.bring"] = AdminItemsUi.L("Traer aquí", "Bring here", "Amener ici"),
                 ["tp.pick_other"] = AdminItemsUi.L("Elige a otro personaje.", "Pick another character.", "Choisissez un autre personnage."),
+                ["tp.search"] = AdminItemsUi.L("Buscar un lugar", "Find a place", "Chercher un lieu"),
+                ["tp.search_hint"] = AdminItemsUi.L("bonta, astrub, 4,-18 o un id de mapa", "bonta, astrub, 4,-18 or a map id", "bonta, astrub, 4,-18 ou un id de carte"),
+                ["tp.indoor"] = AdminItemsUi.L("interior", "indoors", "intérieur"),
+                ["tp.none"] = AdminItemsUi.L("No hay ningún lugar así.", "There is no place like that.", "Aucun lieu ne correspond."),
+                ["tp.more"] = AdminItemsUi.L("Salen los 60 primeros: afina la búsqueda para ver otros.", "The first 60 are shown: narrow the search to see others.", "Les 60 premiers sont affichés : affinez la recherche pour en voir d'autres."),
+                ["tp.picked"] = AdminItemsUi.L("Elegido: {0}. Pulsa Teletransportar.", "Picked: {0}. Press Teleport.", "Choisi : {0}. Appuyez sur Téléporter."),
                 ["tp.bad"] = AdminItemsUi.L("Escribe un id de mapa o unas coordenadas como -1,0.", "Type a map id or coordinates such as -1,0.", "Tapez un id de carte ou des coordonnées comme -1,0."),
 
                 ["spawn.npcs"] = AdminItemsUi.L("PNJ", "NPCs", "PNJ"),
@@ -78,11 +85,15 @@ namespace JondoFix
                 ["spawn.remove"] = AdminItemsUi.L("Quitar", "Remove", "Retirer"),
                 ["spawn.cell"] = AdminItemsUi.L("casilla {0}", "cell {0}", "cellule {0}"),
                 ["spawn.empty"] = AdminItemsUi.L("No hay PNJ ni monstruos.", "There are no NPCs or monsters.", "Il n'y a ni PNJ ni monstres."),
+                ["spawn.prev"] = AdminItemsUi.L("< Anterior", "< Previous", "< Précédente"),
+                ["spawn.next"] = AdminItemsUi.L("Siguiente >", "Next >", "Suivante >"),
+                ["spawn.levels"] = AdminItemsUi.L("niv. {0}-{1}", "lvl {0}-{1}", "niv. {0}-{1}"),
                 ["spawn.page"] = AdminItemsUi.L("Página {0} de {1} · {2}", "Page {0} of {1} · {2}", "Page {0} sur {1} · {2}"),
 
                 ["jail.title"] = AdminItemsUi.L("Mandar a la cárcel (10 minutos)", "Send to jail (10 minutes)", "Envoyer en prison (10 minutes)"),
                 ["jail.hint"] = AdminItemsUi.L("Va a una celda de la Prisión de los GM; tú, al pasillo de al lado. Dentro no puede teletransportarse, ni usar comandos, ni hablar más que por el canal general y por privado.", "They go to a cell of the GM Prison; you, to the corridor beside it. Inside they cannot teleport, use commands, or speak but on the general channel and in private.", "Il va dans une cellule de la Prison des MJ ; vous, dans le couloir à côté. Dedans, il ne peut ni se téléporter, ni utiliser de commandes, ni parler ailleurs que sur le canal général et en privé."),
                 ["jail.send"] = AdminItemsUi.L("Encarcelar", "Jail", "Emprisonner"),
+                ["jail.visit"] = AdminItemsUi.L("Ir a la cárcel", "Go to the jail", "Aller à la prison"),
                 ["jail.inside"] = AdminItemsUi.L("En la cárcel", "In jail", "En prison"),
                 ["jail.release"] = AdminItemsUi.L("Liberar", "Release", "Libérer"),
                 ["jail.nobody"] = AdminItemsUi.L("No hay nadie en la cárcel.", "Nobody is in jail.", "Personne n'est en prison."),
@@ -147,7 +158,8 @@ namespace JondoFix
             _status = null;
             _playersRow = null;
             _fields.Clear();
-            _where = _cell = _mount = null;
+            _where = _cell = _mount = _placeSearch = null;
+            _places = null;
             _search = null;
             _kinds = _list = _detail = _group = _mapList = _prisonList = null;
             _pageLabel = _groupLabel = _mapLabel = null;
@@ -169,16 +181,20 @@ namespace JondoFix
         /// <summary>Every frame while the window is open: the spawn search and the jail's clocks.</summary>
         public static void Tick()
         {
+            if (_shown == "teleport") TickPlaces();
             if (_shown == "spawn") TickSearch();
             if (_shown == "jail") TickJail();
         }
 
         // ─── Pieces ──────────────────────────────────────────────────────────────────────
 
-        /// <summary>A page: a column with the window's margins.</summary>
-        private static VisualElement Page()
+        /// <summary>
+        /// A page: a column with the window's margins; one that scrolls, if
+        /// <paramref name="scroll"/>, for those that may not fit once the window is made smaller.
+        /// </summary>
+        private static VisualElement Page(bool scroll = false)
         {
-            var page = new VisualElement();
+            var page = scroll ? new ScrollView(ScrollViewMode.Vertical) : new VisualElement();
             page.style.flexGrow = new StyleFloat(1f);
             page.style.paddingLeft = new StyleLength(24f);
             page.style.paddingRight = new StyleLength(24f);
@@ -191,26 +207,29 @@ namespace JondoFix
         private static VisualElement Section(string title)
         {
             var box = new VisualElement();
-            box.style.marginTop = new StyleLength(10f);
-            box.style.marginBottom = new StyleLength(6f);
+            box.style.marginTop = new StyleLength(18f);
+            box.style.marginBottom = new StyleLength(10f);
             var label = new DofusLabel();
             label.text = title;
             label.AddToClassList("title_large");
             label.AddToClassList("textColor_white_white100");
+            label.style.marginBottom = new StyleLength(6f);
             box.Add(label);
             try { box.Add(new Divider()); } catch { }
             return box;
         }
 
-        /// <summary>Running text in the client's long-text style, a little dimmed.</summary>
+        /// <summary>
+        /// Running text, a little dimmed. In the window's own label style and not the client's
+        /// long-text one: that one keeps a fixed height, and a hint of two lines ran over the
+        /// button under it.
+        /// </summary>
         private static DofusLabel Hint(string text)
         {
-            var label = new DofusLabel();
-            label.text = text;
-            label.AddToClassList("textLong_largeRegular");
-            label.AddToClassList("textColor_white_white65");
-            label.style.whiteSpace = new StyleEnum<WhiteSpace>(WhiteSpace.Normal);
-            label.style.marginBottom = new StyleLength(8f);
+            var label = AdminItemsUi.Label(text);
+            label.style.color = new StyleColor(new UnityEngine.Color(1f, 1f, 1f, 0.68f));
+            label.style.marginTop = new StyleLength(2f);
+            label.style.marginBottom = new StyleLength(12f);
             return label;
         }
 
@@ -225,8 +244,8 @@ namespace JondoFix
                 var button = new DofusButtonCustom(AdminItemsUi.Do(click), text, AdminItemsUi.NoIcon());
                 button.mainStyle = primary ? DofusButtonCustom.ComponentStyleEnum.primary
                                            : DofusButtonCustom.ComponentStyleEnum.secondary;
-                button.style.marginRight = new StyleLength(10f);
-                button.style.marginBottom = new StyleLength(6f);
+                button.style.marginRight = new StyleLength(12f);
+                button.style.marginBottom = new StyleLength(8f);
                 button.style.flexShrink = new StyleFloat(0f);
                 return button;
             }
@@ -241,10 +260,12 @@ namespace JondoFix
         private static TextInput Field(VisualElement into, string label, bool numbers, float width = 180f, string placeholder = "")
         {
             var box = new VisualElement();
-            box.style.marginRight = new StyleLength(14f);
-            box.style.marginBottom = new StyleLength(8f);
+            box.style.marginRight = new StyleLength(16f);
+            box.style.marginBottom = new StyleLength(12f);
             box.style.width = new StyleLength(width);
-            box.Add(AdminItemsUi.Label(label));
+            var caption = AdminItemsUi.Label(label);
+            caption.style.marginBottom = new StyleLength(4f);
+            box.Add(caption);
             var input = new TextInput();
             try { input.isNumbersOnly = numbers; } catch { }
             if (placeholder.Length > 0) input.placeholderText = placeholder;
@@ -280,9 +301,10 @@ namespace JondoFix
 
         /// <summary>
         /// A request to the control API off the frame, and what to do with the answer back on it:
-        /// on success the body, otherwise the reason, said on the page.
+        /// on success the body, otherwise the reason, said on the page. A <paramref name="quiet"/>
+        /// request -- a search, the sheet loaded -- says nothing on the way, only if it fails.
         /// </summary>
-        private static void Ask(string route, Dictionary<string, object> body, Action<JsonElement> then)
+        private static void Ask(string route, Dictionary<string, object> body, Action<JsonElement> then, bool quiet = false)
         {
             string token = AdminItemsUi.Token();
             if (token.Length == 0)
@@ -292,7 +314,7 @@ namespace JondoFix
             }
             body["token"] = token;
             string page = _shown;
-            Say(T("working"));
+            if (!quiet) Say(T("working"));
             Task.Run(async () =>
             {
                 var (code, text) = await AdminItemsUi.PostAsync(route, body);
@@ -307,7 +329,7 @@ namespace JondoFix
                     try
                     {
                         using var doc = JsonDocument.Parse(text);
-                        Say(T("done"));
+                        if (!quiet) Say(T("done"));
                         then(doc.RootElement.Clone());
                     }
                     catch (Exception ex)
@@ -333,15 +355,17 @@ namespace JondoFix
 
         // ─── Who: the characters in the world ────────────────────────────────────────────
 
-        /// <summary>The row of connected characters to pick from, with its refresh button.</summary>
+        /// <summary>The connected characters to pick from, in a drop-down, with its refresh button.</summary>
         private static VisualElement Players(bool offerOwn)
         {
             _offerOwn = offerOwn;
             var box = new VisualElement();
             box.Add(AdminItemsUi.Label(T("who"), true));
             _playersRow = Flow();
-            _playersRow.style.marginTop = new StyleLength(4f);
+            _playersRow.style.alignItems = new StyleEnum<Align>(Align.FlexStart);
+            _playersRow.style.marginTop = new StyleLength(6f);
             box.Add(_playersRow);
+            ShowPlayers();
             RefreshPlayers();
             return box;
         }
@@ -373,22 +397,30 @@ namespace JondoFix
             if (_playersRow == null) return;
             _playersRow.Clear();
             // Whoever was picked and has since left: back to one's own, or to nobody in the jail.
-            if (_who.Length > 0 && !_players.Any(p => p.Name == _who)) _who = "";
+            if (_who.Length > 0 && _players.Count > 0 && !_players.Any(p => p.Name == _who)) Pick("");
 
-            foreach (var player in _players)
-            {
-                if (player.Own && !_offerOwn) continue;
-                bool picked = player.Own ? _who.Length == 0 : _who == player.Name;
-                string text = $"{player.Name} ({player.Level})" + (player.Own ? " · " + T("me") : "")
-                              + (player.Jailed ? " · " + T("jailed") : "");
-                var p = player;
-                _playersRow.Add(AdminItemsUi.FilterButton(text, picked, true, () =>
-                {
-                    _who = p.Own ? "" : p.Name;
-                    ShowPlayers();
-                }));
-            }
+            // A drop-down rather than a chip each: with twenty connected there is no room for chips.
+            var choices = _players
+                .Where(p => _offerOwn || !p.Own)
+                .Select(p => (Key: p.Own ? "" : p.Name,
+                              Text: $"{p.Name} ({p.Level})" + (p.Own ? " · " + T("me") : "")
+                                    + (p.Jailed ? " · " + T("jailed") : "")))
+                .ToList();
+            var picker = AdminDropdown.Make(choices, _who, Pick, _offerOwn ? T("me") : T("jail.pick"), 400f);
+            picker.style.marginRight = new StyleLength(12f);
+            _playersRow.Add(picker);
             _playersRow.Add(ClientButton(T("refresh"), false, RefreshPlayers));
+        }
+
+        private static void Pick(string who)
+        {
+            if (who == _who) return;
+            _who = who;
+            if (_shown != "character") return;
+            // The fields go blank until the new one's numbers come, rather than show the last one's.
+            _loaded.Clear();
+            foreach (var field in _fields.Values) field?.SetValueWithoutNotify("");
+            LoadSheet();
         }
 
         private static Player Own => _players.FirstOrDefault(p => p.Own);
@@ -398,6 +430,9 @@ namespace JondoFix
 
         private static readonly Dictionary<string, TextInput> _fields = new Dictionary<string, TextInput>();
         private static TextInput _mount;
+
+        /// <summary>The numbers as the server last gave them, to tell what was changed.</summary>
+        private static readonly Dictionary<string, string> _loaded = new Dictionary<string, string>();
 
         /// <summary>The API's key and the text key of each number the character tab sets.</summary>
         private static readonly (string Api, string Text)[] Numbers =
@@ -409,7 +444,7 @@ namespace JondoFix
 
         private static VisualElement BuildCharacter()
         {
-            var page = Page();
+            var page = Page(true);
             page.Add(Players(true));
             page.Add(Section(T("char.title")));
             page.Add(Hint(T("char.hint")));
@@ -418,17 +453,40 @@ namespace JondoFix
             foreach (var (api, text) in Numbers) _fields[api] = Field(fields, T(text), true, 170f);
             page.Add(fields);
             var apply = Flow();
+            apply.style.marginTop = new StyleLength(4f);
             apply.Add(ClientButton(T("char.apply"), true, ApplyCharacter));
             page.Add(apply);
 
             var mount = Flow();
-            mount.style.marginTop = new StyleLength(14f);
+            mount.style.marginTop = new StyleLength(22f);
             _mount = Field(mount, T("char.mount"), true, 240f);
             mount.Add(ClientButton(T("char.give_mount"), false, GiveMount));
             page.Add(mount);
 
             page.Add(Status());
+            _loaded.Clear();
+            LoadSheet();
             return page;
+        }
+
+        /// <summary>
+        /// The picked character's level, characteristics and kamas into the fields, so that what
+        /// they have now is seen before it is changed.
+        /// </summary>
+        private static void LoadSheet()
+        {
+            string who = _who;
+            Ask("ficha", new Dictionary<string, object> { ["personaje"] = who }, root =>
+            {
+                if (who != _who) return;   // another was picked meanwhile
+                foreach (var (api, _) in Numbers)
+                {
+                    if (!root.TryGetProperty(api, out var value) || !_fields.TryGetValue(api, out var field) || field == null) continue;
+                    string text = value.GetInt64().ToString(CultureInfo.InvariantCulture);
+                    _loaded[api] = text;
+                    field.SetValueWithoutNotify(text);
+                }
+            }, quiet: true);
         }
 
         private static void ApplyCharacter()
@@ -436,7 +494,9 @@ namespace JondoFix
             var body = new Dictionary<string, object> { ["personaje"] = _who };
             foreach (var (api, _) in Numbers)
             {
-                if (long.TryParse(Read(_fields[api]), NumberStyles.Integer, CultureInfo.InvariantCulture, out long value))
+                string typed = Read(_fields[api]);
+                if (_loaded.TryGetValue(api, out string was) && typed == was) continue;   // left as it was
+                if (long.TryParse(typed, NumberStyles.Integer, CultureInfo.InvariantCulture, out long value))
                     body[api] = value;
             }
             if (body.Count == 1)
@@ -446,7 +506,7 @@ namespace JondoFix
             }
             Ask("personaje", body, _ =>
             {
-                foreach (var field in _fields.Values) field?.SetValueWithoutNotify("");
+                LoadSheet();   // what the server made of it: a level brings points, kamas may be capped
                 RefreshPlayers();
             });
         }
@@ -460,13 +520,37 @@ namespace JondoFix
 
         // ─── Teleport ────────────────────────────────────────────────────────────────────
 
-        private static TextInput _where, _cell;
+        private static TextInput _where, _cell, _placeSearch;
+        private static VisualElement _places;
+        private static string _placesShown, _placesPending;
+        private static float _placesSince;
+        private static long _placePicked;
 
         private static VisualElement BuildTeleport()
         {
-            var page = Page();
+            var page = Page(true);
             page.Add(Players(true));
             page.Add(Section(T("tp.title")));
+
+            // Found by name as in Jondo Studio's map field: "bonta" lists Bonta's maps with their
+            // area, subarea and coordinates, and the one clicked goes into the map field below.
+            var caption = AdminItemsUi.Label(T("tp.search"), true);
+            caption.style.marginBottom = new StyleLength(4f);
+            page.Add(caption);
+            _placeSearch = new TextInput();
+            _placeSearch.placeholderText = T("tp.search_hint");
+            _placeSearch.style.maxWidth = new StyleLength(760f);
+            _placeSearch.style.marginBottom = new StyleLength(8f);
+            page.Add(_placeSearch);
+            var places = new ScrollView(ScrollViewMode.Vertical);
+            places.style.maxHeight = new StyleLength(260f);
+            places.style.maxWidth = new StyleLength(760f);
+            places.style.marginBottom = new StyleLength(16f);
+            _places = places;
+            page.Add(places);
+            _placesShown = null;
+            _placesPending = "";
+            _placePicked = 0;
 
             var fields = Flow();
             _where = Field(fields, T("tp.where"), false, 320f, "-1,0");
@@ -480,6 +564,58 @@ namespace JondoFix
             page.Add(buttons);
             page.Add(Status());
             return page;
+        }
+
+        /// <summary>The place search asked again once the text has stayed still a moment.</summary>
+        private static void TickPlaces()
+        {
+            if (_placeSearch == null) return;
+            string typed = (_placeSearch.text ?? "").Trim();
+            if (typed != _placesPending)
+            {
+                _placesPending = typed;
+                _placesSince = UnityEngine.Time.unscaledTime;
+            }
+            if (typed == _placesShown || UnityEngine.Time.unscaledTime - _placesSince < 0.35f) return;
+            _placesShown = typed;
+            if (typed.Length < 2)
+            {
+                _places?.Clear();
+                return;
+            }
+            Ask("buscar-mapas", new Dictionary<string, object> { ["texto"] = typed }, root =>
+            {
+                if (typed == _placesShown) ShowPlaces(root);   // not if more was typed meanwhile
+            }, quiet: true);
+        }
+
+        private static void ShowPlaces(JsonElement root)
+        {
+            if (_places == null) return;
+            _places.Clear();
+            int count = 0;
+            foreach (var place in root.GetProperty("mapas").EnumerateArray())
+            {
+                long map = place.GetProperty("mapa").GetInt64();
+                int x = place.GetProperty("x").GetInt32(), y = place.GetProperty("y").GetInt32();
+                string name = string.Join(" · ", new[] { place.GetProperty("zona").GetString() ?? "",
+                                                         place.GetProperty("subzona").GetString() ?? "" }
+                                                     .Where(n => n.Length > 0));
+                bool outdoor = place.GetProperty("exterior").GetBoolean();
+                string text = $"{name}  [{x},{y}]" + (outdoor ? "" : $"  ·  {T("tp.indoor")}") + $"  ·  {map}";
+                var row = AdminItemsUi.FilterButton(text, map == _placePicked, false, () =>
+                {
+                    _placePicked = map;
+                    _where?.SetValueWithoutNotify(map.ToString(CultureInfo.InvariantCulture));
+                    Say(T("tp.picked", $"{name} [{x},{y}]"));
+                    ShowPlaces(root);
+                });
+                row.style.marginRight = new StyleLength(0f);
+                _places.Add(row);
+                count++;
+            }
+            if (count == 0) _places.Add(Hint(T("tp.none")));
+            else if (count >= 60) _places.Add(Hint(T("tp.more")));
         }
 
         private static void Teleport()
@@ -548,6 +684,7 @@ namespace JondoFix
         private static VisualElement BuildSpawn()
         {
             EnsureBeings();
+            EnsureLevels();
 
             var page = Page();
             var body = AdminItemsUi.Row();
@@ -558,12 +695,12 @@ namespace JondoFix
             left.style.width = new StyleLength(520f);
             left.style.marginRight = new StyleLength(20f);
             _kinds = AdminItemsUi.Row();
+            _kinds.style.marginBottom = new StyleLength(4f);
             left.Add(_kinds);
             ShowKinds();
             _search = new TextInput();
             _search.placeholderText = T("spawn.search");
-            _search.style.marginTop = new StyleLength(6f);
-            _search.style.marginBottom = new StyleLength(6f);
+            _search.style.marginBottom = new StyleLength(10f);
             left.Add(_search);
             var scroll = new ScrollView(ScrollViewMode.Vertical);
             scroll.style.flexGrow = new StyleFloat(1f);
@@ -572,10 +709,11 @@ namespace JondoFix
             var pager = AdminItemsUi.Row();
             pager.style.justifyContent = new StyleEnum<Justify>(Justify.SpaceBetween);
             pager.style.alignItems = new StyleEnum<Align>(Align.Center);
-            pager.Add(ClientButton("<", false, () => { _spawnPage--; ShowBeings(); }));
+            pager.style.marginTop = new StyleLength(10f);
+            pager.Add(AdminItemsUi.FilterButton(T("spawn.prev"), false, true, () => { _spawnPage--; ShowBeings(); }));
             _pageLabel = AdminItemsUi.Label("");
             pager.Add(_pageLabel);
-            pager.Add(ClientButton(">", false, () => { _spawnPage++; ShowBeings(); }));
+            pager.Add(AdminItemsUi.FilterButton(T("spawn.next"), false, true, () => { _spawnPage++; ShowBeings(); }));
             left.Add(pager);
             body.Add(left);
 
@@ -585,12 +723,14 @@ namespace JondoFix
             _detail = new VisualElement();
             right.Add(_detail);
             _groupLabel = AdminItemsUi.Label("", true);
-            _groupLabel.style.marginTop = new StyleLength(10f);
+            _groupLabel.style.marginTop = new StyleLength(16f);
+            _groupLabel.style.marginBottom = new StyleLength(6f);
             right.Add(_groupLabel);
             _group = new VisualElement();
             right.Add(_group);
             _mapLabel = AdminItemsUi.Label("", true);
-            _mapLabel.style.marginTop = new StyleLength(14f);
+            _mapLabel.style.marginTop = new StyleLength(20f);
+            _mapLabel.style.marginBottom = new StyleLength(8f);
             right.Add(_mapLabel);
             _mapList = new VisualElement();
             right.Add(_mapList);
@@ -681,6 +821,40 @@ namespace JondoFix
             }
         }
 
+        private static bool _levelsKnown;
+
+        /// <summary>
+        /// Each monster's level at each grade, from the server, which fights them at those: the
+        /// client's catalogue says 1 for every grade, and the list read "1-1" everywhere. Asked
+        /// each time the tab opens until it is had. Monsters the server does not know go: it would
+        /// refuse to spawn them.
+        /// </summary>
+        private static void EnsureLevels()
+        {
+            if (_levelsKnown) return;
+            Ask("niveles-monstruos", new Dictionary<string, object>(), root =>
+            {
+                if (_monsterCatalogue == null) return;
+                var byId = new Dictionary<int, Being>();
+                foreach (var monster in _monsterCatalogue) byId[monster.Id] = monster;
+                var known = new HashSet<int>();
+                foreach (var monster in root.GetProperty("niveles").EnumerateObject())
+                {
+                    if (!int.TryParse(monster.Name, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id)
+                        || !byId.TryGetValue(id, out var being)) continue;
+                    being.Grades = monster.Value.EnumerateArray().Select((level, i) => (i + 1, level.GetInt32())).ToList();
+                    known.Add(id);
+                }
+                if (known.Count == 0) return;
+                _levelsKnown = true;
+                _monsterCatalogue = _monsterCatalogue.Where(m => known.Contains(m.Id))
+                    .OrderBy(m => m.MaxLevel).ThenBy(m => m.Name).ToList();
+                if (_being != null && !_being.Npc && !known.Contains(_being.Id)) _being = null;
+                ShowBeings(_searchShown ?? "");
+                ShowBeing();
+            }, quiet: true);
+        }
+
         private static void TickSearch()
         {
             if (_search == null) return;
@@ -729,7 +903,8 @@ namespace JondoFix
             for (int i = _spawnPage * SpawnPageSize; i < end; i++)
             {
                 var being = _found[i];
-                string levels = being.Grades.Count == 0 ? "" : $"  ·  {being.Grades.Min(g => g.Level)}-{being.MaxLevel}";
+                string levels = !_levelsKnown || being.Grades.Count == 0 ? ""
+                    : $"  ·  {T("spawn.levels", being.Grades.Min(g => g.Level), being.MaxLevel)}";
                 var row = AdminItemsUi.FilterButton($"{being.Name}  ·  {being.Id}{levels}", being == _being, false, () =>
                 {
                     _being = being;
@@ -785,7 +960,7 @@ namespace JondoFix
                 int index = i;
                 var (monster, grade) = _members[i];
                 int level = monster.Grades.FirstOrDefault(g => g.Grade == grade).Level;
-                _group.Add(AdminItemsUi.FilterButton($"{monster.Name} · {T("spawn.grade", grade, level)}  ✕", false, false, () =>
+                _group.Add(AdminItemsUi.FilterButton($"{monster.Name} · {T("spawn.grade", grade, level)}  ×", false, false, () =>
                 {
                     if (index < _members.Count) _members.RemoveAt(index);
                     ShowGroup();
@@ -794,6 +969,7 @@ namespace JondoFix
             if (_members.Count > 0)
             {
                 var buttons = Flow();
+                buttons.style.marginTop = new StyleLength(6f);
                 buttons.Add(ClientButton(T("spawn.group_go"), true, SpawnGroup));
                 buttons.Add(ClientButton(T("spawn.clear"), false, () => { _members.Clear(); ShowGroup(); }));
                 _group.Add(buttons);
@@ -846,17 +1022,22 @@ namespace JondoFix
                 count++;
             }
             if (count == 0) _mapList.Add(Hint(T("spawn.empty")));
-            _mapList.Add(ClientButton(T("refresh"), false, RefreshMap));
+            // In a row of its own, or the column stretches the button across the whole width.
+            var refresh = Flow();
+            refresh.style.marginTop = new StyleLength(6f);
+            refresh.Add(ClientButton(T("refresh"), false, RefreshMap));
+            _mapList.Add(refresh);
         }
 
         private static VisualElement MapLine(string text, Action remove)
         {
             var line = AdminItemsUi.Row();
             line.style.alignItems = new StyleEnum<Align>(Align.Center);
-            line.style.marginBottom = new StyleLength(4f);
+            line.style.marginBottom = new StyleLength(6f);
             var label = AdminItemsUi.Label(text);
             label.style.flexGrow = new StyleFloat(1f);
             label.style.flexShrink = new StyleFloat(1f);
+            label.style.marginRight = new StyleLength(12f);
             line.Add(label);
             line.Add(ClientButton(T("spawn.remove"), false, remove));
             return line;
@@ -878,7 +1059,7 @@ namespace JondoFix
 
         private static VisualElement BuildJail()
         {
-            var page = Page();
+            var page = Page(true);
             page.Add(Players(false));
             page.Add(Section(T("jail.title")));
             page.Add(Hint(T("jail.hint")));
@@ -888,6 +1069,9 @@ namespace JondoFix
                 if (_who.Length == 0) { Say(T("jail.pick")); return; }
                 Ask("carcel", new Dictionary<string, object> { ["personaje"] = _who }, _ => { RefreshPrisoners(); RefreshPlayers(); });
             }));
+            // To the corridor outside the cells, as when somebody is taken in, but alone.
+            send.Add(ClientButton(T("jail.visit"), false, () =>
+                Ask("visitar-carcel", new Dictionary<string, object>(), _ => RefreshPlayers())));
             page.Add(send);
 
             page.Add(Section(T("jail.inside")));
@@ -923,7 +1107,7 @@ namespace JondoFix
             {
                 var line = AdminItemsUi.Row();
                 line.style.alignItems = new StyleEnum<Align>(Align.Center);
-                line.style.marginBottom = new StyleLength(4f);
+                line.style.marginBottom = new StyleLength(6f);
                 var name = AdminItemsUi.Label(prisoner.Name + (prisoner.Online ? "" : $" ({T("jail.offline")})"), true);
                 name.style.width = new StyleLength(320f);
                 line.Add(name);

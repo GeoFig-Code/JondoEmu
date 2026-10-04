@@ -136,6 +136,9 @@ namespace Jondo.Unity.Server.Managers
         }
 
         private static Dictionary<int, MonsterData> _monsters = new Dictionary<int, MonsterData>();
+
+        /// <summary>Every monster the server knows, with its grades: what the admin window lists levels from.</summary>
+        public static IReadOnlyCollection<MonsterData> AllMonsters => _monsters.Values;
         private static Dictionary<long, List<MobGroup>> _mapMobs = new Dictionary<long, List<MobGroup>>();
 
         /// <summary>

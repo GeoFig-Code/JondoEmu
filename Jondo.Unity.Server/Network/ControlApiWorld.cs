@@ -231,6 +231,20 @@ namespace Jondo.Unity.Server.Network
                 }),
             });
 
+        /// <summary>
+        /// POST /api/niveles-monstruos: each monster's level at each of its grades, as the server
+        /// fights it: <code>{ niveles: { "31": [16, 17, 18, 19, 20], ... } }</code>. The client's own
+        /// catalogue gives 1 for every grade, which made the spawn tab show "1-1" everywhere.
+        /// </summary>
+        private static Respuesta NivelesMonstruos()
+            => Bien(new
+            {
+                niveles = MobSpawnManager.AllMonsters
+                    .Where(m => m.Grades.Count > 0)
+                    .ToDictionary(m => m.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                                  m => m.Grades.Select(g => g.Level).ToArray()),
+            });
+
         /// <summary>POST /api/presos: who is in jail, with the seconds left and whether he is connected.</summary>
         private static Respuesta Presos(long administrador)
             => Bien(new

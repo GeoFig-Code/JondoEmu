@@ -87,7 +87,9 @@ namespace Jondo.Unity.Server.Managers
                     var place = new Place(map.MapId, map.PosX, map.PosY, area, sub, map.Outdoor);
                     index.Add((place, Fold(area + " " + sub)));
                 }
-                return _index = index;
+                // Not kept while empty: built before the maps were read, it would stay empty for good.
+                if (index.Count > 0) _index = index;
+                return index;
             }
         }
 

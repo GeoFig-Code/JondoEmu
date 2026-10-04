@@ -133,6 +133,7 @@ namespace Jondo.Unity.Server.Network
                     case Prefijo + "buscar-mapas": return ConRol(cuerpo, Roles.Administrador, _ => BuscarMapas(cuerpo));
                     case Prefijo + "ficha": return ConRol(cuerpo, Roles.Administrador, cuenta => Ficha(cuerpo, cuenta));
                     case Prefijo + "visitar-carcel": return ConRol(cuerpo, Roles.Administrador, VisitarCarcel);
+                    case Prefijo + "niveles-monstruos": return ConRol(cuerpo, Roles.Administrador, _ => NivelesMonstruos());
                     case Prefijo + "personaje":
                         return !metodo.Equals("POST", StringComparison.OrdinalIgnoreCase)
                             ? Mal(405, "metodo")
