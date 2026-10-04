@@ -148,6 +148,11 @@ namespace Jondo.Unity.Server.Managers
                 {
                     if (element.Cell == 0) continue;
                     if (!_byGfx.TryGetValue(element.Gfx, out var kind)) continue;
+                    // A passage hung off it makes it a door, whatever its graphic says: the GM
+                    // island's chest, 479462, has the placeholder graphic 682 every olivioleta
+                    // tree has, and as a tree it asked for woodcutting 90 to be opened.
+                    // TeleportManager is read first (Program), so its passages are known here.
+                    if (TeleportManager.TryGet(mapId, element.Id, out _)) continue;
 
                     var resource = new Resource
                     {

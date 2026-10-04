@@ -317,9 +317,16 @@ namespace Jondo.Unity.Server.Managers
             foreach (long mapId in Interactives.MapIds)
             {
                 foreach (var resource in Resources.On(mapId))
+                {
+                    // An element with a passage was declared above as the passage, and declaring
+                    // it again with a resource's type is the incoherent declaration that stops
+                    // the start. Resources leaves those out already; this holds should it have
+                    // been read before TeleportManager.
+                    if (TeleportManager.TryGet(mapId, resource.ElementId, out _)) continue;
                     Register(mapId, new Interactives.Element(resource.ElementId, resource.Cell,
                                                              resource.Gfx),
                              resource.Type, InteractiveActionKind.Gather, resource.SkillId);
+                }
             }
 
             // And the workshop stations, by their graphic too. One element can offer several

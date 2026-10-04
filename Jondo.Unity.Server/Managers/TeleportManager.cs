@@ -365,6 +365,7 @@ namespace Jondo.Unity.Server.Managers
             }
 
             AplicarLosNuestros(byElement, byMap, byCell);
+            AddFloorPassages(byCell);
 
             _byElement = byElement;
             _byMap = byMap.ToDictionary(x => x.Key, x => (IReadOnlyList<InteractiveTeleport>)x.Value);
@@ -458,6 +459,49 @@ namespace Jondo.Unity.Server.Managers
                 Console.WriteLine($"[Teleports] {puestos} pasaje(s) puestos a mano y {quitados} quitado(s), " +
                                   "de content/interactives/teleports.json.");
             }
+        }
+
+        /// <summary>
+        /// The floor passages (<see cref="FloorPassages"/>): cells that move whoever stops on
+        /// them, with no element.
+        /// </summary>
+        /// <remarks>
+        /// Only in the index by cell, which is what WorldMoveHandler asks when a walk ends; not by
+        /// element nor by map, so nothing is declared to the client for them. A cell that already
+        /// has an element's passage keeps it: the element is what the map shows. And one leading to
+        /// a map the world does not have is left out, as Validate leaves out an element's.
+        /// </remarks>
+        private static void AddFloorPassages(Dictionary<(long, int), InteractiveTeleport> byCell)
+        {
+            int added = 0;
+            foreach (var floor in FloorPassages.Load(Paths.ContentFile(FloorPassages.AuthoredFile),
+                                                     message => Console.WriteLine("[Teleports] " + message)))
+            {
+                if (byCell.ContainsKey((floor.SourceMapId, floor.SourceCell)))
+                {
+                    Console.WriteLine($"[Teleports] Floor passage {floor}: the cell has an element's passage already; left out.");
+                    continue;
+                }
+                if (MapManager.GetMapInfo(floor.DestinationMapId) == null)
+                {
+                    Console.WriteLine($"[Teleports] Floor passage {floor}: the world has no map {floor.DestinationMapId}; left out.");
+                    continue;
+                }
+
+                byCell[(floor.SourceMapId, floor.SourceCell)] = new InteractiveTeleport
+                {
+                    SourceMapId = floor.SourceMapId,
+                    SourceCellId = floor.SourceCell,
+                    DestinationMapId = floor.DestinationMapId,
+                    DestinationCellId = floor.DestinationCell,
+                    SourceVersion = "floor",
+                    Confidence = "authored",
+                };
+                added++;
+            }
+
+            if (added > 0)
+                Console.WriteLine($"[Teleports] {added} floor passage(s), from content/interactives/floor_passages.json.");
         }
     }
 }

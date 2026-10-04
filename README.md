@@ -210,7 +210,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 <img width="2560" height="1514" alt="image" src="https://github.com/user-attachments/assets/942d4d71-9711-45f1-9156-5381f7ad14b8" />
 
 - ✅ **3,815 interactive teleports** imported, 3,719 active across 2,655 maps
-- ✅ Passages that fire when you step on the cell, hooked to the end of a walk
+- ✅ Passages that fire when you step on the cell, hooked to the end of a walk — and floor passages with no element at all (`content/interactives/floor_passages.json`), for the maps that need a way out and have nothing to click
+- ✅ The GM prison's three maps, all at [66,6] and joined by nothing on the world grid, made one round: the sky jail's trapdoor goes down to the dungeon, the dungeon's hanging cage lifts you to the island, and the island's treasure chest brings you back to the jail at the foot of the trapdoor. The chest wears the placeholder graphic of the olivioleta trees, so it was being offered as a tree to cut; a passage now makes it a door
 - ✅ Each route carries its own interactive type
 - 🟡 Every extracted passage still declares skill 114 (*Utilizar* on a zaap) where the game uses
   184; new passages written in Jondo Studio declare 184
