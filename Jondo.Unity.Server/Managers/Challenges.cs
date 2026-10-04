@@ -77,55 +77,55 @@ namespace Jondo.Unity.Server.Managers
             /// </summary>
             public bool Offerable => Percent > 0 && MinGroupLevel > 0 && !DungeonOnly && !NeedsMonster;
 
-            // ─── Cómo se juzga uno de los que impone el sitio ───────────────────
+            // ─── How one the place imposes is judged ─────────────────────────────
             //
-            // Los retos de jefe son los mismos de siempre con otro número: el «Prudente» del
-            // Jalató Real (121) trae el mismo criterio, letra por letra, que el Prudente normal
-            // (40). Así que no hace falta un vigilante por cada uno de los 773: se mira a cuál
-            // de los que ya se vigilan equivale, y lo lleva ése. Lo rellena OnlyOffer.
+            // A boss's challenges are the usual ones under another number: the Jalató Real's
+            // "Prudente" (121) carries the same criterion, letter for letter, as the generic
+            // Prudente (40). So the 773 need no watcher each: each is matched to the watched one
+            // it is equivalent to, and that one judges it. OnlyOffer fills this in.
 
             /// <summary>
-            /// El reto vigilado al que equivale: él mismo si es de los normales, el gemelo si es
-            /// de jefe, y cero si nadie sabe llevarlo.
+            /// The watched challenge this one is equivalent to: itself for a generic one, its twin
+            /// for a boss's, and zero when nobody can judge it.
             /// </summary>
             public int Kind { get; set; }
 
-            /// <summary>«CK#monstruo»: ese monstruo —o uno de ésos— tiene que caer el primero.</summary>
+            /// <summary>"CK#monster": that monster -- or one of those -- has to fall first.</summary>
             public IReadOnlyList<int> KillFirst { get; set; } = Array.Empty<int>();
 
-            /// <summary>«Ck#monstruo»: ese monstruo tiene que caer el último.</summary>
+            /// <summary>"Ck#monster": that monster has to fall last.</summary>
             public IReadOnlyList<int> KillLast { get; set; } = Array.Empty<int>();
 
-            /// <summary>«ST&lt;N»: hay que ganar antes de la ronda N. Cero si no hay tope.</summary>
+            /// <summary>"ST&lt;N": the fight has to be won before round N. Zero when there is no limit.</summary>
             public int TurnLimit { get; set; }
 
             /// <summary>
-            /// Los que no piden nada más que haber entrado pocos: el «Solo», que es ganar con un
-            /// personaje y cuyo criterio dice sólo «Ma=1». Lo que hay que mirar ya lo mira la
-            /// activación.
+            /// The ones that ask for nothing but having come in few: "Solo", which is winning with
+            /// one character and whose criterion says only "Ma=1". What there is to check, the
+            /// activation already checks.
             /// </summary>
             public bool PartySizeOnly { get; set; }
 
-            /// <summary>La regla puesta a mano, para los que sólo la dicen en la descripción.</summary>
+            /// <summary>The rule wired by hand, for the ones that only state it in their description.</summary>
             public BossRule Rule { get; set; }
 
-            /// <summary>¿Hay quien lo juzgue? El que no, no se impone: saldría cumplido siempre.</summary>
+            /// <summary>Whether anybody judges it. One nobody does is not imposed: it would always come out won.</summary>
             public bool Judged => Kind != 0 || KillFirst.Count > 0 || KillLast.Count > 0
                                   || TurnLimit > 0 || PartySizeOnly || Rule != BossRule.None;
         }
 
         /// <summary>
-        /// Las reglas de los retos de jefe cuyo criterio es «Ma=1», o sea «lo lleva un guión»: lo
-        /// que piden está sólo en la descripción, y se ha leído una a una. Aquí están las que se
-        /// pueden juzgar con lo que el combate ya sabe —dónde acaba cada uno, quién pega a quién
-        /// y desde dónde, quién cura, quién cae—. Las que dependen de un hechizo o un estado
-        /// propio del jefe se quedan fuera.
+        /// The rules of the boss challenges whose criterion is "Ma=1", that is "a script handles
+        /// it": what they ask is only in the description, read one by one. Here are the ones the
+        /// fight can judge with what it already knows -- where each one ends, who hits whom and
+        /// from where, who heals, who falls. Those that hang on a spell or a state of the boss's
+        /// own are left out.
         /// </summary>
         public enum BossRule
         {
             None = 0,
 
-            // Dónde se acaba el turno.
+            // Where the turn ends.
             EndInLineWithEnemy,
             EndDiagonalToEnemy,
             NeverInLineWithEnemy,
@@ -139,16 +139,16 @@ namespace Jondo.Unity.Server.Managers
             EndFarFromAllies4,
             BeginOrEndInLineWithEnemy,
 
-            // Quién cae y cuándo.
+            // Who falls, and when.
             NoEnemyKilledBeforeRound6,
             NobodyKilledBeforeRound6,
             NoEnemySummonKilledByAlly,
 
-            // Curas.
+            // Heals.
             NoHealEnemies,
             NoHealAllies,
 
-            // Daños.
+            // Damage.
             NoRangedDamageToEnemies,
             NoMeleeDamageToEnemies,
             NoRangedDamageToBoss,
@@ -159,7 +159,7 @@ namespace Jondo.Unity.Server.Managers
             BossUntouchedUntilAlone,
         }
 
-        /// <summary>Reto → su regla. Los números son los de la tabla del cliente 3.6.10.10.</summary>
+        /// <summary>Challenge → its rule. The numbers are those of the 3.6.10.10 client's table.</summary>
         private static readonly Dictionary<int, BossRule> _byHand = new()
         {
             [1037] = BossRule.EndInLineWithEnemy,          // Roblenlace
@@ -195,30 +195,30 @@ namespace Jondo.Unity.Server.Managers
             [1013] = BossRule.NoPushDamageToAllies,        // No hay que dar demasiada miel al cerdo
             [1071] = BossRule.NoPushDamageToAllies,        // Cuidado, suelo resbaladizo
             [982] = BossRule.NoDamageToEnemySummons,       // Dorado, mi fa sol
-            [993] = BossRule.NoDamageToEnemySummons,       // No toques a mi blop, los cuatro
+            [993] = BossRule.NoDamageToEnemySummons,       // No toques a mi blop, all four
             [994] = BossRule.NoDamageToEnemySummons,
             [995] = BossRule.NoDamageToEnemySummons,
             [996] = BossRule.NoDamageToEnemySummons,
-            [998] = BossRule.NoDamageToEnemySummons,       // Sin desierto, los cuatro
+            [998] = BossRule.NoDamageToEnemySummons,       // Sin desierto, all four
             [999] = BossRule.NoDamageToEnemySummons,
             [1000] = BossRule.NoDamageToEnemySummons,
             [1001] = BossRule.NoDamageToEnemySummons,
-            [1103] = BossRule.NoDamageToEnemySummons,      // Protección de cascasaurios, el de Grozilla
+            [1103] = BossRule.NoDamageToEnemySummons,      // Protección de cascasaurios, Grozilla's
             [1003] = BossRule.NoDamageWhileEnemySummons,   // Unos auténticos cracks
             [1022] = BossRule.BossUntouchedUntilAlone,     // Ratuperación
         };
 
-        /// <summary>«Matar a {0} en último lugar», dicho sólo en la descripción: el suyo, el último.</summary>
+        /// <summary>"Matar a {0} en último lugar", said only in the description: its own boss, last.</summary>
         private static readonly int[] _killBossLast = { 1017, 1062, 2093 };
 
-        /// <summary>«Los enemigos deben ser eliminados antes del inicio del turno 6.»</summary>
+        /// <summary>"Los enemigos deben ser eliminados antes del inicio del turno 6."</summary>
         private static readonly int[] _beforeRound6 = { 526, 527 };
 
-        /// <summary>«Huele a motín»: acabar en línea con un aliado, que es el Del mismo linaje.</summary>
+        /// <summary>"Huele a motín": ending in line with an ally, which is Del mismo linaje.</summary>
         private const int InLineWithAlly = 1080;
         private const int SameLineage = 964;
 
-        /// <summary>Todos los que llevan regla puesta a mano, de una forma u otra.</summary>
+        /// <summary>Every challenge with a rule wired by hand, one way or another.</summary>
         internal static IEnumerable<int> HandWired
         {
             get
@@ -230,7 +230,7 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        /// <summary>El criterio que no dice nada: «lo lleva un guión del servidor».</summary>
+        /// <summary>The criterion that says nothing: "a server script handles it".</summary>
         private const string Scripted = "Ma=1";
 
         private static readonly System.Text.RegularExpressions.Regex _killOrder =
@@ -239,95 +239,95 @@ namespace Jondo.Unity.Server.Managers
         private static readonly System.Text.RegularExpressions.Regex _turnLimit =
             new System.Text.RegularExpressions.Regex(@"^ST<(\d+)$");
 
-        /// <summary>«GN&lt;3,0»: cuántos luchadores, comparado con qué, y de qué bando.</summary>
+        /// <summary>"GN&lt;3,0": how many fighters, compared with what, and of which side.</summary>
         private static readonly System.Text.RegularExpressions.Regex _fighterCount =
             new System.Text.RegularExpressions.Regex(@"GN([<>=])(\d+),([01])");
 
         /// <summary>
-        /// Le busca a cada reto de jefe quién lo juzga, mirando su criterio de cumplimiento.
+        /// Finds who judges each boss challenge, by its completion criterion.
         ///
-        /// Lo que queda sin juez —«Manos limpias», los de no quitar PA ni PM, «Místico» y los
-        /// setenta y tantos que son la mecánica propia de un jefe— no se impone.
+        /// What is left without a judge -- "Manos limpias", the ones about not taking AP or MP,
+        /// "Místico" and the seventy-odd that are a boss's own mechanics -- is not imposed.
         /// </summary>
-        private static void FindJudges(IReadOnlyDictionary<int, int> vigilados)
+        private static void FindJudges(IReadOnlyDictionary<int, int> watched)
         {
-            // Criterio → el reto normal que lo lleva. El «Ma=1» no entra: lo comparten el
-            // Bárbaro y medio catálogo, y no distingue a nadie.
-            var porCriterio = new Dictionary<string, int>();
-            var porNombre = new Dictionary<string, int>();
-            foreach (int id in vigilados.Keys)
+            // Criterion → the generic challenge that judges it. "Ma=1" is left out: the Bárbaro
+            // and half the catalogue share it, and it tells nobody apart.
+            var byCriterion = new Dictionary<string, int>();
+            var byName = new Dictionary<string, int>();
+            foreach (int id in watched.Keys)
             {
-                var normal = Get(id);
-                if (normal == null || normal.NeedsMonster) continue;
-                normal.Kind = id;
-                if (normal.Completion == Scripted) porNombre[normal.Name] = id;
-                else if (normal.Completion.Length > 0) porCriterio[normal.Completion] = id;
+                var generic = Get(id);
+                if (generic == null || generic.NeedsMonster) continue;
+                generic.Kind = id;
+                if (generic.Completion == Scripted) byName[generic.Name] = id;
+                else if (generic.Completion.Length > 0) byCriterion[generic.Completion] = id;
             }
 
-            foreach (var reto in _byId.Values)
+            foreach (var challenge in _byId.Values)
             {
-                if (!reto.NeedsMonster) continue;
+                if (!challenge.NeedsMonster) continue;
 
-                var primero = new List<int>();
-                var ultimo = new List<int>();
-                bool orden = true;
-                foreach (string trozo in reto.Completion.Split('|'))
+                var first = new List<int>();
+                var last = new List<int>();
+                bool killOrder = true;
+                foreach (string part in challenge.Completion.Split('|'))
                 {
-                    var m = _killOrder.Match(trozo);
-                    if (!m.Success) { orden = false; break; }
-                    (m.Groups[1].Value == "K" ? primero : ultimo).Add(int.Parse(m.Groups[2].Value));
+                    var match = _killOrder.Match(part);
+                    if (!match.Success) { killOrder = false; break; }
+                    (match.Groups[1].Value == "K" ? first : last).Add(int.Parse(match.Groups[2].Value));
                 }
 
-                var tope = _turnLimit.Match(reto.Completion);
+                var limit = _turnLimit.Match(challenge.Completion);
 
-                if (orden && (primero.Count == 0 || ultimo.Count == 0))
+                if (killOrder && (first.Count == 0 || last.Count == 0))
                 {
-                    reto.KillFirst = primero;
-                    reto.KillLast = ultimo;
+                    challenge.KillFirst = first;
+                    challenge.KillLast = last;
                 }
-                else if (tope.Success) reto.TurnLimit = int.Parse(tope.Groups[1].Value);
-                else if (porCriterio.TryGetValue(reto.Completion, out int gemelo)) reto.Kind = gemelo;
-                else if (reto.Completion == Scripted)
+                else if (limit.Success) challenge.TurnLimit = int.Parse(limit.Groups[1].Value);
+                else if (byCriterion.TryGetValue(challenge.Completion, out int twin)) challenge.Kind = twin;
+                else if (challenge.Completion == Scripted)
                 {
-                    if (_byHand.TryGetValue(reto.Id, out var regla)) reto.Rule = regla;
-                    else if (Array.IndexOf(_killBossLast, reto.Id) >= 0) reto.KillLast = reto.Monsters;
-                    else if (Array.IndexOf(_beforeRound6, reto.Id) >= 0) reto.TurnLimit = 6;
-                    else if (reto.Id == InLineWithAlly && vigilados.ContainsKey(SameLineage)) reto.Kind = SameLineage;
-                    else if (porNombre.TryGetValue(reto.Name, out int tocayo)) reto.Kind = tocayo;
-                    else reto.PartySizeOnly = _fighterCount.IsMatch(reto.Activation)
-                                              && reto.Activation.Contains("GN<");
+                    if (_byHand.TryGetValue(challenge.Id, out var rule)) challenge.Rule = rule;
+                    else if (Array.IndexOf(_killBossLast, challenge.Id) >= 0) challenge.KillLast = challenge.Monsters;
+                    else if (Array.IndexOf(_beforeRound6, challenge.Id) >= 0) challenge.TurnLimit = 6;
+                    else if (challenge.Id == InLineWithAlly && watched.ContainsKey(SameLineage)) challenge.Kind = SameLineage;
+                    else if (byName.TryGetValue(challenge.Name, out int namesake)) challenge.Kind = namesake;
+                    else challenge.PartySizeOnly = _fighterCount.IsMatch(challenge.Activation)
+                                                   && challenge.Activation.Contains("GN<");
                 }
             }
 
-            int jueces = 0, total = 0;
-            foreach (var reto in _byId.Values)
+            int judged = 0, total = 0;
+            foreach (var challenge in _byId.Values)
             {
-                if (!reto.NeedsMonster) continue;
+                if (!challenge.NeedsMonster) continue;
                 total++;
-                if (reto.Judged) jueces++;
+                if (challenge.Judged) judged++;
             }
-            Console.WriteLine($"[Retos] De los {total} que impone un monstruo, {jueces} tienen quien " +
-                              $"los juzgue; los otros {total - jueces} no se impondrán.");
+            Console.WriteLine($"[Retos] De los {total} que impone un monstruo, {judged} tienen quien " +
+                              $"los juzgue; los otros {total - judged} no se impondrán.");
         }
 
         /// <summary>
-        /// ¿Caben los que hay? Es lo que dice el «GN» de la activación: el «Dúo» pide menos de
-        /// tres en el bando de los jugadores, el «Pegajoso» más de uno. Las invocaciones no
-        /// cuentan.
+        /// Whether the fighters there are fit: what the activation's "GN" says -- "Dúo" asks for
+        /// fewer than three on the players' side, "Pegajoso" for more than one. Summons do not
+        /// count.
         /// </summary>
-        public static bool FitsParty(Challenge reto, int players, int monsters)
+        public static bool FitsParty(Challenge challenge, int players, int monsters)
         {
-            foreach (System.Text.RegularExpressions.Match m in _fighterCount.Matches(reto.Activation))
+            foreach (System.Text.RegularExpressions.Match match in _fighterCount.Matches(challenge.Activation))
             {
-                int cuantos = m.Groups[3].Value == "0" ? players : monsters;
-                int n = int.Parse(m.Groups[2].Value);
-                bool vale = m.Groups[1].Value switch
+                int count = match.Groups[3].Value == "0" ? players : monsters;
+                int wanted = int.Parse(match.Groups[2].Value);
+                bool fits = match.Groups[1].Value switch
                 {
-                    "<" => cuantos < n,
-                    ">" => cuantos > n,
-                    _ => cuantos == n,
+                    "<" => count < wanted,
+                    ">" => count > wanted,
+                    _ => count == wanted,
                 };
-                if (!vale) return false;
+                if (!fits) return false;
             }
             return true;
         }
@@ -375,8 +375,8 @@ namespace Jondo.Unity.Server.Managers
         public static Challenge? Get(int id) => _byId.TryGetValue(id, out var reto) ? reto : null;
 
         /// <summary>
-        /// El reto vigilado al que equivale éste. Uno normal es su propio juez; uno de jefe lo
-        /// es el gemelo que le encontró <see cref="FindJudges"/>, o nadie.
+        /// The watched challenge this one is equivalent to. A generic one is its own judge; a
+        /// boss's is judged by the twin <see cref="FindJudges"/> found it, or by nobody.
         /// </summary>
         public static int KindOf(int id)
         {
@@ -485,8 +485,8 @@ namespace Jondo.Unity.Server.Managers
                 {
                     if (alreadyDone.Contains(reto.Id)) continue;
 
-                    // El que nadie juzga saldría cumplido con sólo ganar, y el que pide ser
-                    // pocos no es para un grupo entero.
+                    // One nobody judges would come out won just by winning, and one that asks for
+                    // few is not for a whole party.
                     if (!reto.Judged || !FitsParty(reto, players, monsterCount)) continue;
                     if (!puestos.Add(reto.Id)) continue;
                     salida.Add(reto);
