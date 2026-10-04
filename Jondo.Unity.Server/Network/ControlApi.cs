@@ -215,11 +215,9 @@ namespace Jondo.Unity.Server.Network
                 && !DatabaseManager.TryGetItemTemplateEffects((int)update.ItemGid.Value, out _))
                 return Mal(400, "objeto-desconocido");
             // A rolled item is one row each, so a careless quantity is that many inserts and that
-            // many messages to the client. What rolls nothing joins one stack and has no such cost.
+            // many messages to the client: the same cap as the .item command's.
             if (update.ItemGid.HasValue && update.RandomStats
-                && (update.Quantity ?? 1) > TopeDeObjetosTirados
-                && Managers.Forgemagic.TemplateOf((int)update.ItemGid.Value) is { } plantilla
-                && !Managers.Forgemagic.Stacks(plantilla))
+                && CommandHandler.TooManyRolled((int)update.ItemGid.Value, update.Quantity ?? 1))
                 return Mal(400, "cantidad-excesiva");
             if (update.MountGid.HasValue
                 && (!Managers.Mounts.IsRideable((int)update.MountGid.Value)
@@ -391,9 +389,6 @@ namespace Jondo.Unity.Server.Network
         /// magnitude short of overflowing.
         /// </remarks>
         private const int TopeDeCaracteristica = 10_000_000;
-
-        /// <summary>The most rolled items one request hands over: a guard, not a rule of the game.</summary>
-        private const int TopeDeObjetosTirados = 100;
 
         /// <summary>
         /// Who is in the world, for whoever is about to give something to one of them: the name

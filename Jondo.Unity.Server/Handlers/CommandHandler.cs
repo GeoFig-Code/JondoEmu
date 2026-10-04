@@ -866,6 +866,12 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            if (random && TooManyRolled(gid, quantity))
+            {
+                await NotifyAsync(stream, T("item.too_many_rolled", MaxRolledItems), channel, accountId);
+                return;
+            }
+
             bool given = random
                 ? await WorkshopHandler.GiveAsync(stream, gid, quantity)
                 : await GrantItemAsync(stream, gid, quantity) != null;
@@ -883,6 +889,19 @@ namespace Jondo.Unity.Server.Handlers
             await NotifyAsync(stream, T("item.added", gid, quantity),
                               channel, accountId);
         }
+
+        /// <summary>
+        /// The most items that roll one gift hands over, by command or by the control API: each is
+        /// a row of its own and a message to the client, and ".item 2469 1000000 random" was a
+        /// million of both. What rolls nothing joins one stack and has no such cost.
+        /// </summary>
+        internal const int MaxRolledItems = 100;
+
+        /// <summary>Whether rolling that many of this item is over <see cref="MaxRolledItems"/>.</summary>
+        internal static bool TooManyRolled(int gid, long quantity)
+            => quantity > MaxRolledItems
+               && Managers.Forgemagic.TemplateOf(gid) is { } template
+               && !Managers.Forgemagic.Stacks(template);
 
         /// <summary>"max" or "random" (and "aleatorio", "aléatoire"): how an item given comes out.</summary>
         internal static bool TryParseStatMode(string word, out bool random)
