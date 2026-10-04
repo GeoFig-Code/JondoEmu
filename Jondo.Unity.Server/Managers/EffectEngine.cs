@@ -1321,23 +1321,23 @@ namespace Jondo.Unity.Server.Managers
         private const int DispararHechizo = EffectSupport.TriggerSpell;
         private const int NearestTargetExecuteSpell = EffectSupport.NearestTargetExecuteSpell;
 
-        // La Rage Ouginak se concede mediante sous-sorts, après les dégâts du sort parent.
-        // Le 24128 prépare la chaîne et le 13745 fait évoluer les paliers de Rage. La cible
-        // frappée ne doit donc pas disparaître du routage de ces deux sous-sorts si le coup qui
-        // les déclenche vient de la tuer.
-        private const int GestionnaireDeRageOuginak = 13745;
-        private const int RelaisDeRageOuginak = 24128;
-        private const int FinDeFormeBestialeOuginak = 13747;
+        // The Ouginak's Rage is granted by sub-spells, after the parent spell's damage: 24128
+        // sets the chain up and 13745 moves the Rage from one step to the next. So the target
+        // that was hit must not drop out of these two sub-spells' routing when the blow that
+        // sets them off has just killed it.
+        private const int OuginakRageManager = 13745;
+        private const int OuginakRageRelay = 24128;
+        private const int OuginakBestialFormEnd = 13747;
 
-        private static bool EsCadenaDeRageOuginak(SpellEffect efecto)
+        private static bool IsOuginakRageChain(SpellEffect efecto)
             => (efecto.EffectId == LanzarHechizo
                 || efecto.EffectId == DispararHechizo
                 || efecto.EffectId == NearestTargetExecuteSpell)
-               && (efecto.DiceNum == GestionnaireDeRageOuginak
-                   || efecto.DiceNum == RelaisDeRageOuginak);
+               && (efecto.DiceNum == OuginakRageManager
+                   || efecto.DiceNum == OuginakRageRelay);
 
-        private static bool EsFinDiferidoDeFormaBestialeOuginak(SpellEffect efecto)
-            => efecto.DiceNum == FinDeFormeBestialeOuginak;
+        private static bool IsDelayedOuginakBestialFormEnd(SpellEffect efecto)
+            => efecto.DiceNum == OuginakBestialFormEnd;
 
         private const int QuitarEfectosDeHechizo = EffectSupport.RemoveSpellEffects;
         private const int CambiarApariencia = EffectSupport.ChangeLook;
@@ -2527,7 +2527,7 @@ namespace Jondo.Unity.Server.Managers
                 foreach (var sobre in AQuien(combat, caster, target, efecto, aimedCell,
                                              estadosAlEmpezar, celdasAlEmpezar,
                                              soloAlObjetivo: soloAlObjetivo,
-                                             incluirObjetivoMuerto: EsCadenaDeRageOuginak(efecto)))
+                                             includeDeadTarget: IsOuginakRageChain(efecto)))
                 {
                     var hecho = Aplicar(combat, caster, sobre, spell, grade, efecto, round,
                                         aimedCell, sharedHealRoll);
@@ -2558,7 +2558,7 @@ namespace Jondo.Unity.Server.Managers
                         // gained and the whole next turn.
                         if (efecto.Delay > 0 && string.Equals(trigger, AlLanzar, StringComparison.OrdinalIgnoreCase)
                             && (!PlayerSpells.Contains(spell)
-                                || EsFinDiferidoDeFormaBestialeOuginak(efecto)))
+                                || IsDelayedOuginakBestialFormEnd(efecto)))
                         {
                             var quienLoLanzaraLuego = Familia.TryGetValue(efecto.EffectId, out var comoEsperara)
                                                       && comoEsperara.LanzaElCandidato ? sobre : caster;
@@ -2687,7 +2687,7 @@ namespace Jondo.Unity.Server.Managers
                                                    IReadOnlyDictionary<Fighter, HashSet<int>> estados = null,
                                                    IReadOnlyDictionary<Fighter, int> celdas = null,
                                                    bool soloAlObjetivo = false,
-                                                   bool incluirObjetivoMuerto = false)
+                                                   bool includeDeadTarget = false)
         {
             var mascara = efecto.TargetMask ?? "";
             bool alLanzador = false, aLosMios = false, aLosDeEnfrente = false, aLosOtrosAliados = false;
@@ -3035,7 +3035,7 @@ namespace Jondo.Unity.Server.Managers
                     : soloTeleportFallido
                         ? combate.TeleportsFallidos.Select(combate.Buscar).Where(f => f != null && f.IsAlive).ToList()
                         : EnLaZona(combate, quienLanza, objetivo, efecto, celdaApuntada, celdas,
-                                   incluirObjetivoMuerto);
+                                   includeDeadTarget);
                 foreach (var quien in enJuego)
                 {
                     bool suyo = quien.TeamId == quienLanza.TeamId;
@@ -3182,7 +3182,7 @@ namespace Jondo.Unity.Server.Managers
                                                      Fighter objetivo, SpellEffect efecto,
                                                      int celdaApuntada,
                                                      IReadOnlyDictionary<Fighter, int> celdas = null,
-                                                     bool incluirObjetivoMuerto = false)
+                                                     bool includeDeadTarget = false)
         {
             bool fijas = efecto.Forma == FormaDeCeldasFijas && efecto.CeldasFijas.Count > 0;
             if (celdaApuntada < 0 && !fijas)
@@ -3205,7 +3205,7 @@ namespace Jondo.Unity.Server.Managers
             foreach (var quien in Todos(combate))
             {
                 if (quien == null || quien.EstaCargado) continue;
-                if (!quien.IsAlive && !(incluirObjetivoMuerto && quien == objetivo)) continue;
+                if (!quien.IsAlive && !(includeDeadTarget && quien == objetivo)) continue;
                 if (dentro.Contains(CeldaDe(quien))) yield return quien;
             }
         }

@@ -65,8 +65,8 @@ namespace Jondo.Unity.Tests.Combat
         public void Molosse_still_grants_rage_when_the_damage_killed_its_target()
         {
             var (fight, ouginak) = Combat();
-            // FightHandler applique les dégâts avant de résoudre les autres lignes du sort.
-            // Cette cible représente donc le monstre déjà tué par Molosse.
+            // FightHandler applies the damage before it resolves the spell's other rows, so this
+            // target stands for the monster Molosse has already killed.
             var target = new Fighter { Id = 2, TeamId = 1, CellId = 101, CurrentHP = 0 };
             fight.Rojo.Add(target);
 
