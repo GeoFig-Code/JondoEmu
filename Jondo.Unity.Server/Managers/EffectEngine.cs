@@ -1321,6 +1321,24 @@ namespace Jondo.Unity.Server.Managers
         private const int DispararHechizo = EffectSupport.TriggerSpell;
         private const int NearestTargetExecuteSpell = EffectSupport.NearestTargetExecuteSpell;
 
+        // La Rage Ouginak se concede mediante sous-sorts, après les dégâts du sort parent.
+        // Le 24128 prépare la chaîne et le 13745 fait évoluer les paliers de Rage. La cible
+        // frappée ne doit donc pas disparaître du routage de ces deux sous-sorts si le coup qui
+        // les déclenche vient de la tuer.
+        private const int GestionnaireDeRageOuginak = 13745;
+        private const int RelaisDeRageOuginak = 24128;
+        private const int FinDeFormeBestialeOuginak = 13747;
+
+        private static bool EsCadenaDeRageOuginak(SpellEffect efecto)
+            => (efecto.EffectId == LanzarHechizo
+                || efecto.EffectId == DispararHechizo
+                || efecto.EffectId == NearestTargetExecuteSpell)
+               && (efecto.DiceNum == GestionnaireDeRageOuginak
+                   || efecto.DiceNum == RelaisDeRageOuginak);
+
+        private static bool EsFinDiferidoDeFormaBestialeOuginak(SpellEffect efecto)
+            => efecto.DiceNum == FinDeFormeBestialeOuginak;
+
         private const int QuitarEfectosDeHechizo = EffectSupport.RemoveSpellEffects;
         private const int CambiarApariencia = EffectSupport.ChangeLook;
 
@@ -2507,7 +2525,9 @@ namespace Jondo.Unity.Server.Managers
                 bool unaSolaVez = efecto.EffectId == Retroceder || efecto.EffectId == Avanzar;
 
                 foreach (var sobre in AQuien(combat, caster, target, efecto, aimedCell,
-                                             estadosAlEmpezar, celdasAlEmpezar, soloAlObjetivo: soloAlObjetivo))
+                                             estadosAlEmpezar, celdasAlEmpezar,
+                                             soloAlObjetivo: soloAlObjetivo,
+                                             incluirObjetivoMuerto: EsCadenaDeRageOuginak(efecto)))
                 {
                     var hecho = Aplicar(combat, caster, sobre, spell, grade, efecto, round,
                                         aimedCell, sharedHealRoll);
@@ -2531,10 +2551,14 @@ namespace Jondo.Unity.Server.Managers
                     // capture: "jwe 300 f3=-16" -- the bomb -- casts 20497 on cell 274, its own.
                     if (hecho.HechizoEncadenado != 0)
                     {
-                        // A monster's 792, 1160, 2160 with a delay wait like the rest of the family:
-                        // Conflicto Eterno's imp comes back two turns later, not at once.
+                        // Delayed sub-casts wait like the rest of the family. Most cases in this
+                        // old path are monster spells (Conflicto Eterno's imp), but Ouginak Rage
+                        // also schedules 13747 one round later: it arms the turn-end removal only
+                        // for the following turn, so beast form survives the turn in which it was
+                        // gained and the whole next turn.
                         if (efecto.Delay > 0 && string.Equals(trigger, AlLanzar, StringComparison.OrdinalIgnoreCase)
-                            && !PlayerSpells.Contains(spell))
+                            && (!PlayerSpells.Contains(spell)
+                                || EsFinDiferidoDeFormaBestialeOuginak(efecto)))
                         {
                             var quienLoLanzaraLuego = Familia.TryGetValue(efecto.EffectId, out var comoEsperara)
                                                       && comoEsperara.LanzaElCandidato ? sobre : caster;
@@ -2662,7 +2686,8 @@ namespace Jondo.Unity.Server.Managers
                                                    int celdaApuntada = -1,
                                                    IReadOnlyDictionary<Fighter, HashSet<int>> estados = null,
                                                    IReadOnlyDictionary<Fighter, int> celdas = null,
-                                                   bool soloAlObjetivo = false)
+                                                   bool soloAlObjetivo = false,
+                                                   bool incluirObjetivoMuerto = false)
         {
             var mascara = efecto.TargetMask ?? "";
             bool alLanzador = false, aLosMios = false, aLosDeEnfrente = false, aLosOtrosAliados = false;
@@ -3009,7 +3034,8 @@ namespace Jondo.Unity.Server.Managers
                     ? combate.Telefrags.Keys.Select(combate.Buscar).Where(f => f != null && f.IsAlive).ToList()
                     : soloTeleportFallido
                         ? combate.TeleportsFallidos.Select(combate.Buscar).Where(f => f != null && f.IsAlive).ToList()
-                        : EnLaZona(combate, quienLanza, objetivo, efecto, celdaApuntada, celdas);
+                        : EnLaZona(combate, quienLanza, objetivo, efecto, celdaApuntada, celdas,
+                                   incluirObjetivoMuerto);
                 foreach (var quien in enJuego)
                 {
                     bool suyo = quien.TeamId == quienLanza.TeamId;
@@ -3155,7 +3181,8 @@ namespace Jondo.Unity.Server.Managers
         private static IEnumerable<Fighter> EnLaZona(FightInstance combate, Fighter quienLanza,
                                                      Fighter objetivo, SpellEffect efecto,
                                                      int celdaApuntada,
-                                                     IReadOnlyDictionary<Fighter, int> celdas = null)
+                                                     IReadOnlyDictionary<Fighter, int> celdas = null,
+                                                     bool incluirObjetivoMuerto = false)
         {
             bool fijas = efecto.Forma == FormaDeCeldasFijas && efecto.CeldasFijas.Count > 0;
             if (celdaApuntada < 0 && !fijas)
@@ -3177,7 +3204,8 @@ namespace Jondo.Unity.Server.Managers
             var dentro = new HashSet<int>(casillas);
             foreach (var quien in Todos(combate))
             {
-                if (quien == null || !quien.IsAlive || quien.EstaCargado) continue;
+                if (quien == null || quien.EstaCargado) continue;
+                if (!quien.IsAlive && !(incluirObjetivoMuerto && quien == objetivo)) continue;
                 if (dentro.Contains(CeldaDe(quien))) yield return quien;
             }
         }

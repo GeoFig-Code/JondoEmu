@@ -1613,6 +1613,11 @@ difference left against its capture.
 
 <details><summary><b>Uginak</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
+> La mécanique de Rage est prise en charge : les sorts qui donnent de la Rage
+> (notamment Moloso et Carroña) la donnent même lorsque leurs dégâts tuent la cible.
+> Au troisième palier, l'Ouginak passe en forme bestiale jusqu'à la fin de son tour
+> suivant.
+
 - ❌ Convergencia
 - ❌ Busca
 - ❌ Presa
