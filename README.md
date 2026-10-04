@@ -9,7 +9,7 @@ High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** writte
 
 ## 📑 Contents
 
-| 🖥️ [Launcher](#-launcher) | 🧩 [Server](#-server) | 🛠️ [Jondo Studio](#-jondo-studio) |
+| 🖥️ [Launcher](#%EF%B8%8F-launcher) | 🧩 [Server](#-server) | 🛠️ [Jondo Studio](#%EF%B8%8F-jondo-studio) |
 |:---|:---|:---|
 | The player's window, in Avalonia. A team of up to eight accounts, each with its character drawn from the client's own bones. | The emulator itself. Four listeners in one process, one session per socket, and guards that refuse to boot on bad data. | The world editor. Nine sections over the client's data, writing a reviewable diff instead of a 240 MB binary. |
 
@@ -20,15 +20,17 @@ High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** writte
 
 &nbsp;
 
-- 🌍 &nbsp;**World** &nbsp;— &nbsp;[Connection and authentication](#-connection-and-authentication) · [World and movement](#-world-and-movement) · [Travel](#-travel) · [Houses, bins and haven bags](#-houses-bins-and-haven-bags) · [Banks and marketplaces](#-banks-and-marketplaces) · [Social](#-social) · [Guilds and raids](#-guilds-and-raids)
+- 🌍 &nbsp;**World** &nbsp;— &nbsp;[Connection and authentication](#-connection-and-authentication) · [World and movement](#%EF%B8%8F-world-and-movement) · [Travel](#-travel) · [Houses, bins and haven bags](#%EF%B8%8F-houses-bins-and-haven-bags) · [Banks and marketplaces](#-banks-and-marketplaces) · [Social](#-social) · [Guilds and raids](#%EF%B8%8F-guilds-and-raids)
 
-- 🎒 &nbsp;**Character** &nbsp;— &nbsp;[Character and inventory](#-character-and-inventory) · [Appearances](#-appearances) · [Professions](#-professions)
+- 🎒 &nbsp;**Character** &nbsp;— &nbsp;[Character and inventory](#-character-and-inventory) · [Appearances](#-appearances) · [Professions](#%EF%B8%8F-professions)
 
 - 📚 &nbsp;**Content** &nbsp;— &nbsp;[NPCs and monsters](#-npcs-and-monsters) · [Quests](#-quests) · [Achievements](#-achievements) · [Almanax](#-almanax) · [Dungeons](#-dungeons) · [Infinite Dreams](#-infinite-dreams) · [Jondo Coin](#-jondo-coin)
 
-- ⚔️ &nbsp;**Combat** &nbsp;— &nbsp;[One engine, four rulebooks](#-one-engine-four-rulebooks) · [PvM](#-pvm-combat) · [Duels](#-duels) · [Koliseo](#-koliseo) · [Spell effect engine](#-spell-effect-engine) · [Spell check-list](#-spell-check-list) · [Combat challenges](#-combat-challenges)
+- ⚔️ &nbsp;**Combat** &nbsp;— &nbsp;[One engine, four rulebooks](#%EF%B8%8F-one-engine-four-rulebooks) · [PvM](#-pvm-combat) · [Duels](#-duels) · [Koliseo](#%EF%B8%8F-koliseo) · [Spell effect engine](#-spell-effect-engine) · [Spell check-list](#-spell-check-list) · [Combat challenges](#-combat-challenges)
 
-- 🔎 &nbsp;**Tools** &nbsp;— &nbsp;[Jondo Studio](#-jondo-studio) · [Surviving the next patch](#-surviving-the-next-patch)
+- 🔎 &nbsp;**Tools** &nbsp;— &nbsp;[Jondo Studio](#%EF%B8%8F-jondo-studio) · [Surviving the next patch](#-surviving-the-next-patch)
+
+- 🤝 &nbsp;**Community** &nbsp;— &nbsp;[Community projects](#-community-projects)
 
 - 🧱 &nbsp;**Under the hood** &nbsp;— &nbsp;[Tests](#-tests) · [Source layout](#-source-layout) · [Database and persistence](#-database-and-persistence)
 
@@ -93,7 +95,7 @@ By default the emulator looks for the client next to itself, in a `Cliente 3.6.1
 
 The **ES / EN / FR** switch sets the language of the launcher *and* of the game: the client is started with that `--langCode`.
 
-**`Jondo Studio.exe`** is the third executable and needs nothing else running. See [Jondo Studio](#-jondo-studio).
+**`Jondo Studio.exe`** is the third executable and needs nothing else running. See [Jondo Studio](#%EF%B8%8F-jondo-studio).
 
 ---
 
@@ -1899,8 +1901,20 @@ Three **SQLite** databases in `bases/`, and one folder of text:
 * **`world.db`** — characters, inventories, positions, map persistence, spells, monsters, appearances, wardrobe, haven bags, houses and their chests, bins, guilds, the guild chest and raids, quests, achievements and the tallies they count, learned emotes. Distributed compressed as `datos/world.zip` (24.8 MB) and extracted on first run.
 * **`auth.db`** — accounts and authentication sessions, created on first run.
 * **`paquetes.db`** — the packets the server does not yet know how to answer, deduplicated by protobuf shape. It carries nothing needed to play and can be deleted to start over.
-* **`content/`** — the authored layer, in versioned JSON. The only one edited by hand, and the only one nothing regenerates. See [Jondo Studio](#-jondo-studio).
+* **`content/`** — the authored layer, in versioned JSON. The only one edited by hand, and the only one nothing regenerates. See [Jondo Studio](#%EF%B8%8F-jondo-studio).
 
 Files are looked up in `datos/`, then `bases/`, then the root.
 
 Some regression guards run at startup and throw, so the server refuses to boot when the data it was shipped does not match what the code expects — see [Tests](#-tests).
+
+---
+
+## 🤝 Community projects
+
+Projects other people build on top of Jondo. They live in their own repositories, with their own authors and licences: Jondo does not build, test or review them, and links them here so they can be found.
+
+| Project | Author | What it is |
+|:---|:---|:---|
+| [Jondo.Unity.WebClient](https://github.com/leonardo-spy/Jondo.Unity.WebClient) | [leonardo-spy](https://github.com/leonardo-spy) | The Dofus 3 client running in the browser (Unity, WebGL), connecting to Jondo over WebSocket. |
+
+Building something on Jondo? Open an issue or a pull request adding it to this table.
