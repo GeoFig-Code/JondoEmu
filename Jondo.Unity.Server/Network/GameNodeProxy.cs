@@ -597,7 +597,18 @@ namespace Jondo.Unity.Server.Network
                         bool consumed = text.Length > 0 &&
                             await CommandHandler.TryHandleAsync(stream, text, channel, sessionAccountId);
 
-                        if (text.Length > 0 && !consumed)
+                        // A prisoner speaks on the general channel only; private messages come by
+                        // ktb and are not stopped. See Managers.Jail.
+                        bool muted = text.Length > 0 && !consumed
+                                     && !Managers.Jail.MaySpeakOn(SessionContext.State.CharacterId, channel);
+                        if (muted)
+                        {
+                            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                                ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildNotice(
+                                    Handlers.CommandTexts.Get("jail.channel"))));
+                        }
+
+                        if (text.Length > 0 && !consumed && !muted)
                         {
                             byte[] linea = ConnectionProtocol.Push(Op.Kti,
                                 ConnectionProtocol.BuildChatLine(GameState.CharacterName,

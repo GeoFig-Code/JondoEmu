@@ -50,6 +50,7 @@ namespace Jondo.Unity.Server.Handlers
         public static async Task EnterFromOutsideAsync(NetworkStream stream, byte[] payload)
         {
             if (ConnectionProtocol.ReadPayload(payload, Op.Jbn) == null) return;
+            if (await Managers.Jail.KeepsInAsync(stream)) return;
 
             var state = Jondo.Unity.Server.Network.SessionContext.State;
 

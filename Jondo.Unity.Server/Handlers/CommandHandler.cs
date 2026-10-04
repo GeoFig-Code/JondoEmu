@@ -134,6 +134,15 @@ namespace Jondo.Unity.Server.Handlers
             string? command = CommandOf(text);
             if (command == null) return false;
 
+            // In jail, no command of any kind -- an administrator's neither: see Managers.Jail.
+            // Swallowed, not echoed, so it does not go out on the general channel either.
+            if (Managers.Jail.IsJailed(Network.SessionContext.State.CharacterId)
+                && (Uso.ContainsKey(command) || LooksLikeCommand(command)))
+            {
+                await NotifyAsync(stream, T("jail.no_commands"), channel, accountId);
+                return true;
+            }
+
             if (!Uso.ContainsKey(command))
             {
                 // No es nuestro. Se avisa —solo si tiene pinta de comando, para no contestar a

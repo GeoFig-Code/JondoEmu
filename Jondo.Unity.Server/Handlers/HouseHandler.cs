@@ -150,6 +150,7 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>El cliente ha clicado la puerta de la calle.</summary>
         public static async Task EnterAsync(NetworkStream? stream, int elementId, int skillId)
         {
+            if (await Managers.Jail.KeepsInAsync(stream)) return;
             long here = SessionContext.State.MapId;
             if (!Houses.TryGetDoor(here, elementId, out var door))
             {

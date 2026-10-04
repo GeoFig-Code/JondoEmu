@@ -31,7 +31,7 @@ namespace Jondo.Unity.Server.Network
     /// llama a la base y al registro de lanzamientos, y devuelve texto. Los mensajes para el
     /// usuario NO se traducen aquí —viajan como código— porque el idioma es del lanzador.
     /// </summary>
-    public static class ControlApi
+    public static partial class ControlApi
     {
         /// <summary>Las rutas y la cabecera salen del contrato, que es lo que comparten los dos.</summary>
         public const string Prefijo = Jondo.Unity.Launcher.Contract.Prefijo;
@@ -121,6 +121,15 @@ namespace Jondo.Unity.Server.Network
                     case Prefijo + "rol": return ConRol(cuerpo, Roles.Administrador,
                         cuenta => CambiarRol(cuerpo, cuenta));
                     case Prefijo + "conectados": return ConRol(cuerpo, Roles.Administrador, Conectados);
+                    // The administrator's window: his map, what he puts on it and takes off it,
+                    // and the jail. See ControlApiWorld.cs.
+                    case Prefijo + "mapa": return ConRol(cuerpo, Roles.Administrador, Mapa);
+                    case Prefijo + "invocar": return ConRol(cuerpo, Roles.Administrador, cuenta => Invocar(cuerpo, cuenta));
+                    case Prefijo + "quitar": return ConRol(cuerpo, Roles.Administrador, cuenta => Quitar(cuerpo, cuenta));
+                    case Prefijo + "carcel": return ConRol(cuerpo, Roles.Administrador, cuenta => Carcel(cuerpo, cuenta));
+                    case Prefijo + "liberar": return ConRol(cuerpo, Roles.Administrador, cuenta => Liberar(cuerpo, cuenta));
+                    case Prefijo + "presos": return ConRol(cuerpo, Roles.Administrador, Presos);
+                    case Prefijo + "coordenadas": return ConRol(cuerpo, Roles.Administrador, _ => Coordenadas(cuerpo));
                     case Prefijo + "personaje":
                         return !metodo.Equals("POST", StringComparison.OrdinalIgnoreCase)
                             ? Mal(405, "metodo")
@@ -404,6 +413,10 @@ namespace Jondo.Unity.Server.Network
                     nombre = sesion.State.CharacterName ?? "",
                     nivel = sesion.State.CharacterLevel,
                     propio = sesion.AccountId == administrador,
+                    // Where he is, for "go to him" and "bring him here", and whether he is in jail.
+                    mapa = sesion.State.MapId,
+                    celda = sesion.State.CellId,
+                    preso = Managers.Jail.IsJailed(sesion.CharacterId),
                 });
             }
             return Bien(new { conectados });

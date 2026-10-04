@@ -76,6 +76,26 @@ The role is clamped to the supported range documented in `docs/role.md`.
 
 `propio` marks the caller's own character.
 
+## The map, spawning and the jail
+
+The administrator's window acts on the world through these routes, all with the same administrator
+token. "The caller's" is the character his account has in the world.
+
+| Route | Body | What it does |
+|---|---|---|
+| `POST /api/mapa` | — | The caller's map and cell, its NPCs `{ id, npc, celda }` and its monster groups `{ id, celda, miembros: [{ monstruo, grado, nivel }] }`. |
+| `POST /api/invocar` | `{ "tipo": "npc", "npc": 774 }` or `{ "tipo": "monstruos", "miembros": [{ "monstruo": 31, "grado": 2 }] }` | An NPC, or a group of one to eight monsters (grade from 1), on the caller's cell; everybody on the map sees it at once. Answers as `/api/mapa`. |
+| `POST /api/quitar` | `{ "tipo": "npc" \| "grupo", "id" }` | Takes it off the caller's map. A map emptied by hand is not filled again with fresh groups. |
+| `POST /api/carcel` | `{ "personaje" }` | Ten minutes in the GM prison, the caller to the corridor beside the cell. |
+| `POST /api/liberar` | `{ "personaje" }` | Out before his time, back where he was taken from (at his next login if he is offline). |
+| `POST /api/presos` | — | `{ presos: [{ nombre, quedan, conectado }] }`, `quedan` in seconds. |
+| `POST /api/coordenadas` | `{ "x", "y" }` | `{ mapa }`: the map `.teleport [x,y]` would take. |
+
+`/api/conectados` also gives each character's `mapa`, `celda` and whether he is `preso`.
+
+What is spawned or taken off lasts until the server restarts, like everything that happens on a map
+while it runs. A sentence does not: it is kept in the `Jail` table of `world.db`.
+
 ## The item window in the client
 
 JondoFix opens a window on **F10** for an administrator: the client's own item catalogue with a
@@ -92,6 +112,12 @@ server runs on the same machine as the client. Implementation: `JondoFix/AdminIt
 |---|---|---|
 | 400 | `sin-cambios` | No supported numeric field was supplied. |
 | 400 | `modo-invalido` | `modo` is not `max`, `aleatorio` or `random`. |
+| 400 | `npc-invalido` | No such NPC, or the same one already stands on that cell. |
+| 400 | `monstruo-invalido` / `miembros-invalidos` | No monster the server knows, or not one to eight of them. |
+| 404 | `no-esta` | What was to be taken off is not on the map. |
+| 409 | `ya-esta-preso` / 404 `no-esta-preso` | Jailing someone already in, or releasing someone who is not. |
+| 400 | `a-uno-mismo` | An administrator jailing himself. |
+| 404 | `sin-mapa` | No map at those coordinates. |
 | 400 | `modo-sin-objeto` | A rolled mode was asked for with no `objeto`. |
 | 400 | `cantidad-excesiva` | More than 100 items that roll, in rolled mode. |
 | 400 | `campo-invalido-*` | A supported field was supplied with a non-numeric value. |

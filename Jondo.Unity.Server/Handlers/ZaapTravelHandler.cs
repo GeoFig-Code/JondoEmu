@@ -93,6 +93,8 @@ namespace Jondo.Unity.Server.Handlers
         {
             byte[]? hjc = ConnectionProtocol.ReadPayload(payload, Op.Hjc);
             if (hjc == null) return;
+            // Before any kamas are paid for the trip.
+            if (await Managers.Jail.KeepsInAsync(stream)) return;
 
             // El f2 dice de qué pestaña viene la elección, y de eso depende qué significa el f3:
             // para el zaap y el zaapi es el MAPA al que se va; para la anomalía es SU SUBZONA, que

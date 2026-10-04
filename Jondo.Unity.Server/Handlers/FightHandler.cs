@@ -8651,8 +8651,10 @@ namespace Jondo.Unity.Server.Handlers
             LeaveFight();
 
             // A loser does not go back where he fought: he goes to his save point, beside its
-            // zaap. Set after LeaveFight, which puts him back on the map he left.
-            if (defeat != null && MapManager.GetMapInfo(defeat.SavePointMap) != null)
+            // zaap. Set after LeaveFight, which puts him back on the map he left. A prisoner
+            // does not: a lost fight is no way out of jail, and he goes back to his cell.
+            if (defeat != null && MapManager.GetMapInfo(defeat.SavePointMap) != null
+                && !Managers.Jail.IsJailed(Network.SessionContext.State.CharacterId))
             {
                 back = defeat.SavePointMap;
                 Network.SessionContext.State.MapId = defeat.SavePointMap;

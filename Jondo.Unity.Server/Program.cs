@@ -103,6 +103,8 @@ namespace Jondo.Unity.Server
             Managers.Cosmetics.Initialize();
             Managers.EquipmentSkins.Initialize();
             Managers.KoliseoMaps.Initialize();
+            // The jail's sentences still running, and the clock that ends them.
+            Managers.Jail.Initialize();
             Managers.Dreams.Initialize();
             Managers.Merkasako.Initialize();
             Managers.Zaapis.Initialize();

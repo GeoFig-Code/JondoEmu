@@ -85,6 +85,10 @@ namespace Jondo.Unity.Server.Handlers
         {
             if (mapId <= 0) return -1;
 
+            // A prisoner goes nowhere until his time is up: see Managers.Jail. Every road that
+            // ends in a teleport ends here, so this is the one that cannot be forgotten.
+            if (await Managers.Jail.KeepsInAsync(stream)) return -1;
+
             // Un mapa que no está en los datos del mundo es un mapa que el cliente tampoco sabe
             // cargar: recibe el jru, no encuentra nada y el personaje no aparece en ningún sitio.
             // Es la misma comprobación que hacen el zaap y el cambio de mapa por el borde.

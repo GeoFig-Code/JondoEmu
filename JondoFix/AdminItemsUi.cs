@@ -57,7 +57,7 @@ namespace JondoFix
             public int IconId;
         }
 
-        private static readonly ConcurrentQueue<Action> _toUnity = new ConcurrentQueue<Action>();
+        internal static readonly ConcurrentQueue<Action> _toUnity = new ConcurrentQueue<Action>();
         private static readonly HttpClient _http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
 
         private static List<Entry> _catalogue;
@@ -89,7 +89,12 @@ namespace JondoFix
         private static readonly Dictionary<string, Dictionary<string, string>> Texts =
             new Dictionary<string, Dictionary<string, string>>
             {
-                ["title"] = L("Jondo · Dar objeto", "Jondo · Give item", "Jondo · Donner un objet"),
+                ["title"] = L("Jondo · Administración", "Jondo · Administration", "Jondo · Administration"),
+                ["tab.items"] = L("Objetos", "Items", "Objets"),
+                ["tab.character"] = L("Personaje", "Character", "Personnage"),
+                ["tab.teleport"] = L("Teletransporte", "Teleport", "Téléportation"),
+                ["tab.spawn"] = L("Invocar", "Spawn", "Invoquer"),
+                ["tab.jail"] = L("Cárcel", "Jail", "Prison"),
                 ["search"] = L("Nombre, tipo, id o niveles 190-200", "Name, type, id or levels 190-200",
                                "Nom, type, id ou niveaux 190-200"),
                 ["quantity"] = L("Cantidad", "Quantity", "Quantité"),
@@ -143,10 +148,10 @@ namespace JondoFix
                                           "Le serveur ne répond pas : {0}"),
             };
 
-        private static Dictionary<string, string> L(string es, string en, string fr)
+        internal static Dictionary<string, string> L(string es, string en, string fr)
             => new Dictionary<string, string> { ["es"] = es, ["en"] = en, ["fr"] = fr };
 
-        private static string T(string key, params object[] values)
+        internal static string T(string key, params object[] values)
         {
             if (!Texts.TryGetValue(key, out var byLanguage)) return key;
             string text = byLanguage.TryGetValue(KoliseoUi.Language ?? "en", out string own) ? own : byLanguage["en"];
@@ -169,6 +174,8 @@ namespace JondoFix
                 if (_window != null) Close();
                 else Open();
             }
+
+            if (_window != null) AdminWorldUi.Tick();
 
             if (_window == null || _search == null) return;
 
@@ -235,15 +242,22 @@ namespace JondoFix
                 window.style.left = new StyleLength(float.IsNaN(layerWidth) || layerWidth <= 0 ? 370f : (layerWidth - Width) / 2f);
                 window.style.top = new StyleLength(float.IsNaN(layerHeight) || layerHeight <= 0 ? 180f : (layerHeight - Height) / 2f);
 
-                var body = Row();
-                body.style.flexGrow = new StyleFloat(1f);
-                body.style.paddingLeft = new StyleLength(20f);
-                body.style.paddingRight = new StyleLength(20f);
-                body.style.paddingTop = new StyleLength(14f);
-                body.style.paddingBottom = new StyleLength(16f);
-                body.Add(BuildList());
-                body.Add(BuildSide());
-                window.Add(body);
+                // The tabs, as the client's own windows have them: a DofusTabGroup with its
+                // SubHeader class and one DofusTab each (GuildUnsetUi, AppearanceUI...), and under
+                // it the page of the tab picked.
+                _tabs = new DofusTabGroup();
+                _tabs.AddToClassList("SubHeader");
+                try { _tabs.size = DofusTab.TabSize.large; } catch { }
+                for (int i = 0; i < TabKeys.Length; i++)
+                {
+                    int index = i;
+                    _tabs.Add(new DofusTab(Do(() => ShowTab(index)), T("tab." + TabKeys[i]), null));
+                }
+                window.Add(_tabs);
+
+                _tabPage = new VisualElement();
+                _tabPage.style.flexGrow = new StyleFloat(1f);
+                window.Add(_tabPage);
 
                 layer.Add(window);
                 window.BringToFront();
@@ -254,14 +268,7 @@ namespace JondoFix
                 _openedAt = UnityEngine.Time.unscaledTime;
                 _reported = false;
 
-                _shownSearch = null;
-                _pendingSearch = "";
-                ShowCategories();
-                ShowTypes();
-                ShowRows("");
-                ShowDetail();
-                ShowTarget();
-                RefreshTargets();
+                ShowTab(_tab);
             }
             catch (Exception ex)
             {
@@ -270,11 +277,80 @@ namespace JondoFix
             }
         }
 
+        // ─── The tabs ───────────────────────────────────────────────────────────────────
+
+        /// <summary>The tabs, in order: their text is "tab." and the key, in every language.</summary>
+        private static readonly string[] TabKeys = { "items", "character", "teleport", "spawn", "jail" };
+
+        private static DofusTabGroup _tabs;
+
+        /// <summary>The page under the tabs, and which tab it shows. The tab is kept between openings.</summary>
+        private static VisualElement _tabPage;
+        private static int _tab;
+
+        /// <summary>Shows a tab's page, built afresh: what the server says is asked again each time.</summary>
+        private static void ShowTab(int index)
+        {
+            if (_tabPage == null) return;
+            _tab = Math.Clamp(index, 0, TabKeys.Length - 1);
+            try { _tabs?.SetValueWithoutNotify(_tab); } catch { }
+
+            ForgetItemsPage();
+            AdminWorldUi.Reset();
+            _tabPage.Clear();
+
+            if (_tab == 0) _tabPage.Add(BuildItemsPage());
+            else _tabPage.Add(AdminWorldUi.Build(TabKeys[_tab]));
+        }
+
+        /// <summary>The items tab: the catalogue on the left, the item picked and who gets it on the right.</summary>
+        private static VisualElement BuildItemsPage()
+        {
+            var body = Row();
+            body.style.flexGrow = new StyleFloat(1f);
+            body.style.paddingLeft = new StyleLength(20f);
+            body.style.paddingRight = new StyleLength(20f);
+            body.style.paddingTop = new StyleLength(14f);
+            body.style.paddingBottom = new StyleLength(16f);
+            body.Add(BuildList());
+            body.Add(BuildSide());
+
+            _shownSearch = null;
+            _pendingSearch = "";
+            ShowCategories();
+            ShowTypes();
+            ShowRows("");
+            ShowDetail();
+            ShowTarget();
+            RefreshTargets();
+            return body;
+        }
+
+        /// <summary>The items page's elements, gone with it.</summary>
+        private static void ForgetItemsPage()
+        {
+            _search = null;
+            _quantity = null;
+            _rows = null;
+            _categories = null;
+            _types = null;
+            _typesBox = null;
+            _typesHeading = null;
+            _pageLabel = null;
+            _detail = null;
+            _targets = null;
+            _status = null;
+            _targetLabel = null;
+        }
+
         public static void Close()
         {
             try { _window?.RemoveFromHierarchy(); }
             catch (Exception ex) { MelonLogger.Warning($"[JondoFix] Closing the item window: {ex.Message}"); }
             _window = null;
+            _tabs = null;
+            _tabPage = null;
+            AdminWorldUi.Reset();
             _search = null;
             _quantity = null;
             _rows = null;
@@ -428,14 +504,14 @@ namespace JondoFix
 
         private static readonly UnityEngine.Color LightText = new UnityEngine.Color(0.93f, 0.90f, 0.82f, 1f);
 
-        private static VisualElement Row()
+        internal static VisualElement Row()
         {
             var row = new VisualElement();
             row.style.flexDirection = new StyleEnum<FlexDirection>(FlexDirection.Row);
             return row;
         }
 
-        private static DofusLabel Label(string text, bool bold = false)
+        internal static DofusLabel Label(string text, bool bold = false)
         {
             var label = new DofusLabel();
             label.text = text;
@@ -447,7 +523,7 @@ namespace JondoFix
             return label;
         }
 
-        private static Il2CppSystem.Action Do(Action action)
+        internal static Il2CppSystem.Action Do(Action action)
             => DelegateSupport.ConvertDelegate<Il2CppSystem.Action>(new Action(() =>
             {
                 try { action(); }
@@ -661,7 +737,7 @@ namespace JondoFix
         }
 
         /// <summary>Lower case and without accents: "Gélano" is found by "gelano".</summary>
-        private static string Fold(string text)
+        internal static string Fold(string text)
         {
             var folded = new StringBuilder(text.Length);
             foreach (char c in text.Normalize(NormalizationForm.FormD))
@@ -842,8 +918,8 @@ namespace JondoFix
             return place;
         }
 
-        private static readonly UnityEngine.Color RowPlain = new UnityEngine.Color(1f, 1f, 1f, 0.06f);
-        private static readonly UnityEngine.Color RowPicked = new UnityEngine.Color(0.85f, 0.65f, 0.2f, 0.45f);
+        internal static readonly UnityEngine.Color RowPlain = new UnityEngine.Color(1f, 1f, 1f, 0.06f);
+        internal static readonly UnityEngine.Color RowPicked = new UnityEngine.Color(0.85f, 0.65f, 0.2f, 0.45f);
 
         // ─── The filters ─────────────────────────────────────────────────────────────────
 
@@ -878,7 +954,7 @@ namespace JondoFix
         /// the one picked. The client's second and third button styles write dark, for its light
         /// pages, and put their colour back whatever is set on them.
         /// </summary>
-        private static VisualElement FilterButton(string text, bool on, bool large, Action click)
+        internal static VisualElement FilterButton(string text, bool on, bool large, Action click)
         {
             var button = new VisualElement();
             button.style.flexShrink = new StyleFloat(0f);
@@ -1245,11 +1321,11 @@ namespace JondoFix
             });
         }
 
-        private static string Token()
+        internal static string Token()
             => (Environment.GetEnvironmentVariable("JONDO_CONTROL_TOKEN") ?? "").Trim();
 
         /// <summary>A request to the server's control API. Code 0 when it could not be reached.</summary>
-        private static async Task<(int Code, string Body)> PostAsync(string route, Dictionary<string, object> body)
+        internal static async Task<(int Code, string Body)> PostAsync(string route, Dictionary<string, object> body)
         {
             try
             {

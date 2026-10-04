@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
@@ -467,7 +468,93 @@ namespace Jondo.Unity.Server.Managers
         private static readonly int[] PlacedLater = { Dreams.ReyGob, Dreams.FavorNpc };
 
         public static Template? TemplateOf(int npcId)
-            => _templates.TryGetValue(npcId, out var template) ? template : null;
+            => _templates.TryGetValue(npcId, out var template) ? template
+               : _onDemand.TryGetValue(npcId, out var later) ? later : null;
+
+        /// <summary>
+        /// The templates read after the start, for NPCs an administrator puts on a map: kept apart
+        /// from the ones read at boot, which nothing writes to once the server is up and so can be
+        /// read from every socket without a lock.
+        /// </summary>
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, Template> _onDemand = new();
+
+        /// <summary>This NPC's template, read from the base if no NPC of it stood anywhere at boot.</summary>
+        public static Template? EnsureTemplate(int npcId)
+        {
+            var known = TemplateOf(npcId);
+            if (known != null) return known;
+            try
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT Look, Data FROM NpcTemplates WHERE Id = $id;";
+                command.Parameters.AddWithValue("$id", npcId);
+                using var reader = command.ExecuteReader();
+                if (!reader.Read()) return null;
+                var read = new Template { Id = npcId, Look = reader.IsDBNull(0) ? "" : reader.GetString(0) };
+                ReadData(reader.IsDBNull(1) ? "" : reader.GetString(1), read);
+                return _onDemand.GetOrAdd(npcId, read);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[NPCs] No se ha podido leer la plantilla {npcId}: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Puts an NPC on a map while the server runs -- an administrator's, on the cell he stands
+        /// on -- until the server stops. Null when the NPC has no template, or one of it already
+        /// stands on that cell.
+        /// </summary>
+        /// <remarks>
+        /// The map's list is replaced, never changed in place: the actor list of the map is built
+        /// on other sockets by walking it, and a list that changes under a walk throws.
+        /// </remarks>
+        public static Spawn? PlaceAtRuntime(long mapId, int npcId, int cell, int orientation)
+        {
+            var template = EnsureTemplate(npcId);
+            if (template == null || mapId <= 0) return null;
+
+            lock (_byMap)
+            {
+                var here = _byMap.TryGetValue(mapId, out var list) ? new List<Spawn>(list) : new List<Spawn>();
+                if (here.Any(s => s.NpcId == npcId && s.Cell == cell)) return null;
+
+                // A contextual id nobody on the map has: after a removal the count no longer is one.
+                int position = here.Count;
+                while (here.Any(s => s.ContextualId == ActorIds.NpcDelMapa(position))) position++;
+
+                var spawn = new Spawn
+                {
+                    MapId = mapId,
+                    NpcId = npcId,
+                    Cell = cell,
+                    Orientation = orientation,
+                    ContextualId = ActorIds.NpcDelMapa(position),
+                    RawLook = template.Look,
+                };
+                ReadLook(spawn.RawLook, spawn);
+                spawn.BoneId = (int)spawn.Bones;
+                here.Add(spawn);
+                _byMap[mapId] = here;
+                return spawn;
+            }
+        }
+
+        /// <summary>Takes an NPC off its map until the server stops. False when it was not there.</summary>
+        public static bool RemoveAtRuntime(long mapId, long contextualId)
+        {
+            lock (_byMap)
+            {
+                if (!_byMap.TryGetValue(mapId, out var list)) return false;
+                var here = new List<Spawn>(list);
+                if (here.RemoveAll(s => s.ContextualId == contextualId) == 0) return false;
+                _byMap[mapId] = here;
+                return true;
+            }
+        }
 
         /// <summary>Every template that has been read, for the passes that have to look at all of them.</summary>
         public static IEnumerable<Template> Templates => _templates.Values;

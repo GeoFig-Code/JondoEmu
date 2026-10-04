@@ -692,7 +692,7 @@ namespace Jondo.Unity.Server.Managers
         {
             lock (_candado)
             {
-                if (_mapMobs.TryGetValue(mapId, out var mobs) && mobs.Count > 0)
+                if (_mapMobs.TryGetValue(mapId, out var mobs) && (mobs.Count > 0 || _emptiedByHand.Contains(mapId)))
                     return new List<MobGroup>(mobs);
 
                 mobs = GenerateDynamicMobsForMap(mapId);
@@ -958,7 +958,11 @@ namespace Jondo.Unity.Server.Managers
         /// El grupo va con un identificador de los negativos, igual que los de misión, para que no
         /// choque con los del mundo ni sobreviva a un respawn.
         /// </remarks>
-        public static MobGroup? SpawnComposed(long mapId, IEnumerable<(int Monstruo, int Grado)> miembros)
+        /// <param name="cell">
+        /// The cell to put it on -- the one an administrator stands on --, or -1 for the first free
+        /// one inside the map.
+        /// </param>
+        public static MobGroup? SpawnComposed(long mapId, IEnumerable<(int Monstruo, int Grado)> miembros, int cell = -1)
         {
             var quienes = Componer(miembros);
             if (quienes.Count == 0) return null;
@@ -972,8 +976,8 @@ namespace Jondo.Unity.Server.Managers
                 }
 
                 var ocupadas = new HashSet<int>(mobs.Select(m => m.CellId));
-                int celda = 0;
-                foreach (int libre in GetInnerWalkableCells(mapId))
+                int celda = cell >= 0 ? cell : 0;
+                foreach (int libre in cell >= 0 ? (IEnumerable<int>)Array.Empty<int>() : GetInnerWalkableCells(mapId))
                 {
                     if (ocupadas.Contains(libre)) continue;
                     celda = libre;
@@ -1127,6 +1131,28 @@ namespace Jondo.Unity.Server.Managers
                 return mobs.FirstOrDefault(m =>
                     Math.Abs(m.CellId - cellId) == 1 ||
                     Math.Abs(m.CellId - cellId) == 14);
+            }
+        }
+
+        /// <summary>
+        /// The maps an administrator emptied by hand. An empty map is otherwise filled again with
+        /// fresh groups the next time somebody loads it (<see cref="GetMobsForMap"/>), which is
+        /// right after a fight and wrong after "take these monsters away".
+        /// </summary>
+        private static readonly HashSet<long> _emptiedByHand = new();
+
+        /// <summary>
+        /// An administrator takes a group off its map, until the server stops; an emptied map stays
+        /// empty. False when the group was not there.
+        /// </summary>
+        public static bool RemoveByHand(long mapId, long mobId)
+        {
+            lock (_candado)
+            {
+                if (!_mapMobs.TryGetValue(mapId, out var mobs) || mobs.RemoveAll(m => m.MobId == mobId) == 0)
+                    return false;
+                if (mobs.Count == 0) _emptiedByHand.Add(mapId);
+                return true;
             }
         }
 

@@ -208,6 +208,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             byte[]? jqk = ConnectionProtocol.ReadPayload(payload, Op.Jqk);
             if (jqk == null || jqk.Length == 0) return;
+            if (await Managers.Jail.KeepsInAsync(stream)) return;
 
             long asked = 0;
             foreach (var f in ProtoMessage.Parse(jqk).Fields)
@@ -277,6 +278,7 @@ namespace Jondo.Unity.Server.Handlers
         public static async Task<int?> TeleportAsync(NetworkStream stream, long targetMapId)
         {
             if (targetMapId <= 0 || MapManager.GetMapInfo(targetMapId) == null) return null;
+            if (await Managers.Jail.KeepsInAsync(stream)) return null;
 
             IReadOnlyCollection<int> walkable;
             if (MapManager.WalkableCells.TryGetValue(targetMapId, out var roleplayCells) &&

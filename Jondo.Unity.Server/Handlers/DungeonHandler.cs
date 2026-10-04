@@ -113,6 +113,8 @@ namespace Jondo.Unity.Server.Handlers
         {
             var dungeon = DungeonManager.AtEntrance(mapId);
             if (dungeon == null || dungeon.FirstRoom == 0) return false;
+            // Before the key is spent.
+            if (await Managers.Jail.KeepsInAsync(stream)) return false;
 
             var state = SessionContext.State;
 

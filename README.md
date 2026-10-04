@@ -368,7 +368,14 @@ Built with **Avalonia**, the same toolkit as the Studio.
   lost fights against monsters; it never drops below 1, so nobody becomes a ghost
 - ❌ Energy coming back — with rest or consumables; no capture measures the rate
 - ✅ Commands — `.teleport [x,y]` or `.teleport <map id>`, `.kamas`, `.shop`, `.size`, `.level`, `.item`, `.itemset`, `.receta`, `.sueno`, `.gremio`, `.raid`; they answer with an information line only their author sees
-- ✅ The administrator's item window, on **F10** in the client: the client's own catalogue with its icons, a search, a category filter and a type filter under it, pages of 40, the item's lines, the connected characters to give it to, and two buttons — maximum characteristics or rolled ones. `.item <id> [quantity] random` rolls too. A window of the client's own, opened by JondoFix; clicks on it do not reach the map
+- ✅ The administrator's window, on **F10** in the client, built from the client's own pieces — its window, tabs (`DofusTabGroup`), buttons in their primary and secondary styles, text fields — in five tabs:
+  - **Items**: the client's own catalogue with its icons, a search, a category filter and a type filter under it, pages of 40, the item's lines, the connected characters to give it to, and two buttons — maximum characteristics or rolled ones. `.item <id> [quantity] random` rolls too
+  - **Character**: level, the six characteristics and kamas of oneself or any connected character, and a mount
+  - **Teleport**: oneself or anyone, to a map id or to coordinates `x,y`; go to a player, or bring him here
+  - **Spawn**: any NPC, or a group of up to eight monsters at the grades picked, from the client's catalogues, on the cell the administrator stands on and seen at once by everyone on the map; and what stands on that map, each with its button to take it off. Until the server restarts, as a map's groups are; a map emptied by hand stays empty
+  - **Jail**: ten minutes in a cell of the game's own GM prison (subarea 751, its map 105121026 read as a corridor and four cells walled off from it), the administrator to the corridor beside the bars. Inside, no teleport by any road, no command, no channel but the general one and private messages, and a lost fight sends him back to his cell instead of his save point. The time runs offline too and survives a restart; when it is up, or an administrator lets him out, he goes back where he was
+
+  Clicks on it do not reach the map. Every action goes through the control API, which checks the administrator's role each time
 - ✅ Live administration over HTTP — `POST /api/personaje` sets characteristics, kamas and level, grants items (at their maximum or rolled) or a mount, and teleports a connected character without a reconnect. `POST /api/rol` changes account roles. Administrator only, loopback only
 - 🟡 `.level` repaints the in-fight spell bar, but the fighter's own level is not updated until the next fight
 
