@@ -552,6 +552,12 @@ Full workings in **`docs/dungeons.md`**.
 ### 🌙 Infinite Dreams
 
 Entered from the Plano Astral's well: a dream of 26 rooms in depth, walked band by band.
+<img width="2560" height="1504" alt="image" src="https://github.com/user-attachments/assets/f33f6c10-6889-41f6-8a25-cc17068b7191" />
+<img width="2560" height="1500" alt="image" src="https://github.com/user-attachments/assets/3bd5a03b-10e0-4dad-8227-627a5f2abf7d" />
+<img width="2560" height="1506" alt="image" src="https://github.com/user-attachments/assets/65ae17bf-b8cc-4b3c-a811-3258e7c9bfd4" />
+<img width="2560" height="1502" alt="image" src="https://github.com/user-attachments/assets/27bdff8a-abac-49da-8e6b-1dc2c72b6095" />
+<img width="2560" height="1496" alt="image" src="https://github.com/user-attachments/assets/002bdcb9-da34-44ff-95c3-b2f84e578c6b" />
+<img width="2560" height="1506" alt="image" src="https://github.com/user-attachments/assets/7b2732db-be45-44a2-b405-282091d35f4a" />
 
 - ✅ Ten difficulties in three families (Sueño, Paradoja, Pesadilla), each with its measured starting bonus, dream points, astral storms and Draconiros arena
 - ✅ Five bands, as the invitation capture measures them: fountains at rows 4, 10, 16 and 25, band IV closed by one fight room alone, and the **Fin du rêve** at row 26
