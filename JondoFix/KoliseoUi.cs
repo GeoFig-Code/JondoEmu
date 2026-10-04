@@ -244,7 +244,7 @@ namespace JondoFix
             footer.style.paddingBottom = new StyleLength(20f);
             footer.style.paddingTop = new StyleLength(8f);
             var closeButton = new DofusButtonCustom(DelegateSupport.ConvertDelegate<Il2CppSystem.Action>(new Action(CloseRules)),
-                                                    Text(Close), null);
+                                                    Text(Close), AdminItemsUi.NoIcon());
             footer.Add(closeButton);
             window.Add(footer);
 

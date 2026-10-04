@@ -251,7 +251,7 @@ namespace JondoFix
                 for (int i = 0; i < TabKeys.Length; i++)
                 {
                     int index = i;
-                    _tabs.Add(new DofusTab(Do(() => ShowTab(index)), T("tab." + TabKeys[i]), null));
+                    _tabs.Add(new DofusTab(Do(() => ShowTab(index)), T("tab." + TabKeys[i]), NoIcon()));
                 }
                 window.Add(_tabs);
 
@@ -278,6 +278,14 @@ namespace JondoFix
         }
 
         // ─── The tabs ───────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// "No icon" for the client's tabs and buttons. Their constructors take the icon's address,
+        /// a value type, and null blows up inside them ("Il2CppObjectBaseToPtrNotNull"): the empty
+        /// one is what a tab or a button built from the client's own UXML carries when it has none.
+        /// </summary>
+        internal static Il2CppAnkama.AddressableUtilities.Runtime.AddressableEntry NoIcon()
+            => new Il2CppAnkama.AddressableUtilities.Runtime.AddressableEntry();
 
         /// <summary>The tabs, in order: their text is "tab." and the key, in every language.</summary>
         private static readonly string[] TabKeys = { "items", "character", "teleport", "spawn", "jail" };

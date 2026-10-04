@@ -222,7 +222,7 @@ namespace JondoFix
         {
             try
             {
-                var button = new DofusButtonCustom(AdminItemsUi.Do(click), text, null);
+                var button = new DofusButtonCustom(AdminItemsUi.Do(click), text, AdminItemsUi.NoIcon());
                 button.mainStyle = primary ? DofusButtonCustom.ComponentStyleEnum.primary
                                            : DofusButtonCustom.ComponentStyleEnum.secondary;
                 button.style.marginRight = new StyleLength(10f);
