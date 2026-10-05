@@ -102,10 +102,10 @@ namespace Jondo.Unity.Server.Network
                     error = "mapa-invalido";
                     return false;
                 }
-                // El nivel era el unico identificador numerico sin comprobar: llegaba a
-                // SetLevelAsync, que hace Math.Clamp(1, techo), asi que un "nivel": -5 o un
-                // "nivel": 99999999 salian con HTTP 200 y un nivel distinto del pedido, sin que
-                // nadie supiera que se habia recortado. Los demas campos ya dicen que no.
+                // The level was the only numeric identifier not checked: it reached
+                // SetLevelAsync, which does Math.Clamp(1, ceiling), so a "nivel": -5 or a
+                // "nivel": 99999999 went out with HTTP 200 and a level different from the one asked for, without
+                // anyone knowing it had been trimmed. The other fields already say no.
                 if (level.HasValue && (level <= 0 || level > int.MaxValue))
                 {
                     error = "nivel-invalido";

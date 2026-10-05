@@ -7,35 +7,36 @@ using System.Text.Json;
 namespace Jondo.Unity.Server.Managers
 {
     /// <summary>
-    /// Los retos del combate: lo que se elige en la preparación y da un extra al ganar.
+    /// Fight challenges: what is chosen in placement and gives a bonus on winning.
     ///
-    /// ─── De dónde salen ─────────────────────────────────────────────────────────────────────
+    /// ─── Where they come from ───────────────────────────────────────────────────────────────
     ///
-    /// De la tabla del cliente, 842 entradas, con sus nombres y descripciones ya traducidos
-    /// —lo hace tools/extraer_retos.py—. Cada reto trae dos criterios en un idioma propio muy
-    /// corto: <c>activacion</c> dice cuándo se puede ofrecer y <c>cumplimiento</c> qué hay que
-    /// hacer para lograrlo.
+    /// From the client's table, 842 entries, with their names and descriptions already translated --
+    /// tools/extraer_retos.py does it --. Each challenge carries two criteria in a very short language
+    /// of its own: <c>activacion</c> says when it can be offered and <c>cumplimiento</c> what has to be
+    /// done to achieve it.
     ///
-    /// ─── El porcentaje NO está en el cliente ────────────────────────────────────────────────
+    /// ─── The percentage is NOT in the client ────────────────────────────────────────────────
     ///
-    /// La tabla no lleva ninguna bonificación: el porcentaje lo pone el servidor y viaja por el
-    /// cable dentro del ldd. Así que aquí sólo hay el de los QUINCE retos que se han visto pasar,
-    /// y es su valor base: el mismo reto sale a veces con sesenta puntos más —en la anomalía los
-    /// llevan todos—, y ese modificador no se ha podido reconstruir.
+    /// The table carries no bonus: the percentage is set by the server and travels on the wire inside
+    /// the ldd. So here there are only those of the FIFTEEN challenges seen going by, and it is their
+    /// base value: the same challenge sometimes comes out with sixty more points -- in the anomaly they
+    /// all carry them --, and that modifier has not been possible to reconstruct.
     ///
-    /// Por eso el emulador ofrece SÓLO esos quince. Ofrecer los ochocientos con un número
-    /// inventado sería peor: el jugador vería un reto prometiendo un extra que nadie ha medido.
+    /// That is why the emulator offers ONLY those fifteen. Offering the eight hundred with a made-up
+    /// number would be worse: the player would see a challenge promising a bonus nobody has measured.
     ///
-    /// ─── Cuándo se puede ofrecer un reto ────────────────────────────────────────────────────
+    /// ─── When a challenge can be offered ────────────────────────────────────────────────────
     ///
-    /// El criterio de activación explica por qué los poutchs no dan retos: casi todos exigen
-    /// <c>GL&gt;4,0</c>, o sea nivel de grupo por encima de cuatro, y contra un poutch de nivel 1
-    /// no se llega. Los hay que exigen un monstruo concreto (<c>GM&gt;0,1185,1</c>); ésos no se
-    /// ofrecen aquí, porque el servidor real los IMPONE, no los propone, y eso es otra historia.
+    /// The activation criterion explains why poutchs give no challenges: nearly all require
+    /// <c>GL&gt;4,0</c>, that is a group level above four, and against a level 1 poutch it is not
+    /// reached. There are some requiring a specific monster (<c>GM&gt;0,1185,1</c>); those are not
+    /// offered here, because the real server IMPOSES them, it does not propose them, and that is
+    /// another story.
     /// </summary>
     public static class Challenges
     {
-        /// <summary>Un reto de la tabla del cliente.</summary>
+        /// <summary>A challenge from the client's table.</summary>
         public sealed class Challenge
         {
             public int Id { get; init; }
@@ -43,37 +44,37 @@ namespace Jondo.Unity.Server.Managers
             public string Description { get; init; } = "";
             public int Category { get; init; }
 
-            /// <summary>Con cuáles no puede convivir. Manda entre los ya fijados, no entre los ofrecidos.</summary>
+            /// <summary>Which ones it cannot live with. It rules among the ones locked in, not among those offered.</summary>
             public IReadOnlyList<int> Incompatible { get; init; } = Array.Empty<int>();
 
-            /// <summary>Cuándo se puede ofrecer, en el idioma corto de la tabla.</summary>
+            /// <summary>When it can be offered, in the table's short language.</summary>
             public string Activation { get; init; } = "";
 
-            /// <summary>Qué hay que hacer para cumplirlo. Todavía nadie lo comprueba.</summary>
+            /// <summary>What has to be done to meet it. Nobody checks it yet.</summary>
             public string Completion { get; init; } = "";
 
-            /// <summary>El extra que promete, en tanto por ciento. Cero si no se ha medido.</summary>
+            /// <summary>The bonus it promises, as a percentage. Zero if it has not been measured.</summary>
             public int Percent { get; set; }
 
-            /// <summary>¿El porcentaje sale del cable, o se lo hemos puesto nosotros?</summary>
+            /// <summary>Does the percentage come from the wire, or did we set it?</summary>
             public bool PercentMeasured { get; set; }
 
-            /// <summary>Nivel de grupo por encima del cual se puede ofrecer. Cero si no hace falta.</summary>
+            /// <summary>Group level above which it can be offered. Zero if not needed.</summary>
             public int MinGroupLevel { get; init; }
 
-            /// <summary>Sólo vale dentro de una mazmorra.</summary>
+            /// <summary>Only valid inside a dungeon.</summary>
             public bool DungeonOnly { get; init; }
 
-            /// <summary>Exige que en el grupo haya un monstruo concreto.</summary>
+            /// <summary>Requires a specific monster to be in the group.</summary>
             public bool NeedsMonster => Monsters.Count > 0;
 
-            /// <summary>Qué monstruos tienen que estar delante para que este reto exista.</summary>
+            /// <summary>Which monsters have to be in front for this challenge to exist.</summary>
             public IReadOnlyList<int> Monsters { get; init; } = Array.Empty<int>();
 
             /// <summary>
-            /// ¿Se puede proponer? Hace falta que se haya visto su porcentaje, que no dependa de
-            /// una mazmorra ni de un monstruo —esos los IMPONE el contenido, no se proponen— y
-            /// que traiga umbral de nivel, que es lo único que aquí se sabe leer del criterio.
+            /// Can it be proposed? Its percentage must have been seen, it must not depend on a dungeon or a
+            /// monster -- those are IMPOSED by the content, not proposed -- and it must carry a level threshold,
+            /// which is the only thing that can be read from the criterion here.
             /// </summary>
             public bool Offerable => Percent > 0 && MinGroupLevel > 0 && !DungeonOnly && !NeedsMonster;
 
@@ -163,49 +164,49 @@ namespace Jondo.Unity.Server.Managers
         private static readonly Dictionary<int, BossRule> _byHand = new()
         {
             [1037] = BossRule.EndInLineWithEnemy,          // Roblenlace
-            [1056] = BossRule.EndDiagonalToEnemy,          // Sin tocar
-            [1054] = BossRule.NeverInLineWithEnemy,        // Emancipación maternal
-            [1059] = BossRule.NeverLineOrDiagonalEnemy,    // Micología
+            [1056] = BossRule.EndDiagonalToEnemy,          // Untouched
+            [1054] = BossRule.NeverInLineWithEnemy,        // Maternal emancipation
+            [1059] = BossRule.NeverLineOrDiagonalEnemy,    // Mycology
             [1060] = BossRule.NeverInLineWithAlly,         // Un proyecto tentacular
-            [985] = BossRule.NeverLineEnemyOrAlly,         // La línea prohibida
-            [1045] = BossRule.NeverDiagonalEnemyOrAlly,    // Diagonal del vacío
-            [1033] = BossRule.EndOnStartCell,              // Salida de ring
+            [985] = BossRule.NeverLineEnemyOrAlly,         // The forbidden line
+            [1045] = BossRule.NeverDiagonalEnemyOrAlly,    // Diagonal of the void
+            [1033] = BossRule.EndOnStartCell,              // Out of the ring
             [1023] = BossRule.EndNearEnemy5,               // Maestro Cuerbok
-            [1061] = BossRule.EndFarFromAllies3,           // Sin pisarme las patas
-            [1053] = BossRule.EndFarFromAllies4,           // Autonomía helada
-            [1074] = BossRule.BeginOrEndInLineWithEnemy,   // Hay gente por aquí
+            [1061] = BossRule.EndFarFromAllies3,           // Mind my paws
+            [1053] = BossRule.EndFarFromAllies4,           // Frozen autonomy
+            [1074] = BossRule.BeginOrEndInLineWithEnemy,   // There are people around here
 
-            [525] = BossRule.NoEnemyKilledBeforeRound6,    // Domakuroptimización
+            [525] = BossRule.NoEnemyKilledBeforeRound6,    // Domakuroptimisation
             [528] = BossRule.NobodyKilledBeforeRound6,     // Dorigamisericordia
-            [1100] = BossRule.NoEnemySummonKilledByAlly,   // Protección de cascasaurios
+            [1100] = BossRule.NoEnemySummonKilledByAlly,   // Cascasaur protection
             [1101] = BossRule.NoEnemySummonKilledByAlly,
             [1102] = BossRule.NoEnemySummonKilledByAlly,
 
             [980] = BossRule.NoHealEnemies,                // Un milubo en el corral
-            [1063] = BossRule.NoHealAllies,                // Aliados pasados al futuro
+            [1063] = BossRule.NoHealAllies,                // Allies sent to the future
 
             [485] = BossRule.NoRangedDamageToEnemies,      // Combate cercano
             [1050] = BossRule.NoRangedDamageToEnemies,     // Colmillo a colmillo
-            [1066] = BossRule.NoRangedDamageToEnemies,     // Juego de sombras
-            [1404] = BossRule.NoRangedDamageToEnemies,     // Crocantes y sonantes
-            [1073] = BossRule.NoMeleeDamageToEnemies,      // El fracaso no es una opción
-            [1007] = BossRule.NoRangedDamageToBoss,        // Al alcance del dardo
-            [990] = BossRule.NoPushDamageToEnemies,        // ¿Kwoknan? ¡Kwokpujeee!
-            [1008] = BossRule.NoPushDamageToAllies,        // A toda máquina
-            [1013] = BossRule.NoPushDamageToAllies,        // No hay que dar demasiada miel al cerdo
+            [1066] = BossRule.NoRangedDamageToEnemies,     // Shadow play
+            [1404] = BossRule.NoRangedDamageToEnemies,     // Crunchy and ringing
+            [1073] = BossRule.NoMeleeDamageToEnemies,      // Failure is not an option
+            [1007] = BossRule.NoRangedDamageToBoss,        // Within dart range
+            [990] = BossRule.NoPushDamageToEnemies,        // Kwoknan? Kwokpujeee!
+            [1008] = BossRule.NoPushDamageToAllies,        // Full steam ahead
+            [1013] = BossRule.NoPushDamageToAllies,        // Do not give the pig too much honey
             [1071] = BossRule.NoPushDamageToAllies,        // Cuidado, suelo resbaladizo
             [982] = BossRule.NoDamageToEnemySummons,       // Dorado, mi fa sol
             [993] = BossRule.NoDamageToEnemySummons,       // No toques a mi blop, all four
             [994] = BossRule.NoDamageToEnemySummons,
             [995] = BossRule.NoDamageToEnemySummons,
             [996] = BossRule.NoDamageToEnemySummons,
-            [998] = BossRule.NoDamageToEnemySummons,       // Sin desierto, all four
+            [998] = BossRule.NoDamageToEnemySummons,       // No desert, all four
             [999] = BossRule.NoDamageToEnemySummons,
             [1000] = BossRule.NoDamageToEnemySummons,
             [1001] = BossRule.NoDamageToEnemySummons,
-            [1103] = BossRule.NoDamageToEnemySummons,      // Protección de cascasaurios, Grozilla's
-            [1003] = BossRule.NoDamageWhileEnemySummons,   // Unos auténticos cracks
-            [1022] = BossRule.BossUntouchedUntilAlone,     // Ratuperación
+            [1103] = BossRule.NoDamageToEnemySummons,      // Cascasaur protection, Grozilla's
+            [1003] = BossRule.NoDamageWhileEnemySummons,   // Real cracks
+            [1022] = BossRule.BossUntouchedUntilAlone,     // Ratcovery
         };
 
         /// <summary>"Matar a {0} en último lugar", said only in the description: its own boss, last.</summary>
@@ -335,7 +336,7 @@ namespace Jondo.Unity.Server.Managers
         private static readonly Dictionary<int, Challenge> _byId = new();
         private static readonly List<Challenge> _offerable = new();
 
-        /// <summary>Los retos que trae cada monstruo puestos: monstruo → los suyos.</summary>
+        /// <summary>The challenges each monster carries: monster → its own.</summary>
         private static readonly Dictionary<int, List<Challenge>> _byMonster = new();
 
         public static int Count => _byId.Count;
@@ -343,14 +344,14 @@ namespace Jondo.Unity.Server.Managers
         public static int WithMonsterCount => _byMonster.Count;
 
         /// <summary>
-        /// Deja en la oferta SÓLO lo que se sabe vigilar, y le pone porcentaje al que no lo tenga.
+        /// Leaves in the offer ONLY what can be watched, and gives a percentage to whatever lacks one.
         ///
-        /// Lo que manda es la vigilancia, no el porcentaje. Un reto que nadie comprueba no se
-        /// rompe nunca, así que al ganar saldría cumplido y pagaría el extra: ofrecerlo sería
-        /// regalar experiencia y botín en cada combate.
+        /// What rules is the watching, not the percentage. A challenge nobody checks never breaks, so on
+        /// winning it would come out met and pay the bonus: offering it would be giving away experience and
+        /// loot in every fight.
         ///
-        /// Al revés sí se puede tirar: de un reto que sí se vigila, si su porcentaje no ha pasado
-        /// nunca por el cable, se le pone uno. No es medida y queda marcado como tal.
+        /// The other way round it can be done: a challenge that is watched, if its percentage has never come
+        /// over the wire, is given one. It is not a measurement and is marked as such.
         /// </summary>
         public static void OnlyOffer(IReadOnlyDictionary<int, int> vigilados)
         {
@@ -460,16 +461,16 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// Los retos que IMPONE el contenido: los que exigen un monstruo que está delante.
+        /// The challenges the content IMPOSES: the ones requiring a monster that is in front.
         ///
-        /// Éstos no se proponen, se ponen, y llegan con el extra a cero. Está medido en la
-        /// anomalía: el jugador eligió uno de los dos normales, el servidor rellenó el que
-        /// faltaba, y detrás mandó tres kww más —772 Duelo, 773 Prudente y 774 Superviviente—
-        /// que no se habían ofrecido nunca y que van sin porcentaje. Los tres exigen el monstruo
-        /// 5781, que era justo el de esa anomalía.
+        /// These are not proposed, they are set, and they arrive with the bonus at zero. It is measured in
+        /// the anomaly: the player chose one of the two normal ones, the server filled in the missing one,
+        /// and after it sent three more kww -- 772 Duel, 773 Prudent and 774 Survivor -- that had never been
+        /// offered and go without a percentage. All three require monster 5781, which was exactly that
+        /// anomaly's.
         ///
-        /// Son los que llevan logro detrás, así que se le quitan al personaje que ya los tenga
-        /// hecho: un logro se hace una vez.
+        /// They are the ones with an achievement behind them, so they are taken away from a character who
+        /// already has them done: an achievement is done once.
         /// </summary>
         public static IReadOnlyList<Challenge> Imposed(IEnumerable<int> monsters,
                                                        IReadOnlyCollection<int> alreadyDone,
@@ -514,15 +515,15 @@ namespace Jondo.Unity.Server.Managers
                ? (v.GetString() ?? "") : "";
 
         /// <summary>
-        /// El porcentaje base de un reto: el MÁS BAJO de los que se le han visto.
+        /// A challenge's base percentage: the LOWEST of those seen for it.
         ///
-        /// Se coge el más bajo porque el mismo reto sale a veces con sesenta puntos de más —el 6
-        /// a 90 y a 150, el 40 a 65 y a 125, el 971 a 80 y a 140—, así que el alto lleva dentro
-        /// un modificador del combate que no se ha sabido reconstruir.
+        /// The lowest is taken because the same challenge sometimes comes out with sixty points more -- 6 at
+        /// 90 and at 150, 40 at 65 and at 125, 971 at 80 and at 140 --, so the high one carries inside a
+        /// fight modifier that has not been possible to reconstruct.
         ///
-        /// Dos de los dieciséis se quedan altos por fuerza: del 9 y del 969 sólo hay una lectura,
-        /// y las dos son de peleas donde los demás retos también iban subidos. Lo más probable es
-        /// que su base sea sesenta menos, pero eso ya sería deducir, así que va lo medido.
+        /// Two of the sixteen stay high by necessity: of 9 and of 969 there is only one reading, and both
+        /// are from fights where the other challenges were raised too. Most likely their base is sixty less,
+        /// but that would already be deducing, so what was measured goes.
         /// </summary>
         private static int LowestSeen(JsonElement d)
         {
@@ -539,11 +540,11 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// Dos candidatos para proponer, o ninguno si no hay de dónde sacarlos.
+        /// Two candidates to propose, or none if there is nowhere to take them from.
         ///
-        /// Son ALTERNATIVAS entre sí, así que no hace falta que sean compatibles el uno con el
-        /// otro —en las capturas se ofrecieron juntos dos que la tabla marca como incompatibles—.
-        /// Lo que sí se respeta es lo que ya está FIJADO: contra eso sí manda la lista.
+        /// They are ALTERNATIVES to each other, so they do not need to be compatible with one another -- in
+        /// the captures two that the table marks as incompatible were offered together --. What is respected
+        /// is what is already LOCKED IN: against that the list does rule.
         /// </summary>
         public static IReadOnlyList<Challenge> Pair(int groupLevel, IReadOnlyCollection<int> alreadyFixed,
                                                     Random dado)
@@ -566,7 +567,7 @@ namespace Jondo.Unity.Server.Managers
             return new[] { pool[uno], pool[otro] };
         }
 
-        /// <summary>¿Choca con alguno de los ya fijados? La incompatibilidad va en los dos sentidos.</summary>
+        /// <summary>Does it clash with any of those already locked in? Incompatibility goes both ways.</summary>
         private static bool ClashesWithFixed(Challenge reto, IReadOnlyCollection<int> alreadyFixed)
         {
             foreach (int fijado in alreadyFixed)
