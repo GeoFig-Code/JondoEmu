@@ -13,9 +13,9 @@ using Xunit;
 namespace Jondo.Unity.Tests.World
 {
     /// <summary>
-    /// Lo que la ventana de gremio pide y recibe, byte a byte contra las capturas de «Jondo»:
-    /// la entrada de un miembro con su clase, sus puntos, sus gremichas y su nota; los rangos
-    /// después de editarlos; el diario; y la ficha del anuario.
+    /// What the guild window asks for and receives, byte for byte against the «Jondo» captures:
+    /// a member's entry with his class, his points, his guild coins and his note; the ranks
+    /// after editing them; the journal; and the directory sheet.
     /// </summary>
     [Collection("guild raids")]
     public class GuildWindowTests : IDisposable
@@ -43,7 +43,7 @@ namespace Jondo.Unity.Tests.World
             EmblemSymbol = 165, EmblemSymbolColor = 8, EmblemBackground = 16744448, EmblemSymbolRgb = 9476018,
         };
 
-        /// <summary>El fundador tal como sale en el jgu de la fundación: sacrógrito, 8.094 puntos, sin gremichas ni nota.</summary>
+        /// <summary>The founder as he comes out in the founding jgu: sacrier, 8,094 points, no guild coins nor note.</summary>
         private static GuildStore.Member SacriMaster(string note = "", long noteMs = 0) => new()
         {
             CharacterId = 302677754146, GuildId = 42043, Rank = 1, JoinedUtcMs = 1786567982202, Note = note, NoteMs = noteMs,
@@ -57,8 +57,8 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
-        /// Y el mismo, puesto al día tras una contribución y la nota «hola»: el jgz de «muchas
-        /// acciones», con las gremichas {10, 10} y la nota con su hora.
+        /// And the same, brought up to date after a contribution and the note «hola»: the jgz of «muchas
+        /// acciones», with the guild coins {10, 10} and the note with its time.
         /// </summary>
         [Fact]
         public void The_updated_row_carries_the_note_and_the_contributions()
@@ -69,8 +69,8 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
-        /// Los rangos después de renombrar el 1, tocar los permisos del 2 y crear un quinto en el
-        /// tercer puesto: el jco de 192 bytes de la captura, con el 4 corrido al cuarto.
+        /// The ranks after renaming 1, touching 2's permissions and creating a fifth in the
+        /// third position: the capture's 192-byte jco, with 4 shifted to the fourth.
         /// </summary>
         [Fact]
         public void The_edited_ranks_are_the_capture()
@@ -80,12 +80,12 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(4, ranks.Count);
             Assert.Equal(Hex(GuildProtocol.BuildDefaultRanks()), Hex(GuildProtocol.BuildRanks(ranks)));
 
-            // jct: «Tesorero», con el f4 vacío, que deja el icono como estaba.
+            // jct: «Tesorero», with f4 empty, which leaves the icon as it was.
             var first = ranks.Single(r => r.Id == 1);
             first.Name = "Tesorero";
             GuildStore.SaveRank(first);
 
-            // jct: «Test rango»; luego jck con la lista nueva del rango 2.
+            // jct: «Test rango»; then jck with rank 2's new list.
             var second = ranks.Single(r => r.Id == 2);
             second.Name = "Test rango";
             second.Rights = new byte[] { 0x01, 0x05, 0x06, 0x26, 0x07, 0x27, 0x08, 0x28, 0x29, 0x0d, 0x0e, 0x0f, 0x17, 0x18, 0x19 };
@@ -99,7 +99,7 @@ namespace Jondo.Unity.Tests.World
                          Hex(GuildProtocol.BuildRanks(GuildStore.Ranks(guild.Id))));
         }
 
-        /// <summary>El diario de «Jondo»: la fundación y las dos líneas de Hiierbita-Xx.</summary>
+        /// <summary>The «Jondo» journal: the founding and Hiierbita-Xx's two lines.</summary>
         [Fact]
         public void The_log_is_the_capture()
         {
@@ -112,7 +112,7 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal("0a0f58bbc8028a01009801f8f8ffbdff330a2658bbc8029801dda183beff33a2011710a282acfea8051a0c4869696572626974612d587820020a2458bbc8029801f4c387beff33a2011510a282acfea8051a0c4869696572626974612d5878",
                          Hex(GuildProtocol.BuildLog(entries)));
 
-            // Y el almacén lo escribe solo: fundar es una línea, entrar es otra.
+            // And the store writes it on its own: founding is one line, joining is another.
             var guild = GuildStore.Create(7001, "Jondo", 165, 8, 16744448, 9476018);
             GuildStore.Join(7002, guild.Id);
             var log = GuildStore.LogOf(guild.Id);
@@ -122,7 +122,7 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(7002, log[1].CharacterId);
         }
 
-        /// <summary>La ficha del anuario, vacía y escrita, las dos de la captura de fundar «Jondo».</summary>
+        /// <summary>The directory sheet, empty and written, both from the capture of founding «Jondo».</summary>
         [Fact]
         public void The_profile_is_the_capture()
         {
@@ -138,7 +138,7 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal("1241089da782beff331205486f6c6121181422091d13080e1a120b09102802320103420c53616372692d4d6173746572486450bbc8026a0b447261676f6e2042616c6c",
                          Hex(GuildProtocol.BuildProfile(Jondo, written, "Sacri-Master")));
 
-            // Y el almacén la guarda entera.
+            // And the store keeps it whole.
             GuildStore.SaveProfile(written);
             var back = GuildStore.ProfileOf(42043);
             Assert.Equal("Dragon Ball", back.Title);
@@ -146,7 +146,7 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(20, back.MinLevel);
         }
 
-        /// <summary>Las contribuciones que quedan y el jff de un gremio nuevo, como en la apertura.</summary>
+        /// <summary>The contributions left and a new guild's jff, as in the opening.</summary>
         [Fact]
         public void The_window_opening_frames_are_the_capture()
         {
@@ -209,7 +209,7 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(new[] { Op.Ivl, Op.Jhh }, ops);
         }
 
-        /// <summary>Las gremichas salen de las contribuciones: diez por cada una, en total.</summary>
+        /// <summary>The guild coins come from the contributions: ten for each one, in total.</summary>
         [Fact]
         public void Contributions_become_gremichas()
         {

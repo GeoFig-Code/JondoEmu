@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Jondo.Unity.Tests.Combat
 {
-    /// <summary>Régressions de la mécanique mesurée dans les captures Ouginak.</summary>
+    /// <summary>Regressions of the mechanic measured in the Ouginak captures.</summary>
     public class OuginakRageTests
     {
         private const int RageManager = 13745;
@@ -155,8 +155,8 @@ namespace Jondo.Unity.Tests.Combat
             Gain(fight, ouginak);
             Gain(fight, ouginak);
 
-            // Apaisement passe par l'effet 1160 vers 13782, qui retire les effets du sort de
-            // transformation avec l'effet 406.
+            // Apaisement goes through effect 1160 towards 13782, which removes the effects of the
+            // transformation spell with effect 406.
             EffectEngine.Resolver(fight, ouginak, Apaisement, 1, ouginak,
                                   EffectEngine.AlLanzar, 0);
 

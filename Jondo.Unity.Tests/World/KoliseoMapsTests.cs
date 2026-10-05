@@ -4,12 +4,12 @@ using Xunit;
 namespace Jondo.Unity.Tests.World
 {
     /// <summary>
-    /// Las arenas del koliseo: que las haya, y que la que se elija tenga sitio.
+    /// The koliseo arenas: that there are some, and that the one chosen has room.
     /// </summary>
     /// <remarks>
-    /// Las de Duelo son pequeñas de verdad — 37 de 85 con una sola casilla por bando — así que
-    /// elegir «la subárea que le toca» metería un tres contra tres donde cabe uno. Se elige por
-    /// capacidad, y eso es lo que estas pruebas fijan.
+    /// The Duelo ones are really small — 37 of 85 with a single cell per side — so
+    /// choosing «the subarea it gets» would put a three versus three where one fits. It is chosen by
+    /// capacity, and that is what these tests pin.
     /// </remarks>
     public class KoliseoMapsTests
     {
@@ -51,7 +51,7 @@ namespace Jondo.Unity.Tests.World
             Assert.True(KoliseoMaps.CountFor(teamSize) > 0,
                         $"no hay ni una arena para {teamSize} por bando");
 
-            // Cien veces, que se elige al azar y una sola tirada no prueba nada.
+            // A hundred times, since it is chosen at random and a single roll proves nothing.
             for (int i = 0; i < 100; i++)
             {
                 var arena = KoliseoMaps.PickFor(teamSize);
@@ -64,16 +64,16 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void Cuanto_mas_grande_el_equipo_menos_arenas_valen()
         {
-            // No es una obviedad: es lo que dice que el filtro por capacidad hace algo. Si diera
-            // lo mismo para uno y para tres, estaría eligiendo por subárea sin mirar el tamaño.
+            // It is not obvious: it is what says the capacity filter does something. If it gave
+            // the same for one and for three, it would be choosing by subarea without looking at the size.
             Assert.True(KoliseoMaps.CountFor(1) > KoliseoMaps.CountFor(3));
         }
 
         [Fact]
         public void Un_equipo_imposible_no_devuelve_arena()
         {
-            // Ninguna pasa de seis por bando, así que ocho no cabe en ninguna. Devolver null es
-            // lo correcto: el combate se monta entonces en el arena de siempre.
+            // None goes beyond six per side, so eight fits in none. Returning null is
+            // right: the fight is then set up in the usual arena.
             Assert.Equal(0, KoliseoMaps.CountFor(8));
             Assert.Null(KoliseoMaps.PickFor(8));
         }
