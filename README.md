@@ -1987,7 +1987,7 @@ protocolbuilder cadena   clientes                      measure each patch on its
 
 > `proto` also settles what a message carries from the client's own schema: `lth { bool, bool }` is two booleans.
 
-Full write-up in `docs/desofuscacion.md`.
+Full write-up in `docs/deobfuscation.md`.
 
 ---
 
@@ -2015,7 +2015,7 @@ The protocol toolchain, which the emulator does not depend on:
 * **`Jondo.Unity.ProtocolBuilder`** → `protocolbuilder` · **`Jondo.Unity.Deobfuscator`** → `Jondo Desofuscador.exe`
 * **`JondoFix`** — the MelonLoader client mod, source plus the compiled dll
 
-Documentation index in `docs/README.md`. Start with `docs/protocol.md` (how a message travels), `docs/opcodes.md` (what each opcode means and where it was seen), `docs/fight.md` (a fight on the wire, opcode by opcode) and `docs/desofuscacion.md` (surviving a patch).
+Documentation index in `docs/README.md`. Start with `docs/protocol.md` (how a message travels), `docs/opcodes.md` (what each opcode means and where it was seen), `docs/fight.md` (a fight on the wire, opcode by opcode) and `docs/deobfuscation.md` (surviving a patch).
 
 ---
 

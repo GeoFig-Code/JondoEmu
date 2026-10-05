@@ -255,7 +255,7 @@ public static class Op
     /// to that quest all 448 times, and the 1,479 objectives really belong to that step.
     ///
     /// The repository's documents filed ieo/idu as the interactive elements pair
-    /// (docs/NOTAS_MIGRACION_AUTH.md) and idz/idw as «connection extras» (docs/opcodes.md). It was
+    /// (docs/auth-migration-notes.md) and idz/idw as «connection extras» (docs/opcodes.md). It was
     /// an old assumption, of the same kind as the one that put quest names on lry/isf/lol/izu,
     /// which do not appear in any of the three quest captures.
     /// </remarks>

@@ -8,7 +8,7 @@ namespace Jondo.Unity.Server
     /// The character's state, for the code that has not yet been migrated to sessions.
     ///
     /// It NO longer stores anything: each property forwards to the current connection's session. It is the façade
-    /// docs/multijugador.md asked for in order to migrate file by file instead of changing 263 places
+    /// docs/multiplayer.md asked for in order to migrate file by file instead of changing 263 places
     /// at once.
     ///
     /// Until now this class still had fields of its own WITH DEFAULT VALUES. The sessions
