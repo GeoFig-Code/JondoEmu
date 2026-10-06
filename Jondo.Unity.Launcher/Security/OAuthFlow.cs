@@ -130,7 +130,7 @@ namespace Jondo.Unity.Launcher.Security
                                                        CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(refreshToken))
-                throw new OAuthException("No hay vale de renovación que usar.");
+                throw new OAuthException(UI.Textos.NoRefreshToken(Idioma));
 
             return await Pedir(endpoints, new Dictionary<string, string>
             {
@@ -178,7 +178,7 @@ namespace Jondo.Unity.Launcher.Security
                     }
                     catch (Exception) when (plazo.IsCancellationRequested)
                     {
-                        throw new OAuthException("Se ha agotado el tiempo esperando a la web.");
+                        throw new OAuthException(UI.Textos.WebTimedOut(Idioma));
                     }
 
                     var consulta = contexto.Request.QueryString;
@@ -196,21 +196,21 @@ namespace Jondo.Unity.Launcher.Security
 
                     if (error != null)
                     {
-                        Responder(contexto, 400, Pagina("No se ha podido entrar", error));
-                        throw new OAuthException($"La web ha rechazado la entrada: {error}");
+                        Responder(contexto, 400, Pagina(UI.Textos.PageFailedTitle(Idioma), error));
+                        throw new OAuthException(UI.Textos.WebRefused(Idioma, error));
                     }
 
                     // The state is what ties this answer to this request. Without comparing it, another
                     // page open in the same browser could slip its own code in here.
                     if (!FixedTimeEquals(devuelto, estado))
                     {
-                        Responder(contexto, 400, Pagina("Respuesta inesperada",
-                            "El identificador de la petición no coincide."));
-                        throw new OAuthException("La respuesta no corresponde a esta petición.");
+                        Responder(contexto, 400, Pagina(UI.Textos.PageUnexpectedTitle(Idioma),
+                            UI.Textos.PageUnexpectedDetail(Idioma)));
+                        throw new OAuthException(UI.Textos.WebAnswerNotOurs(Idioma));
                     }
 
-                    Responder(contexto, 200, Pagina("Ya está",
-                        "Puedes cerrar esta pestaña y volver al lanzador."));
+                    Responder(contexto, 200, Pagina(UI.Textos.PageDoneTitle(Idioma),
+                        UI.Textos.PageDoneDetail(Idioma)));
                     return codigo!;
                 }
             }
@@ -236,7 +236,7 @@ namespace Jondo.Unity.Launcher.Security
             string cuerpo = await respuesta.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
 
             if (!respuesta.IsSuccessStatusCode)
-                throw new OAuthException($"La web ha contestado {(int)respuesta.StatusCode} al pedir los vales.");
+                throw new OAuthException(UI.Textos.WebStatus(Idioma, (int)respuesta.StatusCode));
 
             try
             {
@@ -244,7 +244,7 @@ namespace Jondo.Unity.Launcher.Security
                 var raiz = json.RootElement;
 
                 string acceso = Texto(raiz, "access_token");
-                if (acceso.Length == 0) throw new OAuthException("La web no ha devuelto ningún vale de acceso.");
+                if (acceso.Length == 0) throw new OAuthException(UI.Textos.WebNoAccessToken(Idioma));
 
                 int segundos = raiz.TryGetProperty("expires_in", out var e) && e.TryGetInt32(out int v) ? v : 3600;
 
@@ -257,7 +257,7 @@ namespace Jondo.Unity.Launcher.Security
             }
             catch (JsonException)
             {
-                throw new OAuthException("La web ha contestado algo que no se entiende.");
+                throw new OAuthException(UI.Textos.WebUnreadable(Idioma));
             }
         }
 
@@ -280,6 +280,9 @@ namespace Jondo.Unity.Launcher.Security
             catch { }
         }
 
+        /// <summary>The launcher's language, which is also the language of the page left in the browser.</summary>
+        private static UI.Language Idioma => UI.LauncherPreferences.Language;
+
         private static string Pagina(string titulo, string detalle) =>
             "<!doctype html><meta charset=\"utf-8\">" +
             "<title>Jondo</title>" +
@@ -296,7 +299,7 @@ namespace Jondo.Unity.Launcher.Security
             }
             catch (Exception ex)
             {
-                throw new OAuthException($"No se ha podido abrir el navegador: {ex.Message}");
+                throw new OAuthException(UI.Textos.BrowserFailed(Idioma, ex.Message));
             }
         }
 

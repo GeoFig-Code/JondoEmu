@@ -371,6 +371,125 @@ namespace Jondo.Unity.Launcher.UI
             },
         };
 
+        // ─── The client's path ──────────────────────────────────────────────────
+
+        public static string ClientMoved(Language i) => i switch
+        {
+            Language.En => "Dofus.exe is no longer where it was left — choose where it is",
+            Language.Fr => "Dofus.exe n'est plus là où il était — indique où il est",
+            _ => "Dofus.exe ya no está donde se dejó — elige dónde está",
+        };
+
+        public static string ClientNotFound(Language i) => i switch
+        {
+            Language.En => "Dofus.exe cannot be found — choose where it is",
+            Language.Fr => "Dofus.exe est introuvable — indique où il est",
+            _ => "No se encuentra Dofus.exe — elige dónde está",
+        };
+
+        public static string WhereIsTheClient(Language i) => i switch
+        {
+            Language.En => "Where is the Dofus client?",
+            Language.Fr => "Où est le client Dofus ?",
+            _ => "¿Dónde está el cliente de Dofus?",
+        };
+
+        // ─── Signing in through the website ─────────────────────────────────────
+        //
+        // Both what the launcher says when the sign-in fails and the page the browser is left on
+        // afterwards: that page is the launcher talking too, so it speaks the launcher's language.
+
+        public static string NoRefreshToken(Language i) => i switch
+        {
+            Language.En => "There is no refresh token to use.",
+            Language.Fr => "Il n'y a aucun jeton de renouvellement à utiliser.",
+            _ => "No hay vale de renovación que usar.",
+        };
+
+        public static string WebTimedOut(Language i) => i switch
+        {
+            Language.En => "Timed out waiting for the website.",
+            Language.Fr => "Le délai d'attente du site web est dépassé.",
+            _ => "Se ha agotado el tiempo esperando a la web.",
+        };
+
+        public static string WebRefused(Language i, string error) => i switch
+        {
+            Language.En => $"The website refused the sign-in: {error}",
+            Language.Fr => $"Le site web a refusé la connexion : {error}",
+            _ => $"La web ha rechazado la entrada: {error}",
+        };
+
+        public static string WebAnswerNotOurs(Language i) => i switch
+        {
+            Language.En => "The answer does not belong to this request.",
+            Language.Fr => "La réponse ne correspond pas à cette demande.",
+            _ => "La respuesta no corresponde a esta petición.",
+        };
+
+        public static string WebStatus(Language i, int status) => i switch
+        {
+            Language.En => $"The website answered {status} when asked for the tokens.",
+            Language.Fr => $"Le site web a répondu {status} à la demande des jetons.",
+            _ => $"La web ha contestado {status} al pedir los vales.",
+        };
+
+        public static string WebNoAccessToken(Language i) => i switch
+        {
+            Language.En => "The website returned no access token.",
+            Language.Fr => "Le site web n'a renvoyé aucun jeton d'accès.",
+            _ => "La web no ha devuelto ningún vale de acceso.",
+        };
+
+        public static string WebUnreadable(Language i) => i switch
+        {
+            Language.En => "The website answered something that cannot be understood.",
+            Language.Fr => "Le site web a répondu quelque chose d'incompréhensible.",
+            _ => "La web ha contestado algo que no se entiende.",
+        };
+
+        public static string BrowserFailed(Language i, string error) => i switch
+        {
+            Language.En => $"Could not open the browser: {error}",
+            Language.Fr => $"Impossible d'ouvrir le navigateur : {error}",
+            _ => $"No se ha podido abrir el navegador: {error}",
+        };
+
+        public static string PageFailedTitle(Language i) => i switch
+        {
+            Language.En => "Could not sign in",
+            Language.Fr => "Connexion impossible",
+            _ => "No se ha podido entrar",
+        };
+
+        public static string PageUnexpectedTitle(Language i) => i switch
+        {
+            Language.En => "Unexpected answer",
+            Language.Fr => "Réponse inattendue",
+            _ => "Respuesta inesperada",
+        };
+
+        public static string PageUnexpectedDetail(Language i) => i switch
+        {
+            Language.En => "The request identifier does not match.",
+            Language.Fr => "L'identifiant de la demande ne correspond pas.",
+            _ => "El identificador de la petición no coincide.",
+        };
+
+        public static string PageDoneTitle(Language i) => i switch
+        {
+            Language.En => "Done",
+            Language.Fr => "C'est fait",
+            _ => "Ya está",
+        };
+
+        public static string PageDoneDetail(Language i) => i switch
+        {
+            Language.En => "You can close this tab and go back to the launcher.",
+            Language.Fr => "Tu peux fermer cet onglet et revenir au lanceur.",
+            _ => "Puedes cerrar esta pestaña y volver al lanzador.",
+        };
+
         /// <summary>A size the way a player reads it.</summary>
         public static string Tamano(long bytes)
         {

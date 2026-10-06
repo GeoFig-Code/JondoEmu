@@ -167,15 +167,13 @@ namespace Jondo.Unity.Server.Handlers
                 // said why. From the player's chair that is indistinguishable from the dungeon not
                 // being implemented at all -- and it is what "no veo opcion de usar el llavero"
                 // looks like from the inside, with the server log saying, correctly and only to
-                // itself, "falta la llave (8143 x1, o el manojo 10207) y no hay manojo".
+                // itself, "the key is missing (8143 x1, or the keyring 10207) and there is no keyring".
                 if (keyringSpent)
                 {
                     Console.WriteLine($"[Dungeon] {dungeon.Name}: the keyring was already used this week " +
                                       $"and there is no loose key.");
-                    await TellAsync(stream,
-                        $"Ya has usado el manojo de llaves en {dungeon.Name} esta semana. " +
-                        $"Vuelve el martes {DungeonKeyring.NextReset(DateTime.Now):d/M}. " +
-                        "Con una llave puedes entrar las veces que quieras.");
+                    await TellAsync(stream, CommandTexts.Get("dungeon.keyring_used",
+                        dungeon.Name, DungeonKeyring.NextReset(DateTime.Now)));
                     return false;
                 }
 

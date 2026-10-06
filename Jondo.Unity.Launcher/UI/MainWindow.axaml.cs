@@ -434,8 +434,8 @@ namespace Jondo.Unity.Launcher.UI
             if (ruta.Length == 0)
             {
                 TextoRuta.Text = guardada.Length > 0
-                    ? "Dofus.exe ya no está donde se dejó — elige dónde está"
-                    : "No se encuentra Dofus.exe — elige dónde está";
+                    ? Textos.ClientMoved(_idioma)
+                    : Textos.ClientNotFound(_idioma);
                 BotonRuta.Foreground = new SolidColorBrush(Color.FromRgb(236, 120, 96));
             }
             else
@@ -796,7 +796,7 @@ namespace Jondo.Unity.Launcher.UI
         {
             var opciones = new FilePickerOpenOptions
             {
-                Title = "¿Dónde está el cliente de Dofus?",
+                Title = Textos.WhereIsTheClient(_idioma),
                 AllowMultiple = false,
                 FileTypeFilter = new[]
                 {
