@@ -42,9 +42,14 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// Keeps valid saved shortcuts, drops spells lost after a level or variant change, fills
-        /// newly opened spells into free slots, and reserves one slot for close combat (spell 0).
+        /// Keeps valid saved shortcuts, drops spells lost after a level or variant change, and
+        /// reserves one slot for close combat (spell 0).
         /// </summary>
+        /// <remarks>
+        /// Auto-filling every known spell into free slots only runs when the player has no saved
+        /// bar yet. Once they have touched it (including removing a spell), putting those spells
+        /// back would undo the remove on the next <c>itg</c> / fight bar rebuild.
+        /// </remarks>
         public static Layout Build(IEnumerable<SpellTable.KnownSpell> known,
                                    IReadOnlyDictionary<int, int> savedBar)
         {
@@ -68,19 +73,22 @@ namespace Jondo.Unity.Server.Managers
                 placedSpells.Add(saved.Value);
             }
 
-            // Starting at ONE: slot zero is where the client draws the weapon, and in 37 of the
-            // 51 bars of the captures it is empty for that very reason.
-            int next = 1;
-            foreach (var spell in layout.Spells)
+            // First session only: seed free slots with known spells. Slot zero stays clear for the
+            // weapon — in 37 of the 51 captured bars it is empty for that reason.
+            if (savedBar == null || savedBar.Count == 0)
             {
-                if (placedSpells.Contains(spell.Spell)) continue;
-                while (next < SlotCount && occupiedSlots.Contains(next)) next++;
-                if (next >= SlotCount) break;
+                int next = 1;
+                foreach (var spell in layout.Spells)
+                {
+                    if (placedSpells.Contains(spell.Spell)) continue;
+                    while (next < SlotCount && occupiedSlots.Contains(next)) next++;
+                    if (next >= SlotCount) break;
 
-                layout.Bar.Add((next, spell.Spell));
-                occupiedSlots.Add(next);
-                placedSpells.Add(spell.Spell);
-                next++;
+                    layout.Bar.Add((next, spell.Spell));
+                    occupiedSlots.Add(next);
+                    placedSpells.Add(spell.Spell);
+                    next++;
+                }
             }
 
             // The melee, in the first free slot and ALWAYS. It is in the 13 player bars of the

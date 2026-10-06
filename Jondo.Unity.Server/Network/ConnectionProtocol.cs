@@ -1571,6 +1571,16 @@ namespace Jondo.Unity.Server.Network
                 .Var(3, SpellBar)
                 .Build();
 
+        /// <summary>
+        /// An emptied bar slot (ivk after iul). Same shape as a set, without the spell's f6 —
+        /// that is how the client says "this slot is clear" in an itz, and how it accepts the echo.
+        /// </summary>
+        public static byte[] BuildShortcutCleared(int slot)
+            => Pb.New()
+                .Msg(2, Pb.New().VarIfNotZero(2, slot))
+                .Var(3, SpellBar)
+                .Build();
+
         /// <summary>How many slots of the bar we fill. The captured one runs from 0 to 48.</summary>
 
         // ─── World: weight carried ──────────────────────────────────────────────

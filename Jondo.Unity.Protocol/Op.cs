@@ -649,6 +649,18 @@ public static class Op
     /// </summary>
     public const string Itu = "itu";
 
+    /// <summary>
+    /// Removing a shortcut from a bar (right-click). Observed in the emulator's traffic as
+    /// unhandled until wired: f1 is the slot, f2 is which bar.
+    /// </summary>
+    public const string Iul = "iul";
+
+    /// <summary>
+    /// Swapping two slots of a shortcut bar (drag). Observed in the emulator's traffic as
+    /// unhandled until wired: f1 and f2 are the slots, f3 is which bar.
+    /// </summary>
+    public const string Iuv = "iuv";
+
     /// <summary>Editing a slot of a shortcut bar; it is also written to the database or it is lost on leaving.</summary>
     public const string Itz = "itz";
 

@@ -1128,7 +1128,7 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Itz)))
                 {
-                    // Editing a slot of the shortcut bar. The server answers with the very same
+                    // Setting a slot of the shortcut bar. The server answers with the very same
                     // entry it was given, and it also records where it ended up: otherwise, the bar is
                     // rebuilt the same every session and whatever the player places is lost on leaving.
                     //
@@ -1140,6 +1140,21 @@ namespace Jondo.Unity.Server.Network
                         await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                             ConnectionProtocol.Push(Op.Ivk, itz));
                     }
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Iul)))
+                {
+                    // Right-click → remove from the bar. Was falling through as unhandled, so the
+                    // client never got an ivk and put the spell straight back.
+                    //
+                    //   iul: f1: slot, f2: which bar
+                    await ClearShortcutAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Iuv)))
+                {
+                    // Drag one slot onto another. Same story as iul: no answer, no move.
+                    //
+                    //   iuv: f1: first slot, f2: second slot, f3: which bar
+                    await SwapShortcutsAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kqo)))
                 {
@@ -1638,7 +1653,7 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
-        /// Records the bar slot the client has just moved.
+        /// Records the bar slot the client has just set.
         ///
         ///   itz: f2 { f2: slot, f6 { f2: spell } }, f3: which bar
         ///
@@ -1681,6 +1696,76 @@ namespace Jondo.Unity.Server.Network
             {
                 Console.WriteLine($"[Game Node] Could not read the itz: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Clears one spell-bar slot (iul) and tells the client with an empty ivk.
+        /// </summary>
+        private static async Task ClearShortcutAsync(NetworkStream stream, byte[] frame)
+        {
+            try
+            {
+                byte[]? body = ConnectionProtocol.ReadPayload(frame, Op.Iul);
+                if (body == null) return;
+
+                int slot = 0, bar = 0;
+                foreach (var field in ProtoMessage.Parse(body).Fields)
+                {
+                    if (field.FieldNumber == 1 && field.WireType == 0) slot = (int)field.VarIntValue;
+                    else if (field.FieldNumber == 2 && field.WireType == 0) bar = (int)field.VarIntValue;
+                }
+
+                if (bar != ConnectionProtocol.SpellBar) return;
+
+                Managers.SpellChoices.PutInBar(slot, 0);
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Ivk, ConnectionProtocol.BuildShortcutCleared(slot)));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Game Node] Could not read the iul: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Swaps two spell-bar slots (iuv) and tells the client with an ivk for each.
+        /// </summary>
+        private static async Task SwapShortcutsAsync(NetworkStream stream, byte[] frame)
+        {
+            try
+            {
+                byte[]? body = ConnectionProtocol.ReadPayload(frame, Op.Iuv);
+                if (body == null) return;
+
+                int first = 0, second = 0, bar = 0;
+                foreach (var field in ProtoMessage.Parse(body).Fields)
+                {
+                    if (field.FieldNumber == 1 && field.WireType == 0) first = (int)field.VarIntValue;
+                    else if (field.FieldNumber == 2 && field.WireType == 0) second = (int)field.VarIntValue;
+                    else if (field.FieldNumber == 3 && field.WireType == 0) bar = (int)field.VarIntValue;
+                }
+
+                if (bar != ConnectionProtocol.SpellBar) return;
+
+                Managers.SpellChoices.SwapBarSlots(first, second);
+
+                await WriteShortcutSlotAsync(stream, first);
+                if (second != first) await WriteShortcutSlotAsync(stream, second);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Game Node] Could not read the iuv: {ex.Message}");
+            }
+        }
+
+        private static async Task WriteShortcutSlotAsync(NetworkStream stream, int slot)
+        {
+            int spell = Managers.SpellChoices.SpellInSlot(slot);
+            byte[] ivk = spell == 0
+                ? ConnectionProtocol.BuildShortcutCleared(slot)
+                : ConnectionProtocol.BuildShortcutChanged(slot, spell);
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Ivk, ivk));
         }
 
         /// <summary>
