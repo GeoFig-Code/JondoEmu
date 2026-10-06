@@ -63,7 +63,10 @@ namespace Jondo.Unity.Server.Handlers
 
             if (beaten.Count == 0) return;
 
-            long mapId = SessionContext.State.MapId;
+            // The map the fight was ABOUT, not the arena it was fought in. Type 16 ("on this map")
+            // and the Beat bindings name a roleplay map; during the fight State.MapId is the arena
+            // (ResolveArenaMapId), so reading that left every dungeon-boss kill unchecked.
+            long mapId = fight.RoleplayMapId != 0 ? fight.RoleplayMapId : SessionContext.State.MapId;
 
             // The quests in hand are copied out first: ticking an objective can finish a step and
             // a quest, which changes the log, and walking a collection that is being changed is
@@ -78,8 +81,12 @@ namespace Jondo.Unity.Server.Handlers
                     if (objective.MonsterId == 0) continue;
                     if (!beaten.TryGetValue(objective.MonsterId, out int killed)) continue;
 
-                    // Type 16 wants it done on one particular map, and it says which.
-                    if (objective.OnMap != 0 && objective.OnMap != mapId) continue;
+                    // Type 16 wants it done on one particular map. Exact match first; if the kill
+                    // was on another room of the same dungeon (boss placed on the wrong hall while
+                    // the catalogue still names the real one), credit it anyway.
+                    if (objective.OnMap != 0 && objective.OnMap != mapId &&
+                        !SameDungeonRoom(objective.OnMap, mapId))
+                        continue;
 
                     // "In one fight" means the tally does not carry: this fight either did it or
                     // it did not. Type 14 is the one that adds up across fights.
@@ -96,11 +103,24 @@ namespace Jondo.Unity.Server.Handlers
                     var binding = Quests.Bindings.Of(objective.Id);
                     if (binding == null || binding.Kind != QuestBindingKind.Beat) continue;
                     if (binding.MonsterId == 0 || !beaten.ContainsKey(binding.MonsterId)) continue;
-                    if (binding.MapId != 0 && binding.MapId != mapId) continue;
+                    if (binding.MapId != 0 && binding.MapId != mapId &&
+                        !SameDungeonRoom(binding.MapId, mapId))
+                        continue;
 
                     await Quests.TickAsync(stream, run.QuestId, objective.Id);
                 }
             }
+        }
+
+        /// <summary>Whether both maps are rooms of the same dungeon (or the same map).</summary>
+        internal static bool SameDungeonRoom(long a, long b)
+        {
+            if (a == 0 || b == 0) return false;
+            if (a == b) return true;
+
+            var left = DungeonManager.OfRoom(a);
+            var right = DungeonManager.OfRoom(b);
+            return left != null && right != null && left.Id == right.Id;
         }
     }
 }

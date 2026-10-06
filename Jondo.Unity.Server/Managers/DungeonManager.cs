@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
@@ -65,8 +66,15 @@ namespace Jondo.Unity.Server.Managers
             /// </remarks>
             public List<(int Item, int Count)> Required { get; } = new List<(int, int)>();
 
-            /// <summary>The last room, where the boss stands. Zero when it has no rooms.</summary>
-            public long LastRoom => Rooms.Count == 0 ? 0 : Rooms[^1];
+            /// <summary>
+            /// The last room, where the boss stands. Zero when it has no rooms.
+            /// </summary>
+            /// <remarks>
+            /// Not always <c>Rooms[^1]</c>: the catalogue sometimes trails a hub or an Exit after
+            /// the real boss room, and a failed reorder used to leave First Room at the end.
+            /// <see cref="OrderRooms"/> picks it; until then it falls back to the last entry.
+            /// </remarks>
+            public long LastRoom { get; internal set; }
 
             /// <summary>The room you start in.</summary>
             public long FirstRoom => Rooms.Count == 0 ? 0 : Rooms[0];
@@ -112,22 +120,21 @@ namespace Jondo.Unity.Server.Managers
         /// Two sources say what the order is, and they are used in this order:
         ///
         /// <list type="number">
-        /// <item>The room NAMES, when every room of the dungeon has an ordinal in it. 51 dungeons
-        /// do -- "Famished Sunflower's Barn - Third Room" -- and it is the plainest statement of
-        /// intent there is.</item>
+        /// <item>The room NAMES, when enough rooms carry an ordinal. Numbered rooms
+        /// ("… - Third Room") are ordered; hubs and Exits without an ordinal are kept after the
+        /// chain instead of aborting the whole dungeon. Sandy Castle used to fail because one map
+        /// is just "Sandy Castle".</item>
         /// <item>The map LINKS otherwise. A room leads to the next through a corridor, and the
         /// corridor is the same map on both sides: the right-hand exit of one room is the left-hand
         /// entrance of the next. Following that from the only room nothing leads into gives the
-        /// chain. It orders 143 of the 187.</item>
+        /// chain.</item>
         /// </list>
         ///
-        /// The two were checked against each other on the 51 dungeons where both can answer:
-        /// <b>50 agree</b>. The one that does not is the Tower of Solar, which is a tower -- its
-        /// rooms are stacked rather than strung out, so the horizontal chain says nothing useful
-        /// about it. That is why the names go first: where they exist they are never wrong.
+        /// After ordering, <see cref="Dungeon.LastRoom"/> is chosen: never a bare hub or an Exit,
+        /// and a named throne / fissure beats the highest ordinal when both exist.
         ///
-        /// Anything neither source can order is left exactly as it came, because a guess would be
-        /// worse than the order the client shipped.
+        /// Anything neither source can order keeps the catalogue list, but LastRoom is still
+        /// resolved — Lord Crow's Library has no ordinals and still needs its Throne Room.
         /// </remarks>
         private static int OrderRooms()
         {
@@ -164,23 +171,70 @@ namespace Jondo.Unity.Server.Managers
                 // came in, which is what happened before this method existed.
                 Console.WriteLine($"[DungeonManager] Could not read the map to order the " +
                                   $"rooms: {ex.Message}");
+                foreach (var dungeon in _byId.Values)
+                    dungeon.LastRoom = dungeon.Rooms.Count == 0 ? 0 : dungeon.Rooms[^1];
                 return 0;
             }
 
             int changed = 0;
             foreach (var dungeon in _byId.Values)
             {
-                if (dungeon.Rooms.Count < 2) continue;
+                if (dungeon.Rooms.Count == 0)
+                {
+                    dungeon.LastRoom = 0;
+                    continue;
+                }
 
-                var ordered = ByName(dungeon.Rooms, names) ?? ByLinks(dungeon.Rooms, scrolls);
-                if (ordered == null || ordered.SequenceEqual(dungeon.Rooms)) continue;
+                if (dungeon.Rooms.Count == 1)
+                {
+                    dungeon.LastRoom = dungeon.Rooms[0];
+                    continue;
+                }
 
-                dungeon.Rooms.Clear();
-                dungeon.Rooms.AddRange(ordered);
-                changed++;
+                var byName = ByName(dungeon.Rooms, names);
+                List<long>? ordered = byName.Rooms ?? ByLinks(dungeon.Rooms, scrolls);
+                if (ordered != null && !ordered.SequenceEqual(dungeon.Rooms))
+                {
+                    dungeon.Rooms.Clear();
+                    dungeon.Rooms.AddRange(ordered);
+                    changed++;
+                }
+
+                dungeon.LastRoom = PickBossRoom(dungeon.Rooms, names, byName.NumberedLast);
+
+                // No ordinal chain (Lord Crow): put the throne after the antechamber so FirstRoom
+                // is not the boss and a win there still leaves through WayOut.
+                if (byName.NumberedLast == 0 && MoveBossBeforeExits(dungeon, names))
+                    changed++;
             }
 
             return changed;
+        }
+
+        /// <summary>Moves <see cref="Dungeon.LastRoom"/> ahead of any Exit maps. Returns whether the list changed.</summary>
+        private static bool MoveBossBeforeExits(Dungeon dungeon, Dictionary<long, string> names)
+        {
+            long boss = dungeon.LastRoom;
+            if (boss == 0 || !dungeon.Rooms.Contains(boss)) return false;
+
+            var exits = new List<long>();
+            var rest = new List<long>();
+            foreach (long room in dungeon.Rooms)
+            {
+                if (room == boss) continue;
+                if (names.TryGetValue(room, out string? name) && name != null && IsExitName(name))
+                    exits.Add(room);
+                else
+                    rest.Add(room);
+            }
+
+            var rebuilt = new List<long>(rest) { boss };
+            rebuilt.AddRange(exits);
+            if (rebuilt.SequenceEqual(dungeon.Rooms)) return false;
+
+            dungeon.Rooms.Clear();
+            dungeon.Rooms.AddRange(rebuilt);
+            return true;
         }
 
         /// <summary>The ordinals a room name can carry, in the language the map table is written in.</summary>
@@ -190,32 +244,157 @@ namespace Jondo.Unity.Server.Managers
             "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
         };
 
-        /// <summary>Rooms by the ordinal in their name, or null when even one of them lacks it.</summary>
-        private static List<long>? ByName(List<long> rooms, Dictionary<long, string> names)
+        /// <summary>Result of a name-based reorder: the full room list and the last numbered map.</summary>
+        internal readonly struct NameOrder
         {
-            var numbered = new List<(long Map, int Position)>();
+            public List<long>? Rooms { get; init; }
+            public long NumberedLast { get; init; }
+        }
+
+        /// <summary>
+        /// Rooms by the ordinal in their name. Hubs and Exits without an ordinal are kept after
+        /// the numbered chain instead of failing the whole dungeon.
+        /// </summary>
+        internal static NameOrder ByName(List<long> rooms, Dictionary<long, string> names)
+        {
+            var numbered = new List<(long Map, int Position, string Prefix)>();
+            var extras = new List<long>();
 
             foreach (long room in rooms)
             {
-                if (!names.TryGetValue(room, out string? name) || name == null) return null;
-
-                int position = 0;
-                string lower = name.ToLowerInvariant();
-                for (int i = 0; i < Ordinals.Length; i++)
+                if (!names.TryGetValue(room, out string? name) || name == null)
                 {
-                    // " third room", and not just "third": "Third Room" is the ordinal of a room,
-                    // while a name like "Thirsty Room" must not be read as one.
-                    if (lower.Contains(Ordinals[i] + " room")) { position = i + 1; break; }
+                    extras.Add(room);
+                    continue;
                 }
 
-                if (position == 0) return null;
-                numbered.Add((room, position));
+                int position = OrdinalOf(name);
+                if (position == 0)
+                {
+                    extras.Add(room);
+                    continue;
+                }
+
+                numbered.Add((room, position, PrefixOf(name)));
             }
 
-            // Two rooms claiming the same number is not an order, it is a coincidence of wording.
-            if (numbered.Select(pair => pair.Position).Distinct().Count() != numbered.Count) return null;
+            if (numbered.Count < 2) return default;
 
-            return numbered.OrderBy(pair => pair.Position).Select(pair => pair.Map).ToList();
+            // Several prefixes (Koolich's Lair vs Koolich Cavern): keep the chain that owns an
+            // Exit sibling, otherwise the longest unique-ordinal chain.
+            var groups = numbered.GroupBy(pair => pair.Prefix, StringComparer.OrdinalIgnoreCase)
+                                 .Select(group => group.ToList())
+                                 .ToList();
+
+            List<(long Map, int Position, string Prefix)>? chosen = null;
+            foreach (var group in groups.OrderByDescending(g => g.Count))
+            {
+                if (group.Select(pair => pair.Position).Distinct().Count() != group.Count) continue;
+
+                bool hasExit = extras.Any(map =>
+                    names.TryGetValue(map, out string? n) && n != null &&
+                    IsExitName(n) &&
+                    string.Equals(PrefixOf(n), group[0].Prefix, StringComparison.OrdinalIgnoreCase));
+
+                if (chosen == null || hasExit)
+                {
+                    chosen = group;
+                    if (hasExit) break;
+                }
+            }
+
+            if (chosen == null) return default;
+
+            var chosenMaps = new HashSet<long>(chosen.Select(pair => pair.Map));
+            var ordered = chosen.OrderBy(pair => pair.Position).Select(pair => pair.Map).ToList();
+            long numberedLast = ordered[^1];
+
+            // Numbered rooms from other prefixes stay reachable for OfRoom, after the main chain.
+            foreach (var pair in numbered)
+            {
+                if (!chosenMaps.Contains(pair.Map)) extras.Add(pair.Map);
+            }
+
+            var nonExit = extras.Where(map =>
+                !(names.TryGetValue(map, out string? n) && n != null && IsExitName(n))).ToList();
+            var exits = extras.Where(map =>
+                names.TryGetValue(map, out string? n) && n != null && IsExitName(n)).ToList();
+
+            ordered.AddRange(nonExit);
+            ordered.AddRange(exits);
+            return new NameOrder { Rooms = ordered, NumberedLast = numberedLast };
+        }
+
+        /// <summary>
+        /// Picks the boss room. Never an Exit or a bare hub; a named throne / fissure wins over
+        /// the highest ordinal; otherwise the last numbered room from <see cref="ByName"/>.
+        /// </summary>
+        internal static long PickBossRoom(
+            IReadOnlyList<long> rooms, Dictionary<long, string> names, long numberedLast = 0)
+        {
+            if (rooms == null || rooms.Count == 0) return 0;
+
+            long named = 0;
+            foreach (long room in rooms)
+            {
+                if (!names.TryGetValue(room, out string? name) || string.IsNullOrEmpty(name)) continue;
+                if (IsExitName(name) || IsBareHub(name)) continue;
+                if (OrdinalOf(name) != 0) continue;
+                if (!LooksLikeBossName(name)) continue;
+                named = room;
+            }
+            if (named != 0) return named;
+
+            if (numberedLast != 0 && rooms.Contains(numberedLast)) return numberedLast;
+
+            for (int i = rooms.Count - 1; i >= 0; i--)
+            {
+                long room = rooms[i];
+                if (!names.TryGetValue(room, out string? name) || string.IsNullOrEmpty(name))
+                    return room;
+                if (IsExitName(name) || IsBareHub(name)) continue;
+                return room;
+            }
+
+            return rooms[^1];
+        }
+
+        internal static int OrdinalOf(string name)
+        {
+            string lower = name.ToLowerInvariant();
+            for (int i = 0; i < Ordinals.Length; i++)
+            {
+                // " third room", and not just "third": "Third Room" is the ordinal of a room,
+                // while a name like "Thirsty Room" must not be read as one.
+                if (lower.Contains(Ordinals[i] + " room")) return i + 1;
+            }
+            return 0;
+        }
+
+        private static string PrefixOf(string name)
+        {
+            int dash = name.LastIndexOf(" - ", StringComparison.Ordinal);
+            return dash > 0 ? name.Substring(0, dash) : name;
+        }
+
+        internal static bool IsExitName(string name)
+            => name.EndsWith(" - Exit", StringComparison.OrdinalIgnoreCase)
+               || name.Equals("Exit", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>A map titled only with the dungeon name, no " - …" room qualifier.</summary>
+        internal static bool IsBareHub(string name)
+            => name.IndexOf(" - ", StringComparison.Ordinal) < 0;
+
+        private static bool LooksLikeBossName(string name)
+        {
+            string lower = name.ToLowerInvariant();
+            if (lower.Contains("throne")) return true;
+            if (lower.Contains("fissure")) return true;
+            if (lower.Contains("last room")) return true;
+            if (lower.Contains(" boss")) return true;
+            // "Erzal's Fissure" already matched; "Somebody's Room" without an ordinal.
+            if (lower.Contains("'s room") && OrdinalOf(name) == 0) return true;
+            return false;
         }
 
         /// <summary>Rooms by following the corridors, or null when the chain is not a single line.</summary>
@@ -429,15 +608,17 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// The room after this one, or 0 when this is the last. Follows the order the data gives;
-        /// see the warning at the top of the class about what that order is worth.
+        /// The room after this one, or 0 when this is the boss room (or unknown). Hubs and Exit
+        /// maps that trail the catalogue after the boss are not walked into after a win.
         /// </summary>
         public static long NextRoom(Dungeon dungeon, long currentMapId)
         {
             if (dungeon == null) return 0;
+            if (dungeon.LastRoom != 0 && currentMapId == dungeon.LastRoom) return 0;
 
             int at = dungeon.Rooms.IndexOf(currentMapId);
             if (at < 0 || at + 1 >= dungeon.Rooms.Count) return 0;
+
             return dungeon.Rooms[at + 1];
         }
 
