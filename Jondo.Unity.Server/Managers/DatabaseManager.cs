@@ -118,7 +118,7 @@ namespace Jondo.Unity.Server
                     var anadir = authConnection.CreateCommand();
                     anadir.CommandText = "ALTER TABLE Accounts ADD COLUMN Role INTEGER NOT NULL DEFAULT 1;";
                     anadir.ExecuteNonQuery();
-                    Console.WriteLine("[DatabaseManager] Columna Role añadida a Accounts; todos empiezan como jugador.");
+                    Console.WriteLine("[DatabaseManager] Role column added to Accounts; everybody starts as a player.");
                 }
 
                 // The role scale stopped at 4, which meant administrator. Giny and Dofus's rights
@@ -172,9 +172,9 @@ namespace Jondo.Unity.Server
                     rememberMigration.ExecuteNonQuery();
 
                     transaction.Commit();
-                    Console.WriteLine($"[DatabaseManager] Escala de roles 1..5 aplicada: " +
-                                      $"{administradores} administrador(es) de 4 a 5 y " +
-                                      $"{gameMasters} game master(s) de 3 a 4.");
+                    Console.WriteLine($"[DatabaseManager] Role scale 1..5 applied: " +
+                                      $"{administradores} administrator(s) from 4 to 5 and " +
+                                      $"{gameMasters} game master(s) from 3 to 4.");
                 }
 
                 // The LAUNCHER's session, which until now was the same token as the game's.
@@ -204,7 +204,7 @@ namespace Jondo.Unity.Server
                     var anadir = authConnection.CreateCommand();
                     anadir.CommandText = "ALTER TABLE Accounts ADD COLUMN LauncherToken TEXT;";
                     anadir.ExecuteNonQuery();
-                    Console.WriteLine("[DatabaseManager] Columna LauncherToken añadida a Accounts.");
+                    Console.WriteLine("[DatabaseManager] LauncherToken column added to Accounts.");
                 }
 
                 // Until when each account is subscribed. It did not exist before: the date was worked
@@ -234,7 +234,7 @@ namespace Jondo.Unity.Server
                     var anadir = authConnection.CreateCommand();
                     anadir.CommandText = "ALTER TABLE Accounts ADD COLUMN SubscriptionEnd TEXT;";
                     anadir.ExecuteNonQuery();
-                    Console.WriteLine("[DatabaseManager] Columna SubscriptionEnd añadida a Accounts.");
+                    Console.WriteLine("[DatabaseManager] SubscriptionEnd column added to Accounts.");
                 }
 
                 // And those without a date -- the ones from before the column, and those created before
@@ -247,8 +247,8 @@ namespace Jondo.Unity.Server
                 rellenar.Parameters.AddWithValue("$hasta", Network.Subscription.DefaultEndDate());
                 int puestas = rellenar.ExecuteNonQuery();
                 if (puestas > 0)
-                    Console.WriteLine($"[DatabaseManager] {puestas} cuenta(s) sin fecha de abono; " +
-                                      $"se les pone un año.");
+                    Console.WriteLine($"[DatabaseManager] {puestas} account(s) with no subscription date; " +
+                                      $"they are given a year.");
 
                 // The test account, keka / test, administrator, on every installation: whoever
                 // downloads the emulator signs in with it, finds keka's characters -- the ones
@@ -269,9 +269,9 @@ namespace Jondo.Unity.Server
                 {
                     if (RegisterNewAccount(TestAccountLogin, TestAccountPassword, "Keka", "", out string porQue,
                                            id: TestAccountId))
-                        Console.WriteLine($"[DatabaseManager] Cuenta de prueba creada: {TestAccountLogin} / {TestAccountPassword}.");
+                        Console.WriteLine($"[DatabaseManager] Test account created: {TestAccountLogin} / {TestAccountPassword}.");
                     else
-                        Console.WriteLine($"[DatabaseManager] No se ha podido crear la cuenta de prueba: {porQue}");
+                        Console.WriteLine($"[DatabaseManager] Could not create the test account: {porQue}");
                 }
 
                 // And the two who run the server are administrators: keka, and dragonlord once he
@@ -282,7 +282,7 @@ namespace Jondo.Unity.Server
                                      "WHERE Login IN ('keka', 'dragonlord') AND Role < $admin;";
                 duenos.Parameters.AddWithValue("$admin", Roles.Administrador);
                 int promovidos = duenos.ExecuteNonQuery();
-                if (promovidos > 0) Console.WriteLine($"[DatabaseManager] {promovidos} cuenta(s) puestas como administrador.");
+                if (promovidos > 0) Console.WriteLine($"[DatabaseManager] {promovidos} account(s) made administrator.");
             }
 
             using (var worldConnection = new SqliteConnection(WorldConnectionString))
@@ -504,20 +504,20 @@ namespace Jondo.Unity.Server
                         Effects TEXT
                     );
 
-                    -- El uid es unico en TODO el servidor, no por personaje: los uid nuevos se
-                    -- reparten con un MAX(Uid) global (NpcHandler, Lottery) y varios INSERT usan
-                    -- ON CONFLICT(Uid), que exige un indice unico para siquiera compilar.
+                    -- The uid is unique across the WHOLE server, not per character: new uids are
+                    -- handed out with a global MAX(Uid) (NpcHandler, Lottery) and several INSERTs use
+                    -- ON CONFLICT(Uid), which needs a unique index even to compile.
                     --
-                    -- Estaba creado dentro de SeedInventory, o sea que el invariante dependia de
-                    -- que a alguien le tocase sembrar el inventario de la captura. En una base
-                    -- que naciera sin pasar por ahi, los ON CONFLICT fallaban y dos personajes
-                    -- podian acabar con el mismo uid. Va aqui, con la tabla, que es donde deja
-                    -- de ser una casualidad.
+                    -- It used to be created inside SeedInventory, so the invariant depended on
+                    -- somebody happening to seed the capture's inventory. In a database
+                    -- born without going through there, the ON CONFLICTs failed and two characters
+                    -- could end up with the same uid. It goes here, with the table, which is where it stops
+                    -- being a coincidence.
                     CREATE UNIQUE INDEX IF NOT EXISTS idx_items_uid ON CharacterItems(Uid);
 
-                    -- Y por personaje, que es como se pregunta al dibujar a alguien: el aspecto
-                    -- de cada actor de un mapa necesita saber que lleva puesto su dueno, y sin
-                    -- indice eso es un recorrido de la tabla entera por actor.
+                    -- And per character, which is how it is asked when drawing somebody: the look
+                    -- of each actor on a map needs to know what its owner is wearing, and without an
+                    -- index that is a walk over the whole table per actor.
                     CREATE INDEX IF NOT EXISTS idx_items_character ON CharacterItems(CharacterId);
                 ";
                 createItems.ExecuteNonQuery();
@@ -772,18 +772,18 @@ namespace Jondo.Unity.Server
                     );
                     CREATE INDEX IF NOT EXISTS idx_dungeon_rooms_map ON DungeonRooms(MapId);
 
-                    /* Los índices de los hechizos, que NO son un adorno: son la diferencia entre
-                       un combate fluido y uno a trompicones.
+                    /* The spells' indexes, which are NOT decoration: they are the difference between
+                       a smooth fight and a jerky one.
 
-                       SpellLevels tiene 34.823 filas y sus dos columnas de efectos suman 67 MB de
-                       texto, casi dos kilobytes por fila. La clave primaria es Id, pero TODAS las
-                       consultas del combate buscan por SpellId —los efectos de un hechizo, su
-                       grado, su coste, sus recargas—, así que cada una recorría la tabla entera:
-                       medido, 37 milisegundos por consulta y cuatro consultas por lanzamiento.
-                       Eso es el parón de entre 47 y 138 milisegundos que se notaba al lanzar.
+                       SpellLevels has 34,823 rows and its two effects columns add up to 67 MB of
+                       text, almost two kilobytes per row. The primary key is Id, but ALL the
+                       fight's queries look up by SpellId —a spell's effects, its
+                       grade, its cost, its cooldowns—, so each one walked the whole table:
+                       measured, 37 milliseconds per query and four queries per cast.
+                       That is the 47 to 138 millisecond stall that was felt when casting.
 
-                       Con el índice, la misma consulta pasa de SCAN a SEARCH y baja a cuatro
-                       milésimas de milisegundo. Crearlos cuesta 92 milisegundos una sola vez. */
+                       With the index, the same query goes from SCAN to SEARCH and drops to four
+                       thousandths of a millisecond. Creating them costs 92 milliseconds, only once. */
                     CREATE INDEX IF NOT EXISTS idx_spelllevels_hechizo ON SpellLevels(SpellId, Grade);
                     CREATE INDEX IF NOT EXISTS idx_spelllevels_nivel ON SpellLevels(SpellId, MinPlayerLevel);
                 ";
@@ -1427,7 +1427,7 @@ namespace Jondo.Unity.Server
             catch (Exception ex)
             {
                 // If the database does not answer, the one who can do least. Never the other way round.
-                Console.WriteLine($"[DatabaseManager] No se ha podido leer el rol de {accountId}: {ex.Message}");
+                Console.WriteLine($"[DatabaseManager] Could not read the role of {accountId}: {ex.Message}");
                 return Roles.PorDefecto;
             }
         }
@@ -1449,7 +1449,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DatabaseManager] No se ha podido cambiar el rol de {login}: {ex.Message}");
+                Console.WriteLine($"[DatabaseManager] Could not change the role of {login}: {ex.Message}");
                 return false;
             }
         }
@@ -1569,11 +1569,11 @@ namespace Jondo.Unity.Server
                 command.Parameters.AddWithValue("$pass", Managers.Claves.Cifrar(clave));
                 command.Parameters.AddWithValue("$id", cuenta);
                 command.ExecuteNonQuery();
-                Console.WriteLine($"[Auth] La contraseña de la cuenta {cuenta} ya está cifrada.");
+                Console.WriteLine($"[Auth] The password of account {cuenta} is already encrypted.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Auth] No se pudo cifrar la contraseña de {cuenta}: {ex.Message}");
+                Console.WriteLine($"[Auth] Could not encrypt the password of {cuenta}: {ex.Message}");
             }
         }
 
@@ -1606,7 +1606,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DatabaseManager] No se pudo leer el abono de {accountId}: {ex.Message}");
+                Console.WriteLine($"[DatabaseManager] Could not read the subscription of {accountId}: {ex.Message}");
                 return "";
             }
         }
@@ -1627,7 +1627,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DatabaseManager] No se pudo escribir el abono de {accountId}: {ex.Message}");
+                Console.WriteLine($"[DatabaseManager] Could not write the subscription of {accountId}: {ex.Message}");
                 return false;
             }
         }
@@ -1646,7 +1646,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se ha podido guardar la sesión del lanzador: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not save the launcher session: {ex.Message}");
             }
         }
 
@@ -1666,7 +1666,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se ha podido leer la sesión del lanzador: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not read the launcher session: {ex.Message}");
                 return 0;
             }
         }
@@ -1697,7 +1697,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DatabaseManager] No se ha podido guardar el token de la cuenta " +
+                Console.WriteLine($"[DatabaseManager] Could not save the token of account " +
                                   $"{accountId}: {ex.Message}");
             }
         }
@@ -1786,7 +1786,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DatabaseManager] No se ha podido buscar el token de juego: {ex.Message}");
+                Console.WriteLine($"[DatabaseManager] Could not look up the game token: {ex.Message}");
                 return 0;
             }
         }
@@ -2178,7 +2178,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se ha podido leer la ultima conexion: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not read the last connection: {ex.Message}");
                 return null;
             }
         }
@@ -2203,7 +2203,7 @@ namespace Jondo.Unity.Server
                 using var add = connection.CreateCommand();
                 add.CommandText = "ALTER TABLE Characters ADD COLUMN LastIp TEXT;";
                 add.ExecuteNonQuery();
-                Console.WriteLine("[SQLite] Anadida la columna LastIp a Characters.");
+                Console.WriteLine("[SQLite] LastIp column added to Characters.");
             }
             catch (Exception) { }
         }
@@ -2249,7 +2249,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DatabaseManager] No se pudo apuntar el elemento {elementId}: {ex.Message}");
+                Console.WriteLine($"[DatabaseManager] Could not note down element {elementId}: {ex.Message}");
             }
         }
 
@@ -2270,7 +2270,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DatabaseManager] No se pudieron leer los elementos usados: {ex.Message}");
+                Console.WriteLine($"[DatabaseManager] Could not read the used elements: {ex.Message}");
             }
             return usados;
         }
@@ -2468,9 +2468,9 @@ namespace Jondo.Unity.Server
                     && !MapManager.IsCellWalkable(suyo.MapId, suyo.CellId))
                 {
                     int buena = MapManager.GetNearestWalkableCell(suyo.MapId, suyo.CellId);
-                    Console.WriteLine($"[SQLite] {suyo.CharacterName} estaba guardado en la casilla " +
-                                      $"{suyo.CellId} del mapa {suyo.MapId}, que no se puede pisar. " +
-                                      $"Se le pone en la {buena}.");
+                    Console.WriteLine($"[SQLite] {suyo.CharacterName} was saved on cell " +
+                                      $"{suyo.CellId} of map {suyo.MapId}, which cannot be walked on. " +
+                                      $"They are put on {buena}.");
                     suyo.CellId = buena;
                 }
                 Jondo.Unity.Server.Network.SessionContext.State.Orientation = reader.IsDBNull(14) ? 1 : reader.GetInt32(14);
@@ -2524,7 +2524,7 @@ namespace Jondo.Unity.Server
                 foreach (var setting in LoadCrafterSettings(estado.CharacterId))
                     estado.CrafterSettings[setting.Key] = setting.Value;
 
-                Console.WriteLine($"[SQLite] Successfully loaded character: {Jondo.Unity.Server.Network.SessionContext.State.CharacterName} (Level {Jondo.Unity.Server.Network.SessionContext.State.CharacterLevel}), {estado.Jobs.Count} oficios.");
+                Console.WriteLine($"[SQLite] Successfully loaded character: {Jondo.Unity.Server.Network.SessionContext.State.CharacterName} (Level {Jondo.Unity.Server.Network.SessionContext.State.CharacterLevel}), {estado.Jobs.Count} jobs.");
                 return true;
             }
             return false;
@@ -2801,7 +2801,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se pudo crear el personaje: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not create the character: {ex.Message}");
                 return 0;
             }
         }
@@ -2909,7 +2909,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se ha podido leer el nivel del objeto {gid}: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not read the level of item {gid}: {ex.Message}");
                 return 0;
             }
         }
@@ -2934,7 +2934,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se pudo leer la plantilla {gid}: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not read template {gid}: {ex.Message}");
                 return false;
             }
         }
@@ -2966,7 +2966,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se pudo crear el objeto {uid}: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not create item {uid}: {ex.Message}");
                 return false;
             }
         }
@@ -3031,7 +3031,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se pudo destruir el objeto {uid}: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not destroy item {uid}: {ex.Message}");
                 return false;
             }
         }
@@ -4003,7 +4003,7 @@ namespace Jondo.Unity.Server
                 }
                 catch (Exception ex)
                 {
-                    Program.LogDebug($"[DatabaseManager] No se pudo leer la familia de los efectos: {ex.Message}");
+                    Program.LogDebug($"[DatabaseManager] Could not read the effects' family: {ex.Message}");
                 }
                 _effectFamily = mapa;
             }
@@ -4032,7 +4032,7 @@ namespace Jondo.Unity.Server
                 }
                 catch (Exception ex)
                 {
-                    Program.LogDebug($"[DatabaseManager] No se pudo leer el elemento de los efectos: {ex.Message}");
+                    Program.LogDebug($"[DatabaseManager] Could not read the effects' element: {ex.Message}");
                 }
                 _effectElement = mapa;
             }
@@ -4084,7 +4084,7 @@ namespace Jondo.Unity.Server
                 }
                 catch (Exception ex)
                 {
-                    Program.LogDebug($"[DatabaseManager] No se pudieron leer los robos de puntos: {ex.Message}");
+                    Program.LogDebug($"[DatabaseManager] Could not read the point steals: {ex.Message}");
                 }
                 _roboDePuntos = mapa;
             }
@@ -4123,7 +4123,7 @@ namespace Jondo.Unity.Server
                 }
                 catch (Exception ex)
                 {
-                    Program.LogDebug($"[DatabaseManager] No se pudieron leer los multiplicadores: {ex.Message}");
+                    Program.LogDebug($"[DatabaseManager] Could not read the multipliers: {ex.Message}");
                 }
                 _multiplicadores = lista;
             }
@@ -4154,7 +4154,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[DatabaseManager] No se pudo leer el catálogo de efectos: {ex.Message}");
+                Program.LogDebug($"[DatabaseManager] Could not read the effects catalogue: {ex.Message}");
             }
             _effectMeta = meta;
         }
@@ -4454,7 +4454,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se ha podido guardar el oficio {jobId}: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not save job {jobId}: {ex.Message}");
             }
         }
 
@@ -4616,7 +4616,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] La misión {quest.QuestId} no se ha podido guardar: {ex.Message}");
+                Console.WriteLine($"[SQLite] Quest {quest.QuestId} could not be saved: {ex.Message}");
             }
         }
 
@@ -4645,7 +4645,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se han podido leer las misiones: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not read the quests: {ex.Message}");
             }
             return salida;
         }
@@ -4700,7 +4700,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] Las tablas de logros y actitudes no se han podido crear: {ex.Message}");
+                Console.WriteLine($"[SQLite] The achievements and attitudes tables could not be created: {ex.Message}");
             }
         }
 
@@ -4722,7 +4722,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se han podido leer los contadores de logros: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not read the achievement counters: {ex.Message}");
             }
             return tallies;
         }
@@ -4748,7 +4748,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] El contador {kind}/{key} no se ha podido guardar: {ex.Message}");
+                Console.WriteLine($"[SQLite] Counter {kind}/{key} could not be saved: {ex.Message}");
             }
         }
 
@@ -4769,7 +4769,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se han podido leer las actitudes: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not read the attitudes: {ex.Message}");
             }
             return emotes;
         }
@@ -4792,7 +4792,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] La actitud {emoteId} no se ha podido guardar: {ex.Message}");
+                Console.WriteLine($"[SQLite] Attitude {emoteId} could not be saved: {ex.Message}");
             }
         }
 
@@ -4816,7 +4816,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] El logro {achievementId} no se ha podido guardar: {ex.Message}");
+                Console.WriteLine($"[SQLite] Achievement {achievementId} could not be saved: {ex.Message}");
             }
         }
 
@@ -4838,7 +4838,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se han podido leer los logros: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not read the achievements: {ex.Message}");
             }
             return salida;
         }
@@ -4860,7 +4860,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se han podido leer los oficios: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not read the jobs: {ex.Message}");
             }
             return salida;
         }
@@ -4888,7 +4888,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se han podido leer los retos cumplidos: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not read the challenges met: {ex.Message}");
             }
             return salida;
         }
@@ -4911,7 +4911,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se ha podido apuntar el reto {challengeId}: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not note down challenge {challengeId}: {ex.Message}");
             }
         }
 
@@ -5013,12 +5013,12 @@ namespace Jondo.Unity.Server
                     dar.ExecuteNonQuery();
                 }
 
-                Console.WriteLine($"[SQLite] Manojo de llaves repartido a {faltan.Count} personaje(s) " +
-                                  "que no lo tenian.");
+                Console.WriteLine($"[SQLite] Keyring handed out to {faltan.Count} character(s) " +
+                                  "that did not have it.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se ha podido repartir el manojo de llaves: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not hand out the keyring: {ex.Message}");
             }
         }
 
@@ -5035,7 +5035,7 @@ namespace Jondo.Unity.Server
 
             long next = System.Threading.Interlocked.Increment(ref _ultimoUidRepartido);
             if (next > MaxClientItemUid)
-                throw new InvalidOperationException("No quedan uid de objeto compatibles con el cliente.");
+                throw new InvalidOperationException("There are no item uids left that the client can take.");
             return next;
         }
 
@@ -5088,7 +5088,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se pudo leer el mayor uid en uso: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not read the highest uid in use: {ex.Message}");
                 return 0;
             }
         }
@@ -5132,7 +5132,7 @@ namespace Jondo.Unity.Server
 
             if (next + invalidRows.Count > MaxClientItemUid)
                 throw new InvalidOperationException(
-                    "No quedan uid de 32 bits libres para arreglar CharacterItems.");
+                    "There are no free 32-bit uids left to repair CharacterItems.");
 
             using var transaction = connection.BeginTransaction();
             foreach (var row in invalidRows)
@@ -5154,7 +5154,7 @@ namespace Jondo.Unity.Server
             // If the allocator had already been queried, it has to carry on behind the numbers this
             // repair has just used.
             System.Threading.Interlocked.Exchange(ref _ultimoUidRepartido, next);
-            Console.WriteLine($"[SQLite] {invalidRows.Count} uid de objeto que no cabían en 32 bits, arreglados.");
+            Console.WriteLine($"[SQLite] {invalidRows.Count} item uids that did not fit in 32 bits, repaired.");
         }
 
         /// <summary>
@@ -5179,7 +5179,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SQLite] No se pudo contar los uid fuera de rango: {ex.Message}");
+                Console.WriteLine($"[SQLite] Could not count the out-of-range uids: {ex.Message}");
                 return 0;
             }
         }
@@ -5522,7 +5522,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DatabaseManager] No se pudo buscar el mapa con más NPC: {ex.Message}");
+                Console.WriteLine($"[DatabaseManager] Could not look up the map with the most NPCs: {ex.Message}");
             }
             return (0, 0);
         }
@@ -5542,7 +5542,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[DatabaseManager] No se pudo leer la subárea del mapa {mapId}: {ex.Message}");
+                Program.LogDebug($"[DatabaseManager] Could not read the subarea of map {mapId}: {ex.Message}");
                 return 0;
             }
         }
@@ -5563,7 +5563,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[DatabaseManager] No se pudieron leer los mapas de la subárea {subAreaId}: {ex.Message}");
+                Program.LogDebug($"[DatabaseManager] Could not read the maps of subarea {subAreaId}: {ex.Message}");
             }
             return fuera;
         }
@@ -5590,7 +5590,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[DatabaseManager] No se pudo leer el criterio del monstruo {monsterTemplate}: {ex.Message}");
+                Program.LogDebug($"[DatabaseManager] Could not read the criterion of monster {monsterTemplate}: {ex.Message}");
                 return "";
             }
         }
@@ -5627,7 +5627,7 @@ namespace Jondo.Unity.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DatabaseManager] No se pudo leer el nombre de la subzona " +
+                Console.WriteLine($"[DatabaseManager] Could not read the name of subarea " +
                                   $"{subAreaId}: {ex.Message}");
                 return "";
             }

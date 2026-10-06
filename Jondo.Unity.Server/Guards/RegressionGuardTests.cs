@@ -123,15 +123,15 @@ namespace Jondo.Unity.Server
                 {
                     if (fuente.Texto.Contains(literal))
                         throw new InvalidOperationException(
-                            $"[RegressionGuard FAILED] '{fuente.Nombre}' lleva el literal de captura " +
-                            $"prohibido '{literal}'.");
+                            $"[RegressionGuard FAILED] '{fuente.Nombre}' carries the forbidden capture " +
+                            $"literal '{literal}'.");
                 }
             }
 
             SecurityGuardTests.Run(fuentes);
 
-            Console.WriteLine($"[RegressionGuard] {fuentes.Count} ficheros de código barridos: sin " +
-                              "literales de captura y sin ninguna de las ocho marcas de seguridad.");
+            Console.WriteLine($"[RegressionGuard] {fuentes.Count} code files swept: no " +
+                              "capture literals and none of the eight security marks.");
         }
 
         /// <summary>
@@ -154,14 +154,14 @@ namespace Jondo.Unity.Server
 
             if (Handlers.CharacterSelectionHandler.HandleCharacterSelectionRequest(kvw, 0))
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] La selección de personaje sale bien con cuenta cero. " +
-                    "Un socket que no ha presentado el ticket puede cargar la ficha de cualquiera.");
+                    "[RegressionGuard FAILED] Character selection succeeds with account zero. " +
+                    "A socket that has not presented the ticket can load anybody's sheet.");
 
             // Nor with an account that exists but is not the owner.
             if (Handlers.CharacterSelectionHandler.HandleCharacterSelectionRequest(kvw, -1))
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] La selección de personaje sale bien con una cuenta " +
-                    "que no es la dueña del personaje.");
+                    "[RegressionGuard FAILED] Character selection succeeds with an account " +
+                    "that does not own the character.");
         }
 
         /// <summary>
@@ -220,8 +220,8 @@ namespace Jondo.Unity.Server
 
             if (segundo <= primero)
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] El repartidor de uid devuelve el mismo número dos " +
-                    "veces. Dos objetos con el mismo uid se pisan en la base.");
+                    "[RegressionGuard FAILED] The uid allocator returns the same number twice. " +
+                    "Two items with the same uid overwrite each other in the database.");
 
             // And none of the ones ALREADY written goes beyond the 32 bits the client keeps.
             //
@@ -235,17 +235,17 @@ namespace Jondo.Unity.Server
             int fueraDeRango = DatabaseManager.ObjetosConUidFueraDelCliente();
             if (fueraDeRango > 0)
                 throw new InvalidOperationException(
-                    $"[RegressionGuard FAILED] Hay {fueraDeRango} objeto(s) con un uid que el " +
-                    $"cliente no puede devolver entero: sólo conserva 32 bits. Los repara sola " +
-                    "DatabaseManager.RepairClientItemUids al arrancar, así que si esto salta es " +
-                    "que alguien escribe uid sin pasar por NextItemUid().");
+                    $"[RegressionGuard FAILED] There are {fueraDeRango} item(s) with a uid the " +
+                    $"client cannot send back whole: it only keeps 32 bits. " +
+                    "DatabaseManager.RepairClientItemUids repairs them by itself at startup, so if this fires " +
+                    "someone is writing uids without going through NextItemUid().");
 
             // And above what is already written, which is what avoids colliding with what exists.
             long enUso = DatabaseManager.MayorUidGuardado();
             if (primero <= enUso)
                 throw new InvalidOperationException(
-                    $"[RegressionGuard FAILED] El repartidor de uid da {primero} y en la base ya hay " +
-                    $"hasta {enUso}. El siguiente objeto que se guarde pisará uno que existe.");
+                    $"[RegressionGuard FAILED] The uid allocator gives {primero} and the database already holds " +
+                    $"up to {enUso}. The next item saved will overwrite one that exists.");
         }
 
         /// <summary>
@@ -306,9 +306,9 @@ namespace Jondo.Unity.Server
             // redistributed, so the template can go missing without a single line of code changing.
             if (!DatabaseManager.TryGetItemTemplateEffects(Managers.JondoCoin.TemplateId, out _))
                 throw new InvalidOperationException(
-                    $"[RegressionGuard FAILED] La plantilla {Managers.JondoCoin.TemplateId}, que es " +
-                    "la Jondo Coin, no está en ItemTemplates. El combate repartiría un objeto que " +
-                    "el cliente no sabe dibujar.");
+                    $"[RegressionGuard FAILED] Template {Managers.JondoCoin.TemplateId}, which is " +
+                    "the Jondo Coin, is not in ItemTemplates. Fights would hand out an item " +
+                    "the client does not know how to draw.");
         }
 
         /// <summary>
@@ -332,8 +332,8 @@ namespace Jondo.Unity.Server
 
             if (!enKamas.AsSpan().SequenceEqual(sinMoneda))
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] Pasar una moneda de cero cambia los bytes de la " +
-                    "tienda. Tiene que dar exactamente lo mismo que no pasar ninguna.");
+                    "[RegressionGuard FAILED] Passing a zero currency changes the shop's bytes. " +
+                    "It has to give exactly the same as passing none.");
 
             // And without a currency field 3 cannot appear anywhere. The raw tag is searched for:
             // field 3, varint type, which in protobuf is the byte 0x18.
@@ -341,8 +341,8 @@ namespace Jondo.Unity.Server
             {
                 if (campo != 3) continue;
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] Una tienda que cobra en kamas está mandando el campo " +
-                    "de la moneda. En las 58 tiendas de kamas de la captura ese campo no está.");
+                    "[RegressionGuard FAILED] A shop that charges in kamas is sending the currency " +
+                    "field. In the capture's 58 kama shops that field is not there.");
             }
 
             var deFichas = new Managers.TokenShops.Shop
@@ -358,13 +358,13 @@ namespace Jondo.Unity.Server
                 llevaMoneda = true;
                 if (valor != Managers.JondoCoin.TemplateId)
                     throw new InvalidOperationException(
-                        $"[RegressionGuard FAILED] La tienda de fichas dice que la moneda es el " +
-                        $"objeto {valor} y se le pidió la {Managers.JondoCoin.TemplateId}.");
+                        $"[RegressionGuard FAILED] The token shop says the currency is " +
+                        $"item {valor} and it was asked for {Managers.JondoCoin.TemplateId}.");
             }
             if (!llevaMoneda)
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] La tienda de fichas no manda el campo de la moneda, " +
-                    "así que el cliente cobraría en kamas.");
+                    "[RegressionGuard FAILED] The token shop does not send the currency field, " +
+                    "so the client would charge in kamas.");
 
             // And the price that travels in the catalogue has to be the TOKEN one, not the kamas one.
             //
@@ -384,8 +384,8 @@ namespace Jondo.Unity.Server
             }
             if (!precioBueno)
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] El catálogo de una tienda de fichas no lleva el " +
-                    "precio en fichas. El cliente enseñaría un precio y el servidor cobraría otro.");
+                    "[RegressionGuard FAILED] A token shop's catalogue does not carry the " +
+                    "price in tokens. The client would show one price and the server would charge another.");
         }
 
         /// <summary>A message's top-level varints, to look at them without fully parsing it.</summary>
@@ -449,21 +449,21 @@ namespace Jondo.Unity.Server
             (byte[] Bytes, string Espera, string Que)[] casos =
             {
                 (Network.Pb.New().Var(1, 5).Build(), "1:v",
-                 "un número suelto"),
+                 "a loose number"),
 
                 (Network.Pb.New().Var(1, 5).Var(3, 9).Build(), "1:v,3:v",
-                 "dos números, y el número de campo cuenta"),
+                 "two numbers, and the field number counts"),
 
                 (Network.Pb.New().Var(1, 5).Msg(2, Network.Pb.New().Var(3, 7)).Build(),
                  "1:v,2:{3:v}",
-                 "un submensaje, mirado por dentro"),
+                 "a submessage, looked at inside"),
 
                 (Network.Pb.New().Msg(1, Network.Pb.New().Msg(2, Network.Pb.New().Var(4, 1))).Build(),
                  "1:{2:{4:v}}",
-                 "dos capas de submensaje"),
+                 "two layers of submessage"),
 
-                (Network.Pb.New().Str(1, "un texto cualquiera").Build(), "1:s",
-                 "una cadena, que no es una estructura"),
+                (Network.Pb.New().Str(1, "any text at all").Build(), "1:s",
+                 "a string, which is not a structure"),
             };
 
             foreach (var (bytes, espera, que) in casos)
@@ -471,8 +471,8 @@ namespace Jondo.Unity.Server
                 string dio = Network.UnknownPackets.Signature(bytes);
                 if (dio == espera) continue;
                 throw new InvalidOperationException(
-                    $"[RegressionGuard FAILED] La firma de «{que}» tendría que ser «{espera}» y " +
-                    $"es «{dio}». Sin ella la lista de paquetes sin atender no distingue nada.");
+                    $"[RegressionGuard FAILED] The signature of «{que}» should be «{espera}» and " +
+                    $"it is «{dio}». Without it the list of unhandled packets tells nothing apart.");
             }
 
             // The same with other values inside has to give THE SAME signature: what is grouped is
@@ -483,9 +483,9 @@ namespace Jondo.Unity.Server
                 Network.Pb.New().Var(1, 999999).Msg(2, Network.Pb.New().Var(3, 1)).Build());
             if (unaVez != otraVez)
                 throw new InvalidOperationException(
-                    $"[RegressionGuard FAILED] Dos mensajes de la misma forma con otros números " +
-                    $"dan firmas distintas («{unaVez}» y «{otraVez}»). Cada pulsación del jugador " +
-                    "crearía una fila nueva.");
+                    $"[RegressionGuard FAILED] Two messages of the same shape with other numbers " +
+                    $"give different signatures («{unaVez}» and «{otraVez}»). Each click of the player " +
+                    "would create a new row.");
 
             // A data block that BY CHANCE reads as protobuf cannot slip in as a structure. This is not
             // hypothetical: the jrw -- the walking packet -- carries the path as a block of bytes, and
@@ -500,9 +500,9 @@ namespace Jondo.Unity.Server
                 Network.Pb.New().Var(1, 1).Bytes(2, bloqueDeDatos).Build());
             if (comoSale.Contains("{"))
                 throw new InvalidOperationException(
-                    $"[RegressionGuard FAILED] Un bloque de datos se está leyendo como estructura: " +
-                    $"la firma sale «{comoSale}». Con eso el paquete de movimiento genera una fila " +
-                    "nueva por cada paso que da el jugador.");
+                    $"[RegressionGuard FAILED] A data blob is being read as a structure: " +
+                    $"the signature comes out «{comoSale}». With that the movement packet creates a new " +
+                    "row for each step the player takes.");
 
             // And two different shapes of the SAME opcode cannot collapse, which is the case that
             // motivates all this: in a real server's queue a single opcode got to have 32 different
@@ -513,8 +513,8 @@ namespace Jondo.Unity.Server
                 Network.Pb.New().Var(1, 1).Msg(4, Network.Pb.New().Var(2, 1)).Build());
             if (forma1 == forma2)
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] Dos cargas distintas dan la misma firma. La lista de " +
-                    "paquetes sin atender juntaría en una fila cosas que no tienen nada que ver.");
+                    "[RegressionGuard FAILED] Two different payloads give the same signature. The list of " +
+                    "unhandled packets would lump into one row things that have nothing to do with each other.");
         }
 
         /// <summary>
@@ -549,16 +549,16 @@ namespace Jondo.Unity.Server
                 var ficha = DatabaseManager.GetMonsterGradeStats(monstruo, grado);
                 if (ficha == null)
                     throw new InvalidOperationException(
-                        $"[RegressionGuard FAILED] No hay ficha para el monstruo {monstruo} " +
-                        $"({quien}) en el grado {grado}.");
+                        $"[RegressionGuard FAILED] There is no sheet for monster {monstruo} " +
+                        $"({quien}) at grade {grado}.");
 
                 foreach (int hechizo in hechizos)
                 {
                     if (ficha.SpellIds.Contains(hechizo)) continue;
                     throw new InvalidOperationException(
-                        $"[RegressionGuard FAILED] El monstruo {monstruo} ({quien}) tendría que " +
-                        $"traer el hechizo {hechizo} y trae [{string.Join(", ", ficha.SpellIds)}]. " +
-                        "Sin hechizos el monstruo se queda quieto en el combate y no avisa de nada.");
+                        $"[RegressionGuard FAILED] Monster {monstruo} ({quien}) should " +
+                        $"carry spell {hechizo} and carries [{string.Join(", ", ficha.SpellIds)}]. " +
+                        "Without spells the monster stands still in the fight and warns of nothing.");
                 }
 
                 // And that the spell level id has not slipped in among the spell ids.
@@ -566,10 +566,10 @@ namespace Jondo.Unity.Server
                     ficha.SpellIds.Contains(ficha.StartingSpellLevelId))
                 {
                     throw new InvalidOperationException(
-                        $"[RegressionGuard FAILED] El monstruo {monstruo} ({quien}) lleva su " +
-                        $"startingSpellId ({ficha.StartingSpellLevelId}) en la lista de hechizos. " +
-                        "Ese número es un SpellLevels.Id, no un Spells.Id: ver Summons.cs, que lo " +
-                        "traduce bien.");
+                        $"[RegressionGuard FAILED] Monster {monstruo} ({quien}) carries its " +
+                        $"startingSpellId ({ficha.StartingSpellLevelId}) in the spell list. " +
+                        "That number is a SpellLevels.Id, not a Spells.Id: see Summons.cs, which " +
+                        "translates it right.");
                 }
             }
         }
@@ -607,14 +607,14 @@ namespace Jondo.Unity.Server
 
                 if (!MapManager.IsCellWalkable(spawn.MapId, spawn.Cell))
                     throw new InvalidOperationException(
-                        $"[RegressionGuard FAILED] El vendedor {spawn.NpcId} está puesto en la " +
-                        $"casilla {spawn.Cell} del mapa {spawn.MapId}, que no se puede pisar. " +
-                        "Ahí no hay quien lo cliquee.");
+                        $"[RegressionGuard FAILED] Vendor {spawn.NpcId} is placed on " +
+                        $"cell {spawn.Cell} of map {spawn.MapId}, which cannot be walked on. " +
+                        "Nobody can click it there.");
 
                 if (puestos.TryGetValue(spawn.Cell, out int otro))
                     throw new InvalidOperationException(
-                        $"[RegressionGuard FAILED] Los vendedores {otro} y {spawn.NpcId} están los " +
-                        $"dos en la casilla {spawn.Cell}: se dibujarían uno encima del otro.");
+                        $"[RegressionGuard FAILED] Vendors {otro} and {spawn.NpcId} are both " +
+                        $"on cell {spawn.Cell}: they would be drawn one on top of the other.");
                 puestos[spawn.Cell] = spawn.NpcId;
             }
 
@@ -629,10 +629,10 @@ namespace Jondo.Unity.Server
                     int bx = celdas[j] % AnchoDelMapa, by = celdas[j] / AnchoDelMapa;
                     if (Math.Abs(ax - bx) > 1 || Math.Abs(ay - by) > 1) continue;
                     throw new InvalidOperationException(
-                        $"[RegressionGuard FAILED] Los vendedores {puestos[celdas[i]]} y " +
-                        $"{puestos[celdas[j]]} están pegados, en las casillas {celdas[i]} y " +
-                        $"{celdas[j]}. El juego real casi nunca los pone así: 24 parejas vecinas " +
-                        "de 635 medidas, el 3,8 %.");
+                        $"[RegressionGuard FAILED] Vendors {puestos[celdas[i]]} and " +
+                        $"{puestos[celdas[j]]} stand next to each other, on cells {celdas[i]} and " +
+                        $"{celdas[j]}. The real game almost never places them like that: 24 neighbouring pairs " +
+                        "out of 635 measured, 3.8 %.");
                 }
             }
         }
@@ -673,7 +673,7 @@ namespace Jondo.Unity.Server
                     expected.Add((mapId, teleport.ElementId));
                     if (Managers.Houses.TryGetDoor(mapId, teleport.ElementId, out _))
                         throw new InvalidOperationException(
-                            "[RegressionGuard FAILED] Un paso genérico pisa una puerta de casa.");
+                            "[RegressionGuard FAILED] A generic passage overrides a house door.");
                 }
 
                 foreach (var resource in Managers.Resources.On(mapId))
@@ -731,8 +731,8 @@ namespace Jondo.Unity.Server
                     !ReferenceEquals(teleport, cellRoute))
                 {
                     throw new InvalidOperationException(
-                        $"[RegressionGuard FAILED] El paso {teleport.SourceMapId}/" +
-                        $"{teleport.ElementId} no es un interactivo de ruta declarado en f11.");
+                        $"[RegressionGuard FAILED] Passage {teleport.SourceMapId}/" +
+                        $"{teleport.ElementId} is not a route interactive declared in f11.");
                 }
             }
 
@@ -743,7 +743,7 @@ namespace Jondo.Unity.Server
                 astrub.DestinationMapId != 192416776 || astrub.DestinationCellId != 534)
             {
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] Falta o ha cambiado la ruta de Astrub al templo.");
+                    "[RegressionGuard FAILED] The route from Astrub to the temple is missing or has changed.");
             }
 
             if (!Managers.TeleportManager.TryGet(188746247, 515801, out var jewellerEntrance) ||
@@ -763,8 +763,8 @@ namespace Jondo.Unity.Server
                 jewellerAction.SkillId != Managers.TeleportManager.ExitSkill)
             {
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] Falta o ha cambiado la ida y vuelta del taller del " +
-                    "joyero de Astrub.");
+                    "[RegressionGuard FAILED] The round trip of the Astrub jeweller's workshop " +
+                    "is missing or has changed.");
             }
 
             if (!Managers.TeleportManager.TryGet(192940038, 515691, out var stairExit) ||
@@ -783,8 +783,8 @@ namespace Jondo.Unity.Server
                 stairAction.SkillId != 114)
             {
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] La escalera 192940038/515691 tiene que ser un paso " +
-                    "clicable.");
+                    "[RegressionGuard FAILED] The staircase 192940038/515691 has to be a clickable " +
+                    "passage.");
             }
 
             // Astrub workshop tested in game: gfx 3507 is declared with type -1 in 27
@@ -803,8 +803,8 @@ namespace Jondo.Unity.Server
                 workshopAction.Kind != Managers.InteractiveActionKind.Teleport)
             {
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] La sortie 192940040/515845 doit conserver son " +
-                    "type mesuré -1.");
+                    "[RegressionGuard FAILED] The exit 192940040/515845 has to keep its " +
+                    "measured type -1.");
             }
 
             if (Managers.InteractiveRegistry.Count != expected.Count)
@@ -846,11 +846,11 @@ namespace Jondo.Unity.Server
             var gathering = Managers.SkillManager.All.FirstOrDefault(s => s.IsGathering);
             if (gathering == null)
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] El catalogo no trae ninguna habilidad de recoleccion.");
+                    "[RegressionGuard FAILED] The catalogue carries no gathering skill.");
 
             if (Managers.Resources.Count == 0)
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] No hay ningun recurso recolectable en el mundo.");
+                    "[RegressionGuard FAILED] There is no gatherable resource in the world.");
 
             // And the quantity has to respect what was measured: a maxed profession on the easiest
             // resource gives twenty, and a freshly started one gives four.
@@ -858,14 +858,14 @@ namespace Jondo.Unity.Server
                 Handlers.GatheringHandler.Ceiling(200, 80) != 13 ||
                 Handlers.GatheringHandler.Ceiling(1, 1) != 4)
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] La cantidad recolectada no cuadra con las capturas.");
+                    "[RegressionGuard FAILED] The gathered quantity does not match the captures.");
 
             // And the experience curve, with the three points the captures give.
             if (Managers.JobExperience.Floor(2) != 20 || Managers.JobExperience.Floor(3) != 60 ||
                 Managers.JobExperience.Floor(200) != 398000 ||
                 Managers.JobExperience.LevelOf(20) != 2 || Managers.JobExperience.LevelOf(19) != 1)
                 throw new InvalidOperationException(
-                    "[RegressionGuard FAILED] La curva de experiencia de oficio no cuadra.");
+                    "[RegressionGuard FAILED] The job experience curve does not match.");
 
             var craft = Managers.RecipeManager.All.First();
             if (!Handlers.CraftHandler.TryResolve(craft.SkillId, out _, out _, out var recipes, out _) ||

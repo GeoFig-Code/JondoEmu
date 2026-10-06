@@ -37,7 +37,7 @@ namespace Jondo.Unity.Server.Managers
                 if (_book != null) return;
                 var book = new EmoteCatalogue(Console.WriteLine);
                 _book = book;
-                if (book.Ready) Console.WriteLine($"[Actitudes] {book.Count} actitudes en el catálogo.");
+                if (book.Ready) Console.WriteLine($"[Attitudes] {book.Count} attitudes in the catalogue.");
             }
         }
 
@@ -81,7 +81,7 @@ namespace Jondo.Unity.Server.Managers
             var refusal = EmoteRules.Check(emote, state.Emotes.Contains(emoteId), mounted, now, state.LastEmoteUtc);
             if (refusal != EmoteRefusal.None)
             {
-                Program.LogDebug($"[Actitudes] {state.CharacterName} no puede hacer la {emoteId}: {refusal}.");
+                Program.LogDebug($"[Attitudes] {state.CharacterName} cannot do {emoteId}: {refusal}.");
                 return;
             }
 
@@ -135,7 +135,7 @@ namespace Jondo.Unity.Server.Managers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Khi, EmoteProtocol.BuildLearned(emoteId)));
 
-            Console.WriteLine($"[Actitudes] {state.CharacterName} aprende la actitud {emoteId}.");
+            Console.WriteLine($"[Attitudes] {state.CharacterName} learns attitude {emoteId}.");
             return true;
         }
     }

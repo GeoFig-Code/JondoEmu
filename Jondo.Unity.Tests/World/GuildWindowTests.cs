@@ -91,7 +91,7 @@ namespace Jondo.Unity.Tests.World
             second.Rights = new byte[] { 0x01, 0x05, 0x06, 0x26, 0x07, 0x27, 0x08, 0x28, 0x29, 0x0d, 0x0e, 0x0f, 0x17, 0x18, 0x19 };
             GuildStore.SaveRank(second);
 
-            // jcv: «Rango personalizado», icono 102, en el orden 3.
+            // jcv: «Rango personalizado», icon 102, in position 3.
             var created = GuildStore.CreateRank(guild.Id, "Rango personalizado", 102, 3);
             Assert.Equal(5, created.Id);
 

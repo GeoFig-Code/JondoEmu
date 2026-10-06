@@ -44,7 +44,7 @@ public static class Names
     public static List<Site> Sites(ClientReader client, Action<string>? report = null)
     {
         var messages = client.Messages().Select(t => t.Name).ToHashSet(StringComparer.Ordinal);
-        report?.Invoke($"{messages.Count:N0} mensajes en el protocolo; buscando quién los nombra…");
+        report?.Invoke($"{messages.Count:N0} messages in the protocol; looking for who names them…");
 
         // Before looking for who loads the strings it is worth knowing whether they are strings at all. The
         // names could be in the TYPES table —an unobfuscated type— and then there would be
@@ -54,7 +54,7 @@ public static class Names
             .Where(t => (t.Namespace ?? "").StartsWith("Com.Ankama", StringComparison.Ordinal))
             .ToList();
 
-        report?.Invoke($"tipos declarados en Com.Ankama.*: {declared.Count:N0}");
+        report?.Invoke($"types declared in Com.Ankama.*: {declared.Count:N0}");
 
         // The good clue: NESTED types keep their real name, and their declaring type is the
         // three-letter class. If that holds, the pair comes out without guessing anything.
@@ -68,11 +68,11 @@ public static class Names
             {
                 if (nested.Name is null or "Types") continue;
                 if (anidados < 12)
-                    report?.Invoke($"    {type.Name}  ->  anidado «{nested.Name}»");
+                    report?.Invoke($"    {type.Name}  ->  nested «{nested.Name}»");
                 anidados++;
             }
         }
-        report?.Invoke($"    tipos anidados con nombre: {anidados:N0}");
+        report?.Invoke($"    named nested types: {anidados:N0}");
 
         var sites = new List<Site>();
 

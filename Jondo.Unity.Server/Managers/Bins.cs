@@ -60,7 +60,7 @@ namespace Jondo.Unity.Server.Managers
                 if (here != null) _byMap[mapId] = here;
             }
 
-            Console.WriteLine($"[Papeleras] {Count} en {_byMap.Count} mapas.");
+            Console.WriteLine($"[Bins] {Count} on {_byMap.Count} maps.");
         }
 
         /// <summary>The bins on this map.</summary>

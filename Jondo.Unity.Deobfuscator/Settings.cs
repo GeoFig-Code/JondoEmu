@@ -129,9 +129,9 @@ public sealed class Settings
     {
         var lines = new List<string>
         {
-            "# Preferencias del desofuscador de Jondo. Las claves van cifradas contra esta cuenta de",
-            "# Windows: copiar el fichero a otra máquina las deja ilegibles, y eso es lo que se quiere.",
-            "# Lo demás es texto y se puede tocar a mano.",
+            "# Jondo deobfuscator preferences. The keys are encrypted against this Windows",
+            "# account: copying the file to another machine leaves them unreadable, and that is what is wanted.",
+            "# The rest is text and can be edited by hand.",
             "proveedor=" + ProviderName,
             "url=" + Url,
             "modelo=" + Model,

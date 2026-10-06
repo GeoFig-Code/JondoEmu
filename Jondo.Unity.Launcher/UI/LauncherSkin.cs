@@ -27,7 +27,7 @@ namespace Jondo.Unity.Launcher.UI
     /// </remarks>
     internal static class LauncherSkin
     {
-        // ─── Colores ────────────────────────────────────────────────────────────
+        // ─── Colours ────────────────────────────────────────────────────────────
 
         public static Color Of(uint argb) => Color.FromUInt32(argb);
 
@@ -50,7 +50,7 @@ namespace Jondo.Unity.Launcher.UI
         public static readonly Color OnlineGreen = Of(LauncherPalette.OnlineGreen);
         public static readonly Color DotGreen = Of(LauncherPalette.DotGreen);
 
-        // ─── Tipografia ─────────────────────────────────────────────────────────
+        // ─── Typography ─────────────────────────────────────────────────────────
 
         /// <summary>
         /// The same fallback chain as the website: Cinzel if it is there, then Trebuchet MS, then whatever
@@ -75,7 +75,7 @@ namespace Jondo.Unity.Launcher.UI
         /// </remarks>
         public static double Font(double cssPixels) => cssPixels;
 
-        // ─── Ficheros ───────────────────────────────────────────────────────────
+        // ─── Files ──────────────────────────────────────────────────────────────
 
         /// <summary>Where the launcher's images and music are.</summary>
         public static string AssetsFolder => Path.Combine(Paths.Root, "launcher_assets");

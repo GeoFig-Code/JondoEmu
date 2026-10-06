@@ -143,7 +143,7 @@ public static class CodeIndex
         var methods = client.AllMethods().ToList();
         var number = new Dictionary<MethodAnalysisContext, int>(methods.Count);
         for (int i = 0; i < methods.Count; i++) number[methods[i]] = i;
-        report?.Invoke($"  {methods.Count:N0} métodos, {messages.Count:N0} mensajes");
+        report?.Invoke($"  {methods.Count:N0} methods, {messages.Count:N0} messages");
 
         var callees = new List<int>[methods.Count];
         var strings = new List<string>?[methods.Count];
@@ -265,7 +265,7 @@ public static class CodeIndex
             catch { }
         }
 
-        report?.Invoke($"  {touches.Count:N0} mensajes tocados desde fuera del protocolo");
+        report?.Invoke($"  {touches.Count:N0} messages touched from outside the protocol");
 
         // Who calls whom, reversed: to climb from the message to the names that are understandable.
         var callers = new List<int>[methods.Count];
@@ -294,7 +294,7 @@ public static class CodeIndex
         var evidence = new Dictionary<string, Evidence>(StringComparer.Ordinal);
         foreach (var message in messages.OrderBy(m => m, StringComparer.Ordinal))
         {
-            var seen = new Dictionary<int, int>();       // método -> a cuántos saltos se ha llegado
+            var seen = new Dictionary<int, int>();       // method -> how many hops away it was reached
             if (touches.TryGetValue(message, out var direct))
                 foreach (int i in direct) seen[i] = 0;
 
@@ -383,9 +383,9 @@ public static class CodeIndex
 
         int withName = evidence.Count(e => e.Value.Sightings.Any(s => s.Readable));
         int withContext = evidence.Count(e => e.Value.Context.Count > 0);
-        report?.Invoke($"  {withName:N0} mensajes llegan a un método con nombre legible " +
+        report?.Invoke($"  {withName:N0} messages reach a method with a readable name " +
                        $"({100.0 * withName / messages.Count:0.0} %)");
-        report?.Invoke($"  {withContext:N0} mensajes llegan a una clase con hermanos legibles " +
+        report?.Invoke($"  {withContext:N0} messages reach a class with readable siblings " +
                        $"({100.0 * withContext / messages.Count:0.0} %)");
 
         return evidence;

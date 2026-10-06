@@ -114,8 +114,8 @@ namespace Jondo.Unity.Server.Handlers
             var npc = Npcs.Find(mapId, contextualId);
             if (npc == null)
             {
-                Console.WriteLine($"[NPC] El cliente clica el {contextualId} del mapa {mapId}, " +
-                                  "que aquí no es nadie.");
+                Console.WriteLine($"[NPC] The client clicks {contextualId} on map {mapId}, " +
+                                  "which is nobody here.");
                 return;
             }
 
@@ -131,7 +131,7 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
-            Console.WriteLine($"[NPC] Acción {action} sobre el NPC {npc.NpcId}, que no está hecha.");
+            Console.WriteLine($"[NPC] Action {action} on NPC {npc.NpcId}, which is not done.");
         }
 
         /// <summary>The whole catalogue, in one go, which is how the real server sends it.</summary>
@@ -140,7 +140,7 @@ namespace Jondo.Unity.Server.Handlers
             var catalogue = NpcShops.CatalogueOf(npc.NpcId);
             if (catalogue.Count == 0)
             {
-                Console.WriteLine($"[NPC] El {npc.NpcId} tiene acción de tienda pero no vende nada.");
+                Console.WriteLine($"[NPC] {npc.NpcId} has a shop action but sells nothing.");
                 return;
             }
 
@@ -154,9 +154,9 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Kbd, kbd));
 
-            string moneda = tokenShop == null ? "kamas" : $"la ficha {tokenShop.TokenGid}";
-            Console.WriteLine($"[NPC] Tienda del {npc.NpcId}: {catalogue.Count} objetos, " +
-                              $"{kbd.Length} bytes, se paga en {moneda}.");
+            string moneda = tokenShop == null ? "kamas" : $"token {tokenShop.TokenGid}";
+            Console.WriteLine($"[NPC] Shop of {npc.NpcId}: {catalogue.Count} items, " +
+                              $"{kbd.Length} bytes, paid in {moneda}.");
         }
 
         /// <summary>
@@ -213,7 +213,7 @@ namespace Jondo.Unity.Server.Handlers
 
             if (primera == null && (template == null || template.DialogMessageId == 0))
             {
-                Console.WriteLine($"[NPC] El {npc.NpcId} no tiene diálogo en su plantilla.");
+                Console.WriteLine($"[NPC] {npc.NpcId} has no dialog in its template.");
                 return;
             }
 
@@ -266,9 +266,9 @@ namespace Jondo.Unity.Server.Handlers
             // And if some quest in progress asked precisely to come and see this one, that is done.
             await Managers.Quests.OnTalkingToAsync(stream, npc.NpcId);
 
-            Console.WriteLine($"[NPC] Diálogo del {npc.NpcId}: pregunta {pregunta}, " +
-                              $"{Math.Max(respuestas.Length, 1)} respuestas" +
-                              (escrito != null ? $" (escrito, {escrito.Lines.Count} frases)" : " (de la plantilla)") + ".");
+            Console.WriteLine($"[NPC] Dialog of {npc.NpcId}: question {pregunta}, " +
+                              $"{Math.Max(respuestas.Length, 1)} replies" +
+                              (escrito != null ? $" (written, {escrito.Lines.Count} lines)" : " (from the template)") + ".");
         }
 
         /// <summary>
@@ -314,8 +314,8 @@ namespace Jondo.Unity.Server.Handlers
 
             await PreguntarAsync(stream, pregunta, respuestas);
 
-            Console.WriteLine($"[Luminomáquinas] Planta {floor}, luz {light}, {salt} sales: " +
-                              $"pregunta {pregunta}, {respuestas.Length} respuestas.");
+            Console.WriteLine($"[Luminomachines] Floor {floor}, light {light}, {salt} salts: " +
+                              $"question {pregunta}, {respuestas.Length} replies.");
         }
 
         /// <summary>
@@ -376,8 +376,8 @@ namespace Jondo.Unity.Server.Handlers
 
             await PreguntaDelCofreAsync(stream, npc, mapId, score, traidos.Count > 0);
 
-            Console.WriteLine($"[Raids] Cofre del mapa {mapId}: {score} puntos, " +
-                              $"{traidos.Count} clases de tesoro encima.");
+            Console.WriteLine($"[Raids] Chest of map {mapId}: {score} points, " +
+                              $"{traidos.Count} kinds of treasure on top.");
         }
 
         /// <summary>The chest's first screen, which is put up again after dropping.</summary>
@@ -495,7 +495,7 @@ namespace Jondo.Unity.Server.Handlers
             SessionContext.State.OpenDialogueMessage = Kanojedo.FirstMessage;
 
             await PreguntarAsync(stream, Kanojedo.FirstMessage, Lista(Kanojedo.LevelReplies));
-            Console.WriteLine($"[Kanojedo] El maestro del mapa {mapId} ofrece sus seis niveles.");
+            Console.WriteLine($"[Kanojedo] The master of map {mapId} offers his six levels.");
         }
 
         /// <summary>
@@ -520,7 +520,7 @@ namespace Jondo.Unity.Server.Handlers
             SessionContext.State.OpenDialogueMessage = pregunta;
 
             await PreguntarAsync(stream, pregunta, respuestas, null, linea);
-            Console.WriteLine($"[Sueños] The Dispensador de favores says {pregunta}, {respuestas.Length} replies.");
+            Console.WriteLine($"[Dreams] The Dispensador de favores says {pregunta}, {respuestas.Length} replies.");
         }
 
         /// <summary>
@@ -575,11 +575,11 @@ namespace Jondo.Unity.Server.Handlers
             var grupo = Managers.MobSpawnManager.ComposeOffMap(elegidos);
             if (grupo == null)
             {
-                Console.WriteLine($"[Kanojedo] No hay puchs con grado al nivel {level}.");
+                Console.WriteLine($"[Kanojedo] There are no puchs with a grade at level {level}.");
                 return;
             }
 
-            Console.WriteLine($"[Kanojedo] Sesión al nivel {level} con {elegidos.Count} puch(s): " +
+            Console.WriteLine($"[Kanojedo] Session at level {level} with {elegidos.Count} puch(s): " +
                               string.Join(", ", elegidos.Select(e => e.Monster)) + ".");
             await FightHandler.InitiateFightFromMobCollision(stream, grupo, mapa);
         }
@@ -769,8 +769,8 @@ namespace Jondo.Unity.Server.Handlers
         {
             if (GameState.Kamas < choice.BuysPrice)
             {
-                Console.WriteLine($"[NPC] No llega para {choice.BuysItem}: cuesta " +
-                                  $"{choice.BuysPrice} y tiene {GameState.Kamas}.");
+                Console.WriteLine($"[NPC] Not enough for {choice.BuysItem}: it costs " +
+                                  $"{choice.BuysPrice} and they have {GameState.Kamas}.");
                 // There is no measured «you cannot afford it» message, so the generic one about something
                 // missing is used. Making up an id with no capture behind it is worse than over-explaining.
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
@@ -789,13 +789,13 @@ namespace Jondo.Unity.Server.Handlers
 
             if (!await Managers.Equipment.GiveAsync(stream, choice.BuysItem, choice.BuysCount))
             {
-                Console.WriteLine($"[NPC] Cobrados {choice.BuysPrice} kamas y no se ha podido " +
-                                  $"entregar {choice.BuysCount}x{choice.BuysItem}.");
+                Console.WriteLine($"[NPC] {choice.BuysPrice} kamas charged and " +
+                                  $"{choice.BuysCount}x{choice.BuysItem} could not be handed over.");
                 return;
             }
 
-            Console.WriteLine($"[NPC] Vendido {choice.BuysCount}x{choice.BuysItem} por " +
-                              $"{choice.BuysPrice} kamas; quedan {GameState.Kamas}.");
+            Console.WriteLine($"[NPC] Sold {choice.BuysCount}x{choice.BuysItem} for " +
+                              $"{choice.BuysPrice} kamas; {GameState.Kamas} left.");
         }
 
         private static void CerrarConversacion()
@@ -879,7 +879,7 @@ namespace Jondo.Unity.Server.Handlers
                     DatabaseManager.RememberElement(GameState.CharacterId, oferta.Value.Element);
                 }
 
-                Console.WriteLine($"[Lecturas] Aceptada la oferta del elemento {oferta.Value.Element}.");
+                Console.WriteLine($"[Readables] Offer of element {oferta.Value.Element} accepted.");
                 await CloseAsync(stream);
                 return;
             }
@@ -901,7 +901,7 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     // Once per fountain: his favor was taken here already. It could be asked for
                     // again and again, and 25 points became as many as one had patience for.
-                    Console.WriteLine($"[Sueños] The Rey Gob's favor was already taken in room {aqui.Id}.");
+                    Console.WriteLine($"[Dreams] The Rey Gob's favor was already taken in room {aqui.Id}.");
                 }
                 else if (sueno != null)
                 {
@@ -911,8 +911,8 @@ namespace Jondo.Unity.Server.Handlers
                     sueno.DreamPoints = (int)Math.Round(sueno.DreamPoints * elegidaAhora.DreamPointsPercent / 100.0,
                                                         MidpointRounding.AwayFromZero);
 
-                    Console.WriteLine($"[Sueños] La respuesta {reply} deja los puntos de " +
-                                      $"{antes} en {sueno.DreamPoints} " +
+                    Console.WriteLine($"[Dreams] Reply {reply} leaves the points from " +
+                                      $"{antes} at {sueno.DreamPoints} " +
                                       $"({elegidaAhora.DreamPointsPercent}%).");
 
                     DreamHandler.Persist(sueno);
@@ -920,8 +920,8 @@ namespace Jondo.Unity.Server.Handlers
                 }
                 else
                 {
-                    Console.WriteLine($"[Sueños] La respuesta {reply} toca los puntos y " +
-                                      "no hay sueño en curso.");
+                    Console.WriteLine($"[Dreams] Reply {reply} touches the points and " +
+                                      "there is no dream in progress.");
                 }
             }
 
@@ -978,7 +978,7 @@ namespace Jondo.Unity.Server.Handlers
                         ConnectionProtocol.NpcDialogCloseReason)));
 
                 await WorldMoveHandler.TeleportAsync(stream, adonde);
-                Console.WriteLine($"[NPC] Respuesta {reply}: lleva al mapa {adonde}.");
+                Console.WriteLine($"[NPC] Reply {reply}: leads to map {adonde}.");
                 return;
             }
 
@@ -995,7 +995,7 @@ namespace Jondo.Unity.Server.Handlers
 
             if (reply != KamasMountainReply)
             {
-                Console.WriteLine($"[NPC] Respuesta {reply}: no da nada.");
+                Console.WriteLine($"[NPC] Reply {reply}: gives nothing.");
                 return;
             }
 
@@ -1009,8 +1009,8 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildSystemMessage(
                     ConnectionProtocol.KamasReceivedMessage, KamasMountainReward.ToString())));
 
-            Console.WriteLine($"[NPC] La montaña de kamas paga {KamasMountainReward}; " +
-                              $"ahora tiene {GameState.Kamas}.");
+            Console.WriteLine($"[NPC] The mountain of kamas pays {KamasMountainReward}; " +
+                              $"they now have {GameState.Kamas}.");
         }
 
         /// <summary>
@@ -1040,8 +1040,8 @@ namespace Jondo.Unity.Server.Handlers
                 // The editor checks this before saving, so getting here means the file was edited by
                 // hand. It is said and closed instead of leaving the player looking at a window that does
                 // not respond.
-                Console.WriteLine($"[NPC] La respuesta {reply} del {estado.OpenDialogueNpcId} lleva " +
-                                  $"a la frase {elegida.Next}, que no está escrita. Se cierra.");
+                Console.WriteLine($"[NPC] Reply {reply} of {estado.OpenDialogueNpcId} leads " +
+                                  $"to line {elegida.Next}, which is not written. It closes.");
                 return false;
             }
 
@@ -1049,8 +1049,8 @@ namespace Jondo.Unity.Server.Handlers
             await PreguntarAsync(stream, siguiente.Message, LasQueTocan(siguiente),
                                  Npcs.TemplateOf(estado.OpenDialogueNpcId), siguiente);
 
-            Console.WriteLine($"[NPC] La respuesta {reply} lleva a la frase {siguiente.Message}, " +
-                              $"con {Math.Max(siguiente.Choices.Count, 1)} respuestas.");
+            Console.WriteLine($"[NPC] Reply {reply} leads to line {siguiente.Message}, " +
+                              $"with {Math.Max(siguiente.Choices.Count, 1)} replies.");
             return true;
         }
 
@@ -1076,7 +1076,7 @@ namespace Jondo.Unity.Server.Handlers
 
             if (OpenShop == 0)
             {
-                Console.WriteLine($"[NPC] Compra del objeto {gid} sin tienda abierta.");
+                Console.WriteLine($"[NPC] Purchase of item {gid} with no shop open.");
                 return;
             }
 
@@ -1093,8 +1093,8 @@ namespace Jondo.Unity.Server.Handlers
             // the way out.
             if (Managers.Npcs.Find(SessionContext.State.MapId, OpenShop) == null)
             {
-                Console.WriteLine($"[NPC] El vendedor {OpenShopNpc} no está en el mapa " +
-                                  $"{SessionContext.State.MapId}: la tienda se cierra.");
+                Console.WriteLine($"[NPC] Vendor {OpenShopNpc} is not on map " +
+                                  $"{SessionContext.State.MapId}: the shop closes.");
                 Forget();
                 return;
             }
@@ -1108,7 +1108,7 @@ namespace Jondo.Unity.Server.Handlers
             }
             if (!onSale)
             {
-                Console.WriteLine($"[NPC] El vendedor {OpenShopNpc} no vende el objeto {gid}.");
+                Console.WriteLine($"[NPC] Vendor {OpenShopNpc} does not sell item {gid}.");
                 return;
             }
 
@@ -1134,14 +1134,14 @@ namespace Jondo.Unity.Server.Handlers
 
                 if (tokenUid == 0 || tokenLeft < price)
                 {
-                    Console.WriteLine($"[NPC] El objeto {gid} cuesta {price} ficha(s) de " +
-                                      $"{tokenShop.TokenGid} y sólo hay {tokenLeft}.");
+                    Console.WriteLine($"[NPC] Item {gid} costs {price} token(s) of " +
+                                      $"{tokenShop.TokenGid} and there are only {tokenLeft}.");
                     return;
                 }
             }
             else if (GameState.Kamas < price)
             {
-                Console.WriteLine($"[NPC] El objeto {gid} cuesta {price} y sólo hay {GameState.Kamas}.");
+                Console.WriteLine($"[NPC] Item {gid} costs {price} and there are only {GameState.Kamas}.");
                 return;
             }
 
@@ -1151,7 +1151,7 @@ namespace Jondo.Unity.Server.Handlers
             if (!DatabaseManager.InsertCharacterItem(uid, GameState.CharacterId, gid, (int)quantity,
                                                      Equipment.Bag, effects))
             {
-                Console.WriteLine($"[NPC] No se ha podido guardar el objeto {gid}.");
+                Console.WriteLine($"[NPC] Item {gid} could not be saved.");
                 return;
             }
 
@@ -1226,10 +1226,10 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Push(Op.Iun, ConnectionProtocol.BuildPods(0, capacity)));
 
             Console.WriteLine(tokenShop == null
-                ? $"[NPC] Comprado el objeto {gid} x{quantity} (uid {uid}) por {price}; " +
-                  $"quedan {GameState.Kamas} kamas."
-                : $"[NPC] Comprado el objeto {gid} x{quantity} (uid {uid}) por {price} ficha(s) " +
-                  $"de {tokenShop.TokenGid}; quedan {tokenLeft}.");
+                ? $"[NPC] Bought item {gid} x{quantity} (uid {uid}) for {price}; " +
+                  $"{GameState.Kamas} kamas left."
+                : $"[NPC] Bought item {gid} x{quantity} (uid {uid}) for {price} token(s) " +
+                  $"of {tokenShop.TokenGid}; {tokenLeft} left.");
         }
 
         /// <summary>

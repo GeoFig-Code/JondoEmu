@@ -101,7 +101,7 @@ namespace Jondo.Unity.Tests.World
             int conDosPadres = s.Salas.Count(
                 sala => s.Salas.Count(x => x.Salidas.Contains(sala.Id)) > 1);
 
-            Assert.True(conDosPadres > 0, "ninguna sala se alcanza por dos caminos: es un árbol");
+            Assert.True(conDosPadres > 0, "no room is reached by two paths: it is a tree");
         }
 
         [Fact]
@@ -118,7 +118,7 @@ namespace Jondo.Unity.Tests.World
                 foreach (var sala in s.Salas)
                 {
                     Assert.True(sala.Salidas.Count <= 3,
-                                $"la sala {sala.Id} ofrece {sala.Salidas.Count} salidas y sólo hay 3 puertas");
+                                $"room {sala.Id} offers {sala.Salidas.Count} exits and there are only 3 doors");
                 }
             }
         }
@@ -142,8 +142,8 @@ namespace Jondo.Unity.Tests.World
 
             foreach (var sala in s.Salas.Where(x => x.Fila != 0 && x.Fila != ultimaFila))
             {
-                Assert.True(sala.Grupo > 0, $"la sala {sala.Id} se ha quedado sin grupo");
-                Assert.True(sala.MapaId > 0, $"la sala {sala.Id} se ha quedado sin mapa");
+                Assert.True(sala.Grupo > 0, $"room {sala.Id} has been left without a group");
+                Assert.True(sala.MapaId > 0, $"room {sala.Id} has been left without a map");
 
                 // What it gives is one of the nine rewards the rooms of the captures offer: a
                 // bonus, or dream points.
@@ -220,7 +220,7 @@ namespace Jondo.Unity.Tests.World
                 Assert.Contains(sala.Id.ToString(), crudo);
             }
 
-            Assert.True(iyj.Length > 100, "el mapa ha salido demasiado corto para nueve salas");
+            Assert.True(iyj.Length > 100, "the map came out too short for nine rooms");
         }
 
         [Fact]
@@ -303,7 +303,7 @@ namespace Jondo.Unity.Tests.World
             Assert.NotNull(grafo);
             Assert.NotNull(grafo!.BytesValue);
             Assert.True(grafo.BytesValue!.Length > 50,
-                        "el f16 del estado ha salido demasiado corto para llevar el grafo");
+                        "the state's f16 came out too short to carry the graph");
 
             // And the level, which goes in f20.
             var nivel = campos.FirstOrDefault(f => f.FieldNumber == 20);
@@ -363,7 +363,7 @@ namespace Jondo.Unity.Tests.World
             Dreams.AnadirFranja(s);
 
             Assert.Equal(2, s.Franja);
-            Assert.True(s.Salas.Count > antes, "la franja siguiente no ha añadido salas");
+            Assert.True(s.Salas.Count > antes, "the next band added no rooms");
             Assert.NotEmpty(fuente.Salidas);
 
             // And it stays a fountain: in the long capture room 9 is still of type 3 in both

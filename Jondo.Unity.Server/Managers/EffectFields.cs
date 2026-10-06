@@ -65,8 +65,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.EffectFieldsJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[EffectFields] {Path.GetFileName(path)} no está; se decidirá " +
-                                  "solo con la tabla Effects, que acierta pero no en todos.");
+                Console.WriteLine($"[EffectFields] {Path.GetFileName(path)} is not there; it will be decided " +
+                                  "with the Effects table alone, which is right but not in every case.");
             }
             else
             {
@@ -83,7 +83,7 @@ namespace Jondo.Unity.Server.Managers
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[EffectFields] No se pudo leer {Path.GetFileName(path)}: {ex.Message}");
+                    Console.WriteLine($"[EffectFields] Could not read {Path.GetFileName(path)}: {ex.Message}");
                 }
             }
 
@@ -102,11 +102,11 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[EffectFields] No se pudo leer la tabla Effects: {ex.Message}");
+                Console.WriteLine($"[EffectFields] Could not read the Effects table: {ex.Message}");
             }
 
-            Console.WriteLine($"[EffectFields] {_fields.Count} efectos con su forma aprendida de la " +
-                              $"captura, {_kind.Count} clasificados por la tabla Effects.");
+            Console.WriteLine($"[EffectFields] {_fields.Count} effects with their shape learnt from the " +
+                              $"capture, {_kind.Count} classified by the Effects table.");
         }
 
         /// <summary>

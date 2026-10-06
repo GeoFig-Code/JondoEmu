@@ -119,8 +119,8 @@ public sealed class Cytrus : IDisposable
 
         int start = all.FindIndex(v => Tail(v) == from);
         int end = all.FindIndex(v => Tail(v) == to);
-        if (start < 0) throw new InvalidOperationException("la versión " + from + " no está en el archivo de cytrus");
-        if (end < 0) throw new InvalidOperationException("la versión " + to + " no está en el archivo de cytrus");
+        if (start < 0) throw new InvalidOperationException("version " + from + " is not in the cytrus archive");
+        if (end < 0) throw new InvalidOperationException("version " + to + " is not in the cytrus archive");
         if (end < start) (start, end) = (end, start);
 
         var chain = new List<string>();
@@ -128,7 +128,7 @@ public sealed class Cytrus : IDisposable
         {
             string version = all[i];
             if (await ServedAsync(version, cancel)) chain.Add(version);
-            else report("  " + Tail(version) + ": la CDN ya no la sirve, se salta");
+            else report("  " + Tail(version) + ": the CDN no longer serves it, skipped");
         }
         return chain;
     }
@@ -177,7 +177,7 @@ public sealed class Cytrus : IDisposable
         string file = Path.Combine(_cache, version + ".manifest");
         if (File.Exists(file)) return await File.ReadAllBytesAsync(file, cancel);
 
-        report("  bajando el manifiesto de " + Tail(version) + "…");
+        report("  downloading the manifest of " + Tail(version) + "…");
         byte[] bytes = await _http.GetByteArrayAsync(ManifestUrl(version), cancel);
 
         string half = file + ".parcial";
@@ -271,7 +271,7 @@ public sealed class Cytrus : IDisposable
             string missing = needed.FirstOrDefault(h => !lodging.ContainsKey(h));
             if (missing is not null)
                 throw new InvalidOperationException(
-                    "el trozo " + missing + " no está en ningún paquete de «" + fragment.Text(0) + "»");
+                    "chunk " + missing + " is in no package of «" + fragment.Text(0) + "»");
 
             var meat = await PullAsync(lodging, needed, cancel);
 
@@ -354,7 +354,7 @@ public sealed class Cytrus : IDisposable
                 long expected = to - from + 1;
                 if (bytes.LongLength != expected)
                     throw new InvalidOperationException(
-                        "pedí " + expected + " bytes y llegaron " + bytes.LongLength);
+                        "asked for " + expected + " bytes and got " + bytes.LongLength);
                 return bytes;
             }
             catch (Exception) when (attempt < 3 && !cancel.IsCancellationRequested)
@@ -390,13 +390,13 @@ public sealed class Cytrus : IDisposable
         {
             File.Delete(half);
             throw new InvalidOperationException(
-                name + ": la huella no cuadra (esperaba " + hash + ", salió " + got + ")");
+                name + ": the hash does not match (expected " + hash + ", got " + got + ")");
         }
         if (written != size)
         {
             File.Delete(half);
             throw new InvalidOperationException(
-                name + ": esperaba " + size + " bytes y salieron " + written);
+                name + ": expected " + size + " bytes and got " + written);
         }
 
         File.Move(half, path, overwrite: true);

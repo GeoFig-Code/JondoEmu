@@ -81,7 +81,7 @@ namespace Jondo.Unity.Server.Managers
 
             if (!System.IO.File.Exists(path))
             {
-                Console.WriteLine($"[Lecturas] No está {File}: ningún cartel se podrá leer.");
+                Console.WriteLine($"[Readables] {File} is not there: no poster can be read.");
                 return;
             }
 
@@ -110,11 +110,11 @@ namespace Jondo.Unity.Server.Managers
                     };
                 }
 
-                Console.WriteLine($"[Lecturas] {_porElemento.Count} interactivo(s) con documento.");
+                Console.WriteLine($"[Readables] {_porElemento.Count} interactive(s) with a document.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Lecturas] No se pudo leer {File}: {ex.Message}");
+                Console.WriteLine($"[Readables] Could not read {File}: {ex.Message}");
             }
         }
 

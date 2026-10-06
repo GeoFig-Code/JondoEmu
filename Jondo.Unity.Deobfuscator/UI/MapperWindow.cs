@@ -62,7 +62,7 @@ internal sealed class MapperWindow : Form, IBackgroundWindow
         _settings = settings;
         _scale = DeviceDpi / 96f;
 
-        Text = "Jondo Desofuscador";
+        Text = "Jondo Deobfuscator";
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(E(900), E(560));
         Size = new Size(E(1180), E(780));
@@ -75,7 +75,7 @@ internal sealed class MapperWindow : Form, IBackgroundWindow
         _logo = new LauncherLogo
         {
             Primera = "JONDO",
-            Segunda = "DESOFUSCADOR",
+            Segunda = "DEOBFUSCATOR",
             BackColor = Color.Transparent,
             Height = E(84),
             Dock = DockStyle.Top,

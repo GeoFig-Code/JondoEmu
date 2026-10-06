@@ -160,10 +160,10 @@ public static class ProtoWriter
         var sb = new StringBuilder();
         sb.AppendLine("syntax = \"proto3\";");
         sb.AppendLine();
-        sb.AppendLine("// Reconstruido de las clases del propio cliente por Jondo.Unity.ProtocolBuilder.");
+        sb.AppendLine("// Rebuilt from the client's own classes by Jondo.Unity.ProtocolBuilder.");
         sb.AppendLine($"// Origen: {source}");
         sb.AppendLine("//");
-        sb.AppendLine("// Los nombres van rotados por Ankama; los números y los tipos son los de verdad.");
+        sb.AppendLine("// The names are rotated by Ankama; the numbers and the types are the real ones.");
         sb.AppendLine();
 
         foreach (var e in enums)
@@ -176,7 +176,7 @@ public static class ProtoWriter
 
         foreach (var m in messages)
         {
-            if (m.Doubtful) sb.AppendLine("// OJO: los números y los campos no cuadran en cuenta.");
+            if (m.Doubtful) sb.AppendLine("// WATCH OUT: the numbers and the fields do not add up.");
             sb.AppendLine($"message {m.Name} {{");
             foreach (var f in m.Fields)
             {

@@ -74,8 +74,8 @@ namespace Jondo.Unity.Server.Handlers
 
                 if (pide > SessionContext.State.CharacterLevel)
                 {
-                    Console.WriteLine($"[Equipment] El objeto {uid} pide nivel {pide} y el personaje " +
-                                      $"tiene {SessionContext.State.CharacterLevel}. No se pone.");
+                    Console.WriteLine($"[Equipment] Item {uid} needs level {pide} and the character " +
+                                      $"has {SessionContext.State.CharacterLevel}. It is not put on.");
 
                     await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                         ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(
@@ -104,8 +104,8 @@ namespace Jondo.Unity.Server.Handlers
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Ivq, Pb.New().Var(1, evicted.Uid).Var(2, Bag).Build()));
 
-                Console.WriteLine($"[Equipment] El hueco {position} lo ocupaba {evicted.Uid}; " +
-                                  "a la bolsa.");
+                Console.WriteLine($"[Equipment] Slot {position} was held by {evicted.Uid}; " +
+                                  "to the bag.");
             }
 
             // The item may well not be ours: the inventory the client is showing is still the one

@@ -61,7 +61,7 @@ namespace Jondo.Unity.Server.Managers
                 _placed.Add(new Placement(floor, subArea, mapId, cell));
             }
 
-            Console.WriteLine($"[Luminomáquinas] {_placed.Count} puestas, una por planta con luz.");
+            Console.WriteLine($"[Luminomachines] {_placed.Count} placed, one per floor with light.");
         }
 
         /// <summary>The floor whose machine stands on this map, or zero if none does.</summary>
@@ -104,8 +104,8 @@ namespace Jondo.Unity.Server.Managers
             if (to <= from || to > Luminomachine.MostLight) return -1;
 
             raid.Set(variable, to);
-            Console.WriteLine($"[Luminomáquinas] Planta {floor} de {from} a {to} franjas de luz, " +
-                              $"{Luminomachine.Cost(from, to)} sales del {characterId}.");
+            Console.WriteLine($"[Luminomachines] Floor {floor} from {from} to {to} bands of light, " +
+                              $"{Luminomachine.Cost(from, to)} salts from {characterId}.");
             return to;
         }
     }

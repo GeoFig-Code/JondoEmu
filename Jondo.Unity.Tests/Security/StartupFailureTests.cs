@@ -42,7 +42,7 @@ namespace Jondo.Unity.Tests.Security
                 log.WriteLine(Program.StartupFailure(new InvalidOperationException("no arranca")));
                 // No Flush: LogFile opens with AutoFlush, each line goes to disk as it is written.
 
-                Assert.True(File.Exists(path), "el fallo de arranque no ha llegado a ningún fichero");
+                Assert.True(File.Exists(path), "the startup failure did not reach any file");
 
                 // Shared, and not with File.ReadAllText: LogFile leaves the file open with
                 // FileShare.ReadWrite while the server lives, so opening it exclusively —which

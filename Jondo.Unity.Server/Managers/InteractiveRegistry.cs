@@ -203,7 +203,7 @@ namespace Jondo.Unity.Server.Managers
                 }
             }
 
-            if (puertas > 0) Console.WriteLine($"[Sueños] {puertas} puerta(s) de sala declaradas.");
+            if (puertas > 0) Console.WriteLine($"[Dreams] {puertas} room door(s) declared.");
 
             // The zaapis and the bins are recognised by their GRAPHIC and there are dozens, so they
             // are registered in bulk instead of one by one like the zaap or the lottery.
@@ -371,7 +371,7 @@ namespace Jondo.Unity.Server.Managers
                     RegisterPassive(mapId, element, Interactives.TypeOfGfx(element.Gfx));
             }
 
-            Console.WriteLine($"[Interactives] {_byElement.Count} elementos registrados.");
+            Console.WriteLine($"[Interactives] {_byElement.Count} elements registered.");
         }
 
         public static IReadOnlyList<RegisteredInteractive> OnMap(long mapId)
@@ -478,7 +478,7 @@ namespace Jondo.Unity.Server.Managers
             else if (interactive.Type != type || interactive.Element.Cell != element.Cell)
             {
                 throw new InvalidOperationException(
-                    $"Declaracion incoherente del elemento {element.Id} en el mapa {mapId}.");
+                    $"Inconsistent declaration of element {element.Id} on map {mapId}.");
             }
 
             return interactive;

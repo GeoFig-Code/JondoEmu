@@ -4271,8 +4271,8 @@ namespace Jondo.Unity.Server.Managers
                 // attitude stayed armed, ready to heal 30% at every turn start spent under 20%.
                 if (sobre.Buffs.Actitudes.Remove(hechizoQuitado))
                 {
-                    Program.LogDebug($"[Combate] {sobre.Id} se queda sin la actitud {hechizoQuitado}: " +
-                                     $"el efecto 406 del hechizo {hechizo} la desarma.");
+                    Program.LogDebug($"[Fight] {sobre.Id} loses attitude {hechizoQuitado}: " +
+                                     $"effect 406 of spell {hechizo} disarms it.");
                 }
 
                 return new Outcome

@@ -104,7 +104,7 @@ namespace Jondo.Unity.Server.Managers
                     string path = Paths.Resolve(DataFile);
                     if (!File.Exists(path))
                     {
-                        Console.WriteLine($"[Sueños] {DataFile} is missing: no dream loot, no dream fragments.");
+                        Console.WriteLine($"[Dreams] {DataFile} is missing: no dream loot, no dream fragments.");
                         return;
                     }
 
@@ -145,12 +145,12 @@ namespace Jondo.Unity.Server.Managers
                             reflections));
                     }
 
-                    Console.WriteLine($"[Sueños] {_intensities.Count} intensities, {_rewards.Count} rewards and " +
+                    Console.WriteLine($"[Dreams] {_intensities.Count} intensities, {_rewards.Count} rewards and " +
                                       $"{_loot.Count} loot lines from {DataFile}.");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Sueños] {DataFile} could not be read: {ex.Message}");
+                    Console.WriteLine($"[Dreams] {DataFile} could not be read: {ex.Message}");
                 }
                 finally
                 {

@@ -84,7 +84,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 // Failing to save it cannot prevent it from being seen: the look already carries the new
                 // size in memory and what is lost is it surviving the game being closed.
-                Console.WriteLine($"[Tamaño] No se pudo guardar el tamaño de {characterId}: {ex.Message}");
+                Console.WriteLine($"[Size] Could not save the size of {characterId}: {ex.Message}");
             }
 
             return size;
@@ -133,7 +133,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 // A database without the column yet -- or a character who is not there -- cannot leave
                 // the figure undrawn: he is measured like everybody else.
-                Console.WriteLine($"[Tamaño] No se pudo leer el tamaño de {characterId}: {ex.Message}");
+                Console.WriteLine($"[Size] Could not read the size of {characterId}: {ex.Message}");
             }
             return Normal;
         }

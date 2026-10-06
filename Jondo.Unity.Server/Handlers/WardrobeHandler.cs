@@ -52,7 +52,7 @@ namespace Jondo.Unity.Server.Handlers
 
             if (!Titles.HasTitle(title))
             {
-                Console.WriteLine($"[Apariencias] El título {title} no está en el catálogo.");
+                Console.WriteLine($"[Appearances] Title {title} is not in the catalogue.");
                 return;
             }
 
@@ -79,7 +79,7 @@ namespace Jondo.Unity.Server.Handlers
 
             if (!Titles.HasOrnament(ornament))
             {
-                Console.WriteLine($"[Apariencias] El ornamento {ornament} no está en el catálogo.");
+                Console.WriteLine($"[Appearances] Ornament {ornament} is not in the catalogue.");
                 return;
             }
 
@@ -104,8 +104,8 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Answer(Op.Lyu, Pb.New().Var(1, 1).Build(),
                                           ConnectionProtocol.RequestId(frame)));
 
-            Console.WriteLine($"[Apariencias] Guardado: título {SessionContext.State.WardrobeDraftTitle}, " +
-                              $"ornamento {SessionContext.State.WardrobeDraftOrnament}.");
+            Console.WriteLine($"[Appearances] Saved: title {SessionContext.State.WardrobeDraftTitle}, " +
+                              $"ornament {SessionContext.State.WardrobeDraftOrnament}.");
         }
 
         /// <summary>
@@ -149,8 +149,8 @@ namespace Jondo.Unity.Server.Handlers
 
             await AnnounceAsync(stream, accountId);
 
-            Console.WriteLine($"[Apariencias] Ofrecidos {Titles.All.Count} títulos y " +
-                              $"{Titles.AllOrnaments.Count} ornamentos.");
+            Console.WriteLine($"[Appearances] {Titles.All.Count} titles and " +
+                              $"{Titles.AllOrnaments.Count} ornaments offered.");
         }
     }
 }

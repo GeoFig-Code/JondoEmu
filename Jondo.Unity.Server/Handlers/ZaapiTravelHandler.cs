@@ -39,7 +39,7 @@ namespace Jondo.Unity.Server.Handlers
             var network = Zaapis.NetworkOn(here);
             if (network == null || network.Destinations.Count == 0)
             {
-                Console.WriteLine($"[Zaapis] El mapa {here} tiene zaapi pero no hay red cargada para él.");
+                Console.WriteLine($"[Zaapis] Map {here} has a zaapi but no network is loaded for it.");
                 return;
             }
 
@@ -72,7 +72,7 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Push(Op.Hjj, ConnectionProtocol.BuildZaapList(
                     0, destinations, Zaapis.Teleporter)));
 
-            Console.WriteLine($"[Zaapis] {network.City}: {destinations.Count} destinos desde el mapa {here}.");
+            Console.WriteLine($"[Zaapis] {network.City}: {destinations.Count} destinations from map {here}.");
         }
     }
 }

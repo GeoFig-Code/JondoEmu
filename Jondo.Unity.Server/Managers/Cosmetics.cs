@@ -51,15 +51,15 @@ namespace Jondo.Unity.Server.Managers
         {
             { 246, SlotHat },        // appearance hat
             { 247, SlotCape },       // capa
-            { 248, SlotShield },     // escudo
+            { 248, SlotShield },     // shield
             { 249, SlotPet },        // mascota
             { 250, SlotMount },      // mascotura
             { 324, SlotMount },      // appearance mount
             { 199, SlotCostume },    // traje
             { 299, SlotShoulders },  // hombreras
             { 300, SlotWings },      // alas
-            { 113, SlotAmulet },     // objeto viviente
-            { 252, SlotAmulet },     // objeto diverso
+            { 113, SlotAmulet },     // living item
+            { 252, SlotAmulet },     // miscellaneous item
             { 251, 13 },             // arma
         };
 
@@ -160,8 +160,8 @@ namespace Jondo.Unity.Server.Managers
                             || _slotsByVariant.ContainsKey(gid)) resueltas++;
                     }
 
-                    Console.WriteLine($"[Apariencias] {_catalogue.Count} prendas en el catálogo, " +
-                                      $"{resueltas} medidas ({100 * resueltas / Math.Max(1, _catalogue.Count)}%), " +
+                    Console.WriteLine($"[Appearances] {_catalogue.Count} garments in the catalogue, " +
+                                      $"{resueltas} measured ({100 * resueltas / Math.Max(1, _catalogue.Count)}%), " +
                                       $"{_auras.Count} auras.");
 
                     CheckMeasuredAgainstOffered();
@@ -192,8 +192,8 @@ namespace Jondo.Unity.Server.Managers
 
             if (faltanTítulos > 0 || faltanOrnamentos > 0)
             {
-                Console.WriteLine($"[Apariencias][AVISO] {faltanTítulos} títulos y {faltanOrnamentos} " +
-                                  $"ornamentos medidos en las capturas no están entre los que se ofrecen.");
+                Console.WriteLine($"[Appearances][WARNING] {faltanTítulos} titles and {faltanOrnamentos} " +
+                                  $"ornaments measured in the captures are not among the ones offered.");
             }
         }
 
@@ -202,7 +202,7 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.CosmeticsJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Apariencias] Falta {Path.GetFileName(path)}.");
+                Console.WriteLine($"[Appearances] {Path.GetFileName(path)} is missing.");
                 return;
             }
 
@@ -242,7 +242,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Apariencias] No se pudo leer el catálogo: {ex.Message}");
+                Console.WriteLine($"[Appearances] Could not read the catalogue: {ex.Message}");
             }
         }
 
@@ -295,7 +295,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Apariencias] No se pudo leer el aspecto de las prendas: {ex.Message}");
+                Console.WriteLine($"[Appearances] Could not read the garments' look: {ex.Message}");
             }
         }
 

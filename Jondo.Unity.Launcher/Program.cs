@@ -40,8 +40,8 @@ namespace Jondo.Unity.Launcher
                 // closing without a word.
                 bool traido = ElQueYaEstaba.PonerloDelante();
                 Console.WriteLine(traido
-                    ? "[Lanzador] Ya había uno abierto; se le pone delante."
-                    : "[Lanzador] Ya hay un lanzador de Jondo abierto.");
+                    ? "[Launcher] One was already open; it is brought to the front."
+                    : "[Launcher] A Jondo launcher is already open.");
                 return 0;
             }
 
@@ -55,11 +55,11 @@ namespace Jondo.Unity.Launcher
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[Lanzador] No se ha podido levantar el relé hacia " +
+                        Console.WriteLine($"[Launcher] Could not set up the relay to " +
                                           $"{UI.LauncherPreferences.ServerHost}: {ex.Message}");
                         return 1;
                     }
-                    Console.WriteLine($"[Lanzador] Relé local activo hacia " +
+                    Console.WriteLine($"[Launcher] Local relay active to " +
                                       $"{UI.LauncherPreferences.ServerHost}.");
                 }
 
@@ -70,7 +70,7 @@ namespace Jondo.Unity.Launcher
                 if (UI.LauncherPreferences.ServerIsLocal) AsegurarQueHayServidor().GetAwaiter().GetResult();
 
                 BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
-                Console.WriteLine("[Lanzador] Ventana cerrada. El servidor sigue en marcha.");
+                Console.WriteLine("[Launcher] Window closed. The server keeps running.");
                 return 0;
             }
             finally
@@ -98,7 +98,7 @@ namespace Jondo.Unity.Launcher
         {
             if (Network.ControlClient.ServidorVivo())
             {
-                Console.WriteLine("[Lanzador] Hay un servidor en marcha; me engancho a él.");
+                Console.WriteLine("[Launcher] There is a server running; attaching to it.");
                 return;
             }
 
@@ -109,11 +109,11 @@ namespace Jondo.Unity.Launcher
                 // That it is not there is not an error to die of: a player with only the
                 // launcher is the normal case the day the server is on another machine. The
                 // window already knows how to show «fuera de línea» and leave the buttons greyed out.
-                Console.WriteLine($"[Lanzador] No hay {EjecutableDelServidor} al lado y no responde ninguno.");
+                Console.WriteLine($"[Launcher] There is no {EjecutableDelServidor} alongside and none answers.");
                 return;
             }
 
-            Console.WriteLine("[Lanzador] No hay servidor escuchando; arrancando el de al lado.");
+            Console.WriteLine("[Launcher] No server listening; starting the one alongside.");
             try
             {
                 // Truly detached: the system starts it, without inheriting the launcher's console nor
@@ -128,7 +128,7 @@ namespace Jondo.Unity.Launcher
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Lanzador] No se ha podido arrancar el servidor: {ex.Message}");
+                Console.WriteLine($"[Launcher] Could not start the server: {ex.Message}");
                 return;
             }
 
@@ -136,7 +136,7 @@ namespace Jondo.Unity.Launcher
             // single port, and that is several seconds from cold.
             if (!await Task.Run(() => Network.ControlClient.EsperarAlServidor(Network.ControlClient.PlazoDeArranque)))
             {
-                Console.WriteLine("[Lanzador] El servidor no ha llegado a contestar.");
+                Console.WriteLine("[Launcher] The server never answered.");
             }
         }
 
@@ -153,7 +153,7 @@ namespace Jondo.Unity.Launcher
         public static void RequestShutdown(string motivo)
         {
             if (Interlocked.Exchange(ref _yaPedido, 1) != 0) return;
-            Console.WriteLine($"[Lanzador] Cerrando el lanzador ({motivo}).");
+            Console.WriteLine($"[Launcher] Closing the launcher ({motivo}).");
         }
 
         /// <summary>The launcher's debug log, which is short and goes to its console.</summary>

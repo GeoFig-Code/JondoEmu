@@ -602,8 +602,8 @@ namespace Jondo.Unity.Launcher
                 if (!File.Exists(otra)) continue;
                 if (string.Equals(otra, usada, StringComparison.OrdinalIgnoreCase)) continue;
 
-                Console.WriteLine($"[Paths] OJO: hay otro {filename} en {otra}. Se usa {usada} " +
-                                  "y ese otro se queda sin tocar; borra el que sobre.");
+                Console.WriteLine($"[Paths] WATCH OUT: there is another {filename} in {otra}. {usada} is used " +
+                                  "and that other one is left untouched; delete the one that is not needed.");
             }
         }
 

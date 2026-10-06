@@ -62,8 +62,8 @@ namespace Jondo.Unity.Server.Managers
             // The per-cell index detects duplicates and also serves the floor passages. Those
             // are triggered after the last jrw is confirmed, while still answering the
             // jqi: normal exits through the edge thus keep their jsq/jqk exchange.
-            Console.WriteLine($"[Teleport] {_byElement.Count} rutas cargadas, en " +
-                              $"{_byMap.Count} mapas.");
+            Console.WriteLine($"[Teleport] {_byElement.Count} routes loaded, on " +
+                              $"{_byMap.Count} maps.");
         }
 
         public static bool TryGet(long mapId, int elementId, out InteractiveTeleport route)
@@ -100,7 +100,7 @@ namespace Jondo.Unity.Server.Managers
             var catalogos = new (string Ruta, string Nombre)[]
             {
                 (Paths.InteractiveTeleportsJson, "Giny 2.68"),
-                (Paths.WorldGraphTeleportsJson, "grafo 2.73"),
+                (Paths.WorldGraphTeleportsJson, "graph 2.73"),
             };
 
             var rows = new List<ImportRow>();
@@ -112,16 +112,16 @@ namespace Jondo.Unity.Server.Managers
                 {
                     if (!File.Exists(ruta))
                     {
-                        Console.WriteLine($"[Teleport] Falta el catálogo de {nombre} ({ruta}).");
+                        Console.WriteLine($"[Teleport] The {nombre} catalogue is missing ({ruta}).");
                         continue;
                     }
 
                     using var document = JsonDocument.Parse(File.ReadAllText(ruta));
                     JsonElement root = document.RootElement;
                     if (!root.TryGetProperty("schemaVersion", out var schema) || schema.GetInt32() != 1)
-                        throw new InvalidOperationException($"{nombre}: schemaVersion distinto de 1.");
+                        throw new InvalidOperationException($"{nombre}: schemaVersion other than 1.");
                     if (!root.TryGetProperty("routes", out var routes) || routes.ValueKind != JsonValueKind.Array)
-                        throw new InvalidOperationException($"{nombre}: la propiedad routes no es una lista.");
+                        throw new InvalidOperationException($"{nombre}: the routes property is not a list.");
 
                     int leidas = 0;
                     foreach (var entry in routes.EnumerateArray())
@@ -139,12 +139,12 @@ namespace Jondo.Unity.Server.Managers
                         });
                         leidas++;
                     }
-                    Console.WriteLine($"[Teleport] Catálogo de {nombre}: {leidas} rutas leídas.");
+                    Console.WriteLine($"[Teleport] {nombre} catalogue: {leidas} routes read.");
                 }
 
                 if (rows.Count == 0)
                 {
-                    Console.WriteLine("[Teleport] Ningún catálogo; se conserva el que hay en SQLite.");
+                    Console.WriteLine("[Teleport] No catalogue; the one in SQLite is kept.");
                     return;
                 }
 
@@ -193,12 +193,12 @@ namespace Jondo.Unity.Server.Managers
                 }
 
                 ReplaceDatabase(rows);
-                Console.WriteLine($"[Teleport] Importadas {rows.Count} rutas, {enabledCount} activas, " +
-                                  $"{housesSkipped} casas ignoradas.");
+                Console.WriteLine($"[Teleport] Imported {rows.Count} routes, {enabledCount} active, " +
+                                  $"{housesSkipped} houses ignored.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Teleport] Importación cancelada; se conserva SQLite: {ex.Message}");
+                Console.WriteLine($"[Teleport] Import cancelled; SQLite is kept: {ex.Message}");
             }
         }
 
@@ -355,13 +355,13 @@ namespace Jondo.Unity.Server.Managers
                 };
                 if (!byElement.TryAdd((route.SourceMapId, route.ElementId), route))
                     throw new InvalidOperationException(
-                        $"Dos teletransportes activos para {route.SourceMapId}/{route.ElementId}.");
+                        $"Two active teleports for {route.SourceMapId}/{route.ElementId}.");
                 if (!byMap.TryGetValue(route.SourceMapId, out var list))
                     byMap.Add(route.SourceMapId, list = new List<InteractiveTeleport>());
                 list.Add(route);
                 if (!byCell.TryAdd((route.SourceMapId, route.SourceCellId), route))
                     throw new InvalidOperationException(
-                        $"Dos rutas Teleport para {route.SourceMapId}/{route.SourceCellId}.");
+                        $"Two Teleport routes for {route.SourceMapId}/{route.SourceCellId}.");
             }
 
             AplicarLosNuestros(byElement, byMap, byCell);
@@ -456,8 +456,8 @@ namespace Jondo.Unity.Server.Managers
 
             if (puestos > 0 || quitados > 0)
             {
-                Console.WriteLine($"[Teleports] {puestos} pasaje(s) puestos a mano y {quitados} quitado(s), " +
-                                  "de content/interactives/teleports.json.");
+                Console.WriteLine($"[Teleports] {puestos} passage(s) placed by hand and {quitados} removed, " +
+                                  "from content/interactives/teleports.json.");
             }
         }
 

@@ -52,7 +52,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[MobSpawnManager] No se ha podido leer dónde no van monstruos: {ex.Message}");
+                Program.LogDebug($"[MobSpawnManager] Could not read where monsters do not go: {ex.Message}");
                 return new HashSet<long>();
             }
 
@@ -76,7 +76,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[MobSpawnManager] No he podido leer los zaaps: {ex.Message}");
+                Program.LogDebug($"[MobSpawnManager] Could not read the zaaps: {ex.Message}");
             }
 
             // And the dungeon rules over everything else.
@@ -333,11 +333,11 @@ namespace Jondo.Unity.Server.Managers
             Console.WriteLine($"[MobSpawnManager] Loaded {count} persistent mobs across {_mapMobs.Count} maps from database.");
             if (bajoTecho > 0)
             {
-                Console.WriteLine($"[MobSpawnManager] {bajoTecho} grupos descartados por estar bajo " +
-                                  $"techo o encima de un zaap; {vetados.Count} mapas vetados.");
+                Console.WriteLine($"[MobSpawnManager] {bajoTecho} groups discarded for being indoors " +
+                                  $"or on top of a zaap; {vetados.Count} maps vetoed.");
             }
-            Console.WriteLine($"[MobSpawnManager] Ids de grupo repartidos hasta el {menor}; " +
-                              "los que se generen al vuelo siguen por debajo.");
+            Console.WriteLine($"[MobSpawnManager] Group ids handed out down to {menor}; " +
+                              "the ones spawned on the fly carry on below.");
             Console.WriteLine($"[MobSpawnManager] {archmonsters} groups keep an archmonster " +
                               $"({100.0 * archmonsters / Math.Max(1, count):0.0}% of them), one per map and one per zone.");
             // The two numbers separately, not the subtraction. With one group placed and another removed the
@@ -345,8 +345,8 @@ namespace Jondo.Unity.Server.Managers
             // to see that content/ has touched something.
             if (deLaMano.Puestos != 0 || deLaMano.Quitados != 0)
             {
-                Console.WriteLine($"[MobSpawnManager] Desde content/: {deLaMano.Puestos} grupo(s) " +
-                                  $"puestos a mano y {deLaMano.Quitados} quitados.");
+                Console.WriteLine($"[MobSpawnManager] From content/: {deLaMano.Puestos} group(s) " +
+                                  $"placed by hand and {deLaMano.Quitados} removed.");
             }
         }
 
@@ -428,8 +428,8 @@ namespace Jondo.Unity.Server.Managers
                 }
             }
 
-            Console.WriteLine($"[Mazmorra] {composed} salas compuestas a {DungeonGroupSize} ({bosses} con su jefe); " +
-                              $"{empty} sin nadie que poner.");
+            Console.WriteLine($"[Dungeon] {composed} rooms composed at {DungeonGroupSize} ({bosses} with their boss); " +
+                              $"{empty} with nobody to put in.");
             return bosses;
         }
 
@@ -477,7 +477,7 @@ namespace Jondo.Unity.Server.Managers
                 if (members.Count >= DungeonGroupSize) break;
                 if (!_monsters.TryGetValue(boss, out var data) || data.Grades.Count == 0)
                 {
-                    Console.WriteLine($"[Mazmorra] El jefe {boss} no está en la base.");
+                    Console.WriteLine($"[Dungeon] Boss {boss} is not in the database.");
                     continue;
                 }
                 members.Add(MemberAt(data, int.MaxValue));
@@ -632,8 +632,8 @@ namespace Jondo.Unity.Server.Managers
                     {
                         if (!_monsters.TryGetValue(miembro.MonsterId, out var datos))
                         {
-                            Console.WriteLine($"[MobSpawnManager] El grupo {escrito.GroupId} pide el " +
-                                              $"monstruo {miembro.MonsterId}, que no está en la base.");
+                            Console.WriteLine($"[MobSpawnManager] Group {escrito.GroupId} asks for " +
+                                              $"monster {miembro.MonsterId}, which is not in the database.");
                             continue;
                         }
 
@@ -670,7 +670,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[MobSpawnManager] Los grupos escritos no se han podido aplicar: {ex.Message}");
+                Console.WriteLine($"[MobSpawnManager] The written groups could not be applied: {ex.Message}");
             }
 
             return (puestos, quitados);
@@ -1200,7 +1200,7 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        /// <summary>En cuantos mapas hay grupos puestos.</summary>
+        /// <summary>On how many maps there are groups placed.</summary>
         public static int MapasConGrupos
         {
             get { lock (_candado) { return _mapMobs.Count; } }

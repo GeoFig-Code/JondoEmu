@@ -335,7 +335,7 @@ namespace Jondo.Unity.Tests.World
 
             Assert.Equal(0, Luminomachines.LightOn(7001, 1));
 
-            // Cuatro sales compran dos franjas de golpe.
+            // Four salts buy two bands in one go.
             Assert.Equal(2, Luminomachines.Deposit(7001, 1, 0, 2));
             Assert.Equal(2, Luminomachines.LightOn(7001, 1));
             Assert.Equal(2, raid.Get(RaidInstance.LightVariable(1)));

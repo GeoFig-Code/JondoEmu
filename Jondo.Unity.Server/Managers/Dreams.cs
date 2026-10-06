@@ -782,7 +782,7 @@ namespace Jondo.Unity.Server.Managers
             try { return JsonSerializer.Deserialize<Sueno>(json, Json); }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Sueños] A saved dream could not be read: {ex.Message}");
+                Console.WriteLine($"[Dreams] A saved dream could not be read: {ex.Message}");
                 return null;
             }
         }
@@ -903,7 +903,7 @@ namespace Jondo.Unity.Server.Managers
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Sueños] No se pudieron leer los grupos: {ex.Message}");
+                    Console.WriteLine($"[Dreams] Could not read the groups: {ex.Message}");
                 }
 
                 _grupos = grupos;
@@ -950,7 +950,7 @@ namespace Jondo.Unity.Server.Managers
         public static void Initialize()
         {
             Cargar();
-            Console.WriteLine($"[Sueños] {GruposDisponibles} grupos para plantar en las salas; " +
+            Console.WriteLine($"[Dreams] {GruposDisponibles} groups to plant in the rooms; " +
                               $"{DreamData.Loot.Count} lines of dream loot.");
         }
 
@@ -1765,7 +1765,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Sueños] No se han podido leer los mapas de sala: {ex.Message}");
+                Console.WriteLine($"[Dreams] Could not read the room maps: {ex.Message}");
             }
             return deLaSubarea;
         }
@@ -1794,7 +1794,7 @@ namespace Jondo.Unity.Server.Managers
             if (salen.Count == 0) return salen;
 
             _mapasDeSala = salen;
-            Console.WriteLine($"[Sueños] {salen.Count} mapas de sala en la subárea {SubareaDeLasSalas}.");
+            Console.WriteLine($"[Dreams] {salen.Count} room maps in subarea {SubareaDeLasSalas}.");
             return _mapasDeSala;
         }
 
@@ -1955,7 +1955,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Sueños] The wanted monsters could not be read: {ex.Message}");
+                Console.WriteLine($"[Dreams] The wanted monsters could not be read: {ex.Message}");
             }
             _bounties = found;
             return found;

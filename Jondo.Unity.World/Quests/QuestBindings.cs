@@ -239,7 +239,7 @@ namespace Jondo.Unity.World.Quests
             }
             catch (Exception ex)
             {
-                complain?.Invoke($"[Misiones] No se ha podido leer {path}: {ex.Message}");
+                complain?.Invoke($"[Quests] Could not read {path}: {ex.Message}");
             }
 
             return book;

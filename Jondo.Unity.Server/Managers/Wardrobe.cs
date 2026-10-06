@@ -63,7 +63,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Apariencias] No se pudieron crear las tablas: {ex.Message}");
+                Console.WriteLine($"[Appearances] Could not create the tables: {ex.Message}");
             }
         }
 
@@ -86,7 +86,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Apariencias] No se pudo leer el adorno: {ex.Message}");
+                Console.WriteLine($"[Appearances] Could not read the adornment: {ex.Message}");
             }
             return (None, None);
         }
@@ -114,7 +114,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Apariencias] No se pudo guardar {column}: {ex.Message}");
+                Console.WriteLine($"[Appearances] Could not save {column}: {ex.Message}");
             }
         }
 
@@ -145,7 +145,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Apariencias] No se pudieron leer las prendas: {ex.Message}");
+                Console.WriteLine($"[Appearances] Could not read the garments: {ex.Message}");
             }
             return salida;
         }
@@ -172,7 +172,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Apariencias] No se pudo poner la prenda: {ex.Message}");
+                Console.WriteLine($"[Appearances] Could not put on the garment: {ex.Message}");
             }
         }
 
@@ -200,8 +200,8 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Apariencias] No se pudo {(hidden ? "ocultar" : "enseñar")} " +
-                                  $"el hueco {slot}: {ex.Message}");
+                Console.WriteLine($"[Appearances] Could not {(hidden ? "hide" : "show")} " +
+                                  $"slot {slot}: {ex.Message}");
             }
         }
 
@@ -223,7 +223,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Apariencias] No se pudo quitar la prenda: {ex.Message}");
+                Console.WriteLine($"[Appearances] Could not take off the garment: {ex.Message}");
             }
         }
     }

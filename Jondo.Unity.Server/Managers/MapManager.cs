@@ -71,12 +71,12 @@ namespace Jondo.Unity.Server
                 foreach (var par in pisables) WalkableCells[par.Key] = par.Value.ToList();
 
                 int mapas = nuestras.Values.Select(p => p.MapId).Distinct().Count();
-                Console.WriteLine($"[MapManager] {nuestras.Count} casilla(s) cambiadas a mano en {mapas} mapa(s), " +
-                                  "de content/maps/cells.json.");
+                Console.WriteLine($"[MapManager] {nuestras.Count} cell(s) changed by hand on {mapas} map(s), " +
+                                  "from content/maps/cells.json.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[MapManager] No se han podido aplicar las casillas de content/: {ex.Message}");
+                Console.WriteLine($"[MapManager] The cells from content/ could not be applied: {ex.Message}");
             }
         }
 

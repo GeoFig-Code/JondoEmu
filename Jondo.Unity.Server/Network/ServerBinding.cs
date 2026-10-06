@@ -37,6 +37,6 @@ namespace Jondo.Unity.Server.Network
         public static IPAddress TcpAddress => Public ? IPAddress.Any : IPAddress.Loopback;
 
         /// <summary>For the server log, so it says which door it started with.</summary>
-        public static string Description => Public ? "toda la red" : "sólo esta máquina";
+        public static string Description => Public ? "the whole network" : "this machine only";
     }
 }

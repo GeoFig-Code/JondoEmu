@@ -94,17 +94,17 @@ namespace Jondo.Unity.Server.Managers
                         reader.GetInt64(3), reader.GetInt32(4), reader.GetInt64(5));
                     _prisoners[prisoner.CharacterId] = prisoner;
                 }
-                Console.WriteLine($"[Cárcel] {_prisoners.Count} preso(s) con condena en curso.");
+                Console.WriteLine($"[Jail] {_prisoners.Count} prisoner(s) serving a sentence.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Cárcel] No se ha podido leer la tabla Jail: {ex.Message}");
+                Console.WriteLine($"[Jail] Could not read the Jail table: {ex.Message}");
             }
 
             _clock ??= new Timer(_ =>
             {
                 try { TickAsync().GetAwaiter().GetResult(); }
-                catch (Exception ex) { Console.WriteLine($"[Cárcel] El reloj ha fallado: {ex.Message}"); }
+                catch (Exception ex) { Console.WriteLine($"[Jail] The clock failed: {ex.Message}"); }
             }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
         }
 
@@ -274,9 +274,9 @@ namespace Jondo.Unity.Server.Managers
                 });
             }
 
-            Console.WriteLine($"[Cárcel] {sentence!.Name} entra en la celda {inside} hasta las " +
+            Console.WriteLine($"[Jail] {sentence!.Name} goes into cell {inside} until " +
                               $"{sentence.UntilUtc.ToLocalTime():HH:mm:ss}" +
-                              (warden != null ? $"; {warden.State.CharacterName} se queda en el pasillo, casilla {outside}." : "."));
+                              (warden != null ? $"; {warden.State.CharacterName} stays in the corridor, cell {outside}." : "."));
             return (Refusal.None, sentence);
         }
 
@@ -307,7 +307,7 @@ namespace Jondo.Unity.Server.Managers
                 MoveOffline(characterId, sentence.ReturnMapId, sentence.ReturnCellId);
             }
 
-            Console.WriteLine($"[Cárcel] {sentence.Name} sale de la cárcel ({why}).");
+            Console.WriteLine($"[Jail] {sentence.Name} leaves the jail ({why}).");
             return Refusal.None;
         }
 
@@ -339,7 +339,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 if (prisoner.UntilUtc > DateTime.UtcNow) continue;
                 // A prisoner in a fight, or whose session is busy, goes out on a later tick.
-                await ReleaseAsync(prisoner.CharacterId, "condena cumplida");
+                await ReleaseAsync(prisoner.CharacterId, "sentence served");
             }
         }
 
@@ -398,7 +398,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Cárcel] No se ha podido guardar la condena de {prisoner.Name}: {ex.Message}");
+                Console.WriteLine($"[Jail] Could not save the sentence of {prisoner.Name}: {ex.Message}");
             }
         }
 
@@ -416,7 +416,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Cárcel] No se ha podido borrar la condena de {characterId}: {ex.Message}");
+                Console.WriteLine($"[Jail] Could not delete the sentence of {characterId}: {ex.Message}");
             }
         }
 
@@ -436,7 +436,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Cárcel] No se ha podido devolver a {characterId} a su sitio: {ex.Message}");
+                Console.WriteLine($"[Jail] Could not send {characterId} back to their place: {ex.Message}");
             }
         }
 

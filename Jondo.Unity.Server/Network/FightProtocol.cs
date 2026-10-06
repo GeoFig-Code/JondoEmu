@@ -53,7 +53,7 @@ namespace Jondo.Unity.Server.Network
         /// <summary>What the jrk carries in its f2 in the fifteen captures.</summary>
         private const int FightMapKind = 10;
 
-        // ─── Empezar ────────────────────────────────────────────────────────────
+        // ─── Starting ───────────────────────────────────────────────────────────
 
         /// <summary>
         /// Which monster group the client attacks (hqa).
@@ -2135,8 +2135,8 @@ namespace Jondo.Unity.Server.Network
         {
             1,   // PA
             23,  // PM
-            27,  // esquiva PA
-            28,  // esquiva PM
+            27,  // AP dodge
+            28,  // MP dodge
             33,  // resistencia tierra
             34,  // resistencia fuego
             35,  // resistencia agua
@@ -2178,7 +2178,7 @@ namespace Jondo.Unity.Server.Network
                 .Msg(1, Pb.New().Packed(1, blue).Packed(2, red))
                 .Build();
 
-        // ─── Colocarse ──────────────────────────────────────────────────────────
+        // ─── Taking a place ─────────────────────────────────────────────────────
 
         /// <summary>
         /// Which cell the player wants to move to during placement (jzy).
@@ -2227,7 +2227,7 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildFighterPlaced(int cell, int orientation, long fighter)
             => BuildFightersPlaced(new[] { (cell, orientation, fighter) });
 
-        // ─── Listo ──────────────────────────────────────────────────────────────
+        // ─── Ready ──────────────────────────────────────────────────────────────
 
         /// <summary>
         /// The ready button (kaq).
@@ -2448,7 +2448,7 @@ namespace Jondo.Unity.Server.Network
             return kwx.Build();
         }
 
-        /// <summary>Un reto queda fijado (kww): { f1: el reto }.</summary>
+        /// <summary>A challenge is fixed (kww): { f1: the challenge }.</summary>
         public static byte[] BuildChallengeChosen(byte[] challenge)
             => Pb.New().Bytes(1, challenge).Build();
 

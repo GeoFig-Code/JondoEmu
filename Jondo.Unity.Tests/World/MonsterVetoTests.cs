@@ -76,9 +76,9 @@ namespace Jondo.Unity.Tests.World
             if (!World()) return;
 
             Assert.True(MobSpawnManager.IsVetoed(Smithy),
-                        "el taller es un interior y tendría que estar vetado");
+                        "the workshop is an interior and should be vetoed");
             Assert.False(MobSpawnManager.IsVetoed(SmithyOutside),
-                         "el mapa de fuera es a cielo abierto y sí lleva monstruos");
+                         "the map outside is open air and does carry monsters");
         }
 
         [Fact]
@@ -108,7 +108,7 @@ namespace Jondo.Unity.Tests.World
             {
                 if (astrubZaap == 0) astrubZaap = waypoint.MapId;
                 Assert.True(MobSpawnManager.IsVetoed(waypoint.MapId),
-                            $"el mapa de zaap {waypoint.MapId} no está vetado");
+                            $"zaap map {waypoint.MapId} is not vetoed");
             }
 
             Assert.NotEqual(0, astrubZaap);
@@ -122,9 +122,9 @@ namespace Jondo.Unity.Tests.World
             // The other half of the deal, and worth an assertion of its own: a veto that swallowed
             // the whole world would pass every test above and leave a game with no monsters in it.
             Assert.True(MobSpawnManager.VetoedCount > 3000,
-                        $"sólo {MobSpawnManager.VetoedCount} mapas vetados, se esperaban unos 3.472");
+                        $"only {MobSpawnManager.VetoedCount} maps vetoed, some 3,472 were expected");
             Assert.True(MobSpawnManager.VetoedCount < 6000,
-                        $"{MobSpawnManager.VetoedCount} mapas vetados es demasiado mundo sin bichos");
+                        $"{MobSpawnManager.VetoedCount} vetoed maps is too much world without creatures");
         }
 
         [Fact]
@@ -157,7 +157,7 @@ namespace Jondo.Unity.Tests.World
                 }
             }
 
-            Assert.True(checkedMaps > 0, "ningún mapa de la muestra tenía interactivos que comprobar");
+            Assert.True(checkedMaps > 0, "no map of the sample had interactives to check");
         }
     }
 }

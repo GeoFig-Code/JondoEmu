@@ -80,10 +80,10 @@ namespace Jondo.Unity.Server
                     if (resto.IndexOf("CharacterId", StringComparison.OrdinalIgnoreCase) >= 0) continue;
 
                     throw new InvalidOperationException(
-                        $"[SecurityGuard FAILED] '{f.Nombre}' escribe en {m.Groups["tabla"].Value} sin " +
-                        $"filtrar por CharacterId: «{Recortar(m.Value)}». El uid lo elige el cliente, " +
-                        "así que sin dueño se le puede tocar el objeto a otro. El patrón bueno está " +
-                        "en DatabaseManager.DestroyCharacterItem.");
+                        $"[SecurityGuard FAILED] '{f.Nombre}' writes to {m.Groups["tabla"].Value} without " +
+                        $"filtering by CharacterId: «{Recortar(m.Value)}». The client picks the uid, " +
+                        "so without an owner it can touch somebody else's item. The good pattern is " +
+                        "in DatabaseManager.DestroyCharacterItem.");
                 }
             }
         }
@@ -115,8 +115,8 @@ namespace Jondo.Unity.Server
                     if (consulta.IndexOf("SELECT", StringComparison.OrdinalIgnoreCase) < 0) continue;
 
                     throw new InvalidOperationException(
-                        $"[SecurityGuard FAILED] '{f.Nombre}' compara la contraseña dentro de un " +
-                        "SELECT. Eso obliga a tenerla guardada en claro; la comprobación va por " +
+                        $"[SecurityGuard FAILED] '{f.Nombre}' compares the password inside a " +
+                        "SELECT. That forces keeping it stored in clear; the check goes through " +
                         "Managers.Claves.Comprueba.");
                 }
             }
@@ -143,8 +143,8 @@ namespace Jondo.Unity.Server
                     if (m.Value.IndexOf("$pass", StringComparison.OrdinalIgnoreCase) >= 0) continue;
 
                     throw new InvalidOperationException(
-                        $"[SecurityGuard FAILED] '{f.Nombre}' da de alta una cuenta con la " +
-                        $"contraseña escrita en el código: «{Recortar(m.Value)}».");
+                        $"[SecurityGuard FAILED] '{f.Nombre}' registers an account with the " +
+                        $"password written in the code: «{Recortar(m.Value)}».");
                 }
             }
         }
@@ -180,9 +180,9 @@ namespace Jondo.Unity.Server
                 if (!m.Success) continue;
 
                 throw new InvalidOperationException(
-                    $"[SecurityGuard FAILED] '{f.Nombre}' condiciona una comprobación de propiedad " +
-                    $"a que haya cuenta resuelta («{Recortar(m.Value)}»). Eso la apaga justo cuando " +
-                    "hace falta: sin cuenta hay que rechazar, no dejar pasar.");
+                    $"[SecurityGuard FAILED] '{f.Nombre}' makes an ownership check depend " +
+                    $"on there being a resolved account («{Recortar(m.Value)}»). That turns it off exactly when " +
+                    "it is needed: without an account the answer is to reject, not to let through.");
             }
         }
 
@@ -211,8 +211,8 @@ namespace Jondo.Unity.Server
                 if (entreMedias.Contains("MaxFrameLength")) return;
 
                 throw new InvalidOperationException(
-                    "[SecurityGuard FAILED] NetworkMessage.ReadFrameAsync reserva la trama sin " +
-                    "mirar MaxFrameLength. Un varint de longitud sin tope pide 2 GB con cinco bytes.");
+                    "[SecurityGuard FAILED] NetworkMessage.ReadFrameAsync allocates the frame without " +
+                    "looking at MaxFrameLength. An uncapped length varint asks for 2 GB with five bytes.");
             }
         }
 
@@ -242,9 +242,9 @@ namespace Jondo.Unity.Server
                     if (!f.Texto.Contains(interpolacion)) continue;
 
                     throw new InvalidOperationException(
-                        $"[SecurityGuard FAILED] '{f.Nombre}' escribe «{interpolacion}» en el " +
-                        $"registro sin tapar. Eso lleva contraseñas o identificadores de sesión; " +
-                        $"va con {remedio}.");
+                        $"[SecurityGuard FAILED] '{f.Nombre}' writes «{interpolacion}» to the " +
+                        $"log unmasked. That carries passwords or session ids; " +
+                        $"it goes through {remedio}.");
                 }
             }
         }
@@ -274,9 +274,9 @@ namespace Jondo.Unity.Server
                 if (bloque.Contains("throw")) return;
 
                 throw new InvalidOperationException(
-                    "[SecurityGuard FAILED] ConnectionProtocolSelfTest imprime los fallos y sigue " +
-                    "adelante. Una guardia de bytes que no para el arranque no guarda nada: el " +
-                    "cliente se queda en negro y no dice por qué.");
+                    "[SecurityGuard FAILED] ConnectionProtocolSelfTest prints the failures and carries " +
+                    "on. A byte guard that does not stop the startup guards nothing: the " +
+                    "client stays black and does not say why.");
             }
         }
 
@@ -303,9 +303,9 @@ namespace Jondo.Unity.Server
                 if (!m.Success) continue;
 
                 throw new InvalidOperationException(
-                    $"[SecurityGuard FAILED] '{f.Nombre}' abre un fichero de datos por ruta " +
-                    $"relativa («{Recortar(m.Value)}»). Eso sólo funciona si el directorio de " +
-                    "trabajo es la raíz; va por Paths.Resolve, que no depende de quién arranque.");
+                    $"[SecurityGuard FAILED] '{f.Nombre}' opens a data file by relative " +
+                    $"path («{Recortar(m.Value)}»). That only works if the working directory " +
+                    "is the root; it goes through Paths.Resolve, which does not depend on who starts it.");
             }
         }
 
@@ -338,9 +338,9 @@ namespace Jondo.Unity.Server
                     if (!escritura.Success) continue;
 
                     throw new InvalidOperationException(
-                        $"[SecurityGuard FAILED] '{f.Nombre}' escribe en lo que devuelve " +
-                        $"GetSpellCombatData («{Recortar(escritura.Value)}»). Eso está cacheado y lo " +
-                        "comparten todos los combates: cambiarlo aquí se lo cambia a todo el mundo.");
+                        $"[SecurityGuard FAILED] '{f.Nombre}' writes to what " +
+                        $"GetSpellCombatData returns («{Recortar(escritura.Value)}»). That is cached and " +
+                        "shared by every fight: changing it here changes it for everybody.");
                 }
             }
         }

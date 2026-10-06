@@ -64,12 +64,12 @@ namespace Jondo.Unity.Server.Managers
                     Paths.ContentFile(NpcDialogueContent.AuthoredFile), Console.WriteLine);
 
                 Console.WriteLine(_dialogues.Count == 0
-                    ? "[NPCs] No hay ningún diálogo escrito: cada NPC ofrece todas sus respuestas a la vez."
-                    : $"[NPCs] {_dialogues.Count} diálogo(s) escritos a mano.");
+                    ? "[NPCs] There is no written dialog at all: each NPC offers all its replies at once."
+                    : $"[NPCs] {_dialogues.Count} dialog(s) written by hand.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[NPCs] Los diálogos no se han podido leer: {ex.Message}");
+                Console.WriteLine($"[NPCs] The dialogs could not be read: {ex.Message}");
             }
         }
 

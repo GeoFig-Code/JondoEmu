@@ -75,7 +75,7 @@ namespace Jondo.Unity.Tests.Protocol
             Assert.Contains("1a02e00c", both);            // f3, packed, 1632
             Assert.True(both.IndexOf("0a02c613", StringComparison.Ordinal)
                         < both.IndexOf("1a02e00c", StringComparison.Ordinal),
-                        "las que están en curso van delante de las que se ofrecen");
+                        "the ones in progress go before the ones on offer");
         }
 
         [Fact]

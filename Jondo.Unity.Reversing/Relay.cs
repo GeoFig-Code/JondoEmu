@@ -63,7 +63,7 @@ public sealed class Relay
     /// </summary>
     public Outcome Run(IReadOnlyList<string> clients, Action<string> report)
     {
-        if (clients.Count < 2) throw new ArgumentException("una cadena necesita al menos dos versiones");
+        if (clients.Count < 2) throw new ArgumentException("a chain needs at least two versions");
 
         var models = new Matcher.Model[clients.Count];
         for (int i = 0; i < clients.Count; i++)
@@ -83,7 +83,7 @@ public sealed class Relay
         for (int i = 0; i + 1 < clients.Count; i++)
         {
             string from = Name(clients[i]), to = Name(clients[i + 1]);
-            report($"  {from} → {to}: emparejando…");
+            report($"  {from} → {to}: matching…");
 
             var result = Matcher.Match(models[i], models[i + 1]);
 

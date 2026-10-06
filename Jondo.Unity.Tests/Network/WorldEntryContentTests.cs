@@ -146,7 +146,7 @@ namespace Jondo.Unity.Tests.Network
             if (!Available(out _)) return;
 
             WorldEntryContent.Load(Paths.ContentFile(Manifest));
-            Assert.True(WorldEntryContent.Ready, "el manifiesto no se ha leído");
+            Assert.True(WorldEntryContent.Ready, "the manifest was not read");
 
             var wrong = new List<string>();
             foreach (var (block, file) in Blocks)
@@ -158,8 +158,8 @@ namespace Jondo.Unity.Tests.Network
 
                 if (expected.Count != actual.Count)
                 {
-                    wrong.Add($"{block}: la captura tiene {expected.Count} tramas que se mandan y " +
-                              $"el manifiesto {actual.Count}");
+                    wrong.Add($"{block}: the capture has {expected.Count} frames that are sent and " +
+                              $"the manifest {actual.Count}");
                     continue;
                 }
 
@@ -168,8 +168,8 @@ namespace Jondo.Unity.Tests.Network
                     string opcode = OpcodeOf(expected[i]);
                     if (OpcodeOf(actual[i].Frame) != opcode)
                     {
-                        wrong.Add($"{block}[{i}]: la captura trae {opcode} y el manifiesto " +
-                                  $"{OpcodeOf(actual[i].Frame)}; el orden ha cambiado");
+                        wrong.Add($"{block}[{i}]: the capture carries {opcode} and the manifest " +
+                                  $"{OpcodeOf(actual[i].Frame)}; the order has changed");
                         continue;
                     }
 
@@ -179,7 +179,7 @@ namespace Jondo.Unity.Tests.Network
                     if (expected[i].AsSpan().SequenceEqual(actual[i].Frame)) continue;
 
                     wrong.Add($"{block}[{i}] ({opcode}): " +
-                              $"{expected[i].Length} bytes en la captura, {actual[i].Frame.Length} construidos");
+                              $"{expected[i].Length} bytes in the capture, {actual[i].Frame.Length} built");
                 }
             }
 
@@ -206,7 +206,7 @@ namespace Jondo.Unity.Tests.Network
             }
 
             Assert.True(found.Count == 0,
-                "el manifiesto todavía manda: " + string.Join(", ", found.Distinct()));
+                "the manifest still sends: " + string.Join(", ", found.Distinct()));
         }
 
         [Fact]
@@ -221,7 +221,7 @@ namespace Jondo.Unity.Tests.Network
             // wrong. Worth one assertion.
             foreach (var (block, _) in Blocks)
             {
-                Assert.True(WorldEntryContent.Count(block) > 0, $"el bloque {block} está vacío");
+                Assert.True(WorldEntryContent.Count(block) > 0, $"block {block} is empty");
             }
         }
 
@@ -265,8 +265,8 @@ namespace Jondo.Unity.Tests.Network
                 bool spells = CarriesField6(captured[i]);
                 bool labelled = rows[i].Built == WorldEntry.SpellBarLabel;
                 Assert.True(spells == labelled,
-                    $"la barra itg[{i}] lleva f6={spells} y el manifiesto la etiqueta como " +
-                    $"«{rows[i].Built}»: una de las dos está al revés");
+                    $"the itg[{i}] bar carries f6={spells} and the manifest labels it as " +
+                    $"«{rows[i].Built}»: one of the two is the wrong way round");
             }
         }
 
@@ -310,7 +310,7 @@ namespace Jondo.Unity.Tests.Network
             Assert.NotNull(kva);
 
             long id = BiggestNumberIn(kva!);
-            Assert.True(id > 0, "no se ha podido leer el id del personaje capturado");
+            Assert.True(id > 0, "the captured character's id could not be read");
 
             WorldEntryContent.Load(Paths.ContentFile(Manifest));
 
@@ -324,7 +324,7 @@ namespace Jondo.Unity.Tests.Network
             }
 
             Assert.True(carrying.Count == 0,
-                "el manifiesto sigue llevando el id del personaje grabado en: " +
+                "the manifest still carries the recorded character's id in: " +
                 string.Join(", ", carrying.Distinct()));
         }
 
@@ -399,7 +399,7 @@ namespace Jondo.Unity.Tests.Network
 
             byte[]? payload = ConnectionProtocol.ReadPayload(irq!.Frame, "irq");
             Assert.NotNull(payload);
-            Assert.True(payload!.Length > 0, "el irq del manifiesto viene sin cuerpo");
+            Assert.True(payload!.Length > 0, "the manifest's irq comes without a body");
 
             int oficios = ProtoMessage.Parse(payload).Fields.Count(f => f.FieldNumber == 1);
             Assert.Equal(20, oficios);
@@ -437,7 +437,7 @@ namespace Jondo.Unity.Tests.Network
                     foreach (var row in WorldEntryContent.Rows(block))
                     {
                         Assert.False(Contains(row.Frame, varint),
-                                     $"la misión {questId} del jugador grabado sigue viajando en un {row.Opcode}");
+                                     $"quest {questId} of the recorded player still travels in a {row.Opcode}");
                     }
                 }
             }

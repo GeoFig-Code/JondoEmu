@@ -35,7 +35,7 @@ public sealed class ClientReader : IDisposable
 
         foreach (string needed in new[] { binary, metadata, player })
         {
-            if (!File.Exists(needed)) throw new FileNotFoundException($"falta {needed}");
+            if (!File.Exists(needed)) throw new FileNotFoundException($"missing {needed}");
         }
 
         Prepare();
@@ -48,7 +48,7 @@ public sealed class ClientReader : IDisposable
         // to let it blow up twenty seconds later, in the middle of the sweep and without explaining why.
         Protocol = App.GetAssemblyByName("Ankama.Dofus.Protocol.Game")
                    ?? throw new InvalidOperationException(
-                       $"en {clientFolder} no hay Ankama.Dofus.Protocol.Game: ¿es la carpeta del cliente?");
+                       $"there is no Ankama.Dofus.Protocol.Game in {clientFolder}: is it the client folder?");
     }
 
     public string Folder { get; }

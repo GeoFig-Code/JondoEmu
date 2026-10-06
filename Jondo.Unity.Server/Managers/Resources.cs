@@ -13,7 +13,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Full. The real server does not send the field.</summary>
         Full = 0,
 
-        /// <summary>Agotado: alguien acaba de recogerlo.</summary>
+        /// <summary>Depleted: somebody has just gathered it.</summary>
         Depleted = 1,
 
         /// <summary>Someone is harvesting it right now.</summary>
@@ -64,7 +64,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>How long the harvesting gesture lasts. From the iwn's f3: 30 tenths.</summary>
         public const int GatherTenths = 30;
 
-        /// <summary>Un recurso concreto puesto en un mapa.</summary>
+        /// <summary>A specific resource placed on a map.</summary>
         public sealed class Resource
         {
             public long MapId { get; init; }
@@ -111,8 +111,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.Resolve("recursos_3.6.10.10.json");
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Recursos] Falta {Path.GetFileName(path)}; sin él no hay " +
-                                  "recolección. Genéralo con tools/recursos_recoleccion.py.");
+                Console.WriteLine($"[Resources] {Path.GetFileName(path)} is missing; without it there is no " +
+                                  "gathering. Generate it with tools/recursos_recoleccion.py.");
                 return;
             }
 
@@ -137,7 +137,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Recursos] No se han podido leer los recursos: {ex.Message}");
+                Console.WriteLine($"[Resources] Could not read the resources: {ex.Message}");
                 return;
             }
 
@@ -182,8 +182,8 @@ namespace Jondo.Unity.Server.Managers
                 oficios[r.JobId] = n + 1;
             }
 
-            Console.WriteLine($"[Recursos] {_byElement.Count} recolectables en {_byMap.Count} " +
-                              $"mapas, {_byGfx.Count} gráficos, {oficios.Count} oficios.");
+            Console.WriteLine($"[Resources] {_byElement.Count} gatherables on {_byMap.Count} " +
+                              $"maps, {_byGfx.Count} graphics, {oficios.Count} jobs.");
         }
 
         public static IReadOnlyList<Resource> On(long mapId)

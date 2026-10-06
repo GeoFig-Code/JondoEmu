@@ -144,7 +144,7 @@ namespace Jondo.Unity.Server.Managers
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Hechizos] Could not read the spell levels' conditions: {ex.Message}");
+                    Console.WriteLine($"[Spells] Could not read the spell levels' conditions: {ex.Message}");
                 }
                 _levels = levels;
                 _criteria = criteria;

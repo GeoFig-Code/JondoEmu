@@ -274,8 +274,8 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[Summons] No se pudo leer la plantilla {plantilla} " +
-                                 $"grado {grado}: {ex.Message}");
+                Program.LogDebug($"[Summons] Could not read template {plantilla} " +
+                                 $"grade {grado}: {ex.Message}");
                 return null;
             }
         }

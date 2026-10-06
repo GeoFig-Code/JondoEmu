@@ -64,8 +64,8 @@ namespace Jondo.Unity.Server.Handlers
             long characterId = ReadCharacterId(framePayload);
             if (characterId <= 0 || accountId <= 0)
             {
-                Console.WriteLine($"[Personajes] Petición de borrado sin id o sin cuenta " +
-                                  $"(personaje {characterId}, cuenta {accountId}).");
+                Console.WriteLine($"[Characters] Deletion request without an id or without an account " +
+                                  $"(character {characterId}, account {accountId}).");
                 return false;
             }
 
@@ -76,14 +76,14 @@ namespace Jondo.Unity.Server.Handlers
 
             if (target == null)
             {
-                Console.WriteLine($"[Personajes] El personaje {characterId} no es de la cuenta {accountId}.");
+                Console.WriteLine($"[Characters] Character {characterId} does not belong to account {accountId}.");
                 return false;
             }
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Kvn, Pb.New().Str(1, target.Name).Build()));
 
-            Console.WriteLine($"[Personajes] Confirmación de borrado para {target.Name} ({characterId}).");
+            Console.WriteLine($"[Characters] Deletion confirmation for {target.Name} ({characterId}).");
             return true;
         }
 
@@ -101,7 +101,7 @@ namespace Jondo.Unity.Server.Handlers
 
             if (characterId <= 0)
             {
-                Console.WriteLine("[Personajes] El borrado no traía id de personaje.");
+                Console.WriteLine("[Characters] The deletion carried no character id.");
                 return false;
             }
 
@@ -110,15 +110,15 @@ namespace Jondo.Unity.Server.Handlers
             // must delete nothing rather than fall through to a lookup that ignores the account.
             if (accountId <= 0)
             {
-                Console.WriteLine($"[Personajes] Borrado sin cuenta resuelta (personaje " +
-                                  $"{characterId}). No se ha presentado el ticket.");
+                Console.WriteLine($"[Characters] Deletion without a resolved account (character " +
+                                  $"{characterId}). The ticket has not been presented.");
                 return false;
             }
 
             string name = DatabaseManager.DeleteCharacter(characterId, accountId);
             if (name.Length == 0)
             {
-                Console.WriteLine($"[Personajes] No se borró el personaje {characterId}.");
+                Console.WriteLine($"[Characters] Character {characterId} was not deleted.");
                 return false;
             }
 
@@ -126,8 +126,8 @@ namespace Jondo.Unity.Server.Handlers
             foreach (byte[] frame in ConnectionProtocol.CharacterListFrames(characters))
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, frame);
 
-            Console.WriteLine($"[Personajes] Borrado {name} ({characterId}). Quedan " +
-                              $"{characters.Count} en el servidor {serverId}.");
+            Console.WriteLine($"[Characters] Deleted {name} ({characterId}). " +
+                              $"{characters.Count} left on server {serverId}.");
             return true;
         }
 

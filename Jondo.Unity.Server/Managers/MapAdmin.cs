@@ -92,7 +92,7 @@ namespace Jondo.Unity.Server.Managers
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Mapa] No se ha podido repintar el mapa {mapId} a {viewer.State.CharacterName}: {ex.Message}");
+                    Console.WriteLine($"[Map] Could not redraw map {mapId} for {viewer.State.CharacterName}: {ex.Message}");
                 }
             }
             return told;

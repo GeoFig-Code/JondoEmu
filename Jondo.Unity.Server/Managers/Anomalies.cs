@@ -127,8 +127,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.Resolve("anomalias_3.6.10.10.json");
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Anomalías] Falta {Path.GetFileName(path)}; sin él no hay " +
-                                  "pestaña de anomalías. Genéralo con tools/extraer_anomalias.py.");
+                Console.WriteLine($"[Anomalies] {Path.GetFileName(path)} is missing; without it there is no " +
+                                  "anomalies tab. Generate it with tools/extraer_anomalias.py.");
                 return;
             }
 
@@ -160,7 +160,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Anomalías] No se ha podido leer la lista: {ex.Message}");
+                Console.WriteLine($"[Anomalies] Could not read the list: {ex.Message}");
                 return;
             }
 
@@ -168,14 +168,14 @@ namespace Jondo.Unity.Server.Managers
             // entry in the list that does nothing when clicked, and that is worse than not showing it.
             if (_arrivalMap == 0 && _all.Count > 0)
             {
-                Console.WriteLine("[Anomalías] La lista no dice a qué mapa se viaja; no se ofrecen.");
+                Console.WriteLine("[Anomalies] The list does not say which map one travels to; none offered.");
                 _all.Clear();
                 _bySubArea.Clear();
                 return;
             }
 
-            Console.WriteLine($"[Anomalías] {_all.Count} activas, {_duration} minutos cada una, " +
-                              $"se entra por el mapa {_arrivalMap}.");
+            Console.WriteLine($"[Anomalies] {_all.Count} active, {_duration} minutes each, " +
+                              $"entered through map {_arrivalMap}.");
         }
 
         public static bool TryGet(int subAreaId, out Anomaly anomaly)

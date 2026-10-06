@@ -49,15 +49,15 @@ namespace Jondo.Unity.Tests.World
         public void La_que_se_elige_tiene_sitio_para_los_dos_bandos(int teamSize)
         {
             Assert.True(KoliseoMaps.CountFor(teamSize) > 0,
-                        $"no hay ni una arena para {teamSize} por bando");
+                        $"there is not a single arena for {teamSize} per side");
 
             // A hundred times, since it is chosen at random and a single roll proves nothing.
             for (int i = 0; i < 100; i++)
             {
                 var arena = KoliseoMaps.PickFor(teamSize);
                 Assert.NotNull(arena);
-                Assert.True(arena!.Blue.Count >= teamSize, $"{arena.MapId} sin sitio azul");
-                Assert.True(arena.Red.Count >= teamSize, $"{arena.MapId} sin sitio rojo");
+                Assert.True(arena!.Blue.Count >= teamSize, $"{arena.MapId} has no blue spot");
+                Assert.True(arena.Red.Count >= teamSize, $"{arena.MapId} has no red spot");
             }
         }
 

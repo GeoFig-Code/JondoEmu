@@ -22,7 +22,7 @@ namespace Jondo.Unity.Tests.Combat
             var r = FightRules.ContraMonstruos;
 
             Assert.True(r.HayRetos);
-            Assert.Equal(450, r.RelojDeColocacion);       // 45 segundos
+            Assert.Equal(450, r.RelojDeColocacion);       // 45 seconds
             Assert.Equal(4, r.TipoDelKam);
             Assert.True(r.EnfrenteHayMonstruos);
             Assert.True(r.ReparteBotin);

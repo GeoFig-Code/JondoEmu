@@ -401,13 +401,13 @@ namespace Jondo.Unity.Server.Network
                     .Var(5, toMs))
                 .Build();
 
-        // ─── Contribuir ─────────────────────────────────────────────────────────
+        // ─── Contributing ───────────────────────────────────────────────────────
 
         /// <summary>The contribution made (jle): f1 the kamas given, f2 the ones left.</summary>
         public static byte[] BuildContribution(long kamas, int left)
             => Pb.New().Var(1, kamas).Var(2, left).Build();
 
-        // ─── Candidaturas e invitaciones ────────────────────────────────────────
+        // ─── Applications and invitations ───────────────────────────────────────
 
         /// <summary>
         /// An application's block, the same inside the jmf and the jly: when it was sent, with

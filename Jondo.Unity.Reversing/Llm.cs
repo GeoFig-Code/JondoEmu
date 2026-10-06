@@ -112,7 +112,7 @@ public sealed class Llm : IDisposable
         if (File.Exists(path)) return await File.ReadAllTextAsync(path, cancel);
 
         if (!Ready) throw new InvalidOperationException(
-            "falta configurar el modelo: dirección, nombre y —si no es local— la clave");
+            "the model is not configured: address, name and —unless it is local— the key");
 
         await _gate.WaitAsync(cancel);
         try

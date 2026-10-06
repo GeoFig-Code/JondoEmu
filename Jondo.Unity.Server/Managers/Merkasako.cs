@@ -67,8 +67,8 @@ namespace Jondo.Unity.Server.Managers
                 if (ChestOf(mapId).Id != 0) conCofre++;
             }
 
-            Console.WriteLine($"[Merkasako] {_maps.Count} decorados ({conZaap} con zaap, {conCofre} " +
-                              $"con cofre), {_themes.Count} temas, {_furniture.Count} muebles.");
+            Console.WriteLine($"[Merkasako] {_maps.Count} sets ({conZaap} with a zaap, {conCofre} " +
+                              $"with a chest), {_themes.Count} themes, {_furniture.Count} pieces of furniture.");
         }
 
         private static void LoadMaps()
@@ -88,7 +88,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Merkasako] No se pudo leer la subzona {SubArea}: {ex.Message}");
+                Console.WriteLine($"[Merkasako] Could not read subarea {SubArea}: {ex.Message}");
             }
         }
 
@@ -97,8 +97,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.HavenBagJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Merkasako] Falta {Path.GetFileName(path)}; sin él no hay temas. " +
-                                  "Genéralo con tools/extract_merkasako.py.");
+                Console.WriteLine($"[Merkasako] {Path.GetFileName(path)} is missing; without it there are no themes. " +
+                                  "Generate it with tools/extract_merkasako.py.");
                 return;
             }
 
@@ -130,7 +130,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Merkasako] No se pudo leer {Path.GetFileName(path)}: {ex.Message}");
+                Console.WriteLine($"[Merkasako] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
         }
 

@@ -407,7 +407,7 @@ namespace Jondo.Unity.Studio.Ui
                                  "world.db n'a pas pu être ouvert, il n'y a rien à montrer ici."),
             ["missing.lookedIn"] = ("Se ha mirado en {0}", "Looked in {0}", "Cherché dans {0}"),
 
-            // ─── Misiones ─────────────────────────────────────────────────────────
+            // ─── Quests ───────────────────────────────────────────────────────────
             ["quest.none"] = ("No hay catálogo de misiones",
                               "There is no quest catalogue",
                               "Pas de catalogue de quêtes"),

@@ -84,7 +84,7 @@ namespace Jondo.Unity.Server.Handlers
             if (string.Equals(target, from, StringComparison.OrdinalIgnoreCase))
             {
                 await RefuseAsync(stream);
-                Console.WriteLine($"[Privado] {from} intenta susurrarse a sí mismo.");
+                Console.WriteLine($"[Private] {from} tries to whisper to themselves.");
                 return;
             }
 
@@ -92,7 +92,7 @@ namespace Jondo.Unity.Server.Handlers
             if (destino == null)
             {
                 await RefuseAsync(stream);
-                Console.WriteLine($"[Privado] {from} susurra a «{target}», que no está conectado.");
+                Console.WriteLine($"[Private] {from} whispers to «{target}», who is not connected.");
                 return;
             }
 
@@ -109,7 +109,7 @@ namespace Jondo.Unity.Server.Handlers
                     ConnectionProtocol.BuildPrivateMessage(
                         cuando, destino.State.CharacterId, destino.State.CharacterName, text)));
 
-            Console.WriteLine($"[Privado] {from} → {destino.State.CharacterName}: {text}");
+            Console.WriteLine($"[Private] {from} → {destino.State.CharacterName}: {text}");
         }
 
         private static async Task RefuseAsync(NetworkStream stream)

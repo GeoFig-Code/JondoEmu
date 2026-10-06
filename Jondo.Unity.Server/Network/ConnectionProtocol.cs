@@ -1677,7 +1677,7 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildItemQuantity(long uid, int total)
             => Pb.New().Msg(3, Pb.New().Var(2, uid).Var(3, total)).Build();
 
-        // ─── World: apariencia ──────────────────────────────────────────────────
+        // ─── World: appearance ──────────────────────────────────────────────────
 
         /// <summary>
         /// A character's block within the map: where he is, who he is and what he looks like.
@@ -2502,7 +2502,7 @@ namespace Jondo.Unity.Server.Network
             return jbu.Build();
         }
 
-        // ─── World: cofre ───────────────────────────────────────────────────────
+        // ─── World: chest ───────────────────────────────────────────────────────
 
         // "El cofre está abierto" (kci) is built per kind of storage -- a house chest's is not a
         // bin's nor the haven bag's -- in StorageProtocol.BuildOpened.
@@ -2529,7 +2529,7 @@ namespace Jondo.Unity.Server.Network
             return iwb.Build();
         }
 
-        /// <summary>Un objeto que entra en un sitio (iua para el cofre, itd para la bolsa).</summary>
+        /// <summary>An item going into a place (iua for the chest, itd for the bag).</summary>
         public static byte[] BuildItemArrived(int field, Managers.HavenBagStore.StoredItem item)
         {
             var body = Pb.New().Var(1, item.Gid);
@@ -2626,7 +2626,7 @@ namespace Jondo.Unity.Server.Network
                 .VarIfNotZero(9, channel)
                 .Build();
 
-        // ─── Grupos ─────────────────────────────────────────────────────────────
+        // ─── Groups ─────────────────────────────────────────────────────────────
 
         /// <summary>
         /// You have been invited to a party (ijz): it brings up the little window.
@@ -2661,7 +2661,7 @@ namespace Jondo.Unity.Server.Network
         /// <summary>The party has broken up (imy): { f1: party }.</summary>
         public static byte[] BuildPartyDissolved(int partyId) => Pb.New().Var(1, partyId).Build();
 
-        /// <summary>Te has salido (ils): { f1: grupo }.</summary>
+        /// <summary>You have left (ils): { f1: party }.</summary>
         public static byte[] BuildPartyLeft(int partyId) => Pb.New().Var(1, partyId).Build();
 
         /// <summary>

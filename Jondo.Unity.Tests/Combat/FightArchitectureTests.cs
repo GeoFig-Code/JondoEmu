@@ -32,9 +32,9 @@ namespace Jondo.Unity.Tests.Combat
                 carpeta = carpeta.Parent;
             }
 
-            Assert.True(carpeta != null, "No se encuentra la raíz de la solución desde " + AppContext.BaseDirectory);
+            Assert.True(carpeta != null, "The solution root cannot be found from " + AppContext.BaseDirectory);
             string fichero = Path.Combine(carpeta!.FullName, ruta);
-            Assert.True(File.Exists(fichero), "No está " + fichero);
+            Assert.True(File.Exists(fichero), "Not there: " + fichero);
             return File.ReadAllText(fichero);
         }
 
@@ -56,7 +56,7 @@ namespace Jondo.Unity.Tests.Combat
         private static string Motor() => string.Join("\n", ElMotorEntero.Select(Fuente));
 
         // ═══════════════════════════════════════════════════════════════════
-        //  Regla 1: nadie busca a alguien en un solo bando
+        //  Rule 1: nobody looks somebody up on a single side
         // ═══════════════════════════════════════════════════════════════════
 
         [Fact]
@@ -73,7 +73,7 @@ namespace Jondo.Unity.Tests.Combat
             var culpables = Culpables(Motor(), linea => prohibido.IsMatch(linea));
 
             Assert.True(culpables.Count == 0,
-                "Búsquedas en un solo bando:" + Environment.NewLine + string.Join(Environment.NewLine, culpables));
+                "Lookups on a single side:" + Environment.NewLine + string.Join(Environment.NewLine, culpables));
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -106,11 +106,11 @@ namespace Jondo.Unity.Tests.Combat
                 if (!llamada.Contains("GameState")) continue;
                 if (Permitidas.Any(llamada.Contains)) continue;
 
-                malas.Add($"  línea {numero}: {llamada.Split('\n')[0].Trim()}");
+                malas.Add($"  line {numero}: {llamada.Split('\n')[0].Trim()}");
             }
 
             Assert.True(malas.Count == 0,
-                "Difusiones cuyo contenido depende de quién mira:" + Environment.NewLine
+                "Broadcasts whose content depends on who is looking:" + Environment.NewLine
                 + string.Join(Environment.NewLine, malas));
         }
 
@@ -167,11 +167,11 @@ namespace Jondo.Unity.Tests.Combat
                 if (!lineas[i].Contains("await WriteFrameAsync(stream,")) continue;
                 if (VistaDeUnaPersona.Contains(actual)) continue;
 
-                malos.Add($"  línea {i + 1}, en {actual}: {lineas[i].Trim()}");
+                malos.Add($"  line {i + 1}, in {actual}: {lineas[i].Trim()}");
             }
 
             Assert.True(malos.Count == 0,
-                "Escriben a un socket suelto sin ser la vista de una persona:" + Environment.NewLine
+                "They write to a loose socket without being somebody's view:" + Environment.NewLine
                 + string.Join(Environment.NewLine, malos));
         }
 
@@ -184,7 +184,7 @@ namespace Jondo.Unity.Tests.Combat
 
             Assert.Contains("ATodosAsync", motor);
             Assert.True(Difusiones(motor).Count >= 50,
-                "Se esperaban decenas de difusiones y se han visto " + Difusiones(motor).Count);
+                "Dozens of broadcasts were expected and the ones seen are " + Difusiones(motor).Count);
         }
 
         // ─── the two tools ──────────────────────────────────────────────────
@@ -199,7 +199,7 @@ namespace Jondo.Unity.Tests.Combat
             {
                 string limpia = lineas[i].TrimStart();
                 if (limpia.StartsWith("//") || limpia.StartsWith("///")) continue;
-                if (filtro(lineas[i])) salida.Add($"  línea {i + 1}: {limpia.TrimEnd()}");
+                if (filtro(lineas[i])) salida.Add($"  line {i + 1}: {limpia.TrimEnd()}");
             }
             return salida;
         }

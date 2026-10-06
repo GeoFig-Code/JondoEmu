@@ -106,8 +106,8 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Answer(Op.Ltd, BuildModes(Modes),
                                           ConnectionProtocol.RequestId(payload)));
 
-            Console.WriteLine($"[Koliseo] Tabla de modalidades: " +
-                              $"{CountOpen()} abierta(s) de {Modes.Count}.");
+            Console.WriteLine($"[Koliseo] Mode table: " +
+                              $"{CountOpen()} open of {Modes.Count}.");
         }
 
         public static int CountOpen()
@@ -145,7 +145,7 @@ namespace Jondo.Unity.Server.Handlers
             var modo = FindMode(indice);
             if (modo == null || !modo.Value.Open)
             {
-                Console.WriteLine($"[Koliseo] Se apunta un grupo a la modalidad {indice}, que no está abierta.");
+                Console.WriteLine($"[Koliseo] A party signs up for mode {indice}, which is not open.");
                 return;
             }
 
@@ -158,7 +158,7 @@ namespace Jondo.Unity.Server.Handlers
             {
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Lqn, BuildStillBanned(faltan)));
-                Console.WriteLine($"[Koliseo] {yo} no puede apuntarse todavia: {faltan} minuto(s).");
+                Console.WriteLine($"[Koliseo] {yo} cannot sign up yet: {faltan} minute(s).");
                 return;
             }
 
@@ -191,9 +191,9 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Lsx, BuildQueueState(indice, true)));
 
-            Console.WriteLine($"[Koliseo] Grupo de {quienes.Count} en la cola de " +
-                              $"{modo.Value.TeamSize} contra {modo.Value.TeamSize} " +
-                              $"({nuevos} nuevo(s)): {KoliseoQueue.CountIn(indice)} esperando.");
+            Console.WriteLine($"[Koliseo] Party of {quienes.Count} in the " +
+                              $"{modo.Value.TeamSize} against {modo.Value.TeamSize} queue " +
+                              $"({nuevos} new): {KoliseoQueue.CountIn(indice)} waiting.");
 
             await TryMatchAsync(indice, modo.Value.TeamSize);
         }
@@ -218,7 +218,7 @@ namespace Jondo.Unity.Server.Handlers
             var oferta = KoliseoOffers.Of(yo);
             if (oferta == null)
             {
-                Console.WriteLine($"[Koliseo] {yo} contesta a una partida que ya no existe.");
+                Console.WriteLine($"[Koliseo] {yo} answers a match that no longer exists.");
                 return;
             }
 
@@ -235,12 +235,12 @@ namespace Jondo.Unity.Server.Handlers
 
             if (!acepta)
             {
-                Console.WriteLine($"[Koliseo] {yo} rechaza la partida.");
+                Console.WriteLine($"[Koliseo] {yo} turns the match down.");
                 await DeshacerAsync(oferta, new List<long> { yo });
                 return;
             }
 
-            Console.WriteLine($"[Koliseo] {yo} acepta la partida.");
+            Console.WriteLine($"[Koliseo] {yo} accepts the match.");
             if (!KoliseoOffers.Accept(oferta, yo)) return;
 
             KoliseoOffers.Forget(oferta);
@@ -255,7 +255,7 @@ namespace Jondo.Unity.Server.Handlers
             // If somebody accepted it in full by a hair, Close returns false and it is not touched here.
             if (!KoliseoOffers.Close(oferta)) return;
 
-            Console.WriteLine($"[Koliseo] Vence el plazo de la partida {oferta.Id}.");
+            Console.WriteLine($"[Koliseo] The deadline of match {oferta.Id} runs out.");
             await DeshacerAsync(oferta, KoliseoOffers.WhoDidNotAnswer(oferta), yaCerrada: true);
         }
 
@@ -305,8 +305,8 @@ namespace Jondo.Unity.Server.Handlers
                 await Escribir(sesion, ConnectionProtocol.Push(Op.Lsx, BuildLeftQueue(oferta.Mode)));
             }
 
-            Console.WriteLine($"[Koliseo] Partida deshecha: {castigados.Count} castigado(s) " +
-                              $"{KoliseoOffers.Castigo} minuto(s).");
+            Console.WriteLine($"[Koliseo] Match undone: {castigados.Count} penalised for " +
+                              $"{KoliseoOffers.Castigo} minute(s).");
 
             // Those who stayed can be matched with others who were waiting.
             var modo = FindMode(oferta.Mode);
@@ -326,12 +326,12 @@ namespace Jondo.Unity.Server.Handlers
 
             if (azul.Count + azulBots.Count != oferta.TeamSize || rojo.Count + rojoBots.Count != oferta.TeamSize)
             {
-                Console.WriteLine("[Koliseo] Alguien se fue entre aceptar y empezar; se deshace.");
+                Console.WriteLine("[Koliseo] Somebody left between accepting and starting; it is undone.");
                 await DeshacerAsync(oferta, new List<long>(), yaCerrada: true);
                 return;
             }
 
-            Console.WriteLine($"[Koliseo] Todos aceptan: partida de {oferta.TeamSize} contra " +
+            Console.WriteLine($"[Koliseo] Everybody accepts: match of {oferta.TeamSize} against " +
                               $"{oferta.TeamSize}.");
             long mapa = azul.Count > 0 ? azul[0].MapId : rojo[0].MapId;
             await FightHandler.InitiatePvpAsync(azul, rojo, mapa, koliseo: true, koliseoMode: oferta.Mode,
@@ -361,7 +361,7 @@ namespace Jondo.Unity.Server.Handlers
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[Koliseo] No se ha podido escribir a {sesion.Id}: {ex.Message}");
+                Program.LogDebug($"[Koliseo] Could not write to {sesion.Id}: {ex.Message}");
             }
         }
 
@@ -391,7 +391,7 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Push(Op.Lsx,
                     BuildLeftQueue(KoliseoOffers.LastMode(GameState.CharacterId))));
 
-            Console.WriteLine($"[Koliseo] {GameState.CharacterId} vuelve del koliseo.");
+            Console.WriteLine($"[Koliseo] {GameState.CharacterId} comes back from the koliseo.");
         }
 
         /// <summary>
@@ -411,7 +411,7 @@ namespace Jondo.Unity.Server.Handlers
             var oferta = KoliseoOffers.Of(yo);
             if (oferta != null && oferta.Mode == JondoBotMode)
             {
-                Console.WriteLine($"[Koliseo] {yo} deja la tarjeta de JondoBots antes de aceptar.");
+                Console.WriteLine($"[Koliseo] {yo} leaves the JondoBots card before accepting.");
                 await DeshacerAsync(oferta, new List<long>());
                 return;
             }
@@ -423,7 +423,7 @@ namespace Jondo.Unity.Server.Handlers
                 // not stay "searching" for a search the server does not have.
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Lsx, BuildLeftQueue(KoliseoOffers.LastMode(yo))));
-                Console.WriteLine($"[Koliseo] {yo} deja una cola en la que no estaba.");
+                Console.WriteLine($"[Koliseo] {yo} leaves a queue they were not in.");
                 return;
             }
 
@@ -433,9 +433,9 @@ namespace Jondo.Unity.Server.Handlers
                 var sesion = SessionRegistry.FindByCharacter(id);
                 if (sesion != null) await Escribir(sesion, left);
             }
-            Console.WriteLine($"[Koliseo] {yo} deja la cola del modo {mode}" +
-                              (members.Count > 1 ? $" con su grupo ({members.Count})." : ".") +
-                              $" Quedan {KoliseoQueue.CountIn(mode)} esperando.");
+            Console.WriteLine($"[Koliseo] {yo} leaves the queue of mode {mode}" +
+                              (members.Count > 1 ? $" with their party ({members.Count})." : ".") +
+                              $" {KoliseoQueue.CountIn(mode)} left waiting.");
         }
 
         /// <summary>
@@ -495,8 +495,8 @@ namespace Jondo.Unity.Server.Handlers
                 // their place because of somebody else.
                 foreach (var sesion in azul) KoliseoQueue.Enrol(sesion.State.CharacterId, mode);
                 foreach (var sesion in rojo) KoliseoQueue.Enrol(sesion.State.CharacterId, mode);
-                Console.WriteLine($"[Koliseo] Faltó alguien al formar la partida; los demás " +
-                                  $"vuelven a la cola.");
+                Console.WriteLine($"[Koliseo] Somebody was missing when forming the match; the others " +
+                                  $"go back to the queue.");
                 return;
             }
 
@@ -508,8 +508,8 @@ namespace Jondo.Unity.Server.Handlers
             foreach (var sesion in azul) await Escribir(sesion, aviso);
             foreach (var sesion in rojo) await Escribir(sesion, aviso);
 
-            Console.WriteLine($"[Koliseo] Partida de {teamSize} contra {teamSize} encontrada: " +
-                              $"{KoliseoOffers.Segundos} s para aceptarla.");
+            Console.WriteLine($"[Koliseo] Match of {teamSize} against {teamSize} found: " +
+                              $"{KoliseoOffers.Segundos} s to accept it.");
 
             _ = VencerAsync(oferta);
         }

@@ -46,8 +46,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.NpcShopsJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Tiendas] Falta {Path.GetFileName(path)}; los NPCs no venderán nada. " +
-                                  "Genéralo con tools/extraer_tiendas.py.");
+                Console.WriteLine($"[Shops] {Path.GetFileName(path)} is missing; the NPCs will sell nothing. " +
+                                  "Generate it with tools/extraer_tiendas.py.");
                 return;
             }
 
@@ -91,12 +91,12 @@ namespace Jondo.Unity.Server.Managers
 
                 LoadEffects(distinct);
 
-                Console.WriteLine($"[Tiendas] {_byNpc.Count} vendedores, {Items} objetos distintos, " +
-                                  $"{_effects.Count} con efectos.");
+                Console.WriteLine($"[Shops] {_byNpc.Count} vendors, {Items} distinct items, " +
+                                  $"{_effects.Count} with effects.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Tiendas] No se ha podido leer {Path.GetFileName(path)}: {ex.Message}");
+                Console.WriteLine($"[Shops] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
         }
 
@@ -135,10 +135,10 @@ namespace Jondo.Unity.Server.Managers
                 _byNpc[merge.Keeps] = juntos.ToArray();
 
                 string aviso = juntos.Count > CatalogoMedidoMayor
-                    ? $"  <-- POR ENCIMA DE LAS {CatalogoMedidoMayor} MEDIDAS"
+                    ? $"  <-- ABOVE THE {CatalogoMedidoMayor} MEASURED"
                     : "";
-                Console.WriteLine($"[Vendedores] «{merge.Name}» ({merge.Keeps}): {juntos.Count} " +
-                                  $"objetos de {merge.Absorbs.Count + 1} vendedor(es).{aviso}");
+                Console.WriteLine($"[Vendors] «{merge.Name}» ({merge.Keeps}): {juntos.Count} " +
+                                  $"items from {merge.Absorbs.Count + 1} vendor(s).{aviso}");
             }
         }
 
@@ -252,11 +252,11 @@ namespace Jondo.Unity.Server.Managers
                     vendors++;
                 }
 
-                if (vendors > 0) Console.WriteLine($"[Tiendas] {vendors} vendedor(es) escritos a mano, de {AuthoredFile}.");
+                if (vendors > 0) Console.WriteLine($"[Shops] {vendors} vendor(s) written by hand, from {AuthoredFile}.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Tiendas] No se ha podido leer {Path.GetFileName(path)}: {ex.Message}");
+                Console.WriteLine($"[Shops] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
         }
 

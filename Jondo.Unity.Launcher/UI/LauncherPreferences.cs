@@ -84,7 +84,7 @@ namespace Jondo.Unity.Launcher.UI
             catch { }
         }
 
-        // ─── Idioma ─────────────────────────────────────────────────────────────
+        // ─── Language ───────────────────────────────────────────────────────────
 
         public static Language Language
         {
@@ -243,8 +243,8 @@ namespace Jondo.Unity.Launcher.UI
                 if (sinCifrar && validas.Count > 0)
                 {
                     SaveAccounts(validas);
-                    Console.WriteLine("[Lanzador] Las cuentas guardadas estaban sin cifrar; " +
-                                      "se han vuelto a guardar cifradas.");
+                    Console.WriteLine("[Launcher] The saved accounts were unencrypted; " +
+                                      "they have been saved again encrypted.");
                 }
 
                 return validas;

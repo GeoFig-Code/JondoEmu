@@ -40,8 +40,8 @@ namespace Jondo.Unity.Server.Handlers
                         // which four those are -- see MapManager.IsNeighbour.
                         if (!MapManager.IsNeighbour(SessionContext.State.MapId, requestedMapId))
                         {
-                            Console.WriteLine($"[Map Change] Se pide saltar de {SessionContext.State.MapId} " +
-                                              $"a {requestedMapId} y no son mapas vecinos. No se hace nada.");
+                            Console.WriteLine($"[Map Change] Asked to jump from {SessionContext.State.MapId} " +
+                                              $"to {requestedMapId} and they are not neighbouring maps. Nothing is done.");
                             return;
                         }
 
@@ -147,8 +147,8 @@ namespace Jondo.Unity.Server.Handlers
                     // the broadcast and the mob-collision check below go by.
                     if (joiMsg.Funb != SessionContext.State.MapId)
                     {
-                        Console.WriteLine($"[Movement] El cliente dice moverse en el mapa {joiMsg.Funb} " +
-                                          $"y está en el {SessionContext.State.MapId}. Se usa el del servidor.");
+                        Console.WriteLine($"[Movement] The client says it moves on map {joiMsg.Funb} " +
+                                          $"and it is on {SessionContext.State.MapId}. The server's is used.");
                     }
 
                     long mapId = SessionContext.State.MapId;

@@ -222,8 +222,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.Resolve("casas_mundo_3.6.10.10.json");
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Casas] Falta {Path.GetFileName(path)}; sin él no hay casas. " +
-                                  "Genéralo con tools/casas_mundo.py.");
+                Console.WriteLine($"[Houses] {Path.GetFileName(path)} is missing; without it there are no houses. " +
+                                  "Generate it with tools/casas_mundo.py.");
                 return;
             }
 
@@ -282,7 +282,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Casas] No se han podido leer las puertas: {ex.Message}");
+                Console.WriteLine($"[Houses] Could not read the doors: {ex.Message}");
                 return;
             }
 
@@ -304,8 +304,8 @@ namespace Jondo.Unity.Server.Managers
                 if (_byMap[mapId].Count == 0) _byMap.Remove(mapId);
             }
             if (huerfanas.Count > 0)
-                Console.WriteLine($"[Casas] {huerfanas.Count} puertas descartadas: su interior no " +
-                                  "tiene por dónde salir.");
+                Console.WriteLine($"[Houses] {huerfanas.Count} doors discarded: their interior has " +
+                                  "no way out.");
 
             // And where one goes back through: the first door leading to each interior. It is taken
             // from the data and not from the session on purpose, so that leaving still works after
@@ -339,9 +339,9 @@ namespace Jondo.Unity.Server.Managers
                 if (door.IsKnown) conNombre++;
             }
 
-            Console.WriteLine($"[Casas] {_byElement.Count} puertas en {_byMap.Count} mapas, " +
-                              $"{_exits.Count} interiores ({puertasDeVerdad} con puerta de verdad), " +
-                              $"{conNombre} con casa identificada.");
+            Console.WriteLine($"[Houses] {_byElement.Count} doors on {_byMap.Count} maps, " +
+                              $"{_exits.Count} interiors ({puertasDeVerdad} with a real door), " +
+                              $"{conNombre} with an identified house.");
         }
 
         public static IReadOnlyList<Door> On(long mapId)

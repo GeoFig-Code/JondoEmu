@@ -95,7 +95,7 @@ namespace Jondo.Unity.Tests.Protocol
             var burst = Burst(2);
             int list = burst.IndexOf(Op.Kvi);
 
-            Assert.True(list >= 0, "la ráfaga no lleva la lista de personajes");
+            Assert.True(list >= 0, "the burst does not carry the character list");
             Assert.Equal(Op.Jtg, burst[list + 1]);
         }
 

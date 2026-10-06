@@ -31,7 +31,7 @@ namespace Jondo.Unity.Server
 
             if (!Contract.CogerElSitio("JondoEmuServidor"))
             {
-                Console.WriteLine("[!] Ya hay un servidor de Jondo corriendo en esta sesión. Este se cierra.");
+                Console.WriteLine("[!] There is already a Jondo server running in this session. This one closes.");
                 await Task.Delay(2500);
                 return;
             }
@@ -62,7 +62,7 @@ namespace Jondo.Unity.Server
             try { Console.Clear(); } catch { }
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("======================================================================");
-            Console.WriteLine("                        JONDO — SERVIDOR                             ");
+            Console.WriteLine("                         JONDO — SERVER                              ");
             Console.WriteLine("======================================================================");
             Console.ResetColor();
 
@@ -179,7 +179,7 @@ namespace Jondo.Unity.Server
                 // The key the launcher will be able to talk to this server with. One per start:
                 // that way a launcher from a previous session does not keep a key to the current one.
                 ControlApi.NuevoSecreto();
-                Console.WriteLine($"[+] Llave del canal de mando en {Contract.FicheroDelSecreto}");
+                Console.WriteLine($"[+] Command channel key in {Contract.FicheroDelSecreto}");
                 HaapiServer.Start(haapiPort);
                 ZaapServer.Start(port);
                 GameServerProxy.Start(gamePort);

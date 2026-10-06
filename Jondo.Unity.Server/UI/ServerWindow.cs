@@ -248,7 +248,7 @@ namespace Jondo.Unity.Server.UI
             Refrescar();
         }
 
-        // ─── Idioma ─────────────────────────────────────────────────────────────────────────
+        // ─── Language ───────────────────────────────────────────────────────────────────────
 
         private void CambiarIdioma(Language cual)
         {
@@ -427,7 +427,7 @@ namespace Jondo.Unity.Server.UI
             {
                 if (_yaAvise) return;
                 _yaAvise = true;
-                Console.WriteLine($"[Servidor] Una columna de cifras no se ha podido pintar: {ex}");
+                Console.WriteLine($"[Server] A column of figures could not be painted: {ex}");
             }
         }
 
@@ -759,8 +759,8 @@ namespace Jondo.Unity.Server.UI
 
             Managers.NameBinding.Bind(opcode, elegir.Chosen);
             Console.WriteLine(elegir.Chosen.Length > 0
-                ? $"[Nombres] {opcode} es {elegir.Chosen}."
-                : $"[Nombres] {opcode} vuelve a estar sin ligar.");
+                ? $"[Names] {opcode} is {elegir.Chosen}."
+                : $"[Names] {opcode} is unbound again.");
         }
 
         private void Escribir(string hora, string texto)
@@ -825,16 +825,16 @@ namespace Jondo.Unity.Server.UI
         {
             if (linea.Contains("[!]") || linea.Contains("Error") || linea.Contains("error"))
                 return LauncherTheme.LogError;
-            if (linea.Contains("Rechazad") || linea.Contains("rechazad")) return LauncherTheme.Red;
+            if (linea.Contains("Rejected") || linea.Contains("rejected")) return LauncherTheme.Red;
             if (linea.Contains("[HAAPI]")) return LauncherTheme.LogHaapi;
             if (linea.Contains("[Zaap")) return LauncherTheme.LogZaap;
             if (linea.Contains("[+]")) return LauncherTheme.LogSuccess;
-            if (linea.Contains("[Combate]") || linea.Contains("[FightHandler]")) return LauncherTheme.LogServer;
-            if (linea.Contains("[Control]") || linea.Contains("[Comandos]")) return LauncherTheme.HighlightText;
+            if (linea.Contains("[Fight]") || linea.Contains("[FightHandler]")) return LauncherTheme.LogServer;
+            if (linea.Contains("[Control]") || linea.Contains("[Commands]")) return LauncherTheme.HighlightText;
             return LauncherTheme.LogNormal;
         }
 
-        // ─── Botones ────────────────────────────────────────────────────────────────────────
+        // ─── Buttons ────────────────────────────────────────────────────────────────────────
 
         /// <summary>
         /// A button in the launcher's style.
@@ -872,7 +872,7 @@ namespace Jondo.Unity.Server.UI
         {
             if (!Confirmar()) return;
             _parar.Enabled = false;
-            Program.RequestShutdown("botón de la ventana del servidor");
+            Program.RequestShutdown("server window button");
         }
 
         private bool Confirmar()
@@ -892,7 +892,7 @@ namespace Jondo.Unity.Server.UI
             if (e.CloseReason == CloseReason.UserClosing && !Program.ApagandoYa)
             {
                 if (!Confirmar()) { e.Cancel = true; return; }
-                Program.RequestShutdown("ventana del servidor cerrada");
+                Program.RequestShutdown("server window closed");
             }
 
             _reloj.Stop();
@@ -931,7 +931,7 @@ namespace Jondo.Unity.Server.UI
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Servidor] No se ha podido abrir la ventana: {ex.Message}");
+                    Console.WriteLine($"[Server] Could not open the window: {ex.Message}");
                     lista.Set();
                 }
             })

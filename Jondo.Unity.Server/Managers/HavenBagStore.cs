@@ -68,7 +68,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Merkasako] No se pudieron crear las tablas: {ex.Message}");
+                Console.WriteLine($"[Merkasako] Could not create the tables: {ex.Message}");
             }
 
             // The chest's uids above the dispenser, as the bank's: see StorageStacks.EnsureTables.
@@ -91,7 +91,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Merkasako] No se pudo leer el decorado: {ex.Message}");
+                Console.WriteLine($"[Merkasako] Could not read the theme: {ex.Message}");
             }
             return Merkasako.DefaultTheme;
         }
@@ -112,7 +112,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Merkasako] No se pudo guardar el decorado: {ex.Message}");
+                Console.WriteLine($"[Merkasako] Could not save the theme: {ex.Message}");
             }
         }
 
@@ -145,7 +145,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Merkasako] No se pudieron leer los muebles: {ex.Message}");
+                Console.WriteLine($"[Merkasako] Could not read the furniture: {ex.Message}");
             }
             return salida;
         }
@@ -187,7 +187,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Merkasako] No se pudieron guardar los muebles: {ex.Message}");
+                Console.WriteLine($"[Merkasako] Could not save the furniture: {ex.Message}");
             }
         }
 
@@ -224,7 +224,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Merkasako] No se pudo leer el objeto {uid}: {ex.Message}");
+                Console.WriteLine($"[Merkasako] Could not read item {uid}: {ex.Message}");
                 return null;
             }
         }

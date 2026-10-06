@@ -221,13 +221,13 @@ namespace Jondo.Unity.Server.Managers
             else bound[opcode] = name;
 
             var text = new StringBuilder();
-            text.AppendLine($"# Opcodes de {Version} ligados a su nombre real, a mano.");
+            text.AppendLine($"# Opcodes of {Version} bound to their real name, by hand.");
             text.AppendLine("#");
-            text.AppendLine("# Se eligen de nombres_reales_*.tsv, que son los nombres que el cliente lleva dentro.");
-            text.AppendLine("# Aqui no se propone nada: lo que esta, esta porque alguien lo ha reconocido mirando el");
-            text.AppendLine("# paquete pasar. Lo escribe el menu del registro del servidor.");
+            text.AppendLine("# They are picked from nombres_reales_*.tsv, which are the names the client carries inside.");
+            text.AppendLine("# Nothing is proposed here: what is here is here because someone recognised it by watching the");
+            text.AppendLine("# packet go by. It is written by the server log's menu.");
             text.AppendLine("#");
-            text.AppendLine("# opcode\tnombre");
+            text.AppendLine("# opcode	name");
             foreach (var pair in bound.OrderBy(p => p.Key, StringComparer.Ordinal))
                 text.AppendLine($"{pair.Key}\t{pair.Value}");
 

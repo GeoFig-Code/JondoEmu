@@ -15,7 +15,7 @@ namespace Jondo.Unity.Server.Managers
     /// </summary>
     public static class SpellChoices
     {
-        /// <summary>pareja -> hechizo elegido.</summary>
+        /// <summary>pair -> chosen spell.</summary>
         private static Dictionary<int, int> ChosenStore => SessionContext.State.ChosenSpells;
 
         /// <summary>bar slot -> spell.</summary>
@@ -51,12 +51,12 @@ namespace Jondo.Unity.Server.Managers
                     while (reader.Read()) BarStore[reader.GetInt32(0)] = reader.GetInt32(1);
                 }
 
-                Console.WriteLine($"[SpellChoices] {ChosenStore.Count} variantes elegidas y " +
-                                  $"{BarStore.Count} huecos de barra guardados.");
+                Console.WriteLine($"[SpellChoices] {ChosenStore.Count} chosen variants and " +
+                                  $"{BarStore.Count} bar slots saved.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SpellChoices] No se pudieron leer las elecciones: {ex.Message}");
+                Console.WriteLine($"[SpellChoices] Could not read the choices: {ex.Message}");
             }
         }
 
@@ -132,7 +132,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SpellChoices] No se pudo guardar: {ex.Message}");
+                Console.WriteLine($"[SpellChoices] Could not save: {ex.Message}");
             }
         }
     }

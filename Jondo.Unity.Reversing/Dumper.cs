@@ -52,10 +52,10 @@ public static class Dumper
         string path = Path.Combine(folder, wanted + ".dll");
         if (File.Exists(path)) return path;
 
-        report?.Invoke($"  {Path.GetFileName(clientFolder)}: abriendo el cliente…");
+        report?.Invoke($"  {Path.GetFileName(clientFolder)}: opening the client…");
         using var client = new ClientReader(clientFolder);
 
-        report?.Invoke($"  {Path.GetFileName(clientFolder)}: reconstruyendo los ensamblados…");
+        report?.Invoke($"  {Path.GetFileName(clientFolder)}: rebuilding the assemblies…");
         var format = new AsmResolverDllOutputFormatDefault();
         var built = format.BuildAssemblies(client.App);
 
@@ -77,14 +77,14 @@ public static class Dumper
                 // many fail the dump is not comparable with MelonLoader's.
                 failed++;
                 if (name == wanted)
-                    throw new InvalidOperationException($"{clientFolder}: no se ha podido escribir {wanted}", e);
+                    throw new InvalidOperationException($"{clientFolder}: could not write {wanted}", e);
             }
         }
 
         if (!File.Exists(path))
-            throw new InvalidOperationException($"en {clientFolder} no se ha reconstruido {wanted}");
+            throw new InvalidOperationException($"in {clientFolder}, {wanted} was not rebuilt");
 
-        report?.Invoke($"  {Path.GetFileName(clientFolder)}: {written:N0} ensamblados escritos" +
+        report?.Invoke($"  {Path.GetFileName(clientFolder)}: {written:N0} assemblies written" +
                        (failed > 0 ? $", {failed:N0} fallidos" : ""));
         return path;
     }

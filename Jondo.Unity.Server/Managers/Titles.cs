@@ -67,8 +67,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.TitlesOrnamentsJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Títulos] Falta {Path.GetFileName(path)}; no habrá ni títulos ni " +
-                                  "ornamentos. Genéralo con tools/extract_titulos.py.");
+                Console.WriteLine($"[Titles] {Path.GetFileName(path)} is missing; there will be neither titles nor " +
+                                  "ornaments. Generate it with tools/extract_titulos.py.");
                 return;
             }
 
@@ -78,11 +78,11 @@ namespace Jondo.Unity.Server.Managers
                 Read(doc.RootElement, "titles", _titles);
                 Read(doc.RootElement, "ornaments", _ornaments);
 
-                Console.WriteLine($"[Títulos] {_titles.Count} títulos y {_ornaments.Count} ornamentos.");
+                Console.WriteLine($"[Titles] {_titles.Count} titles and {_ornaments.Count} ornaments.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Títulos] No se pudo leer {Path.GetFileName(path)}: {ex.Message}");
+                Console.WriteLine($"[Titles] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
         }
 

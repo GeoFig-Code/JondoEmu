@@ -181,8 +181,8 @@ namespace Jondo.Unity.Server.Handlers
                 stream, route.DestinationMapId, route.DestinationCellId);
             if (landed >= 0)
             {
-                Console.WriteLine($"[Teleport] Cellule {cellId}, élément {route.ElementId}: " +
-                                  $"{mapId} -> {route.DestinationMapId}, casilla {landed}.");
+                Console.WriteLine($"[Teleport] Cell {cellId}, element {route.ElementId}: " +
+                                  $"{mapId} -> {route.DestinationMapId}, cell {landed}.");
             }
         }
 

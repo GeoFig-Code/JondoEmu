@@ -153,7 +153,7 @@ namespace Jondo.Unity.Server.Handlers
             long here = SessionContext.State.MapId;
             if (!Houses.TryGetDoor(here, elementId, out var door))
             {
-                Console.WriteLine($"[Casas] Puerta desconocida: mapa {here}, elemento {elementId}.");
+                Console.WriteLine($"[Houses] Unknown door: map {here}, element {elementId}.");
                 return;
             }
 
@@ -196,10 +196,10 @@ namespace Jondo.Unity.Server.Handlers
             await WriteAsync(stream, ConnectionProtocol.BuildMapClock());
 
             string cual = door.IsKnown
-                ? $"«{door.Name}» ({door.Dwellings} dueños en el juego real)"
-                : $"puerta {door.ElementId}";
-            Console.WriteLine($"[Casas] Entrada por {cual} del mapa {mapaQueDeja} al interior " +
-                              $"{door.InteriorMapId}, casilla {SessionContext.State.CellId}.");
+                ? $"«{door.Name}» ({door.Dwellings} owners in the real game)"
+                : $"door {door.ElementId}";
+            Console.WriteLine($"[Houses] Going in through {cual} from map {mapaQueDeja} to the interior " +
+                              $"{door.InteriorMapId}, cell {SessionContext.State.CellId}.");
         }
 
         /// <summary>The client has clicked the inside door.</summary>
@@ -214,7 +214,7 @@ namespace Jondo.Unity.Server.Handlers
             {
                 if (!Houses.TryGetWayBack(here, out var puerta))
                 {
-                    Console.WriteLine($"[Casas] El mapa {here} no es interior de ninguna casa conocida.");
+                    Console.WriteLine($"[Houses] Map {here} is not the interior of any known house.");
                     return;
                 }
                 salidaMapa = puerta.MapId;
@@ -238,8 +238,8 @@ namespace Jondo.Unity.Server.Handlers
             await WriteAsync(stream, ConnectionProtocol.BuildMapClock());
             await WriteAsync(stream, ConnectionProtocol.BuildMapDiscovered(salidaMapa));
 
-            Console.WriteLine($"[Casas] Salida del interior {here} al mapa {salidaMapa}, " +
-                              $"casilla {SessionContext.State.CellId}.");
+            Console.WriteLine($"[Houses] Out of the interior {here} to map {salidaMapa}, " +
+                              $"cell {SessionContext.State.CellId}.");
         }
 
         // ─── What each viewer is offered ────────────────────────────────────────

@@ -65,14 +65,14 @@ namespace Jondo.Unity.Server.Handlers
         {
             if (GameState.MapId == PlanoAstral)
             {
-                Console.WriteLine("[Sueños] Ya está en el Plano Astral.");
+                Console.WriteLine("[Dreams] Already on the Plano Astral.");
                 return;
             }
 
             Dreams.RecordarDeDondeViene(GameState.CharacterId, GameState.MapId, GameState.CellId);
 
             int aterriza = await TeleportHandler.ToMapAsync(stream, PlanoAstral, 0);
-            Console.WriteLine($"[Sueños] {GameState.CharacterId} al Plano Astral, casilla {aterriza}.");
+            Console.WriteLine($"[Dreams] {GameState.CharacterId} to the Plano Astral, cell {aterriza}.");
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -108,8 +108,8 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Push(Op.Iyj, DreamProtocol.BuildDreamMap(sueno)));
 
             Console.WriteLine(sueno == null
-                ? $"[Sueños] Well of {yo}: no dream to continue."
-                : $"[Sueños] Well of {yo}: dream of difficulty {sueno.Dificultad} in room {sueno.Actual}, " +
+                ? $"[Dreams] Well of {yo}: no dream to continue."
+                : $"[Dreams] Well of {yo}: dream of difficulty {sueno.Dificultad} in room {sueno.Actual}, " +
                   $"{sueno.DreamPoints} dream points.");
         }
 
@@ -169,11 +169,11 @@ namespace Jondo.Unity.Server.Handlers
                 var enCurso = Dreams.De(yo);
                 if (enCurso == null)
                 {
-                    Console.WriteLine($"[Sueños] {yo} quiere continuar y no tiene sueño en curso.");
+                    Console.WriteLine($"[Dreams] {yo} wants to continue and has no dream in progress.");
                     return;
                 }
 
-                Console.WriteLine($"[Sueños] {yo} continúa en la sala {enCurso.Actual}.");
+                Console.WriteLine($"[Dreams] {yo} continues in room {enCurso.Actual}.");
 
                 await EntrarEnSalaAsync(stream, enCurso, enCurso.Actual);
 
@@ -184,7 +184,7 @@ namespace Jondo.Unity.Server.Handlers
 
             if (dificultad <= 0 || dificultad > Dreams.MaximaDificultad)
             {
-                Console.WriteLine($"[Sueños] Dificultad {dificultad} fuera de la escalera de 1 a " +
+                Console.WriteLine($"[Dreams] Difficulty {dificultad} outside the ladder from 1 to " +
                                   $"{Dreams.MaximaDificultad}. ixf: " +
                                   Convert.ToHexString(ixf).ToLowerInvariant());
                 return;
@@ -194,8 +194,8 @@ namespace Jondo.Unity.Server.Handlers
                                      dificultad, GameState.MapId, GameState.CellId, GameState.Breed);
             Persist(sueno);
 
-            Console.WriteLine($"[Sueños] {yo} empieza en dificultad {dificultad}: " +
-                              $"{sueno.Salas.Count} salas.");
+            Console.WriteLine($"[Dreams] {yo} starts at difficulty {dificultad}: " +
+                              $"{sueno.Salas.Count} rooms.");
 
             await EntrarEnSalaAsync(stream, sueno, 0);
 
@@ -244,8 +244,8 @@ namespace Jondo.Unity.Server.Handlers
             if (!Dreams.CanLeave(actual))
             {
                 Console.WriteLine(actual.EsFavor
-                    ? $"[Sueños] The favour of room {actual.Id} is not chosen yet: the door stays shut."
-                    : $"[Sueños] La sala {actual.Id} todavía tiene su grupo en pie: no se abre la puerta.");
+                    ? $"[Dreams] The favour of room {actual.Id} is not chosen yet: the door stays shut."
+                    : $"[Dreams] Room {actual.Id} still has its group standing: the door does not open.");
                 return false;
             }
 
@@ -289,7 +289,7 @@ namespace Jondo.Unity.Server.Handlers
             // The booster and the points are collected ON ENTERING, before fighting, and only once per room.
             if (gained != null || sueno.DreamPoints != pointsBefore)
             {
-                Console.WriteLine($"[Sueños] Sala {sala.Id}: +{sueno.DreamPoints - pointsBefore} dream points, " +
+                Console.WriteLine($"[Dreams] Room {sala.Id}: +{sueno.DreamPoints - pointsBefore} dream points, " +
                                   $"{sueno.DreamPoints} in all" +
                                   (gained != null ? $"; bonus {gained.Efecto} of {gained.Valor}, " +
                                                     $"{sueno.Ganados.Count} so far." : "."));
@@ -302,8 +302,8 @@ namespace Jondo.Unity.Server.Handlers
             if (Dreams.Closes(sala) && sala.Salidas.Count == 0)
             {
                 Dreams.AnadirFranja(sueno);
-                Console.WriteLine($"[Sueños] Franja {sueno.Franja} abierta: " +
-                                  $"{sueno.Salas.Count} salas en total.");
+                Console.WriteLine($"[Dreams] Band {sueno.Franja} open: " +
+                                  $"{sueno.Salas.Count} rooms in all.");
             }
 
             Persist(sueno);
@@ -317,7 +317,7 @@ namespace Jondo.Unity.Server.Handlers
             long mapa = sala.MapaDeLaSala;
             if (mapa == 0)
             {
-                Console.WriteLine($"[Sueños] La sala {salaId} se ha quedado sin mapa propio.");
+                Console.WriteLine($"[Dreams] Room {salaId} has been left without a map of its own.");
                 return;
             }
 
@@ -330,10 +330,10 @@ namespace Jondo.Unity.Server.Handlers
 
             int aterriza = await TeleportHandler.ToMapAsync(stream, mapa, 0);
 
-            Console.WriteLine($"[Sueños] Sala {salaId} (fila {sala.Fila}): mapa {mapa}, " +
-                              $"grupo {sala.Grupo} del mapa {sala.MapaId} con " +
-                              $"{sala.Miembros.Count} monstruo(s), efecto {sala.Efecto} de " +
-                              $"{sala.Valor}. Aterriza en {aterriza}.");
+            Console.WriteLine($"[Dreams] Room {salaId} (row {sala.Fila}): map {mapa}, " +
+                              $"group {sala.Grupo} of map {sala.MapaId} with " +
+                              $"{sala.Miembros.Count} monster(s), effect {sala.Efecto} of " +
+                              $"{sala.Valor}. Lands on {aterriza}.");
         }
 
         /// <summary>
@@ -383,7 +383,7 @@ namespace Jondo.Unity.Server.Handlers
             var sala = sueno?.SalaActual;
             if (sueno == null || sala == null || !sala.EsFavor || sala.FavorChosen)
             {
-                Console.WriteLine($"[Sueños] No favour to offer to {GameState.CharacterId} here.");
+                Console.WriteLine($"[Dreams] No favour to offer to {GameState.CharacterId} here.");
                 return false;
             }
 
@@ -392,7 +392,7 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ixm));
-            Console.WriteLine($"[Sueños] Favour of room {sala.Id}: " +
+            Console.WriteLine($"[Dreams] Favour of room {sala.Id}: " +
                               string.Join(", ", sala.Offers.Select(o => o.Tag)) + ".");
             return true;
         }
@@ -427,7 +427,7 @@ namespace Jondo.Unity.Server.Handlers
             var grupo = MobSpawnManager.SpawnComposed(sala.MapaDeLaSala, sala.Miembros);
             if (grupo == null)
             {
-                Console.WriteLine($"[Sueños] La sala {sala.Id} no ha podido plantar su grupo.");
+                Console.WriteLine($"[Dreams] Room {sala.Id} could not plant its group.");
                 return;
             }
 
@@ -463,7 +463,7 @@ namespace Jondo.Unity.Server.Handlers
                 sala.Hecha = true;
                 Persist(sueno);
 
-                Console.WriteLine($"[Sueños] Sala {sala.Id} limpiada; {sueno.DreamPoints} dream points.");
+                Console.WriteLine($"[Dreams] Room {sala.Id} cleared; {sueno.DreamPoints} dream points.");
                 return true;
             }
 
@@ -592,7 +592,7 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ixm));
-            Console.WriteLine($"[Sueños] The fountain of room {sueno.Actual}: " +
+            Console.WriteLine($"[Dreams] The fountain of room {sueno.Actual}: " +
                               $"{sueno.SalaActual?.Offers?.Count ?? 0} offer(s), {sueno.DreamPoints} dream points.");
         }
 
@@ -608,7 +608,7 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Answer(Op.Izo, DreamProtocol.BuildDropTable(drops),
                                           ConnectionProtocol.RequestId(payload)));
-            Console.WriteLine($"[Sueños] Loot table of room {sueno?.Actual}: {drops.Count} line(s).");
+            Console.WriteLine($"[Dreams] Loot table of room {sueno?.Actual}: {drops.Count} line(s).");
         }
 
         /// <summary>
@@ -649,7 +649,7 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Answer(Op.Jxj, DreamProtocol.BuildPositions(arena, map, attackers, defenders),
                                           ConnectionProtocol.RequestId(payload)));
-            Console.WriteLine($"[Sueños] Positions of map {map}: {attackers.Count} and {defenders.Count} cells.");
+            Console.WriteLine($"[Dreams] Positions of map {map}: {attackers.Count} and {defenders.Count} cells.");
         }
 
         /// <summary>
@@ -666,12 +666,12 @@ namespace Jondo.Unity.Server.Handlers
         {
             byte[]? iym = ConnectionProtocol.ReadPayload(payload, Op.Iym);
             if (iym == null) return;
-            Console.WriteLine($"[Sueños] iym (buy, inferred): {Convert.ToHexString(iym).ToLowerInvariant()}");
+            Console.WriteLine($"[Dreams] iym (buy, inferred): {Convert.ToHexString(iym).ToLowerInvariant()}");
 
             var sueno = Dreams.De(GameState.CharacterId);
             if (sueno == null)
             {
-                Console.WriteLine("[Sueños] iym with no dream going.");
+                Console.WriteLine("[Dreams] iym with no dream going.");
                 return;
             }
 
@@ -681,9 +681,9 @@ namespace Jondo.Unity.Server.Handlers
 
             var bought = Dreams.Buy(sueno, which, out string refusal);
             if (bought == null)
-                Console.WriteLine($"[Sueños] Nothing bought with {which}: {refusal}.");
+                Console.WriteLine($"[Dreams] Nothing bought with {which}: {refusal}.");
             else
-                Console.WriteLine($"[Sueños] Bought reward {bought.Id} for {bought.Price}: " +
+                Console.WriteLine($"[Dreams] Bought reward {bought.Id} for {bought.Price}: " +
                                   $"{string.Join(", ", bought.Bonuses.Select(b => $"{b.Efecto} of {b.Valor}"))}; " +
                                   $"{sueno.DreamPoints} dream points left.");
 
@@ -728,7 +728,7 @@ namespace Jondo.Unity.Server.Handlers
                     ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Izj, DreamProtocol.BuildStorm()));
-                Console.WriteLine($"[Sueños] Astral storm on the favour of room {actual.Id}: " +
+                Console.WriteLine($"[Dreams] Astral storm on the favour of room {actual.Id}: " +
                                   $"{string.Join(", ", actual.Offers!.Select(o => o.Tag))}; {sueno.Tormentas} left.");
                 return;
             }
@@ -740,7 +740,7 @@ namespace Jondo.Unity.Server.Handlers
                 : null;
             if (refusal != null)
             {
-                Console.WriteLine($"[Sueños] Astral storm of {sueno.CharacterId} refused: {refusal}.");
+                Console.WriteLine($"[Dreams] Astral storm of {sueno.CharacterId} refused: {refusal}.");
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
                 return;
@@ -753,7 +753,7 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Izj, DreamProtocol.BuildStorm()));
 
-            Console.WriteLine($"[Sueños] Astral storm of {sueno.CharacterId}: room {actual.Id} rerolled, " +
+            Console.WriteLine($"[Dreams] Astral storm of {sueno.CharacterId}: room {actual.Id} rerolled, " +
                               $"{sueno.Tormentas} left.");
         }
 
@@ -789,8 +789,8 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Answer(Op.Iyb, DreamProtocol.BuildLeft(),
                                           ConnectionProtocol.RequestId(payload)));
 
-            Console.WriteLine($"[Sueños] {sueno.CharacterId} sale del sueño en la sala " +
-                              $"{sueno.Actual} con {sueno.DreamPoints} dream point(s).");
+            Console.WriteLine($"[Dreams] {sueno.CharacterId} leaves the dream in room " +
+                              $"{sueno.Actual} with {sueno.DreamPoints} dream point(s).");
 
             // Leaving keeps the dream: the well offers it to continue, in the captures and here.
             // Only its groups leave their maps.
@@ -826,7 +826,7 @@ namespace Jondo.Unity.Server.Handlers
             var rules = Dreams.FinalRulesOf(sueno.Dificultad);
             foreach (var monster in fight.Rojo) Dreams.ScaleTo(monster, rules.BaseLevel);
             _finales[fight.FightId] = new FinalFight { CharacterId = sueno.CharacterId, Rules = rules };
-            Console.WriteLine($"[Sueños] Fin du rêve of {sueno.CharacterId}: wave 1 at level {rules.BaseLevel}, " +
+            Console.WriteLine($"[Dreams] Fin du rêve of {sueno.CharacterId}: wave 1 at level {rules.BaseLevel}, " +
                               $"{rules.MinWaves} to win, {(rules.MaxWaves > 0 ? rules.MaxWaves.ToString() : "no")} most.");
         }
 
@@ -843,7 +843,7 @@ namespace Jondo.Unity.Server.Handlers
 
             int wave = state.Cleared + 1;
             int level = state.Rules.BaseLevel + state.Rules.Step * state.Cleared;
-            Console.WriteLine($"[Sueños] Fin du rêve: wave {state.Cleared} down, wave {wave} at level {level}.");
+            Console.WriteLine($"[Dreams] Fin du rêve: wave {state.Cleared} down, wave {wave} at level {level}.");
             return (Dreams.FinalWave(wave), level, wave);
         }
 
@@ -938,7 +938,7 @@ namespace Jondo.Unity.Server.Handlers
 
             Dreams.Olvidar(sueno.CharacterId);
             DatabaseManager.DeleteDream(sueno.CharacterId);
-            Console.WriteLine($"[Sueños] The dream of {sueno.CharacterId} is over; out to map {mapa}.");
+            Console.WriteLine($"[Dreams] The dream of {sueno.CharacterId} is over; out to map {mapa}.");
             return (mapa, casilla);
         }
 
@@ -957,7 +957,7 @@ namespace Jondo.Unity.Server.Handlers
             if (!Dreams.IsDreamMap(GameState.MapId) && GameState.MapId != PlanoAstral)
                 Dreams.RecordarDeDondeViene(sueno.CharacterId, GameState.MapId, GameState.CellId);
 
-            Console.WriteLine($"[Sueños] {sueno.CharacterId} skips to room {result.Room.Id} (row {result.Room.Fila}): " +
+            Console.WriteLine($"[Dreams] {sueno.CharacterId} skips to room {result.Room.Id} (row {result.Room.Fila}): " +
                               $"{result.Skipped} fight(s) counted as won on the way.");
             await EntrarEnSalaAsync(stream, sueno, result.Room.Id);
             return result;
@@ -1001,7 +1001,7 @@ namespace Jondo.Unity.Server.Handlers
                 Dreams.Unplant(sueno);
                 Persist(sueno);
             }
-            Console.WriteLine($"[Sueños] {yo} left the dream's maps without its exit: the interface closed.");
+            Console.WriteLine($"[Dreams] {yo} left the dream's maps without its exit: the interface closed.");
         }
 
         /// <summary>Saves a dream, so a disconnection or a restart does not lose it.</summary>
@@ -1020,13 +1020,13 @@ namespace Jondo.Unity.Server.Handlers
             var sueno = Dreams.De(GameState.CharacterId);
             if (sueno?.SalaActual == null)
             {
-                Console.WriteLine($"[Sueños] {GameState.CharacterId} woke in a dream's map with no dream: " +
+                Console.WriteLine($"[Dreams] {GameState.CharacterId} woke in a dream's map with no dream: " +
                                   "to the Plano Astral.");
                 await TeleportHandler.ToMapAsync(stream, PlanoAstral, 0);
                 return;
             }
 
-            Console.WriteLine($"[Sueños] {GameState.CharacterId} back in room {sueno.Actual} of the dream.");
+            Console.WriteLine($"[Dreams] {GameState.CharacterId} back in room {sueno.Actual} of the dream.");
             await EntrarEnSalaAsync(stream, sueno, sueno.Actual);
         }
     }

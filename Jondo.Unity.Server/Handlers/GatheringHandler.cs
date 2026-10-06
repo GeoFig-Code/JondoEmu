@@ -97,7 +97,7 @@ namespace Jondo.Unity.Server.Handlers
             long mapId = SessionContext.State.MapId;
             if (!Resources.TryGet(mapId, elementId, out var resource))
             {
-                Console.WriteLine($"[Oficios] Recurso desconocido: mapa {mapId}, elemento {elementId}.");
+                Console.WriteLine($"[Jobs] Unknown resource: map {mapId}, element {elementId}.");
                 return;
             }
 
@@ -113,15 +113,15 @@ namespace Jondo.Unity.Server.Handlers
                     ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(
                         InfoMessages.Warning, InfoMessages.JobLevelTooLow)));
 
-                Console.WriteLine($"[Oficios] Oficio {resource.JobId} nivel {jobLevel} no llega a " +
-                                  $"{resource.LevelMin}; no se recolecta el elemento {elementId}. " +
-                                  $"Se le dice: «{InfoMessages.Text(InfoMessages.Warning, InfoMessages.JobLevelTooLow)}»");
+                Console.WriteLine($"[Jobs] Job {resource.JobId} level {jobLevel} does not reach " +
+                                  $"{resource.LevelMin}; element {elementId} is not gathered. " +
+                                  $"They are told: «{InfoMessages.Text(InfoMessages.Warning, InfoMessages.JobLevelTooLow)}»");
                 return;
             }
 
             if (!Resources.TryHold(mapId, elementId))
             {
-                Console.WriteLine($"[Oficios] El recurso {elementId} del mapa {mapId} no está disponible.");
+                Console.WriteLine($"[Jobs] Resource {elementId} on map {mapId} is not available.");
                 return;
             }
 
@@ -159,8 +159,8 @@ namespace Jondo.Unity.Server.Handlers
                 if (SessionContext.State.MapId != resource.MapId)
                 {
                     Resources.Release(resource.MapId, resource.ElementId);
-                    Console.WriteLine($"[Oficios] El jugador dejó el mapa {resource.MapId}; " +
-                                      "recolección cancelada.");
+                    Console.WriteLine($"[Jobs] The player left map {resource.MapId}; " +
+                                      "gathering cancelled.");
                     return;
                 }
 
@@ -229,14 +229,14 @@ namespace Jondo.Unity.Server.Handlers
                     ConnectionProtocol.Push(Op.Iwm, ConnectionProtocol.BuildElementRedeclared(
                         instance, skillId, resource.ElementId, resource.Type, usable: false)));
 
-                Console.WriteLine($"[Oficios] Oficio {resource.JobId}: {cuantos} de {resource.ItemId}, " +
-                                  $"+{JobExperience.PerGather} exp, nivel {nivel}" +
-                                  (subeNivel ? " (¡sube!)" : "") + $", mapa {resource.MapId}.");
+                Console.WriteLine($"[Jobs] Job {resource.JobId}: {cuantos} of {resource.ItemId}, " +
+                                  $"+{JobExperience.PerGather} exp, level {nivel}" +
+                                  (subeNivel ? " (level up!)" : "") + $", map {resource.MapId}.");
             }
             catch (Exception ex)
             {
                 Resources.Release(resource.MapId, resource.ElementId);
-                Console.WriteLine($"[Oficios] Se ha cortado la recolección: {ex.Message}");
+                Console.WriteLine($"[Jobs] Gathering was cut short: {ex.Message}");
             }
         }
     }

@@ -119,7 +119,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Mapas] No se han podido leer las subzonas: {ex.Message}");
+                Console.WriteLine($"[Maps] Could not read the subareas: {ex.Message}");
             }
             return (names, areas);
         }
@@ -139,7 +139,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Mapas] No se han podido leer las áreas: {ex.Message}");
+                Console.WriteLine($"[Maps] Could not read the areas: {ex.Message}");
             }
             return names;
         }

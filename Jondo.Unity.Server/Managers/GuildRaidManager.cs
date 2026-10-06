@@ -35,7 +35,7 @@ namespace Jondo.Unity.Server.Managers
 
         private static long _nextId;
 
-        // ─── Comprar ────────────────────────────────────────────────────────────
+        // ─── Buying ─────────────────────────────────────────────────────────────
 
         /// <summary>
         /// Buys a raid with the guild's kamas. Returns the key of why it could not be done, or null when it
@@ -159,9 +159,9 @@ namespace Jondo.Unity.Server.Managers
             }
 
             int puesto = GuildStore.PlaceOf(raid.GuildId, raid.RaidId, now);
-            Console.WriteLine($"[Raid] {Raids.Of(raid.RaidId)?.Name} del gremio {raid.GuildId} " +
-                              $"acabada ({how}), {raid.Score} puntos" +
-                              (puesto > 0 ? $", puesto {puesto} de la semana." : "."));
+            Console.WriteLine($"[Raid] {Raids.Of(raid.RaidId)?.Name} of guild {raid.GuildId} " +
+                              $"finished ({how}), {raid.Score} points" +
+                              (puesto > 0 ? $", place {puesto} of the week." : "."));
         }
 
         /// <summary>The captain closes it early, which is what his sheet lets him do.</summary>
@@ -200,7 +200,7 @@ namespace Jondo.Unity.Server.Managers
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Raid] El reloj no pudo cerrarla: {ex.Message}");
+                    Console.WriteLine($"[Raid] The clock could not close it: {ex.Message}");
                 }
             });
         }
@@ -263,7 +263,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A map's subarea, which is what the «PB» criterion asks for.</summary>
         public static int SubAreaOf(long mapId) => DatabaseManager.SubAreaOfMap(mapId);
 
-        /// <summary>Lleva a alguien a un mapa, en su propia sesión.</summary>
+        /// <summary>Takes somebody to a map, in their own session.</summary>
         private static async Task MoveAsync(GameSession session, long mapId, bool remember)
         {
             if (session == null || mapId <= 0) return;

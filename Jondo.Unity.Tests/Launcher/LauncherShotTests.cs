@@ -159,7 +159,7 @@ namespace Jondo.Unity.Tests.Launcher
 
                 var retrato = pintor.Of(look);
                 Assert.True(retrato != null,
-                    $"{quien.Name}: «{look}» no se ha podido dibujar. {pintor.Trouble} {pintor.Reasons()}");
+                    $"{quien.Name}: «{look}» could not be drawn. {pintor.Trouble} {pintor.Reasons()}");
 
                 string limpio = quien.Name.Replace("[", "").Replace("]", "").Replace("#", "");
                 retrato!.Save(System.IO.Path.Combine(carpeta, $"retrato-{limpio}.png"));
@@ -200,7 +200,7 @@ namespace Jondo.Unity.Tests.Launcher
             if (personajes.Count == 0)
             {
                 System.Console.WriteLine(
-                    "No hay ni KEKA-BRON ni DRAGON-LORD en la base: no hay nada que fotografiar.");
+                    "There is neither KEKA-BRON nor DRAGON-LORD in the database: there is nothing to photograph.");
                 return;
             }
 
@@ -215,7 +215,7 @@ namespace Jondo.Unity.Tests.Launcher
                 string look = Jondo.Unity.Server.Managers.BreedLookTable.Drawable(quien);
                 if (look.Length == 0)
                 {
-                    System.Console.WriteLine($"{quien.Name}: sin cadena de aspecto, me lo salto.");
+                    System.Console.WriteLine($"{quien.Name}: no look string, skipping it.");
                     continue;
                 }
 
@@ -246,7 +246,7 @@ namespace Jondo.Unity.Tests.Launcher
                     {
                         // The rig does not bring it. It has drawn, yes, but with the fallback: storing it
                         // would be storing the same photo eight times and believing they are eight.
-                        faltan.Add($"{direccion} (el rig no la trae; habría caído en «{pintor.LastAnimation}»)");
+                        faltan.Add($"{direccion} (the rig does not carry it; it would have fallen into «{pintor.LastAnimation}»)");
                         continue;
                     }
 
@@ -258,8 +258,8 @@ namespace Jondo.Unity.Tests.Launcher
                                  $"({retrato.PixelSize.Width}×{retrato.PixelSize.Height})");
                 }
 
-                System.Console.WriteLine($"{quien.Name}: SALEN     {string.Join(" | ", salieron)}");
-                System.Console.WriteLine($"{quien.Name}: NO SALEN  {string.Join(" | ", faltan)}");
+                System.Console.WriteLine($"{quien.Name}: COMING OUT  {string.Join(" | ", salieron)}");
+                System.Console.WriteLine($"{quien.Name}: NOT COMING OUT  {string.Join(" | ", faltan)}");
             }
         }
 

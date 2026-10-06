@@ -12,7 +12,7 @@ namespace Jondo.Unity.Server.Managers
             if (!document.RootElement.TryGetProperty("references", out var references) ||
                 !references.TryGetProperty("RefIds", out var rows) ||
                 rows.ValueKind != JsonValueKind.Array)
-                throw new InvalidOperationException("Formato de dofusdude invalido: falta references.RefIds.");
+                throw new InvalidOperationException("Invalid dofusdude format: references.RefIds is missing.");
 
             foreach (var reference in rows.EnumerateArray())
             {

@@ -49,9 +49,9 @@ namespace Jondo.Unity.Tests.Quests
               ""requires"": [ { ""item"": 8259, ""count"": 1 } ],
               ""spends"": true,
               ""spawns"": { ""monster"": 4113, ""count"": 1 },
-              ""why"": ""El tirador del sotano, con la limonada encima."" },
+              ""why"": ""The cellar's tap, with the lemonade on top."" },
             { ""objective"": 9895, ""quest"": 1633, ""kind"": ""enter"", ""map"": 153358340,
-              ""why"": ""Inspecciona el sotano: basta con bajar."" }
+              ""why"": ""Inspect the cellar: going down is enough."" }
           ]
         }";
 

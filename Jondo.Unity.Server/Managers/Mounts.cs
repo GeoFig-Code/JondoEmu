@@ -62,8 +62,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.MountsJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Mounts] Falta {Path.GetFileName(path)}; nadie se subirá a nada. " +
-                                  "Genéralo con tools/extract_monturas.py.");
+                Console.WriteLine($"[Mounts] {Path.GetFileName(path)} is missing; nobody will ride anything. " +
+                                  "Generate it with tools/extract_monturas.py.");
                 return;
             }
 
@@ -91,14 +91,14 @@ namespace Jondo.Unity.Server.Managers
                         Colors = colors,
                     };
                 }
-                Console.WriteLine($"[Mounts] {_byItem.Count} objetos de montura con su aspecto.");
+                Console.WriteLine($"[Mounts] {_byItem.Count} mount items with their look.");
                 LeerMascoturas();
                 LeerColoresQueFaltaban();
                 AprenderAspectosPorTipo();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Mounts] No se pudo leer {Path.GetFileName(path)}: {ex.Message}");
+                Console.WriteLine($"[Mounts] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
         }
 
@@ -144,8 +144,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Path.Combine(Path.GetDirectoryName(Paths.MountsJson) ?? "", "mascoturas.json");
             if (!File.Exists(path))
             {
-                Console.WriteLine("[Mounts] No hay mascoturas.json; las mascoturas no se verán. " +
-                                  "Genéralo con tools/extraer_mascoturas.py.");
+                Console.WriteLine("[Mounts] There is no mascoturas.json; the petsmounts will not show. " +
+                                  "Generate it with tools/extraer_mascoturas.py.");
                 return;
             }
 
@@ -174,11 +174,11 @@ namespace Jondo.Unity.Server.Managers
                     };
                     cuantas++;
                 }
-                Console.WriteLine($"[Mounts] {cuantas} mascoturas con su aspecto, medidas de la captura.");
+                Console.WriteLine($"[Mounts] {cuantas} petsmounts with their look, measured from the capture.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Mounts] No se pudo leer mascoturas.json: {ex.Message}");
+                Console.WriteLine($"[Mounts] Could not read mascoturas.json: {ex.Message}");
             }
         }
 
@@ -209,9 +209,9 @@ namespace Jondo.Unity.Server.Managers
                                        "monturas_colores.json");
             if (!File.Exists(path))
             {
-                Console.WriteLine("[Mounts] No hay monturas_colores.json; las mulaguas de los " +
-                                  "colores nuevos saldrán con la paleta por defecto del cliente. " +
-                                  "Genéralo con tools/extraer_colores_monturas.py.");
+                Console.WriteLine("[Mounts] There is no monturas_colores.json; the dragoturkeys of the " +
+                                  "new colours will come out with the client's default palette. " +
+                                  "Generate it with tools/extraer_colores_monturas.py.");
                 return;
             }
 
@@ -243,12 +243,12 @@ namespace Jondo.Unity.Server.Managers
                     };
                     cuantas++;
                 }
-                Console.WriteLine($"[Mounts] {cuantas} monturas más con sus colores recuperados" +
-                                  (yaEstaban > 0 ? $" ({yaEstaban} ya venían en mounts.json)." : "."));
+                Console.WriteLine($"[Mounts] {cuantas} more mounts with their colours recovered" +
+                                  (yaEstaban > 0 ? $" ({yaEstaban} were already in mounts.json)." : "."));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Mounts] No se pudo leer monturas_colores.json: {ex.Message}");
+                Console.WriteLine($"[Mounts] Could not read monturas_colores.json: {ex.Message}");
             }
         }
 
@@ -307,7 +307,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Mounts] No se pudieron agrupar los aspectos por tipo: {ex.Message}");
+                Console.WriteLine($"[Mounts] Could not group the looks by type: {ex.Message}");
                 return;
             }
 
@@ -325,7 +325,7 @@ namespace Jondo.Unity.Server.Managers
 
             if (_porTipo.Count > 0)
             {
-                Console.WriteLine("[Mounts] Aspecto de reserva por tipo: " +
+                Console.WriteLine("[Mounts] Fallback look per type: " +
                     string.Join(", ", _porTipo.Select(p => $"{p.Key}→{p.Value.Bones}/{p.Value.Scale}")));
             }
         }
@@ -365,7 +365,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Mounts] No se pudo mirar el tipo de {itemGid}: {ex.Message}");
+                Console.WriteLine($"[Mounts] Could not look up the type of {itemGid}: {ex.Message}");
             }
 
             _tipos[itemGid] = tipo;
@@ -431,7 +431,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Mounts] No se pudo mirar la montura de {characterId}: {ex.Message}");
+                Console.WriteLine($"[Mounts] Could not look up the mount of {characterId}: {ex.Message}");
             }
             return null;
         }

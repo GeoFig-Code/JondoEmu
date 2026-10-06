@@ -136,9 +136,9 @@ namespace Jondo.Unity.Server.Managers
                 if (DepartureZaapOf(mapId).Id != 0) deSalida++;
             }
 
-            Console.WriteLine($"[Interactives] {_byMap.Count} mapas con elementos, " +
-                              $"{_ordered.Count} zaaps ({withZaap} con su elemento localizado), " +
-                              $"{deSalida} de salida.");
+            Console.WriteLine($"[Interactives] {_byMap.Count} maps with elements, " +
+                              $"{_ordered.Count} zaaps ({withZaap} with their element located), " +
+                              $"{deSalida} exit ones.");
         }
 
         private static void LoadWaypoints()
@@ -146,8 +146,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.WaypointsJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Interactives] Falta {Path.GetFileName(path)}; sin él no hay zaaps. " +
-                                  "Genéralo con tools/extract_interactivos.py.");
+                Console.WriteLine($"[Interactives] {Path.GetFileName(path)} is missing; without it there are no zaaps. " +
+                                  "Generate it with tools/extract_interactivos.py.");
                 return;
             }
 
@@ -171,7 +171,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Interactives] No se pudo leer {Path.GetFileName(path)}: {ex.Message}");
+                Console.WriteLine($"[Interactives] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
         }
 
@@ -180,8 +180,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.InteractiveElementsJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Interactives] Falta {Path.GetFileName(path)}; los zaaps no se " +
-                                  "podrán colocar en su casilla.");
+                Console.WriteLine($"[Interactives] {Path.GetFileName(path)} is missing; the zaaps cannot " +
+                                  "be placed on their cell.");
                 return;
             }
 
@@ -205,7 +205,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Interactives] No se pudo leer {Path.GetFileName(path)}: {ex.Message}");
+                Console.WriteLine($"[Interactives] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
         }
 
@@ -241,7 +241,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Interactives] No se pudieron leer los niveles de subzona: {ex.Message}");
+                Console.WriteLine($"[Interactives] Could not read the subarea levels: {ex.Message}");
             }
         }
 
@@ -264,12 +264,12 @@ namespace Jondo.Unity.Server.Managers
                 }
                 if (_overrides.Count > 0)
                 {
-                    Console.WriteLine($"[Interactives] {_overrides.Count} zaap(s) dichos a mano.");
+                    Console.WriteLine($"[Interactives] {_overrides.Count} zaap(s) given by hand.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Interactives] No se pudo leer {Path.GetFileName(path)}: {ex.Message}");
+                Console.WriteLine($"[Interactives] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
         }
 
@@ -376,7 +376,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Interactives] No se pudo leer {Path.GetFileName(path)}: {ex.Message}");
+                Console.WriteLine($"[Interactives] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
         }
 

@@ -53,7 +53,7 @@ namespace Jondo.Unity.Server.Handlers
                 int oidos = await SessionRegistry.BroadcastToMapAsync(
                     SessionContext.State.MapId, echoPacket, SessionContext.Current.Id,
                     SessionContext.State.FightId);
-                Console.WriteLine($"[Chat] Repartido a {oidos} jugador(es) más en el mapa " +
+                Console.WriteLine($"[Chat] Handed to {oidos} more player(s) on map " +
                                   $"{SessionContext.State.MapId}.");
             }
         }

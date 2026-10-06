@@ -68,7 +68,7 @@ namespace Jondo.Unity.Tests.World
             TeleportManager.Initialize();
 
             Assert.True(TeleportManager.TryGet(Dreams.MapaDelPozo, elemento, out var ruta),
-                        $"la arcada {elemento} no está declarada como pasaje");
+                        $"arch {elemento} is not declared as a passage");
             Assert.Equal(Dreams.MapaDeDraconiros, ruta.DestinationMapId);
             Assert.Equal(381, ruta.DestinationCellId);
             Assert.Equal(184, ruta.SkillId);
@@ -149,7 +149,7 @@ namespace Jondo.Unity.Tests.World
             TeleportManager.Initialize();
 
             Assert.True(TeleportManager.TryGet(Dreams.MapaDeDraconiros, 539673, out var vuelta),
-                        "la salida de la sala de Draconiros no está declarada");
+                        "the exit of Draconiros' room is not declared");
             Assert.Equal(Dreams.MapaDelPozo, vuelta.DestinationMapId);
             Assert.Equal(221, vuelta.DestinationCellId);
         }

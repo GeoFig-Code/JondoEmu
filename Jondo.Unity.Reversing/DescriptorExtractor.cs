@@ -68,7 +68,7 @@ public static class DescriptorExtractor
             int end = i + needle.Length;
             for (int nameLength = needle.Length; nameLength <= 120; nameLength++)
             {
-                int header = end - nameLength - 2;      // 0x0A + un byte de longitud
+                int header = end - nameLength - 2;      // 0x0A + a length byte
                 if (header < 0) break;
                 if (data[header] == 0x0A && data[header + 1] == nameLength) yield return header;
             }

@@ -200,9 +200,9 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.Resolve("mensajes_3.6.10.10.json");
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Mensajes] Falta {Path.GetFileName(path)}; los avisos seguirán " +
-                                  "saliendo, pero el registro no dirá qué dicen. " +
-                                  "Genéralo con tools/extraer_mensajes.py.");
+                Console.WriteLine($"[Messages] {Path.GetFileName(path)} is missing; the notices will still " +
+                                  "go out, but the log will not say what they say. " +
+                                  "Generate it with tools/extraer_mensajes.py.");
                 return;
             }
 
@@ -223,11 +223,11 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Mensajes] No se han podido leer: {ex.Message}");
+                Console.WriteLine($"[Messages] Could not be read: {ex.Message}");
                 return;
             }
 
-            Console.WriteLine($"[Mensajes] {_texts.Count} mensajes de información.");
+            Console.WriteLine($"[Messages] {_texts.Count} information messages.");
         }
 
         /// <summary>

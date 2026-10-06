@@ -141,11 +141,11 @@ namespace Jondo.Unity.Server.Managers
                     }
                 }
 
-                Console.WriteLine($"[Raids] {found.Count} tesoros con valor propio.");
+                Console.WriteLine($"[Raids] {found.Count} treasures with a value of their own.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Raids] No se han podido leer los valores de los tesoros: {ex.Message}");
+                Console.WriteLine($"[Raids] Could not read the treasures' values: {ex.Message}");
             }
 
             return found;

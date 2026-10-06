@@ -77,7 +77,7 @@ namespace Jondo.Unity.Server.Managers
                 var book = new QuestCatalogue(null, Console.WriteLine);
                 if (!book.Ready)
                 {
-                    Console.WriteLine("[Misiones] No hay catálogo. Nadie podrá coger una misión.");
+                    Console.WriteLine("[Quests] There is no catalogue. Nobody will be able to take a quest.");
                     _book = book;   // published anyway: Ready stays false and Load does not retry
                     return;
                 }
@@ -125,14 +125,14 @@ namespace Jondo.Unity.Server.Managers
                 Jondo.Unity.Launcher.Paths.ContentFile(QuestBindingContent.AuthoredFile),
                 Console.WriteLine);
 
-            Console.WriteLine($"[Misiones] {book.QuestCount:N0} misiones, {book.StepCount:N0} pasos, " +
-                              $"{HandedOverBy.Count:N0} frases que reparten una, " +
-                              $"{GivenBy.Count:N0} NPCs que las dan.");
+            Console.WriteLine($"[Quests] {book.QuestCount:N0} quests, {book.StepCount:N0} steps, " +
+                              $"{HandedOverBy.Count:N0} lines that hand one out, " +
+                              $"{GivenBy.Count:N0} NPCs that give them.");
 
             if (Bindings.Count > 0)
             {
-                Console.WriteLine($"[Misiones] {Bindings.Count} objetivo(s) atados a algo que pinchar, " +
-                                  $"en {Bindings.ElementCount} elemento(s).");
+                Console.WriteLine($"[Quests] {Bindings.Count} objective(s) tied to something to click, " +
+                                  $"on {Bindings.ElementCount} element(s).");
             }
         }
 
@@ -169,7 +169,7 @@ namespace Jondo.Unity.Server.Managers
             }
 
             SessionContext.State.Quests = log;
-            if (rows > 0) Console.WriteLine($"[Misiones] {rows} en el diario del personaje {characterId}.");
+            if (rows > 0) Console.WriteLine($"[Quests] {rows} in the journal of character {characterId}.");
         }
 
         /// <summary>The steps a line of dialogue hands over. Empty for the other 53,777 lines.</summary>
@@ -285,8 +285,8 @@ namespace Jondo.Unity.Server.Managers
             bool taken = await Equipment.TakeAsync(stream, objective.ItemId, wanted);
             if (!taken)
             {
-                Console.WriteLine($"[Misiones] No se ha podido cobrar {wanted}x{objective.ItemId} " +
-                                  $"del objetivo {objective.Id}; se deja sin marcar.");
+                Console.WriteLine($"[Quests] Could not collect {wanted}x{objective.ItemId} " +
+                                  $"for objective {objective.Id}; it is left unmarked.");
             }
 
             return taken;
@@ -345,8 +345,8 @@ namespace Jondo.Unity.Server.Managers
             {
                 if (Equipment.HowMany(item) >= count) continue;
 
-                Console.WriteLine($"[Misiones] El objetivo {binding.ObjectiveId} pide {count}x{item} " +
-                                  $"y no se lleva encima.");
+                Console.WriteLine($"[Quests] Objective {binding.ObjectiveId} asks for {count}x{item} " +
+                                  $"and it is not being carried.");
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(
                         InfoMessages.Warning, InfoMessages.MissingItem)));
@@ -359,7 +359,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 if (log.Run(binding.Starts) != null) return false;
 
-                Console.WriteLine($"[Misiones] Empieza la {binding.Starts} al pulsar un elemento.");
+                Console.WriteLine($"[Quests] Quest {binding.Starts} starts on clicking an element.");
                 return await StartAsync(stream, binding.Starts);
             }
 
@@ -384,8 +384,8 @@ namespace Jondo.Unity.Server.Managers
             {
                 if (await Equipment.GiveAsync(stream, item, count)) continue;
 
-                Console.WriteLine($"[Misiones] El objetivo {binding.ObjectiveId} debía dar " +
-                                  $"{count}x{item} y no se ha podido; no se marca.");
+                Console.WriteLine($"[Quests] Objective {binding.ObjectiveId} had to give " +
+                                  $"{count}x{item} and could not; it is not marked.");
                 return false;
             }
 
@@ -423,8 +423,8 @@ namespace Jondo.Unity.Server.Managers
 
             if (grupo == null)
             {
-                Console.WriteLine($"[Misiones] El objetivo {binding.ObjectiveId} debía sacar al " +
-                                  $"monstruo {binding.SpawnsMonster} y no se ha podido.");
+                Console.WriteLine($"[Quests] Objective {binding.ObjectiveId} had to bring out " +
+                                  $"monster {binding.SpawnsMonster} and could not.");
                 return;
             }
 
@@ -438,8 +438,8 @@ namespace Jondo.Unity.Server.Managers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.BuildActorsComplete());
 
-            Console.WriteLine($"[Misiones] Sale el monstruo {binding.SpawnsMonster} " +
-                              $"(x{binding.SpawnsCount}) en la casilla {grupo.CellId}.");
+            Console.WriteLine($"[Quests] Monster {binding.SpawnsMonster} comes out " +
+                              $"(x{binding.SpawnsCount}) on cell {grupo.CellId}.");
         }
 
         /// <summary>
@@ -554,7 +554,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 if (verdict.Broke)
                 {
-                    Console.WriteLine($"[Misiones] La condición de la misión {questId} no se entiende: " +
+                    Console.WriteLine($"[Quests] The condition of quest {questId} is not understood: " +
                                       $"{_book?.Of(questId)?.Criterion}");
                 }
 
@@ -569,8 +569,8 @@ namespace Jondo.Unity.Server.Managers
             // running the server is the only one who can judge whether it matters.
             if (!verdict.FullyJudged)
             {
-                Console.WriteLine($"[Misiones] La {questId} se da sin comprobar {string.Join(", ", verdict.Skipped)}: " +
-                                  "este emulador no modela eso.");
+                Console.WriteLine($"[Quests] Quest {questId} is given without checking {string.Join(", ", verdict.Skipped)}: " +
+                                  "this emulator does not model that.");
             }
 
             Save(questId, run);
@@ -583,7 +583,7 @@ namespace Jondo.Unity.Server.Managers
             // And the green mark of the one who just gave it is switched off.
             await SendMarksAsync(stream, SessionContext.State.MapId);
 
-            Console.WriteLine($"[Misiones] Empieza la {questId}, por el paso {run.StepId}.");
+            Console.WriteLine($"[Quests] Quest {questId} starts, at step {run.StepId}.");
             return true;
         }
 
@@ -679,8 +679,8 @@ namespace Jondo.Unity.Server.Managers
                 ofrecidas += quests.Count;
             }
 
-            Console.WriteLine($"[Misiones] Marcas del mapa {mapId}: {conMarca} de {marks.Count} NPCs " +
-                              $"con algo que ofrecer, {ofrecidas} misión(es).");
+            Console.WriteLine($"[Quests] Marks of map {mapId}: {conMarca} of {marks.Count} NPCs " +
+                              $"with something to offer, {ofrecidas} quest(s).");
         }
 
         /// <summary>
@@ -925,7 +925,7 @@ namespace Jondo.Unity.Server.Managers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Idr, QuestProtocol.BuildJournal(doing, finished)));
 
-            Console.WriteLine($"[Misiones] Diario enviado: {doing.Count} en curso, {finished.Count} hechas.");
+            Console.WriteLine($"[Quests] Journal sent: {doing.Count} in progress, {finished.Count} done.");
         }
 
         /// <summary>
@@ -983,7 +983,7 @@ namespace Jondo.Unity.Server.Managers
             }
             else
             {
-                Console.WriteLine($"[Misiones] Terminada la {questId}.");
+                Console.WriteLine($"[Quests] Quest {questId} finished.");
 
                 // An Almanax offering is made once a day: the day is written down, so the same
                 // quest is not handed out again until the saint comes round next year.
@@ -1037,8 +1037,8 @@ namespace Jondo.Unity.Server.Managers
                     bool given = await Equipment.GiveAsync(stream, item, Math.Max(1, count));
                     if (!given)
                     {
-                        Console.WriteLine($"[Misiones] El objeto {item} del paso {stepId} no se ha " +
-                                          "podido dar.");
+                        Console.WriteLine($"[Quests] Item {item} of step {stepId} could not " +
+                                          "be given.");
                     }
                 }
 
@@ -1056,7 +1056,7 @@ namespace Jondo.Unity.Server.Managers
             if (paid)
             {
                 CharacterRewards.Save();
-                Console.WriteLine($"[Misiones] El paso {stepId} paga {experience} de experiencia y {kamas} kamas.");
+                Console.WriteLine($"[Quests] Step {stepId} pays {experience} experience and {kamas} kamas.");
             }
 
             if (levelled) await Achievements.AfterLevelAsync(stream);

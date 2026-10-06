@@ -193,8 +193,8 @@ namespace Jondo.Unity.Server.Managers
                 var doubled = RepairDoubledSlots();
                 if (doubled.Count > 0)
                 {
-                    Console.WriteLine($"[Equipment] {doubled.Count} objetos estaban compartiendo hueco " +
-                                      "con otro; se han devuelto a la bolsa.");
+                    Console.WriteLine($"[Equipment] {doubled.Count} items were sharing a slot " +
+                                      "with another; they have been sent back to the bag.");
                 }
 
                 Console.WriteLine($"[Equipment] {Items.Count} items from the database, {Worn} worn.");

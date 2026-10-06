@@ -155,8 +155,8 @@ namespace Jondo.Unity.Tests.Diagnostics
             // that crosses the line rather than before it.
             long size = new FileInfo(live).Length;
             Assert.True(size < LogFile.MaxBytes + line.Length * 2L,
-                        $"el fichero vivo se quedó en {size} bytes");
-            Assert.True(File.Exists(live + ".1"), "no se ha rotado");
+                        $"the live file stayed at {size} bytes");
+            Assert.True(File.Exists(live + ".1"), "it was not rotated");
         }
 
         [Fact]
@@ -170,7 +170,7 @@ namespace Jondo.Unity.Tests.Diagnostics
             for (int i = 0; i < lines * (LogFile.Keep + 3); i++) log.WriteLine(line);
 
             Assert.False(File.Exists(live + "." + (LogFile.Keep + 1)),
-                         "hay más ficheros viejos de los que se prometió guardar");
+                         "there are more old files than were promised to be kept");
             Assert.True(File.Exists(live + "." + LogFile.Keep));
         }
 
@@ -185,7 +185,7 @@ namespace Jondo.Unity.Tests.Diagnostics
             var log = new LogFile(() => live);
             log.WriteLine(new string('c', 64));
 
-            Assert.True(File.Exists(live + ".1"), "no contó lo que ya había en el fichero");
+            Assert.True(File.Exists(live + ".1"), "it did not count what was already in the file");
         }
     }
 }

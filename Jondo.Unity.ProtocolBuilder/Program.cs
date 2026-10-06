@@ -16,35 +16,35 @@ using Jondo.Unity.Reversing;
 if (args.Length == 0)
 {
     Console.WriteLine("""
-        protocolbuilder — el protocolo del cliente, sacado del propio cliente
+        protocolbuilder — the client's protocol, taken out of the client itself
 
-        Sacar la forma
-          proto <dll del protocolo> [salida.proto]      mensajes, campos y números
-          mirar <dll> [tipo]                            qué hay dentro de una clase
-          volcar <global-metadata.dat> [salida]         el camino muerto del descriptor (§3.1)
+        Taking out the shape
+          proto <protocol dll> [output.proto]           messages, fields and numbers
+          mirar <dll> [type]                            what is inside a class
+          volcar <global-metadata.dat> [output]         the dead path of the descriptor (§3.1)
 
-        Emparejar dos versiones
-          emparejar <dll vieja> <dll nueva> [salida]    quién es quién entre parches
-          probar <dll> [opcodes del emulador.tsv]       el techo, con los nombres barajados
+        Pairing two versions
+          emparejar <old dll> <new dll> [output]        who is who between patches
+          probar <dll> [emulator opcodes.tsv]           the ceiling, with the names shuffled
 
-        Leer el código y bautizar
-          indexar <carpeta del cliente> [salida.json] [saltos]
-                                                        qué clase del cliente toca cada mensaje
-          expediente <dll> <indice> <anclas> <mensaje|--todos|--medidos> [carpeta] [--ciego]
-                                                        todo lo que se sabe de un mensaje, junto
-          preguntar <dll> <indice> <anclas> [salida.tsv] [--evaluar] [--limite N]
-                                                        el expediente delante del modelo
-          evaluar <anclas.tsv> <propuestas.tsv>         cuánto acierta, contra lo medido
+        Reading the code and naming
+          indexar <client folder> [output.json] [hops]
+                                                        which client class touches each message
+          expediente <dll> <index> <anchors> <message|--todos|--medidos> [folder] [--ciego]
+                                                        everything known about a message, together
+          preguntar <dll> <index> <anchors> [output.tsv] [--evaluar] [--limite N]
+                                                        the dossier in front of the model
+          evaluar <anchors.tsv> <proposals.tsv>         how often it is right, against what is measured
 
-        Traer los clientes de en medio
-          bajar --lista                                 qué versiones sirve todavía la CDN
-          bajar <desde> <hasta> [carpeta]               los clientes de la cadena, sólo lo justo
-          cadena <carpeta de clientes> [opcodes.tsv]    parche a parche, contra el salto directo
+        Fetching the clients in between
+          bajar --lista                                 which versions the CDN still serves
+          bajar <from> <to> [folder]                    the chain's clients, only what is needed
+          cadena <clients folder> [opcodes.tsv]         patch by patch, against the direct jump
 
-        Aplicar el mapeo al emulador
-          capa <cliente> <anclas.tsv> <emulador> [viejo]  genera Op.cs con un nombre por opcode
+        Applying the mapping to the emulator
+          capa <client> <anchors.tsv> <emulator> [old]  generates Op.cs with one name per opcode
 
-        Ejemplo:
+        Example:
           protocolbuilder indexar "C:\Jondo 3.6.10.10\Cliente 3.6.10.10" datos/indice_3.6.10.10.json
         """);
     return 1;
@@ -68,7 +68,7 @@ switch (args[0])
     case "nombres": return Nombres(args);
     case "cabecera": return Cabecera(args);
     default:
-        Console.WriteLine($"No sé qué es «{args[0]}».");
+        Console.WriteLine($"I do not know what «{args[0]}» is.");
         return 1;
 }
 
@@ -83,7 +83,7 @@ static int Mirar(string[] args)
 {
     if (args.Length < 2)
     {
-        Console.WriteLine("Falta el ensamblado. Uso: mirar <dll> [nombre de tipo]");
+        Console.WriteLine("The assembly is missing. Usage: mirar <dll> [type name]");
         return 1;
     }
 
@@ -93,8 +93,8 @@ static int Mirar(string[] args)
     {
         var mensajes = reader.ProtocolMessages().OrderBy(t => t.Name).ToList();
         Console.WriteLine($"{reader.Assembly.GetName().Name}");
-        Console.WriteLine($"  {reader.Types().Count():N0} tipos, de los cuales {mensajes.Count:N0} " +
-                          "se llaman con tres letras minúsculas (los del cable).");
+        Console.WriteLine($"  {reader.Types().Count():N0} types, of which {mensajes.Count:N0} " +
+                          "have three-lowercase-letter names (the wire ones).");
         Console.WriteLine();
         for (int i = 0; i < mensajes.Count; i += 18)
         {
@@ -106,7 +106,7 @@ static int Mirar(string[] args)
     var tipo = reader.Types().FirstOrDefault(t => t.Name == args[2]);
     if (tipo == null)
     {
-        Console.WriteLine($"No hay ningún tipo «{args[2]}» ahí dentro.");
+        Console.WriteLine($"There is no type «{args[2]}» in there.");
         return 1;
     }
 
@@ -123,13 +123,13 @@ static int Mirar(string[] args)
         Console.WriteLine($"    {f.FieldType.Name,-10} {f.Name,-40} = {f.GetRawConstantValue()}");
     }
 
-    Console.WriteLine("  ── campos ────────────────────────────────────");
+    Console.WriteLine("  ── fields ──────────────────────────────────────");
     foreach (var f in tipo.GetFields(todo).Where(f => !f.IsLiteral).Take(40))
     {
         Console.WriteLine($"    {(f.IsStatic ? "static " : "")}{Corto(f.FieldType),-34} {f.Name}");
     }
 
-    Console.WriteLine("  ── propiedades ───────────────────────────────");
+    Console.WriteLine("  ── properties ────────────────────────────────");
     foreach (var p in tipo.GetProperties(todo).Take(60))
     {
         Console.WriteLine($"    {Corto(p.PropertyType),-34} {p.Name}");
@@ -149,7 +149,7 @@ static int Proto(string[] args)
 {
     if (args.Length < 2)
     {
-        Console.WriteLine("Falta el ensamblado. Uso: proto <dll> [salida.proto]");
+        Console.WriteLine("The assembly is missing. Usage: proto <dll> [output.proto]");
         return 1;
     }
 
@@ -161,12 +161,12 @@ static int Proto(string[] args)
     int dudosos = mensajes.Count(m => m.Doubtful);
 
     Console.WriteLine($"{Path.GetFileName(args[1])}");
-    Console.WriteLine($"  {mensajes.Count:N0} mensajes, {campos:N0} campos, {enums.Count:N0} enumerados");
-    if (dudosos > 0) Console.WriteLine($"  {dudosos:N0} donde no cuadran las cuentas (van marcados).");
+    Console.WriteLine($"  {mensajes.Count:N0} messages, {campos:N0} fields, {enums.Count:N0} enums");
+    if (dudosos > 0) Console.WriteLine($"  {dudosos:N0} where the counts do not add up (they are marked).");
 
     string salida = args.Length > 2 ? args[2] : "protocolo.proto";
     File.WriteAllText(salida, ProtoWriter.Write(mensajes, enums, Path.GetFileName(args[1])));
-    Console.WriteLine($"  escrito en {salida}");
+    Console.WriteLine($"  written to {salida}");
 
     return 0;
 }
@@ -183,7 +183,7 @@ static Matcher.Model Leer(string assembly) => ProtoWriter.Model(assembly);
 /// </summary>
 static int Probar(string[] args)
 {
-    if (args.Length < 2) { Console.WriteLine("Uso: probar <dll> [opcodes del emulador.tsv]"); return 1; }
+    if (args.Length < 2) { Console.WriteLine("Usage: probar <dll> [emulator opcodes.tsv]"); return 1; }
 
     var uno = Leer(args[1]);
     var (otro, verdad) = Shuffle.Rotate(uno);
@@ -197,11 +197,11 @@ static int Probar(string[] args)
         else mal++;
     }
 
-    Console.WriteLine($"  {uno.Messages.Count:N0} mensajes, con los nombres barajados");
-    Console.WriteLine($"  emparejados bien : {bien:N0}  ({100.0 * bien / uno.Messages.Count:0.0} %)");
-    Console.WriteLine($"  emparejados MAL  : {mal:N0}");
-    Console.WriteLine($"  ambiguos         : {resultado.Ambiguous.Count:N0}");
-    Console.WriteLine($"  sin pareja       : {resultado.Alone.Count:N0}");
+    Console.WriteLine($"  {uno.Messages.Count:N0} messages, with the names shuffled");
+    Console.WriteLine($"  matched right    : {bien:N0}  ({100.0 * bien / uno.Messages.Count:0.0} %)");
+    Console.WriteLine($"  matched WRONG    : {mal:N0}");
+    Console.WriteLine($"  ambiguous        : {resultado.Ambiguous.Count:N0}");
+    Console.WriteLine($"  no pair          : {resultado.Alone.Count:N0}");
 
     // The percentage over the two thousand messages is a curiosity. The number that decides whether the
     // emulator starts on patch day is another: of the ones the emulator really uses, how many
@@ -213,15 +213,15 @@ static int Probar(string[] args)
         int salvados = suyos.Count(o => resultado.Pairs.TryGetValue(o, out string? donde) &&
                                         verdad.GetValueOrDefault(o) == donde);
         Console.WriteLine();
-        Console.WriteLine($"  de los {mios:N0} que usa el emulador y están en el protocolo: " +
+        Console.WriteLine($"  of the {mios:N0} the emulator uses that are in the protocol: " +
                           $"{salvados:N0} ({(mios == 0 ? 0 : 100.0 * salvados / mios):0.0} %)");
 
         var perdidos = suyos.Where(o => uno.Messages.Any(m => m.Name == o) &&
                                         !resultado.Pairs.ContainsKey(o)).ToList();
         if (perdidos.Count > 0)
         {
-            Console.WriteLine($"  se quedan sin pareja: {string.Join(" ", perdidos.Take(40))}" +
-                              (perdidos.Count > 40 ? $" ...y {perdidos.Count - 40} más" : ""));
+            Console.WriteLine($"  left without a pair: {string.Join(" ", perdidos.Take(40))}" +
+                              (perdidos.Count > 40 ? $" ...and {perdidos.Count - 40} more" : ""));
         }
     }
     return 0;
@@ -234,7 +234,7 @@ static int Cabecera(string[] args)
 {
     if (args.Length < 2)
     {
-        Console.WriteLine("Uso: cabecera <carpeta del cliente> [posición a localizar]");
+        Console.WriteLine("Usage: cabecera <client folder> [position to locate]");
         return 1;
     }
 
@@ -247,30 +247,30 @@ static int Cabecera(string[] args)
     Console.WriteLine();
 
     var campos = Header.Fields();
-    Console.WriteLine($"versión de metadatos: {campos.GetValueOrDefault("version")}");
+    Console.WriteLine($"metadata version: {campos.GetValueOrDefault("version")}");
     Console.WriteLine();
 
     var regiones = Header.Regions();
-    Console.WriteLine($"  {regiones.Count} regiones declaradas:");
+    Console.WriteLine($"  {regiones.Count} declared regions:");
     foreach (var region in regiones)
     {
-        string marca = region.Holds(buscada) ? "  <<< AQUÍ CAE EL BLOQUE" : "";
+        string marca = region.Holds(buscada) ? "  <<< THE BLOCK FALLS HERE" : "";
         Console.WriteLine($"    {region.Name,-34} {region.Offset,12:N0} + {region.Size,11:N0}{marca}");
     }
 
     var dentro = regiones.Where(r => r.Holds(buscada)).ToList();
     Console.WriteLine();
     Console.WriteLine(dentro.Count == 0
-        ? $"  La posición {buscada:N0} NO cae en ninguna región declarada: es un resto no referenciado."
-        : $"  La posición {buscada:N0} cae en: {string.Join(", ", dentro.Select(r => r.Name))}");
+        ? $"  Position {buscada:N0} does NOT fall in any declared region: it is an unreferenced leftover."
+        : $"  Position {buscada:N0} falls in: {string.Join(", ", dentro.Select(r => r.Name))}");
 
     // And the order: the protocol's messages, as the types table enumerates them.
     Console.WriteLine();
     Crudo(args[1]);
     var unTipo = client.Protocol.Types.First(t => t.Fields.Count > 0);
-    Console.WriteLine("   tipo " + unTipo.Name + ", campos " + unTipo.Fields.Count);
+    Console.WriteLine("   type " + unTipo.Name + ", fields " + unTipo.Fields.Count);
     var unCampo = unTipo.Fields[0];
-    Console.WriteLine("   campo " + unCampo.Name + "  backing=" + (unCampo.BackingData?.GetType().Name ?? "null"));
+    Console.WriteLine("   field " + unCampo.Name + "  backing=" + (unCampo.BackingData?.GetType().Name ?? "null"));
     if (unCampo.BackingData != null) foreach (var kv in Header.Numbers(unCampo.BackingData)) Console.WriteLine("     bd." + kv.Key + " = " + kv.Value);
     var parejas = Header.Pairs(client, l => Console.WriteLine(l));
     foreach (var pareja in parejas.Take(12))
@@ -281,15 +281,15 @@ static int Cabecera(string[] args)
     var mios = tipos.Where(t => mensajes.Contains(t.Name)).ToList();
 
     Console.WriteLine();
-    Console.WriteLine($"  {tipos.Count:N0} tipos en la tabla; {mios.Count:N0} son mensajes del protocolo");
+    Console.WriteLine($"  {tipos.Count:N0} types in the table; {mios.Count:N0} are protocol messages");
     if (mios.Count > 0)
     {
-        Console.WriteLine($"    del índice {mios[0].Index:N0} al {mios[^1].Index:N0}");
-        Console.WriteLine($"    índices de nombre: del {mios.Min(t => t.NameIndex):N0} al {mios.Max(t => t.NameIndex):N0}");
+        Console.WriteLine($"    from index {mios[0].Index:N0} to {mios[^1].Index:N0}");
+        Console.WriteLine($"    name indices: from {mios.Min(t => t.NameIndex):N0} to {mios.Max(t => t.NameIndex):N0}");
         Console.WriteLine();
-        Console.WriteLine("    los seis primeros, en orden de tabla:");
+        Console.WriteLine("    the first six, in table order:");
         foreach (var tipo in mios.Take(6))
-            Console.WriteLine($"      #{tipo.Index,-7:N0} nombre@{tipo.NameIndex,-10:N0} {tipo.Name}");
+            Console.WriteLine($"      #{tipo.Index,-7:N0} name@{tipo.NameIndex,-10:N0} {tipo.Name}");
     }
 
     return 0;
@@ -302,7 +302,7 @@ static int Nombres(string[] args)
 {
     if (args.Length < 2)
     {
-        Console.WriteLine("Uso: nombres <carpeta del cliente>");
+        Console.WriteLine("Usage: nombres <client folder>");
         return 1;
     }
 
@@ -310,23 +310,23 @@ static int Nombres(string[] args)
     var sitios = Names.Sites(client, linea => Console.WriteLine(linea));
 
     Console.WriteLine();
-    Console.WriteLine($"  {sitios.Count:N0} métodos tocan un nombre o un mensaje");
-    Console.WriteLine($"    con nombres Y mensajes: {sitios.Count(s => s.Texts.Count > 0 && s.Types.Count > 0):N0}");
-    Console.WriteLine($"    sólo nombres          : {sitios.Count(s => s.Texts.Count > 0 && s.Types.Count == 0):N0}");
-    Console.WriteLine($"    sólo mensajes         : {sitios.Count(s => s.Texts.Count == 0 && s.Types.Count > 0):N0}");
+    Console.WriteLine($"  {sitios.Count:N0} methods touch a name or a message");
+    Console.WriteLine($"    with names AND messages: {sitios.Count(s => s.Texts.Count > 0 && s.Types.Count > 0):N0}");
+    Console.WriteLine($"    names only             : {sitios.Count(s => s.Texts.Count > 0 && s.Types.Count == 0):N0}");
+    Console.WriteLine($"    messages only          : {sitios.Count(s => s.Texts.Count == 0 && s.Types.Count > 0):N0}");
     Console.WriteLine();
-    Console.WriteLine("  los diez más cargados:");
+    Console.WriteLine("  the ten busiest:");
     foreach (var sitio in sitios.Take(10))
     {
         Console.WriteLine($"    {sitio.Method,-50} {sitio.Texts.Count,4} nombres  {sitio.Types.Count,4} mensajes");
-        if (sitio.Texts.Count > 0) Console.WriteLine($"      texto[0] : {sitio.Texts[0]}");
-        if (sitio.Types.Count > 0) Console.WriteLine($"      mensaje[0]: {sitio.Types[0]}");
+        if (sitio.Texts.Count > 0) Console.WriteLine($"      text[0]   : {sitio.Texts[0]}");
+        if (sitio.Types.Count > 0) Console.WriteLine($"      message[0]: {sitio.Types[0]}");
     }
 
     // The case that would solve everything: a method with ONE name and ONE message is a direct pair.
     var parejas = sitios.Where(s => s.Texts.Count == 1 && s.Types.Count == 1).ToList();
     Console.WriteLine();
-    Console.WriteLine($"  métodos con exactamente un nombre y un mensaje: {parejas.Count:N0}");
+    Console.WriteLine($"  methods with exactly one name and one message: {parejas.Count:N0}");
     foreach (var pareja in parejas.Take(8))
         Console.WriteLine($"    {pareja.Types[0]}  =  {pareja.Texts[0]}");
 
@@ -343,8 +343,8 @@ static int Capa(string[] args)
 {
     if (args.Length < 4)
     {
-        Console.WriteLine("Uso: capa <cliente o dll> <anclas.tsv> <carpeta del emulador> [cliente anterior]");
-        Console.WriteLine("Ej.: capa \"..\\Cliente 3.6.10.10\" datos/anclas_3.6.10.10.tsv . \"..\\clientes\\Cliente 3.6.4.3\"");
+        Console.WriteLine("Usage: capa <client or dll> <anchors.tsv> <emulator folder> [previous client]");
+        Console.WriteLine("E.g.: capa \"..\\Cliente 3.6.10.10\" datos/anclas_3.6.10.10.tsv . \"..\\clientes\\Cliente 3.6.4.3\"");
         return 1;
     }
 
@@ -352,7 +352,7 @@ static int Capa(string[] args)
     // come from both. With only one, 37 connection messages would seem not to exist and the
     // sweep would take them for garbage.
     var ahora = Messages(args[1]);
-    Console.WriteLine($"{ahora.Count:N0} mensajes en el protocolo de {Mapper.VersionOf(args[1])}");
+    Console.WriteLine($"{ahora.Count:N0} messages in the protocol of {Mapper.VersionOf(args[1])}");
 
     // Those of the previous version serve to tell a remnant from an error. Without them, an opcode
     // that no longer exists would be confused with «this was not an opcode», which are very different things.
@@ -363,10 +363,10 @@ static int Capa(string[] args)
     var barrido = Layer.Scan(args[3], ahora, antes, anclas, ligados);
 
     Console.WriteLine();
-    Console.WriteLine($"  {barrido.Slots.Count:N0} opcodes de verdad, " +
-                      $"{barrido.Slots.Sum(s => s.Uses):N0} usos en el código");
-    Console.WriteLine($"    con nombre propio : {barrido.Slots.Count(s => s.Name.Length > 0):N0}");
-    Console.WriteLine($"    sólo con opcode   : {barrido.Slots.Count(s => s.Name.Length == 0):N0}");
+    Console.WriteLine($"  {barrido.Slots.Count:N0} real opcodes, " +
+                      $"{barrido.Slots.Sum(s => s.Uses):N0} uses in the code");
+    Console.WriteLine($"    with a real name  : {barrido.Slots.Count(s => s.Name.Length > 0):N0}");
+    Console.WriteLine($"    opcode only       : {barrido.Slots.Count(s => s.Name.Length == 0):N0}");
 
     if (barrido.Stale.Count > 0)
     {
@@ -374,7 +374,7 @@ static int Capa(string[] args)
         // client version DO NOT EXIST. They cannot match anything; the code using them is
         // dead and nobody knew.
         Console.WriteLine();
-        Console.WriteLine($"  {barrido.Stale.Count:N0} literales son de una versión anterior y aquí ya no existen:");
+        Console.WriteLine($"  {barrido.Stale.Count:N0} literals are from an earlier version and no longer exist here:");
         foreach (var trozo in barrido.Stale.Chunk(16))
             Console.WriteLine("    " + string.Join(" ", trozo));
     }
@@ -382,13 +382,13 @@ static int Capa(string[] args)
     if (barrido.Ignored.Count > 0)
     {
         Console.WriteLine();
-        Console.WriteLine($"  {barrido.Ignored.Count:N0} literales de tres letras que no son opcodes de nada, se dejan en paz:");
+        Console.WriteLine($"  {barrido.Ignored.Count:N0} three-letter literals that are nobody's opcode, left alone:");
         Console.WriteLine("    " + string.Join(" ", barrido.Ignored));
     }
 
     string salida = Path.Combine(args[3], "Jondo.Unity.Protocol", "Op.cs");
     Console.WriteLine();
-    Console.WriteLine($"  escrito en {Layer.Write(barrido, Mapper.VersionOf(args[1]), salida)}");
+    Console.WriteLine($"  written to {Layer.Write(barrido, Mapper.VersionOf(args[1]), salida)}");
 
     // Without --aplicar only what would change is shown. Touching forty emulator files is not
     // something that should happen for typing one command too many.
@@ -396,8 +396,8 @@ static int Capa(string[] args)
     var cambios = Layer.Apply(args[3], barrido, aplicar);
 
     Console.WriteLine();
-    Console.WriteLine($"  {cambios.Count:N0} líneas en {cambios.Select(c => c.File).Distinct().Count():N0} ficheros" +
-                      (aplicar ? " cambiadas" : " cambiarían (--aplicar para hacerlo)"));
+    Console.WriteLine($"  {cambios.Count:N0} lines in {cambios.Select(c => c.File).Distinct().Count():N0} files" +
+                      (aplicar ? " changed" : " would change (--aplicar to do it)"));
 
     foreach (var cambio in cambios.Take(aplicar ? 0 : 6))
     {
@@ -426,7 +426,7 @@ static HashSet<string> Messages(string clientOrDll)
         foreach (var message in ProtoWriter.Model(path).Messages) names.Add(message.Name);
     }
 
-    if (names.Count == 0) throw new InvalidOperationException($"no he encontrado el protocolo en {clientOrDll}");
+    if (names.Count == 0) throw new InvalidOperationException($"could not find the protocol in {clientOrDll}");
     return names;
 }
 
@@ -440,7 +440,7 @@ static int Cadena(string[] args)
 {
     if (args.Length < 2)
     {
-        Console.WriteLine("Uso: cadena <carpeta de clientes> [opcodes del emulador.tsv]");
+        Console.WriteLine("Usage: cadena <clients folder> [emulator opcodes.tsv]");
         return 1;
     }
 
@@ -451,11 +451,11 @@ static int Cadena(string[] args)
 
     if (clientes.Count < 2)
     {
-        Console.WriteLine($"En {args[1]} hay {clientes.Count} cliente(s). Hacen falta al menos dos.");
+        Console.WriteLine($"In {args[1]} there are {clientes.Count} client(s). At least two are needed.");
         return 1;
     }
 
-    Console.WriteLine($"{clientes.Count} versiones: " +
+    Console.WriteLine($"{clientes.Count} versions: " +
                       string.Join(" → ", clientes.Select(c => Mapper.VersionOf(Path.GetFileName(c)))));
     Console.WriteLine();
 
@@ -463,11 +463,11 @@ static int Cadena(string[] args)
     var salida = relay.Run(clientes, linea => Console.WriteLine(linea));
 
     Console.WriteLine();
-    Console.WriteLine("  salto                nombres  formas  semillas  rota │ empareja   duda   solo │ acierta  FALLA  calla");
+    Console.WriteLine("  jump                   names  shapes     seeds   rot │  matched  doubt   solo │   right  WRONG  quiet");
     Console.WriteLine("  ────────────────────────────────────────────────────┼───────────────────────┼─────────────────────");
     foreach (var salto in salida.Hops)
     {
-        string juicio = salto.Rotated ? "  sí" : "  no";
+        string juicio = salto.Rotated ? " yes" : "  no";
         string medida = salto.Rotated
             ? "      —      —      —"
             : $" {salto.Right,7:N0} {salto.Wrong,6:N0} {salto.Unsure,6:N0}";
@@ -485,19 +485,19 @@ static int Cadena(string[] args)
         int fallos = limpios.Sum(h => h.Wrong), aciertos = limpios.Sum(h => h.Right);
         int total = limpios.Sum(h => h.OldCount);
         Console.WriteLine();
-        Console.WriteLine($"  En los {limpios.Count} saltos SIN rotación hay respuesta conocida, y el emparejador no la ve:");
-        Console.WriteLine($"    de {total:N0} mensajes, {aciertos:N0} bien ({100.0 * aciertos / total:0.0}%) y {fallos:N0} MAL.");
+        Console.WriteLine($"  In the {limpios.Count} jumps WITHOUT rotation there is a known answer, and the matcher does not see it:");
+        Console.WriteLine($"    of {total:N0} messages, {aciertos:N0} right ({100.0 * aciertos / total:0.0}%) and {fallos:N0} WRONG.");
     }
 
     var rotados = salida.Hops.Where(h => h.Rotated).ToList();
     if (rotados.Count > 0)
     {
         Console.WriteLine();
-        Console.WriteLine($"  En los {rotados.Count} saltos CON rotación no hay contra qué medir, pero sí se ve el precio:");
+        Console.WriteLine($"  In the {rotados.Count} jumps WITH rotation there is nothing to measure against, but the price shows:");
         foreach (var salto in rotados)
         {
-            Console.WriteLine($"    {salto.From} → {salto.To}: empareja {salto.Paired:N0} de {salto.OldCount:N0} " +
-                              $"({100.0 * salto.Paired / salto.OldCount:0.0}%), y conserva {salto.SameShape:N0} formas");
+            Console.WriteLine($"    {salto.From} → {salto.To}: pairs {salto.Paired:N0} of {salto.OldCount:N0} " +
+                              $"({100.0 * salto.Paired / salto.OldCount:0.0}%), and keeps {salto.SameShape:N0} shapes");
         }
     }
 
@@ -507,8 +507,8 @@ static int Cadena(string[] args)
     Console.WriteLine($"  {Mapper.VersionOf(Path.GetFileName(primero))} → {Mapper.VersionOf(Path.GetFileName(ultimo))}:");
 
     var directo = Relay.Direct(primero, ultimo, _ => { });
-    Console.WriteLine($"    de un tirón : {directo.Count,6:N0}");
-    Console.WriteLine($"    por la cadena: {salida.Chain.Count,5:N0}");
+    Console.WriteLine($"    in one go      : {directo.Count,6:N0}");
+    Console.WriteLine($"    along the chain: {salida.Chain.Count,5:N0}");
 
     if (args.Length > 2 && File.Exists(args[2]))
     {
@@ -525,9 +525,9 @@ static int Cadena(string[] args)
         int porCadena = salida.Chain.Values.Count(v => suyos.Contains(v));
         int porDirecto = directo.Values.Count(v => suyos.Contains(v));
         Console.WriteLine();
-        Console.WriteLine($"  De los {suyos.Count:N0} opcodes que usa el emulador y están en el protocolo:");
-        Console.WriteLine($"    de un tirón : {porDirecto,6:N0}   ({100.0 * porDirecto / suyos.Count:0.0}%)");
-        Console.WriteLine($"    por la cadena: {porCadena,5:N0}   ({100.0 * porCadena / suyos.Count:0.0}%)");
+        Console.WriteLine($"  Of the {suyos.Count:N0} opcodes the emulator uses that are in the protocol:");
+        Console.WriteLine($"    in one go      : {porDirecto,6:N0}   ({100.0 * porDirecto / suyos.Count:0.0}%)");
+        Console.WriteLine($"    along the chain: {porCadena,5:N0}   ({100.0 * porCadena / suyos.Count:0.0}%)");
     }
 
     return 0;
@@ -558,21 +558,21 @@ static async Task<int> Bajar(string[] args)
     if (args.Length > 1 && args[1] == "--lista")
     {
         var todas = await cytrus.VersionsAsync();
-        Console.WriteLine($"{todas.Count:N0} versiones en el archivo, de la más vieja a la más nueva:");
+        Console.WriteLine($"{todas.Count:N0} versions in the archive, from the oldest to the newest:");
         foreach (string v in todas) Console.WriteLine("  " + Cytrus.Tail(v));
         return 0;
     }
 
     if (args.Length < 3)
     {
-        Console.WriteLine("Uso: bajar <desde> <hasta> [carpeta]     ·     bajar --lista");
-        Console.WriteLine("Ej.: bajar 3.6.4.3 3.6.10.10 clientes");
+        Console.WriteLine("Usage: bajar <from> <to> [folder]     ·     bajar --lista");
+        Console.WriteLine("E.g.: bajar 3.6.4.3 3.6.10.10 clientes");
         return 1;
     }
 
     string carpeta = args.Length > 3 ? args[3] : "clientes";
 
-    Console.WriteLine($"Cadena de {args[1]} a {args[2]}:");
+    Console.WriteLine($"Chain from {args[1]} to {args[2]}:");
     var cadena = await cytrus.ChainAsync(args[1], args[2], Decir);
     Console.WriteLine($"  {cadena.Count} eslabones: {string.Join(" → ", cadena.Select(Cytrus.Tail))}");
     Console.WriteLine();
@@ -587,7 +587,7 @@ static async Task<int> Bajar(string[] args)
         // makes no sense to spend another 130 MB to resume it.
         if (File.Exists(Path.Combine(destino, "GameAssembly.dll")))
         {
-            Console.WriteLine($"{corta}: ya está en {destino}");
+            Console.WriteLine($"{corta}: already in {destino}");
             continue;
         }
 
@@ -597,7 +597,7 @@ static async Task<int> Bajar(string[] args)
     }
 
     Console.WriteLine();
-    Console.WriteLine($"  {Cytrus.Human(total)} bajados en total, en {carpeta}");
+    Console.WriteLine($"  {Cytrus.Human(total)} downloaded in all, in {carpeta}");
     return 0;
 }
 
@@ -611,7 +611,7 @@ static int Mapear(string[] args)
 {
     if (args.Length < 3)
     {
-        Console.WriteLine("Uso: mapear <cliente o dll viejo> <cliente o dll nuevo> [opcodes del emulador.tsv]");
+        Console.WriteLine("Usage: mapear <old client or dll> <new client or dll> [emulator opcodes.tsv]");
         return 1;
     }
 
@@ -623,21 +623,21 @@ static int Mapear(string[] args)
     mapper.Build(args[1], args[2], "datos", suyos, linea => Console.WriteLine("  " + linea));
 
     Console.WriteLine();
-    Console.WriteLine($"  escrito en {mapper.Export("datos")}");
+    Console.WriteLine($"  written to {mapper.Export("datos")}");
 
     var dudas = mapper.Doubts();
-    Console.WriteLine($"  {dudas.Count:N0} dudas por las que merece la pena preguntar al modelo");
+    Console.WriteLine($"  {dudas.Count:N0} doubts worth asking the model about");
 
     // How many candidates each doubt has is what says whether the model will find it easy or
     // impossible. Choosing between two is almost free; choosing among fifteen is what really costs.
-    Console.WriteLine($"    con un solo candidato: {dudas.Count(d => d.Candidates.Count == 1):N0}");
-    Console.WriteLine($"    entre dos o tres     : {dudas.Count(d => d.Candidates.Count is 2 or 3):N0}");
-    Console.WriteLine($"    entre cuatro o más   : {dudas.Count(d => d.Candidates.Count > 3):N0}");
+    Console.WriteLine($"    with a single candidate: {dudas.Count(d => d.Candidates.Count == 1):N0}");
+    Console.WriteLine($"    between two or three   : {dudas.Count(d => d.Candidates.Count is 2 or 3):N0}");
+    Console.WriteLine($"    between four or more   : {dudas.Count(d => d.Candidates.Count > 3):N0}");
     Console.WriteLine();
     foreach (var duda in dudas.Take(10))
     {
         string que = duda.Name.Length > 0 ? duda.Name : duda.Meaning;
-        Console.WriteLine($"    {duda.Old} entre {string.Join(", ", duda.Candidates.Take(6))}   ({que})");
+        Console.WriteLine($"    {duda.Old} among {string.Join(", ", duda.Candidates.Take(6))}   ({que})");
     }
     return 0;
 }
@@ -661,15 +661,15 @@ static int Emparejar(string[] args)
 {
     if (args.Length < 3)
     {
-        Console.WriteLine("Uso: emparejar <dll version vieja> <dll version nueva> [salida.txt]");
+        Console.WriteLine("Usage: emparejar <old version dll> <new version dll> [output.txt]");
         return 1;
     }
 
     var vieja = Leer(args[1]);
     var nueva = Leer(args[2]);
 
-    Console.WriteLine($"  vieja: {vieja.Messages.Count:N0} mensajes, {vieja.Enums.Count:N0} enumerados");
-    Console.WriteLine($"  nueva: {nueva.Messages.Count:N0} mensajes, {nueva.Enums.Count:N0} enumerados");
+    Console.WriteLine($"  old: {vieja.Messages.Count:N0} messages, {vieja.Enums.Count:N0} enums");
+    Console.WriteLine($"  new: {nueva.Messages.Count:N0} messages, {nueva.Enums.Count:N0} enums");
 
     var resultado = Matcher.Match(vieja, nueva);
 
@@ -678,29 +678,29 @@ static int Emparejar(string[] args)
     int iguales = resultado.Pairs.Count(p => p.Key == p.Value);
 
     Console.WriteLine();
-    Console.WriteLine($"  emparejados : {resultado.Pairs.Count:N0} " +
-                      $"({100.0 * resultado.Pairs.Count / vieja.Messages.Count:0.0} % de los viejos)");
-    Console.WriteLine($"     de ellos, con el MISMO nombre en las dos: {iguales:N0}");
-    Console.WriteLine($"     o sea que cambiaron de nombre: {resultado.Pairs.Count - iguales:N0}");
-    Console.WriteLine($"  ambiguos    : {resultado.Ambiguous.Count:N0}   (más de un candidato con su forma)");
-    Console.WriteLine($"  sin pareja  : {resultado.Alone.Count:N0}   (ninguno con su forma: nuevos o retirados)");
+    Console.WriteLine($"  paired      : {resultado.Pairs.Count:N0} " +
+                      $"({100.0 * resultado.Pairs.Count / vieja.Messages.Count:0.0} % of the old ones)");
+    Console.WriteLine($"     of them, with the SAME name in both: {iguales:N0}");
+    Console.WriteLine($"     so they changed name: {resultado.Pairs.Count - iguales:N0}");
+    Console.WriteLine($"  ambiguous   : {resultado.Ambiguous.Count:N0}   (more than one candidate with its shape)");
+    Console.WriteLine($"  no pair     : {resultado.Alone.Count:N0}   (none with its shape: new or retired)");
 
     if (args.Length > 3)
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("# viejo -> nuevo");
+        sb.AppendLine("# old -> new");
         foreach (var (from, to) in resultado.Pairs.OrderBy(p => p.Key, StringComparer.Ordinal))
         {
             sb.AppendLine($"{from} -> {to}{(from == to ? "   (igual)" : "")}");
         }
         sb.AppendLine();
-        sb.AppendLine("# sin pareja");
+        sb.AppendLine("# no pair");
         foreach (string name in resultado.Alone) sb.AppendLine(name);
         sb.AppendLine();
-        sb.AppendLine("# ambiguos");
+        sb.AppendLine("# ambiguous");
         foreach (string name in resultado.Ambiguous) sb.AppendLine(name);
         File.WriteAllText(args[3], sb.ToString());
-        Console.WriteLine($"  escrito en {args[3]}");
+        Console.WriteLine($"  written to {args[3]}");
     }
 
     return 0;
@@ -716,7 +716,7 @@ static int Indexar(string[] args)
 {
     if (args.Length < 2)
     {
-        Console.WriteLine("Uso: indexar <carpeta del cliente> [salida.json] [saltos]");
+        Console.WriteLine("Usage: indexar <client folder> [output.json] [hops]");
         return 1;
     }
 
@@ -726,12 +726,12 @@ static int Indexar(string[] args)
     var reloj = System.Diagnostics.Stopwatch.StartNew();
     using var cliente = new ClientReader(args[1]);
     Console.WriteLine($"{Path.GetFileName(args[1].TrimEnd('\\', '/'))}   Unity {cliente.Version}");
-    Console.WriteLine($"  cargado en {reloj.Elapsed.TotalSeconds:0.0} s");
+    Console.WriteLine($"  loaded in {reloj.Elapsed.TotalSeconds:0.0} s");
 
     var evidencia = CodeIndex.Build(cliente, saltos, Console.WriteLine);
     CodeIndex.Save(evidencia, salida);
 
-    Console.WriteLine($"  {reloj.Elapsed.TotalSeconds:0.0} s en total, escrito en {salida}");
+    Console.WriteLine($"  {reloj.Elapsed.TotalSeconds:0.0} s in all, written to {salida}");
     return 0;
 }
 
@@ -744,8 +744,8 @@ static (Matcher.Model Model, Dictionary<string, CodeIndex.Evidence> Index,
     var indexado = File.Exists(indice) ? CodeIndex.Load(indice) : new Dictionary<string, CodeIndex.Evidence>();
     var medido = Dossier.Anchors(anclas);
 
-    Console.WriteLine($"  {modelo.Messages.Count:N0} mensajes, {indexado.Count:N0} indexados, " +
-                      $"{medido.Count:N0} con algo medido");
+    Console.WriteLine($"  {modelo.Messages.Count:N0} messages, {indexado.Count:N0} indexed, " +
+                      $"{medido.Count:N0} with something measured");
     return (modelo, indexado, medido, Dossier.Parents(modelo));
 }
 
@@ -759,7 +759,7 @@ static int Expediente(string[] args)
 {
     if (args.Length < 5)
     {
-        Console.WriteLine("Uso: expediente <dll del protocolo> <indice.json> <anclas.tsv> <mensaje|--todos|--medidos> [carpeta] [--ciego]");
+        Console.WriteLine("Usage: expediente <protocol dll> <index.json> <anchors.tsv> <message|--todos|--medidos> [folder] [--ciego]");
         return 1;
     }
 
@@ -792,7 +792,7 @@ static int Expediente(string[] args)
             Dossier.Build(mensaje.Name, modelo, indice.GetValueOrDefault(mensaje.Name),
                           Vistas(mensaje.Name), padres, version));
     }
-    Console.WriteLine($"  {cuales.Count:N0} expedientes en {carpeta}{(ciego ? "   (a ciegas)" : "")}");
+    Console.WriteLine($"  {cuales.Count:N0} dossiers in {carpeta}{(ciego ? "   (blind)" : "")}");
     return 0;
 }
 
@@ -807,7 +807,7 @@ static int Evaluar(string[] args)
 {
     if (args.Length < 3)
     {
-        Console.WriteLine("Uso: evaluar <anclas.tsv> <propuestas.tsv>");
+        Console.WriteLine("Usage: evaluar <anchors.tsv> <proposals.tsv>");
         return 1;
     }
 
@@ -830,39 +830,39 @@ static int Evaluar(string[] args)
         if (!anclas.TryGetValue(celdas[0], out var verdad) || verdad.Name.Length == 0) { sinMedir++; continue; }
 
         bool acierta = Naming.Same(celdas[1], verdad.Name);
-        string confianza = celdas.Length > 2 ? celdas[2] : "(sin decir)";
+        string confianza = celdas.Length > 2 ? celdas[2] : "(not said)";
         var cuenta = porConfianza.GetValueOrDefault(confianza);
         porConfianza[confianza] = acierta ? (cuenta.Bien + 1, cuenta.Mal) : (cuenta.Bien, cuenta.Mal + 1);
 
         if (acierta) bien++;
-        else { mal++; fallos.Add($"    {celdas[0]}  dijo {celdas[1],-40} era {verdad.Name}   [{confianza}]"); }
+        else { mal++; fallos.Add($"    {celdas[0]}  said {celdas[1],-40} was {verdad.Name}   [{confianza}]"); }
     }
 
     int total = bien + mal;
     int preguntadas = total + calladas + sinMedir;
-    Console.WriteLine($"  {preguntadas:N0} filas: {total:N0} contrastables, {calladas:N0} sin nombre, " +
-                      $"{sinMedir:N0} sin nada con que compararlas");
-    Console.WriteLine($"  acierto: {bien:N0} de {total:N0} ({(total == 0 ? 0 : 100.0 * bien / total):0.0} %)");
+    Console.WriteLine($"  {preguntadas:N0} rows: {total:N0} checkable, {calladas:N0} without a name, " +
+                      $"{sinMedir:N0} with nothing to compare them against");
+    Console.WriteLine($"  right: {bien:N0} of {total:N0} ({(total == 0 ? 0 : 100.0 * bien / total):0.0} %)");
     if (calladas > 0)
     {
-        Console.WriteLine($"  sobre todo lo preguntado: {bien:N0} de {total + calladas:N0} " +
+        Console.WriteLine($"  over everything asked: {bien:N0} of {total + calladas:N0} " +
                           $"({100.0 * bien / (total + calladas):0.0} %)");
     }
     Console.WriteLine();
-    Console.WriteLine("  por confianza declarada:");
+    Console.WriteLine("  by declared confidence:");
     foreach (var (confianza, cuenta) in porConfianza.OrderByDescending(p => p.Value.Bien + p.Value.Mal))
     {
         int suyas = cuenta.Bien + cuenta.Mal;
-        Console.WriteLine($"    {confianza,-12} {cuenta.Bien,4} de {suyas,4}   " +
+        Console.WriteLine($"    {confianza,-12} {cuenta.Bien,4} of {suyas,4}   " +
                           $"({100.0 * cuenta.Bien / suyas:0.0} %)");
     }
 
     if (fallos.Count > 0)
     {
         Console.WriteLine();
-        Console.WriteLine("  los que falla:");
+        Console.WriteLine("  the ones it gets wrong:");
         foreach (string f in fallos.Take(40)) Console.WriteLine(f);
-        if (fallos.Count > 40) Console.WriteLine($"    ...y {fallos.Count - 40} más");
+        if (fallos.Count > 40) Console.WriteLine($"    ...and {fallos.Count - 40} more");
     }
     return 0;
 }
@@ -879,7 +879,7 @@ static async Task<int> Preguntar(string[] args)
 {
     if (args.Length < 4)
     {
-        Console.WriteLine("Uso: preguntar <dll del protocolo> <indice.json> <anclas.tsv> [salida.tsv] [--evaluar] [--limite N]");
+        Console.WriteLine("Usage: preguntar <protocol dll> <index.json> <anchors.tsv> [output.tsv] [--evaluar] [--limite N]");
         return 1;
     }
 
@@ -922,12 +922,12 @@ static async Task<int> Preguntar(string[] args)
 
     Console.WriteLine($"  {cola.Count:N0} preguntas, modelo {llm.Model}" + (evaluando ? "   (evaluando)" : ""));
     int guardadas = llm.Cached(cola.Select(m => (Expedientar(m), Instrucciones(m))));
-    Console.WriteLine($"  {guardadas:N0} ya contestadas de antes, en {cache}");
+    Console.WriteLine($"  {guardadas:N0} already answered before, in {cache}");
 
     if (!llm.Ready && guardadas < cola.Count)
     {
-        Console.WriteLine("  No hay clave. Define JONDO_LLM_KEY o ANTHROPIC_API_KEY, o usa «expediente --todos»");
-        Console.WriteLine("  para volcarlos y contestarlos por otro camino.");
+        Console.WriteLine("  There is no key. Set JONDO_LLM_KEY or ANTHROPIC_API_KEY, or use «expediente --todos»");
+        Console.WriteLine("  to dump them and answer them some other way.");
         return 2;
     }
 
@@ -950,8 +950,8 @@ static async Task<int> Preguntar(string[] args)
         {
             bool bien = Naming.Same(propuesta.Name, verdad.Name);
             if (bien) aciertos++; else fallos++;
-            Console.WriteLine($"  {(bien ? "si" : "NO")}  {mensaje}  {propuesta.Name,-42} " +
-                              $"{(bien ? "" : "esperado " + verdad.Name)}   [{propuesta.Confidence}]");
+            Console.WriteLine($"  {(bien ? "yes" : "NO")}  {mensaje}  {propuesta.Name,-42} " +
+                              $"{(bien ? "" : "expected " + verdad.Name)}   [{propuesta.Confidence}]");
         }
     }
 
@@ -962,20 +962,20 @@ static async Task<int> Preguntar(string[] args)
     if (filas.Count == 0)
     {
         Console.WriteLine();
-        Console.WriteLine($"  ni una fila: se deja {salida} como estaba");
+        Console.WriteLine($"  not a single row: {salida} is left as it was");
         return 3;
     }
 
-    File.WriteAllLines(salida, filas.Prepend("# mensaje\tnombre\tconfianza\ten qué se basa"));
+    File.WriteAllLines(salida, filas.Prepend("# message\tname\tconfidence\twhat it is based on"));
     Console.WriteLine();
-    Console.WriteLine($"  {hechas:N0} contestadas, {mudas:N0} sin nombre, {filas.Count:N0} en la tabla");
+    Console.WriteLine($"  {hechas:N0} answered, {mudas:N0} without a name, {filas.Count:N0} in the table");
     if (evaluando)
     {
         int total = aciertos + fallos;
-        Console.WriteLine($"  acierto: {aciertos:N0} de {total:N0} " +
+        Console.WriteLine($"  right: {aciertos:N0} of {total:N0} " +
                           $"({(total == 0 ? 0 : 100.0 * aciertos / total):0.0} %)");
     }
-    Console.WriteLine($"  escrito en {salida}");
+    Console.WriteLine($"  written to {salida}");
     return 0;
 }
 
@@ -1003,14 +1003,14 @@ static int Volcar(string[] args)
 {
     if (args.Length < 2)
     {
-        Console.WriteLine("Falta la ruta del global-metadata.dat.");
+        Console.WriteLine("The path to global-metadata.dat is missing.");
         return 1;
     }
 
     string metadata = args[1];
     if (!File.Exists(metadata))
     {
-        Console.WriteLine($"No está el fichero: {metadata}");
+        Console.WriteLine($"The file is not there: {metadata}");
         return 1;
     }
 
@@ -1018,12 +1018,12 @@ static int Volcar(string[] args)
         ? args[2]
         : Path.Combine(Directory.GetCurrentDirectory(), "protocolo.desc");
 
-    Console.WriteLine($"Leyendo {new FileInfo(metadata).Length / (1024 * 1024)} MB de metadatos...");
+    Console.WriteLine($"Reading {new FileInfo(metadata).Length / (1024 * 1024)} MB of metadata...");
     var blobs = DescriptorExtractor.FindIn(metadata);
     if (blobs.Count == 0)
     {
-        Console.WriteLine("  No hay ningún descriptor. O el cliente los guarda de otra forma, o");
-        Console.WriteLine("  van partidos de una manera que esto no reconstruye.");
+        Console.WriteLine("  There is no descriptor at all. Either the client stores them some other way, or");
+        Console.WriteLine("  they are split in a way this does not rebuild.");
         return 2;
     }
 
@@ -1038,9 +1038,9 @@ static int Volcar(string[] args)
     }
 
     Console.WriteLine();
-    Console.WriteLine($"  {blobs.Count} ficheros .proto");
-    Console.WriteLine($"  {mensajes:N0} mensajes, {campos:N0} campos, {enums:N0} enumerados");
-    Console.WriteLine($"  escrito en {salida}");
+    Console.WriteLine($"  {blobs.Count} .proto files");
+    Console.WriteLine($"  {mensajes:N0} messages, {campos:N0} fields, {enums:N0} enums");
+    Console.WriteLine($"  written to {salida}");
     Console.WriteLine();
 
     foreach (var blob in blobs.OrderByDescending(b => b.File.MessageType.Count).Take(12))
@@ -1049,7 +1049,7 @@ static int Volcar(string[] args)
         foreach (var m in blob.File.MessageType) Contar(m, ref propios, ref suyos);
         Console.WriteLine($"    {blob.File.Name,-52} {propios,5} mensajes   {blob.Length,7:N0} bytes");
     }
-    if (blobs.Count > 12) Console.WriteLine($"    ... y {blobs.Count - 12} más");
+    if (blobs.Count > 12) Console.WriteLine($"    ... and {blobs.Count - 12} more");
 
     return 0;
 }
@@ -1079,8 +1079,8 @@ static void Crudo(string clientFolder)
 
         long desde = 21607975 - datos.Offset, hasta = 23382050 - datos.Offset;
         int dentro = entradas.Count(e => e.Data >= desde && e.Data <= hasta);
-        Console.WriteLine("   CRUDO " + tabla + ": indices que APUNTAN al bloque de nombres = " + dentro);
-        Console.WriteLine("   CRUDO " + tabla + ": rango de indices " + entradas.Min(e => e.Data) + " .. " + entradas.Max(e => e.Data) + "  (bloque en " + desde + ".." + hasta + ")");
+        Console.WriteLine("   RAW " + tabla + ": indices that POINT INTO the names block = " + dentro);
+        Console.WriteLine("   RAW " + tabla + ": range of indices " + entradas.Min(e => e.Data) + " .. " + entradas.Max(e => e.Data) + "  (block at " + desde + ".." + hasta + ")");
         // The definitive cross-check: each position where a real name starts, against each index of the
         // table. Without decoding strings or assuming formats: only numbers.
         var posiciones = new Dictionary<long, long>();
@@ -1094,8 +1094,8 @@ static void Crudo(string clientFolder)
         }
 
         var tocan = entradas.Where(e => posiciones.ContainsKey(e.Data)).ToList();
-        Console.WriteLine("   CRUCE " + tabla + ": " + cuantos + " nombres en el fichero, " +
-                          tocan.Count + " entradas apuntan a uno");
+        Console.WriteLine("   CROSS " + tabla + ": " + cuantos + " names in the file, " +
+                          tocan.Count + " entries point to one");
 
         foreach (var e in tocan.Take(6))
         {
@@ -1103,13 +1103,13 @@ static void Crudo(string clientFolder)
             string texto = Raw.Name(file, donde, 0);
             string nom = tabla.StartsWith("field", StringComparison.Ordinal)
                 ? Raw.Name(file, cadenas.Offset, Raw.FieldNameIndex(file, campos.Offset, e.Owner)) : "(par)";
-            Console.WriteLine("     campo «" + nom + "» -> " + texto[..Math.Min(90, texto.Length)]);
+            Console.WriteLine("     field «" + nom + "» -> " + texto[..Math.Min(90, texto.Length)]);
         }
         int aciertos = 0, muestra = 0, sueltas = 0;
         foreach (var entrada in entradas)
         {
             string? texto = Raw.Text(file, datos.Offset + entrada.Data);
-            if (texto != null && sueltas < 5 && texto.Length > 3) { Console.WriteLine("   CRUDO ejemplo(" + tabla + "): " + texto.Substring(0, Math.Min(70, texto.Length))); sueltas++; }
+            if (texto != null && sueltas < 5 && texto.Length > 3) { Console.WriteLine("   RAW example(" + tabla + "): " + texto.Substring(0, Math.Min(70, texto.Length))); sueltas++; }
             if (texto == null || !texto.StartsWith("Com.Ankama", StringComparison.Ordinal)) continue;
 
             aciertos++;
@@ -1117,11 +1117,11 @@ static void Crudo(string clientFolder)
             {
                 string nombre = tabla.StartsWith("field", StringComparison.Ordinal)
                     ? Raw.Name(file, cadenas.Offset, Raw.FieldNameIndex(file, campos.Offset, entrada.Owner))
-                    : "(parámetro " + entrada.Owner + ")";
-                Console.WriteLine("   CRUDO " + tabla + ": campo «" + nombre + "» -> " + texto);
+                    : "(parameter " + entrada.Owner + ")";
+                Console.WriteLine("   RAW " + tabla + ": field «" + nombre + "» -> " + texto);
             }
         }
-        Console.WriteLine("   CRUDO " + tabla + ": " + entradas.Count.ToString("N0") + " entradas, " +
-                          aciertos.ToString("N0") + " con nombre real");
+        Console.WriteLine("   RAW " + tabla + ": " + entradas.Count.ToString("N0") + " entries, " +
+                          aciertos.ToString("N0") + " with a real name");
     }
 }

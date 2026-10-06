@@ -38,8 +38,8 @@ namespace Jondo.Unity.Server.Handlers
             var pair = SpellTable.PairOf(wanted);
             if (pair == null)
             {
-                Console.WriteLine($"[Hechizos] El cliente pide el hechizo {wanted}, que no hace " +
-                                  "pareja con ninguno. No se cambia nada.");
+                Console.WriteLine($"[Spells] The client asks for spell {wanted}, which pairs " +
+                                  "with none. Nothing changes.");
                 return;
             }
 
@@ -47,8 +47,8 @@ namespace Jondo.Unity.Server.Handlers
             int grade = SpellTable.GradeFor(wanted, level);
             if (grade == 0)
             {
-                Console.WriteLine($"[Hechizos] {wanted} pide más nivel del que tiene el personaje " +
-                                  $"({level}). No se cambia nada.");
+                Console.WriteLine($"[Spells] {wanted} needs more level than the character has " +
+                                  $"({level}). Nothing changes.");
                 return;
             }
 
@@ -69,8 +69,8 @@ namespace Jondo.Unity.Server.Handlers
 
             await FightHandler.RefreshPlayerSpellBarAsync(stream);
 
-            Console.WriteLine($"[Hechizos] Pareja {pair.Id}: {leaving} -> {wanted} (grado {grade}), " +
-                              $"{slots.Count} hueco(s) de la barra actualizados.");
+            Console.WriteLine($"[Spells] Pair {pair.Id}: {leaving} -> {wanted} (grade {grade}), " +
+                              $"{slots.Count} bar slot(s) updated.");
         }
     }
 }

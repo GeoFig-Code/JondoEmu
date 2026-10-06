@@ -53,7 +53,7 @@ namespace Jondo.Unity.Launcher.UI.Widgets
         /// <summary>The start-up: until which second each stretch lasts, and with how much light.</summary>
         private static readonly (double Hasta, double Luz)[] Arranque =
         {
-            (0.12, 0.00),   // un instante a oscuras antes de nada
+            (0.12, 0.00),   // an instant in the dark before anything
             (0.20, 1.00),   // the first flash
             (0.32, 0.04),
             (0.38, 0.85),

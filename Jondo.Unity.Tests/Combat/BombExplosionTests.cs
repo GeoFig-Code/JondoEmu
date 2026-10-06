@@ -90,7 +90,7 @@ namespace Jondo.Unity.Tests.Combat
                 Assert.DoesNotContain(efectos, e => e.EffectId == EffectEngine.ActivarBomba);
                 Assert.True(efectos.Any(e => e.EffectId is DanoAgua or DanoTierra
                                                         or DanoAire or DanoFuego),
-                            $"la explosión {explosion} de la plantilla {template} no hace daño");
+                            $"explosion {explosion} of template {template} deals no damage");
             }
         }
 
@@ -136,7 +136,7 @@ namespace Jondo.Unity.Tests.Combat
             // cast animation from the bomb. Through the root path the hit would be
             // applied all the same but nobody would see anything explode.
             Assert.All(salida.Where(o => o.Efecto.EffectId == DanoFuego),
-                       o => Assert.True(o.NestedDamage, "el daño de la explosión no es anidado"));
+                       o => Assert.True(o.NestedDamage, "the explosion's damage is not nested"));
             Assert.All(salida.Where(o => o.Efecto.EffectId == DanoFuego),
                        o => Assert.Equal(2, o.DamageElement));
         }
@@ -164,7 +164,7 @@ namespace Jondo.Unity.Tests.Combat
             foreach (var bomba in new[] { primera, segunda })
             {
                 int veces = salida.Count(o => o.Fulmina && o.Sobre == bomba);
-                Assert.True(veces <= 1, $"la bomba {bomba.Id} se ha matado {veces} veces");
+                Assert.True(veces <= 1, $"bomb {bomba.Id} was killed {veces} times");
             }
         }
 

@@ -148,8 +148,8 @@ namespace Jondo.Unity.Server.Network
             {
                 if (req.ContentLength64 > TopeDelCuerpo)
                 {
-                    Console.WriteLine($"[HAAPI] Cuerpo de {req.ContentLength64} bytes desde {clientIp}: " +
-                                      $"pasa del tope de {TopeDelCuerpo}. 413.");
+                    Console.WriteLine($"[HAAPI] Body of {req.ContentLength64} bytes from {clientIp}: " +
+                                      $"over the cap of {TopeDelCuerpo}. 413.");
                     resp.StatusCode = 413;
                     resp.Close();
                     return;
@@ -462,8 +462,8 @@ namespace Jondo.Unity.Server.Network
             }
             else
             {
-                Console.WriteLine("[HAAPI] SelectServer sin cuenta identificada: el token que se " +
-                                  "devuelve no queda registrado y la conexion sera rechazada.");
+                Console.WriteLine("[HAAPI] SelectServer without an identified account: the token " +
+                                  "returned is not registered and the connection will be rejected.");
             }
 
             return System.Text.Json.JsonSerializer.Serialize(new

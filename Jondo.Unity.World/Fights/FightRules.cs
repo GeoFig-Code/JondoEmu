@@ -83,7 +83,7 @@
         /// <summary>Fighting monsters, which is where the whole engine came from.</summary>
         public static readonly FightRules ContraMonstruos = new Monstruos();
 
-        /// <summary>Un desafío entre dos jugadores.</summary>
+        /// <summary>A challenge between two players.</summary>
         public static readonly FightRules Desafio = new Reto();
 
         /// <summary>The koliseo: PvP, but with a placement clock like a normal fight.</summary>
@@ -106,7 +106,7 @@
             public override bool BorraElGrupoAlGanar => true;
             public override bool AvanzaDeSala => true;
             public override bool DefeatCosts => true;
-            public override string Nombre => "contra monstruos";
+            public override string Nombre => "against monsters";
         }
 
         private sealed class Reto : FightRules
@@ -132,7 +132,7 @@
             public override bool BorraElGrupoAlGanar => false;
             public override bool AvanzaDeSala => false;
             public override bool DefeatCosts => false;
-            public override string Nombre => "desafío";
+            public override string Nombre => "challenge";
         }
 
         /// <summary>
@@ -153,7 +153,7 @@
             public override bool BorraElGrupoAlGanar => false;
             public override bool AvanzaDeSala => false;
             public override bool DefeatCosts => false;
-            public override string Nombre => "entrenamiento";
+            public override string Nombre => "training";
         }
 
         private sealed class Arena : FightRules

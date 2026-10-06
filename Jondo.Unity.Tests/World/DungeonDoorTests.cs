@@ -10,8 +10,8 @@ namespace Jondo.Unity.Tests.World
     /// A player stood at the Granero del Girasol Hambriento (dungeon 8, entrance 192937992, needs
     /// item 8143 or the keyring 10207), answered the guardian, and nothing happened. The server had
     /// worked it out correctly and written the answer to its own console --
-    /// "[Mazmorra] Granero del Girasol Hambriento: falta la llave (8143 x1, o el manojo 10207) y no
-    /// hay manojo" -- and sent the client nothing at all. Silence is not a refusal: from the
+    /// "[Dungeon] Granero del Girasol Hambriento: the key is missing (8143 x1, or the keyring 10207)
+    /// and there is no keyring" -- and sent the client nothing at all. Silence is not a refusal: from the
     /// player's chair it is indistinguishable from the feature not existing.
     ///
     /// These tests pin the two sentences by their TEXT rather than by their number, because the

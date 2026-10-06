@@ -48,7 +48,7 @@ namespace Jondo.Unity.Server.Handlers
             long sourceMapId = SessionContext.State.MapId;
             if (!TeleportManager.TryGet(sourceMapId, elementId, out var route))
             {
-                Console.WriteLine($"[Teleport] Ruta desconocida: mapa {sourceMapId}, elemento {elementId}.");
+                Console.WriteLine($"[Teleport] Unknown route: map {sourceMapId}, element {elementId}.");
                 return;
             }
 
@@ -71,8 +71,8 @@ namespace Jondo.Unity.Server.Handlers
 
             int landed = await ToMapAsync(stream, route.DestinationMapId, route.DestinationCellId);
             if (landed >= 0)
-                Console.WriteLine($"[Teleport] Elemento {elementId}: {sourceMapId} -> " +
-                                  $"{route.DestinationMapId}, casilla {landed}.");
+                Console.WriteLine($"[Teleport] Element {elementId}: {sourceMapId} -> " +
+                                  $"{route.DestinationMapId}, cell {landed}.");
         }
 
         /// <summary>
@@ -93,7 +93,7 @@ namespace Jondo.Unity.Server.Handlers
             // zaap and the map change by the edge do.
             if (MapManager.GetMapInfo(mapId) == null)
             {
-                Console.WriteLine($"[Teleport] El mapa {mapId} no está en los datos del mundo. No se va.");
+                Console.WriteLine($"[Teleport] Map {mapId} is not in the world data. Not going.");
                 return -1;
             }
 
@@ -115,8 +115,8 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.BuildMapDiscovered(mapId));
 
-            Console.WriteLine($"[Teleport] Al mapa {mapId}, casilla {SessionContext.State.CellId}. " +
-                              "Esperando el jrh.");
+            Console.WriteLine($"[Teleport] To map {mapId}, cell {SessionContext.State.CellId}. " +
+                              "Waiting for the jrh.");
             return SessionContext.State.CellId;
         }
     }

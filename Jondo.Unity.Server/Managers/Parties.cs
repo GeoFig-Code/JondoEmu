@@ -114,7 +114,7 @@ namespace Jondo.Unity.Server.Managers
             return true;
         }
 
-        /// <summary>Acepta: pasa de invitado a miembro.</summary>
+        /// <summary>Accepts: goes from guest to member.</summary>
         public static bool Accept(Party party, long guestId)
         {
             lock (party.Gate)

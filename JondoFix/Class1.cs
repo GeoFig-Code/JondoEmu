@@ -173,7 +173,7 @@ namespace JondoFix
             if (!Huella.TryGetValue(SinTildes(textoDelCliente), out string idioma)) return;
 
             _detectado = idioma;
-            MelonLogger.Msg($"[JondoFix] El cliente esta en «{_detectado}».");
+            MelonLogger.Msg($"[JondoFix] The client is in «{_detectado}».");
         }
 
         /// <summary>Removes the accents, so as not to depend on how the text comes written.</summary>
@@ -394,8 +394,8 @@ namespace JondoFix
                 string path = DataFile(@"datos\vendedores_jondo.json");
                 if (!File.Exists(path))
                 {
-                    LoggerInstance.Msg($"[JondoFix] No hay {Path.GetFileName(path)}; los vendedores " +
-                                       "conservan el nombre de Ankama.");
+                    LoggerInstance.Msg($"[JondoFix] There is no {Path.GetFileName(path)}; the vendors " +
+                                       "keep Ankama's name.");
                     return;
                 }
 
@@ -411,12 +411,12 @@ namespace JondoFix
                     puestos++;
                 }
 
-                LoggerInstance.Msg($"[JondoFix] {puestos} vendedor(es) renombrados.");
+                LoggerInstance.Msg($"[JondoFix] {puestos} vendor(s) renamed.");
             }
             catch (Exception ex)
             {
-                LoggerInstance.Warning($"[JondoFix] No se pudieron leer los nombres de los " +
-                                       $"vendedores: {ex.Message}");
+                LoggerInstance.Warning($"[JondoFix] Could not read the vendors' " +
+                                       $"names: {ex.Message}");
             }
         }
 
@@ -562,18 +562,18 @@ namespace JondoFix
                     var metodo = AccessTools.Method(typeof(ItemData), nombre);
                     if (metodo == null) continue;
                     harmony.Patch(metodo, postfix: postfix);
-                    LoggerInstance.Msg($"[JondoFix] {nombre} parcheado: el mercadillo encontrara " +
-                                       "los objetos renombrados.");
+                    LoggerInstance.Msg($"[JondoFix] {nombre} patched: the marketplace will find " +
+                                       "the renamed items.");
                     return;
                 }
 
-                LoggerInstance.Warning("[JondoFix] ItemData no tiene nombre sin tildes con ninguno " +
-                                       "de los dos nombres conocidos; buscar la Jondo Coin en el " +
-                                       "mercadillo por su nombre nuevo no funcionara.");
+                LoggerInstance.Warning("[JondoFix] ItemData has no accent-free name under either " +
+                                       "of the two known names; searching the marketplace for the Jondo Coin " +
+                                       "by its new name will not work.");
             }
             catch (Exception ex)
             {
-                LoggerInstance.Warning($"[JondoFix] No se pudo parchear el nombre sin tildes: {ex.Message}");
+                LoggerInstance.Warning($"[JondoFix] Could not patch the accent-free name: {ex.Message}");
             }
         }
 
@@ -598,8 +598,8 @@ namespace JondoFix
 
                 if (npcData == null)
                 {
-                    LoggerInstance.Msg("[JondoFix] No se ha encontrado NpcData; los nombres de los " +
-                                       "vendedores van solo por el accessor de textos.");
+                    LoggerInstance.Msg("[JondoFix] NpcData was not found; the vendors' names " +
+                                       "only go through the texts accessor.");
                     return;
                 }
 
@@ -607,8 +607,8 @@ namespace JondoFix
                     System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
                 if (getter == null)
                 {
-                    LoggerInstance.Msg("[JondoFix] NpcData no tiene get_name; los nombres van solo " +
-                                       "por el accessor de textos.");
+                    LoggerInstance.Msg("[JondoFix] NpcData has no get_name; the names only go " +
+                                       "through the texts accessor.");
                     return;
                 }
 
@@ -616,11 +616,11 @@ namespace JondoFix
                     .GetMethod("Postfix", System.Reflection.BindingFlags.Public
                                         | System.Reflection.BindingFlags.Static));
                 new HarmonyLib.Harmony("com.jondo.fix.npcname").Patch(getter, postfix: postfix);
-                LoggerInstance.Msg("[JondoFix] NpcData.get_name parcheado.");
+                LoggerInstance.Msg("[JondoFix] NpcData.get_name patched.");
             }
             catch (Exception ex)
             {
-                LoggerInstance.Warning($"[JondoFix] No se pudo parchear el nombre de los NPC: {ex.Message}");
+                LoggerInstance.Warning($"[JondoFix] Could not patch the NPCs' name: {ex.Message}");
             }
         }
 

@@ -98,9 +98,9 @@ namespace Jondo.Unity.Server.Managers
             EnsureLoaded();
             if (!first) return;
 
-            Console.WriteLine($"[Koliseo] {_arenas.Count} arenas: {CountFor(1)} para uno contra uno, " +
-                              $"{CountFor(2)} para dos contra dos, {CountFor(3)} para tres contra tres " +
-                              $"({_sinNombre} sin nombre, fuera).");
+            Console.WriteLine($"[Koliseo] {_arenas.Count} arenas: {CountFor(1)} for one against one, " +
+                              $"{CountFor(2)} for two against two, {CountFor(3)} for three against three " +
+                              $"({_sinNombre} nameless, left out).");
         }
 
         private static void EnsureLoaded()
@@ -122,8 +122,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.KoliseoMapsJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Koliseo] Falta {Path.GetFileName(path)}: los combates irán al " +
-                                  "arena de siempre.");
+                Console.WriteLine($"[Koliseo] {Path.GetFileName(path)} is missing: the fights will go to the " +
+                                  "usual arena.");
                 _loaded = true;
                 return;
             }
@@ -158,7 +158,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Koliseo] No se pudo leer {Path.GetFileName(path)}: {ex.Message}");
+                Console.WriteLine($"[Koliseo] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
             finally
             {

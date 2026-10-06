@@ -40,7 +40,7 @@ namespace Jondo.Unity.Tests.Launcher
 
                 var suyo = paleta.GetField(campo.Name, BindingFlags.Public | BindingFlags.Static);
                 Assert.True(suyo != null,
-                    $"{campo.Name} está en el tema de Windows Forms y no en la paleta: es un color suelto.");
+                    $"{campo.Name} is in the Windows Forms theme and not in the palette: it is a loose colour.");
 
                 var pintado = (System.Drawing.Color)campo.GetValue(null)!;
                 uint esperado = (uint)suyo!.GetValue(null)!;

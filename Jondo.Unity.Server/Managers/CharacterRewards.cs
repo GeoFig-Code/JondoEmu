@@ -90,7 +90,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Recompensas] El personaje no se ha podido guardar: {ex.Message}");
+                Console.WriteLine($"[Rewards] The character could not be saved: {ex.Message}");
             }
         }
 

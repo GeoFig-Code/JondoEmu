@@ -42,7 +42,7 @@ namespace Jondo.Unity.Server.Handlers
             var prize = Lottery.Draw(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
             if (prize == null)
             {
-                Console.WriteLine("[Lotería] La tirada no ha dado nada.");
+                Console.WriteLine("[Lottery] The draw gave nothing.");
                 ActivityJournal.Current.Write("lottery.empty",
                     Jondo.Unity.Server.Network.SessionContext.Current.AccountId,
                     Jondo.Unity.Server.Network.SessionContext.State.CharacterId,

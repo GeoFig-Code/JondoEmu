@@ -37,7 +37,7 @@ namespace Jondo.Unity.Tests.Combat
             foreach (int efecto in esperados)
             {
                 Assert.True(EffectEngine.EsDeLaFamiliaDeSublanzar(efecto),
-                            $"el efecto {efecto} debería estar en la familia");
+                            $"effect {efecto} should be in the family");
             }
 
             // And that nothing that is not one sneaks in: 141 kills, it does not chain.

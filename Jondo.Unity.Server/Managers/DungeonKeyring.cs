@@ -84,7 +84,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Mazmorra] No se ha podido leer el manojo: {ex.Message}");
+                Console.WriteLine($"[Dungeon] Could not read the keyring: {ex.Message}");
                 return true;
             }
         }
@@ -110,7 +110,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Mazmorra] No se ha podido apuntar el manojo: {ex.Message}");
+                Console.WriteLine($"[Dungeon] Could not note down the keyring: {ex.Message}");
             }
         }
 

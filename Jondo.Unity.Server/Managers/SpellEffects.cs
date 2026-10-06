@@ -227,8 +227,8 @@ namespace Jondo.Unity.Server.Managers
                 }
                 catch (Exception ex)
                 {
-                    Program.LogDebug($"[Efectos] No se pudieron leer los del hechizo {hechizo} " +
-                                     $"grado {grado}: {ex.Message}");
+                    Program.LogDebug($"[Effects] Could not read the ones of spell {hechizo} " +
+                                     $"grade {grado}: {ex.Message}");
                 }
 
                 _cache[clave] = normales;
@@ -308,7 +308,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[Efectos] JSON de efectos ilegible: {ex.Message}");
+                Program.LogDebug($"[Effects] Unreadable effects JSON: {ex.Message}");
             }
         }
 
@@ -343,7 +343,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[Efectos] No se pudo mirar el grado del hechizo {hechizo}: {ex.Message}");
+                Program.LogDebug($"[Effects] Could not look up the grade of spell {hechizo}: {ex.Message}");
             }
             return (1, 0, 0);
         }
@@ -387,7 +387,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[Efectos] No se pudieron mirar las actitudes del equipo: {ex.Message}");
+                Program.LogDebug($"[Effects] Could not look up the team attitudes: {ex.Message}");
             }
             return fuera;
         }

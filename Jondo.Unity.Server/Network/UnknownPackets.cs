@@ -71,7 +71,7 @@ namespace Jondo.Unity.Server.Network
         private static readonly object _candadoDeLaBase = new object();
         private static bool _basePreparada;
 
-        /// <summary>Cuántas formas distintas hay apuntadas.</summary>
+        /// <summary>How many distinct shapes are noted down.</summary>
         public static int ShapeCount => _rows.Count;
 
         /// <summary>And how many distinct opcodes, which are always fewer.</summary>
@@ -254,7 +254,7 @@ namespace Jondo.Unity.Server.Network
                 }
                 catch (Exception ex)
                 {
-                    Program.LogDebug($"[Paquetes] No se pudo apuntar {fila.Opcode}: {ex.Message}");
+                    Program.LogDebug($"[Packets] Could not note down {fila.Opcode}: {ex.Message}");
                 }
             }
         }
@@ -302,9 +302,9 @@ namespace Jondo.Unity.Server.Network
         public static string Resumen()
         {
             var counts = Counts();
-            return $"{ShapeCount} forma(s) de {OpcodeCount} opcode(s): " +
-                   $"{counts.Unhandled} sin atender, {counts.Silenced} silenciada(s), " +
-                   $"{counts.Undecodable} ilegible(s)";
+            return $"{ShapeCount} shape(s) of {OpcodeCount} opcode(s): " +
+                   $"{counts.Unhandled} unhandled, {counts.Silenced} silenced, " +
+                   $"{counts.Undecodable} unreadable";
         }
 
         /// <summary>Counts by reason, kept separate from the Spanish diagnostic summary.</summary>
@@ -343,7 +343,7 @@ namespace Jondo.Unity.Server.Network
                     "DELETE FROM PaquetesSinAtender WHERE Opcode = '' OR Opcode = '(sin opcode)';";
                 int viejas = limpiar.ExecuteNonQuery();
                 if (viejas > 0)
-                    Console.WriteLine($"[Paquetes] {viejas} fila(s) sin opcode del sobre mal abierto, borradas.");
+                    Console.WriteLine($"[Packets] {viejas} row(s) without an opcode from the badly opened envelope, deleted.");
 
                 var leer = connection.CreateCommand();
                 leer.CommandText = @"
@@ -371,12 +371,12 @@ namespace Jondo.Unity.Server.Network
                 }
 
                 Console.WriteLine(_rows.Count == 0
-                    ? "[Paquetes] Ninguno sin atender apuntado todavía."
-                    : $"[Paquetes] {Resumen()}");
+                    ? "[Packets] No unhandled one noted down yet."
+                    : $"[Packets] {Resumen()}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Paquetes] No se pudo leer lo apuntado: {ex.Message}");
+                Console.WriteLine($"[Packets] Could not read what was noted down: {ex.Message}");
             }
         }
     }

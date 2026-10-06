@@ -628,7 +628,7 @@ namespace Jondo.Unity.Server.Network
                                       SessionContext.State.MapId, linea, SessionContext.Current.Id)
                                 : 0;
                             Console.WriteLine($"[Chat] channel {channel}: {text}" +
-                                              (oidos > 0 ? $"   (oído por {oidos} más)" : ""));
+                                              (oidos > 0 ? $"   (heard by {oidos} more)" : ""));
                         }
                     }
                 }
@@ -673,7 +673,7 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jjg)))
                 {
-                    // Crear un gremio.
+                    // Creating a guild.
                     await Handlers.GuildHandler.CreateAsync(stream, payload);
                 }
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jho)))
@@ -1050,7 +1050,7 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Lyf)))
                 {
-                    // Poner o quitar en un hueco concreto.
+                    // Putting on or taking off at a specific slot.
                     await AppearanceHandler.AssignAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Lxg)))
@@ -1070,7 +1070,7 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Lwm)))
                 {
-                    // Elegir ornamento.
+                    // Choosing an ornament.
                     await WardrobeHandler.ChooseOrnamentAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Lxs)))
@@ -1080,7 +1080,7 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Iuw)))
                 {
-                    // Destruir un objeto del inventario.
+                    // Destroying an inventory item.
                     await DestroyItemHandler.DestroyAsync(stream, payload);
                 }
                 else if (payloadStr.Contains("type.ankama.com/kla"))
@@ -1155,7 +1155,7 @@ namespace Jondo.Unity.Server.Network
                     // The lqc has usually sent it already, so this does nothing; it stays here because
                     // not everything that connects sends lqc —the test client, for one—
                     // and without a map there is no world.
-                    if (await SendMapBlockOnceAsync(stream, hasSentMapBlock, "primer kqo"))
+                    if (await SendMapBlockOnceAsync(stream, hasSentMapBlock, "first kqo"))
                     {
                         hasSentMapBlock = true;
                     }
@@ -1570,7 +1570,7 @@ namespace Jondo.Unity.Server.Network
             // The character and the map go in the trace on purpose: when two clients enter at
             // once, it is the first thing to look at to know whether they have crossed.
             Console.WriteLine($"[Game Node] Sending the map block ({reason}): " +
-                              $"{GameState.CharacterName} en el mapa {GameState.MapId}.");
+                              $"{GameState.CharacterName} on map {GameState.MapId}.");
             await WorldEntry.SendMapAsync(stream, character, GameState.MapId,
                                           GameState.IsInFight ? FightHandler.FightOf(GameState.CharacterId) : null);
 
@@ -1608,13 +1608,13 @@ namespace Jondo.Unity.Server.Network
             {
                 if (value <= 0 || value > int.MaxValue) continue;
                 var pair = Managers.SpellTable.PairOf((int)value);
-                if (pair != null) found.Add($"{value} (pareja {pair.Id}: {pair.Base}/{pair.Variant})");
+                if (pair != null) found.Add($"{value} (pair {pair.Id}: {pair.Base}/{pair.Variant})");
             }
 
             if (found.Count == 0) return;
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"  ⇒ lleva hechizos de pareja: {string.Join(", ", found)}");
-            Console.WriteLine("     si esto ha salido al cambiar una variante, este es el mensaje que la cambia.");
+            Console.WriteLine($"  ⇒ carries pair spells: {string.Join(", ", found)}");
+            Console.WriteLine("     if this came out when changing a variant, this is the message that changes it.");
             Console.ResetColor();
         }
 
@@ -1679,7 +1679,7 @@ namespace Jondo.Unity.Server.Network
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Game Node] No se pudo leer el itz: {ex.Message}");
+                Console.WriteLine($"[Game Node] Could not read the itz: {ex.Message}");
             }
         }
 
@@ -1743,13 +1743,13 @@ namespace Jondo.Unity.Server.Network
             if (accountId > 0)
             {
                 ClientLaunchRegistry.RegisterToken(accountId, sessionId);
-                Console.WriteLine($"[Game Node] Vuelta atrás de la cuenta {accountId}: se le da el " +
-                                  "id de sesión y queda reconocido para cuando vuelva a conectar.");
+                Console.WriteLine($"[Game Node] Going back for account {accountId}: it is given the " +
+                                  "session id and stays recognised for when it connects again.");
             }
             else
             {
-                Console.WriteLine("[Game Node] Vuelta atrás sin cuenta identificada: el id de sesión " +
-                                  "no se registra y la reconexión será rechazada.");
+                Console.WriteLine("[Game Node] Going back without an identified account: the session id " +
+                                  "is not registered and the reconnection will be rejected.");
             }
 
             return Pb.New()

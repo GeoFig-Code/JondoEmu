@@ -132,7 +132,7 @@ namespace Jondo.Unity.Server.Managers
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Hechizos] Could not work out the players' spells: {ex.Message}");
+                    Console.WriteLine($"[Spells] Could not work out the players' spells: {ex.Message}");
                 }
                 _spells = found;
             }

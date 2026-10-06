@@ -70,7 +70,7 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.TokenShopsJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine("[Tiendas] Ninguna tienda cobra en fichas: no hay " +
+                Console.WriteLine("[Shops] No shop charges in tokens: there is no " +
                                   $"{Path.GetFileName(path)}.");
                 return;
             }
@@ -80,7 +80,7 @@ namespace Jondo.Unity.Server.Managers
                 using var doc = JsonDocument.Parse(File.ReadAllText(path));
                 if (!doc.RootElement.TryGetProperty("tiendas", out var tiendas))
                 {
-                    Console.WriteLine("[Tiendas] El fichero de tiendas en fichas no tiene «tiendas».");
+                    Console.WriteLine("[Shops] The token shops file has no «tiendas».");
                     return;
                 }
 
@@ -96,8 +96,8 @@ namespace Jondo.Unity.Server.Managers
                     // by accident, which is what the client would do with an f3 at zero.
                     if (shop.TokenGid <= 0)
                     {
-                        Console.WriteLine($"[Tiendas] El vendedor {npcId} no dice qué moneda pide; " +
-                                          "se ignora.");
+                        Console.WriteLine($"[Shops] Vendor {npcId} does not say which currency it asks for; " +
+                                          "ignored.");
                         continue;
                     }
 
@@ -129,13 +129,13 @@ namespace Jondo.Unity.Server.Managers
 
                 int sueltos = 0, tipos = 0;
                 foreach (var s in _byNpc.Values) { sueltos += s.Prices.Count; tipos += s.PricesByType.Count; }
-                Console.WriteLine($"[Tiendas] {_byNpc.Count} tienda(s) que cobran en fichas: " +
-                                  $"{tipos} precio(s) por tipo, {sueltos} por objeto, " +
-                                  $"{_typeOfItem.Count} objeto(s) con su tipo cargado.");
+                Console.WriteLine($"[Shops] {_byNpc.Count} shop(s) that charge in tokens: " +
+                                  $"{tipos} price(s) per type, {sueltos} per item, " +
+                                  $"{_typeOfItem.Count} item(s) with their type loaded.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Tiendas] No se pudo leer el fichero de tiendas en fichas: {ex.Message}");
+                Console.WriteLine($"[Shops] Could not read the token shops file: {ex.Message}");
             }
         }
 
@@ -197,7 +197,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Tiendas] No se pudo leer el tipo de los objetos: {ex.Message}");
+                Console.WriteLine($"[Shops] Could not read the items' type: {ex.Message}");
             }
         }
 

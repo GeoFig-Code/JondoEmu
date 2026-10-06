@@ -386,7 +386,7 @@ namespace Jondo.Unity.Server.Managers
             return new Member { CharacterId = characterId, GuildId = guildId, Rank = rank, JoinedUtcMs = ms };
         }
 
-        /// <summary>Un miembro suelto, o null.</summary>
+        /// <summary>A single member, or null.</summary>
         public static Member MemberOf(long characterId)
         {
             using var conexion = Open();
@@ -445,7 +445,7 @@ namespace Jondo.Unity.Server.Managers
             return Convert.ToInt32(query.ExecuteScalar()) * ContributionGuildKamas;
         }
 
-        // ─── Rangos ─────────────────────────────────────────────────────────────
+        // ─── Ranks ──────────────────────────────────────────────────────────────
 
         /// <summary>
         /// The four ranks a guild is born with, the ones in the jco of the capture of creating
@@ -658,7 +658,7 @@ namespace Jondo.Unity.Server.Managers
             return first;
         }
 
-        // ─── Candidaturas ───────────────────────────────────────────────────────
+        // ─── Applications ───────────────────────────────────────────────────────
 
         /// <summary>An application: who sends it, to which guild, with what text and when.</summary>
         public sealed class Application

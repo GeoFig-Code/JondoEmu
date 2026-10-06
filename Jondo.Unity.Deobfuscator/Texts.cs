@@ -66,7 +66,7 @@ public sealed class Texts
     public string IndexReuse { get; init; } = "";
     public string IndexDone { get; init; } = "";
 
-    // ─── Paso 5: emparejar ──────────────────────────────────────────────────────────────
+    // ─── Step 5: matching ───────────────────────────────────────────────────────────────
     public string MatchStep { get; init; } = "";
     public string MatchTitle { get; init; } = "";
     public string MatchBody { get; init; } = "";
@@ -90,7 +90,7 @@ public sealed class Texts
     public string ModelLocalNote { get; init; } = "";
     public string ModelPickFromList { get; init; } = "";
 
-    // ─── Paso 7: preguntar ──────────────────────────────────────────────────────────────
+    // ─── Step 7: asking ─────────────────────────────────────────────────────────────────
     public string AskStep { get; init; } = "";
     public string AskTitle { get; init; } = "";
     public string AskBody { get; init; } = "";
@@ -100,7 +100,7 @@ public sealed class Texts
     public string AskDoneFormat { get; init; } = "";
     public string AskNothing { get; init; } = "";
 
-    // ─── Paso 8: revisar ────────────────────────────────────────────────────────────────
+    // ─── Step 8: reviewing ──────────────────────────────────────────────────────────────
     public string ReviewStep { get; init; } = "";
     public string ReviewTitle { get; init; } = "";
     public string ReviewBody { get; init; } = "";
@@ -117,7 +117,7 @@ public sealed class Texts
     public string ReviewEvidence { get; init; } = "";
     public string ReviewNoEvidence { get; init; } = "";
 
-    // ─── Paso 9: exportar ───────────────────────────────────────────────────────────────
+    // ─── Step 9: exporting ──────────────────────────────────────────────────────────────
     public string ExportStep { get; init; } = "";
     public string ExportTitle { get; init; } = "";
     public string ExportBody { get; init; } = "";

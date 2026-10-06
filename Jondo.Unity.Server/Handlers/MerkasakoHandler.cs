@@ -88,7 +88,7 @@ namespace Jondo.Unity.Server.Handlers
             {
                 salidaMapa = DatabaseManager.StartingMap;
                 salidaCasilla = DatabaseManager.StartingCell;
-                Console.WriteLine("[Merkasako] No se sabe de dónde entró: se le saca al punto de partida.");
+                Console.WriteLine("[Merkasako] Where it came in from is not known: it is taken out to the starting point.");
             }
 
             state.MapId = salidaMapa;
@@ -108,8 +108,8 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.BuildMapDiscovered(salidaMapa));
 
-            Console.WriteLine($"[Merkasako] Fuera del {dentro} al mapa {salidaMapa}, " +
-                              $"casilla {state.CellId}.");
+            Console.WriteLine($"[Merkasako] Out of {dentro} to map {salidaMapa}, " +
+                              $"cell {state.CellId}.");
         }
 
         /// <summary>Changing the decor from inside.</summary>
@@ -133,13 +133,13 @@ namespace Jondo.Unity.Server.Handlers
             long target = Merkasako.MapOfTheme(theme);
             if (target == 0)
             {
-                Console.WriteLine("[Merkasako] No hay ningún decorado en los datos del cliente.");
+                Console.WriteLine("[Merkasako] There is no theme at all in the client's data.");
                 return;
             }
 
             if (MapManager.GetMapInfo(target) == null)
             {
-                Console.WriteLine($"[Merkasako] El mapa {target} no está en los datos del mundo.");
+                Console.WriteLine($"[Merkasako] Map {target} is not in the world data.");
                 return;
             }
 
@@ -168,8 +168,8 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.BuildMapDiscovered(target));
 
-            Console.WriteLine($"[Merkasako] Decorado {Merkasako.ThemeOfMap(target)} -> mapa {target}, " +
-                              $"casilla {Jondo.Unity.Server.Network.SessionContext.State.CellId} (zaap en la {zaap.Cell}).");
+            Console.WriteLine($"[Merkasako] Theme {Merkasako.ThemeOfMap(target)} -> map {target}, " +
+                              $"cell {Jondo.Unity.Server.Network.SessionContext.State.CellId} (zaap on {zaap.Cell}).");
         }
 
         // ─── Furniture placement mode ───────────────────────────────────────────
@@ -183,7 +183,7 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Jbm));
 
-            Console.WriteLine("[Merkasako] Modo de colocar muebles abierto.");
+            Console.WriteLine("[Merkasako] Furniture placing mode open.");
         }
 
         /// <summary>A piece of the room. It is noted and the closing is waited for to write it.</summary>
@@ -231,7 +231,7 @@ namespace Jondo.Unity.Server.Handlers
             if (SessionContext.State.IsHavenBagEditing)
             {
                 HavenBagStore.SaveFurniture(who, theme, SessionContext.State.PendingHavenBagFurniture);
-                Console.WriteLine($"[Merkasako] Decorado {theme}: {SessionContext.State.PendingHavenBagFurniture.Count} mueble(s) guardados.");
+                Console.WriteLine($"[Merkasako] Theme {theme}: {SessionContext.State.PendingHavenBagFurniture.Count} piece(s) of furniture saved.");
             }
 
             SessionContext.State.IsHavenBagEditing = false;

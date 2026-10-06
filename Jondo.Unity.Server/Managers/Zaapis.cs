@@ -103,8 +103,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.Resolve("zaapis_3.6.10.10.json");
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Zaapis] Falta {Path.GetFileName(path)}; sin el no hay zaapis. " +
-                                  "Generalo con tools/extraer_zaapis.py.");
+                Console.WriteLine($"[Zaapis] {Path.GetFileName(path)} is missing; without it there are no zaapis. " +
+                                  "Generate it with tools/extraer_zaapis.py.");
                 return;
             }
 
@@ -130,7 +130,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Zaapis] No se ha podido leer la red: {ex.Message}");
+                Console.WriteLine($"[Zaapis] Could not read the network: {ex.Message}");
                 return;
             }
 
@@ -144,8 +144,8 @@ namespace Jondo.Unity.Server.Managers
 
             int destinos = 0;
             foreach (var n in _byGfx.Values) destinos = Math.Max(destinos, n.Destinations.Count);
-            Console.WriteLine($"[Zaapis] {_byMap.Count} mapas con zaapi en {_byGfx.Count} gráficos, " +
-                              $"redes de {string.Join(" y ", CityNames())}.");
+            Console.WriteLine($"[Zaapis] {_byMap.Count} maps with a zaapi on {_byGfx.Count} graphics, " +
+                              $"networks of {string.Join(" and ", CityNames())}.");
         }
 
         /// <summary>

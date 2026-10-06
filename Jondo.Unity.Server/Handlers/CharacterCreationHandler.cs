@@ -98,7 +98,7 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Kvk, Pb.New().Str(1, name).Build()));
 
-            Console.WriteLine($"[Personajes] Nombre sugerido: {name}");
+            Console.WriteLine($"[Characters] Suggested name: {name}");
         }
 
         private static readonly Random _rand = new Random();
@@ -135,8 +135,8 @@ namespace Jondo.Unity.Server.Handlers
             // ticket could fill the table with orphan characters.
             if (accountId <= 0)
             {
-                Console.WriteLine("[Game Node] Creación de personaje sin cuenta resuelta: no se ha " +
-                                  "presentado el ticket. Se rechaza.");
+                Console.WriteLine("[Game Node] Character creation without a resolved account: the ticket has not " +
+                                  "been presented. Rejected.");
                 await RefuseAsync(stream, CreationRefused);
                 return;
             }
@@ -169,7 +169,7 @@ namespace Jondo.Unity.Server.Handlers
 
             if (DatabaseManager.CharacterNameTaken(name))
             {
-                Console.WriteLine($"[Personajes] El nombre \"{name}\" ya está cogido.");
+                Console.WriteLine($"[Characters] The name \"{name}\" is already taken.");
                 await RefuseAsync(stream, NameAlreadyTaken);
                 return;
             }
@@ -215,8 +215,8 @@ namespace Jondo.Unity.Server.Handlers
             foreach (byte[] frame in ConnectionProtocol.CharacterListFrames(characters))
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, frame);
 
-            Console.WriteLine($"[Personajes] Creado {name} (id {id}), raza {breed}, en el zaap de " +
-                              $"Astrub, con el conjunto del aventurero y {StartingKamas} kamas.");
+            Console.WriteLine($"[Characters] Created {name} (id {id}), breed {breed}, at the Astrub " +
+                              $"zaap, with the adventurer's set and {StartingKamas} kamas.");
         }
 
         /// <summary>The reasons the kvb carries when it says no. 3 is the limit one.</summary>

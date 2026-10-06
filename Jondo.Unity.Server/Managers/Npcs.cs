@@ -26,7 +26,7 @@ namespace Jondo.Unity.Server.Managers
     /// </summary>
     public static class Npcs
     {
-        /// <summary>Un NPC puesto en un mapa.</summary>
+        /// <summary>An NPC placed on a map.</summary>
         public sealed class Spawn
         {
             public long MapId;
@@ -121,7 +121,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[NPCs] No se han podido leer: {ex.Message}");
+                Console.WriteLine($"[NPCs] Could not be read: {ex.Message}");
             }
         }
 
@@ -217,8 +217,8 @@ namespace Jondo.Unity.Server.Managers
             Count = 0;
             foreach (var here in _byMap.Values) Count += here.Count;
 
-            Console.WriteLine($"[NPCs] {Count} puestos en {_byMap.Count} mapas, " +
-                              $"{_templates.Count} plantillas.");
+            Console.WriteLine($"[NPCs] {Count} placed on {_byMap.Count} maps, " +
+                              $"{_templates.Count} templates.");
         }
 
         /// <summary>The maps that have some NPC placed.</summary>
@@ -313,9 +313,9 @@ namespace Jondo.Unity.Server.Managers
 
                 Count += puestos;
                 var censo = spawns.Census();
-                Console.WriteLine($"[NPCs] {puestos} del mundo, donde los tenía Ankama" +
-                                  (saltados > 0 ? $", {saltados} en un mapa nuestro" : "") +
-                                  (absorbidos > 0 ? $", {absorbidos} absorbidos por otro vendedor" : "") + ".");
+                Console.WriteLine($"[NPCs] {puestos} from the world, where Ankama had them" +
+                                  (saltados > 0 ? $", {saltados} on a map of ours" : "") +
+                                  (absorbidos > 0 ? $", {absorbidos} absorbed by another vendor" : "") + ".");
                 Console.WriteLine($"[Content] npc spawns: {censo[Jondo.Unity.World.Content.ContentLayer.Measured]} measured, " +
                                   $"{censo[Jondo.Unity.World.Content.ContentLayer.Authored]} authored, " +
                                   $"{spawns.ErasedCount} erased by hand.");
@@ -356,7 +356,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Raids] No se han podido poner las máquinas y los cofres: {ex.Message}");
+                Console.WriteLine($"[Raids] Could not place the machines and the chests: {ex.Message}");
             }
         }
 
@@ -430,7 +430,7 @@ namespace Jondo.Unity.Server.Managers
                 aqui.Add(spawn);
             }
 
-            Console.WriteLine($"[Sueños] NPC {npcId} placed on map {mapId}, cell {cell}.");
+            Console.WriteLine($"[Dreams] NPC {npcId} placed on map {mapId}, cell {cell}.");
         }
 
         public static IEnumerable<long> Maps => _byMap.Keys;
@@ -498,7 +498,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[NPCs] No se ha podido leer la plantilla {npcId}: {ex.Message}");
+                Console.WriteLine($"[NPCs] Could not read template {npcId}: {ex.Message}");
                 return null;
             }
         }
@@ -855,7 +855,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[NPCs] No se ha podido leer la plantilla {template.Id}: {ex.Message}");
+                Console.WriteLine($"[NPCs] Could not read template {template.Id}: {ex.Message}");
             }
         }
 

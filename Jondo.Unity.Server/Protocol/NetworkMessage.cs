@@ -193,7 +193,7 @@ namespace Jondo.Protocol
                 {
                     DeadStreams.AddOrUpdate(stream, new object());
                     Jondo.Unity.Server.Program.LogDebug(
-                        $"[Red] Socket cerrado; se descarta lo que se le escriba desde ahora: {ex.Message}");
+                        $"[Net] Socket closed; whatever is written to it from now on is dropped: {ex.Message}");
                     return;
                 }
                 Interlocked.Increment(ref _paquetesFuera);

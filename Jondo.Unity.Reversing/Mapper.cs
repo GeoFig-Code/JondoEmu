@@ -93,10 +93,10 @@ public sealed class Mapper
         OldVersion = VersionOf(oldPath);
         NewVersion = VersionOf(newPath);
 
-        report?.Invoke("leyendo el protocolo antiguo...");
+        report?.Invoke("reading the old protocol...");
         _old = ProtoWriter.Model(ProtocolDll(oldPath));
 
-        report?.Invoke("leyendo el protocolo nuevo...");
+        report?.Invoke("reading the new protocol...");
         _new = ProtoWriter.Model(ProtocolDll(newPath));
         _newParents = Dossier.Parents(_new);
 
@@ -120,10 +120,10 @@ public sealed class Mapper
         bool rotated = _old.Messages.Any(m => !newShapes.ContainsKey(m.Name));
 
         report?.Invoke(rotated
-            ? $"{_old.Messages.Count:N0} mensajes antiguos, {_new.Messages.Count:N0} nuevos. " +
-              "los nombres han rotado; emparejando..."
-            : $"{_old.Messages.Count:N0} mensajes antiguos, {_new.Messages.Count:N0} nuevos. " +
-              "los nombres NO han rotado en este parche; comprobando...");
+            ? $"{_old.Messages.Count:N0} old messages, {_new.Messages.Count:N0} new. " +
+              "the names have rotated; matching..."
+            : $"{_old.Messages.Count:N0} old messages, {_new.Messages.Count:N0} new. " +
+              "the names have NOT rotated in this patch; checking...");
 
         var result = Matcher.Match(_old, _new);
 
@@ -150,7 +150,7 @@ public sealed class Mapper
                 if (result.Pairs.TryGetValue(message.Name, out string? said) && said != message.Name) quarrel++;
                 row.New = message.Name;
                 row.How = How.Structure;
-                row.Because = "el parche no rotó los nombres";
+                row.Because = "the patch did not rotate the names";
             }
             else if (result.Pairs.TryGetValue(message.Name, out string? twin))
             {
@@ -221,7 +221,7 @@ public sealed class Mapper
             // difference between choosing and hallucinating.
             if (verdict?.Chosen is not { Length: > 0 } || !row.Candidates.Contains(verdict.Chosen))
             {
-                report($"{row.Old}: sin elegir");
+                report($"{row.Old}: not picked");
                 continue;
             }
 
@@ -243,14 +243,14 @@ public sealed class Mapper
         string path = Path.Combine(dataFolder, $"mapeo_{OldVersion}_a_{NewVersion}.tsv");
         var lines = new List<string>
         {
-            $"# Mapeo de {OldVersion} a {NewVersion}.",
+            $"# Mapping from {OldVersion} to {NewVersion}.",
             "#",
-            "# origen: estructura = lo resolvió el emparejador y no se equivoca;",
-            "#         modelo     = había varios candidatos con la misma forma y eligió un LLM;",
-            "#         duda       = hay candidatos y nadie ha elegido. NO usar sin mirarlo.",
-            "#         retirado   = ni un solo candidato: o es nuevo, o ya no está.",
+            "# origen: estructura = the matcher resolved it, and it does not get it wrong;",
+            "#         modelo     = there were several candidates with the same shape and an LLM picked one;",
+            "#         duda       = there are candidates and nobody has picked. Do NOT use without looking at it.",
+            "#         retirado   = not a single candidate: either it is new, or it is gone.",
             "#",
-            "# viejo\tnuevo\torigen\tnombre\tqué hace\tlo usa el emulador",
+            "# old\tnew\torigen\tname\twhat it does\tused by the emulator",
         };
 
         foreach (var row in Rows.Where(r => r.New.Length > 0 || r.How == How.Doubt)
@@ -303,12 +303,12 @@ public sealed class Mapper
         int byModel = Rows.Count(r => r.How == How.Model);
 
         string tally = mine > 0
-            ? $"de los {mine:N0} que usa el emulador: {mineDone:N0} mapeados   ·   "
+            ? $"of the {mine:N0} the emulator uses: {mineDone:N0} mapped   ·   "
             : "";
 
-        tally += $"{done:N0} de {Rows.Count:N0} en total";
-        if (byModel > 0) tally += $" ({byModel:N0} los eligió el modelo)";
-        if (doubt > 0) tally += $"   ·   {doubt:N0} en duda";
+        tally += $"{done:N0} of {Rows.Count:N0} in all";
+        if (byModel > 0) tally += $" ({byModel:N0} picked by the model)";
+        if (doubt > 0) tally += $"   ·   {doubt:N0} in doubt";
         return tally;
     }
 

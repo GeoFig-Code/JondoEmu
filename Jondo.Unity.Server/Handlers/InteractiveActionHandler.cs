@@ -22,7 +22,7 @@ namespace Jondo.Unity.Server.Handlers
                 if (field.WireType != 0) continue;
                 if (field.VarIntValue < 0 || field.VarIntValue > int.MaxValue)
                 {
-                    Console.WriteLine("[Interactives] Petición iwo con identificador fuera de rango.");
+                    Console.WriteLine("[Interactives] iwo request with an out-of-range identifier.");
                     return;
                 }
                 if (field.FieldNumber == 1) skillInstanceId = (int)field.VarIntValue;
@@ -72,8 +72,8 @@ namespace Jondo.Unity.Server.Handlers
                             ConnectionProtocol.BuildNpcQuestion(lectura.Question, respuestas)));
                 }
 
-                Console.WriteLine($"[Lecturas] Se lee el documento {lectura.Document} del elemento " +
-                                  $"{elementId}{(lectura.Asks ? ", con pregunta" : "")}.");
+                Console.WriteLine($"[Readables] Document {lectura.Document} of element " +
+                                  $"{elementId} is read{(lectura.Asks ? ", with a question" : "")}.");
                 return;
             }
 
@@ -87,8 +87,8 @@ namespace Jondo.Unity.Server.Handlers
             if (!InteractiveRegistry.TryResolveUse(mapId, elementId, skillInstanceId,
                                                    out var interactive, out var action))
             {
-                Console.WriteLine($"[Interactives] Uso desconocido: mapa {mapId}, elemento " +
-                                  $"{elementId}, instancia {skillInstanceId}.");
+                Console.WriteLine($"[Interactives] Unknown use: map {mapId}, element " +
+                                  $"{elementId}, instance {skillInstanceId}.");
                 return;
             }
 
@@ -111,8 +111,8 @@ namespace Jondo.Unity.Server.Handlers
                     // it gets here, that door does not belong to the room he is in: it may be one of
                     // the other two on the map, or somebody pressing a door with no dream in progress.
                     // Nothing is done, which is better than taking him to a room that is not his.
-                    Console.WriteLine($"[Sueños] Puerta {interactive.Element.Id} pulsada y no " +
-                                      "lleva a ninguna salida de la sala actual.");
+                    Console.WriteLine($"[Dreams] Door {interactive.Element.Id} clicked and it " +
+                                      "leads to no exit of the current room.");
                     break;
                 case InteractiveActionKind.Zaapi:
                     await ZaapiTravelHandler.OpenAsync(stream, interactive.Element, action.SkillId);
@@ -148,7 +148,7 @@ namespace Jondo.Unity.Server.Handlers
                     await MarketplaceHandler.OpenAsync(interactive.Element.Id, action.SkillId);
                     break;
                 default:
-                    throw new InvalidOperationException($"Acción interactiva no gestionada: {action.Kind}.");
+                    throw new InvalidOperationException($"Unhandled interactive action: {action.Kind}.");
             }
         }
     }

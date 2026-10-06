@@ -270,12 +270,12 @@ namespace Jondo.Unity.Server.Managers
                     found.Add(new Puch { MonsterId = id, Name = name, GradeAtLevel = byLevel });
                 }
 
-                Console.WriteLine($"[Kanojedo] {found.Count} puchs con nombre: " +
+                Console.WriteLine($"[Kanojedo] {found.Count} puchs with a name: " +
                                   string.Join(", ", found.Select(p => p.Name)) + ".");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Kanojedo] No se han podido leer los puchs: {ex.Message}");
+                Console.WriteLine($"[Kanojedo] Could not read the puchs: {ex.Message}");
             }
 
             return found;

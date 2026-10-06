@@ -73,8 +73,8 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Hjj, ConnectionProtocol.BuildZaapList(here, destinations)));
 
-            Console.WriteLine($"[{(vestige ? "Vestigio" : "Zaap")}] Abierto en el mapa {here}: " +
-                              $"{destinations.Count} destinos.");
+            Console.WriteLine($"[{(vestige ? "Vestige" : "Zaap")}] Opened on map {here}: " +
+                              $"{destinations.Count} destinations.");
         }
 
         /// <summary>
@@ -122,8 +122,8 @@ namespace Jondo.Unity.Server.Handlers
             {
                 if (!Anomalies.TryGet((int)chosen, out var anomaly))
                 {
-                    Console.WriteLine($"[Anomalías] El cliente pide la subzona {chosen} y no está " +
-                                      "en la lista. No se viaja.");
+                    Console.WriteLine($"[Anomalies] The client asks for subarea {chosen} and it is not " +
+                                      "in the list. No travelling.");
                     return;
                 }
 
@@ -131,7 +131,7 @@ namespace Jondo.Unity.Server.Handlers
                 // six anomaly costs are identical to those of the normal zaap to that same map.
                 target = Anomalies.ArrivalMap;
                 cost = anomaly.MapId == from ? 0 : CostBetween(from, anomaly.MapId);
-                what = $"anomalía «{anomaly.Name}» (subzona {anomaly.SubAreaId})";
+                what = $"anomaly «{anomaly.Name}» (subarea {anomaly.SubAreaId})";
             }
             else if (kind == Zaapis.Kind)
             {
@@ -140,7 +140,7 @@ namespace Jondo.Unity.Server.Handlers
                 // travel go nowhere.
                 target = chosen;
                 cost = Zaapis.Cost;
-                what = $"zaapi al mapa {target}";
+                what = $"zaapi to map {target}";
             }
             else
             {
@@ -148,7 +148,7 @@ namespace Jondo.Unity.Server.Handlers
                 var waypoint = Interactives.WaypointOf(target);
                 if (waypoint == null)
                 {
-                    Console.WriteLine($"[Zaap] El cliente pide viajar a {target}, que no tiene zaap.");
+                    Console.WriteLine($"[Zaap] The client asks to travel to {target}, which has no zaap.");
                     return;
                 }
                 cost = CostBetween(from, target);
@@ -157,13 +157,13 @@ namespace Jondo.Unity.Server.Handlers
 
             if (MapManager.GetMapInfo(target) == null)
             {
-                Console.WriteLine($"[Zaap] El mapa {target} no está en los datos del mundo. No se viaja.");
+                Console.WriteLine($"[Zaap] Map {target} is not in the world data. No travelling.");
                 return;
             }
 
             if (Jondo.Unity.Server.Network.SessionContext.State.Kamas < cost)
             {
-                Console.WriteLine($"[Zaap] Faltan kamas para ir a {target}: cuesta {cost} y hay " +
+                Console.WriteLine($"[Zaap] Not enough kamas to go to {target}: it costs {cost} and there are " +
                                   $"{Jondo.Unity.Server.Network.SessionContext.State.Kamas}.");
                 return;
             }
@@ -205,8 +205,8 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Push(Op.Kld, ConnectionProtocol.BuildDialogClosed()));
 
             SessionContext.State.OpenZaapMapId = 0;
-            Console.WriteLine($"[Zaap] Viaje a {target} ({what}), casilla " +
-                              $"{Jondo.Unity.Server.Network.SessionContext.State.CellId}, {cost} kamas. Esperando el jrh.");
+            Console.WriteLine($"[Zaap] Travel to {target} ({what}), cell " +
+                              $"{Jondo.Unity.Server.Network.SessionContext.State.CellId}, {cost} kamas. Waiting for the jrh.");
         }
 
         /// <summary>

@@ -28,7 +28,7 @@ public static class Header
     public static Dictionary<string, long> Fields()
     {
         var metadata = LibCpp2IlMain.TheMetadata
-                       ?? throw new InvalidOperationException("no hay metadatos cargados");
+                       ?? throw new InvalidOperationException("no metadata loaded");
 
         object header = metadata.GetType()
             .GetField("metadataHeader", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
@@ -83,14 +83,14 @@ public static class Header
 
         const BindingFlags Todos = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         var names = new List<string> { "— cabecera: " + header.GetType().Name + " —" };
-        names.AddRange(header.GetType().GetFields(Todos).Select(f => "  campo " + f.Name + " : " + f.FieldType.Name));
+        names.AddRange(header.GetType().GetFields(Todos).Select(f => "  field " + f.Name + " : " + f.FieldType.Name));
         names.AddRange(header.GetType().GetProperties(Todos).Select(p => "  prop  " + p.Name + " : " + p.PropertyType.Name));
 
         var definition = metadata.typeDefs.FirstOrDefault();
         if (definition != null)
         {
-            names.Add("— tipo: " + definition.GetType().Name + " —");
-            names.AddRange(definition.GetType().GetFields(Todos).Select(f => "  campo " + f.Name + " : " + f.FieldType.Name));
+            names.Add("— type: " + definition.GetType().Name + " —");
+            names.AddRange(definition.GetType().GetFields(Todos).Select(f => "  field " + f.Name + " : " + f.FieldType.Name));
         }
         return names;
     }
@@ -148,7 +148,7 @@ public static class Header
     public static List<Pair> Pairs(ClientReader client, Action<string>? report = null)
     {
         var metadata = LibCpp2IlMain.TheMetadata
-                       ?? throw new InvalidOperationException("no hay metadatos cargados");
+                       ?? throw new InvalidOperationException("no metadata loaded");
 
         const BindingFlags Todos = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         var pairs = new List<Pair>();
@@ -158,7 +158,7 @@ public static class Header
         foreach (string table in new[] { "fieldDefaultValues", "parameterDefaultValues" })
         {
             var array = metadata.GetType().GetField(table, Todos)?.GetValue(metadata) as Array;
-            if (array == null) { report?.Invoke($"  {table}: no existe"); continue; }
+            if (array == null) { report?.Invoke($"  {table}: does not exist"); continue; }
 
             int hits = 0, sample = 0;
             foreach (object? entry in array)
@@ -178,7 +178,7 @@ public static class Header
                 hits++;
                 if (sample++ < 3) report?.Invoke($"    {table}: {text}");
             }
-            report?.Invoke($"  {table}: {array.Length:N0} entradas, {hits:N0} con nombre real");
+            report?.Invoke($"  {table}: {array.Length:N0} entries, {hits:N0} with a real name");
         }
 
         return pairs;
@@ -196,7 +196,7 @@ public static class Header
     public static List<Named> Types(int limit = 0)
     {
         var metadata = LibCpp2IlMain.TheMetadata
-                       ?? throw new InvalidOperationException("no hay metadatos cargados");
+                       ?? throw new InvalidOperationException("no metadata loaded");
 
         var definitions = metadata.typeDefs;
         var named = new List<Named>();

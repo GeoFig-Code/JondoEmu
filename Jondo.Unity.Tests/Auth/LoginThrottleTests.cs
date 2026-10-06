@@ -27,7 +27,7 @@ namespace Jondo.Unity.Tests.Auth
         {
             for (int i = 1; i <= LoginThrottle.MaxAttempts; i++)
             {
-                Assert.True(LoginThrottle.TryBegin("1.1.1.1", "keka", Noon, out _), $"el intento {i}");
+                Assert.True(LoginThrottle.TryBegin("1.1.1.1", "keka", Noon, out _), $"attempt {i}");
             }
 
             Assert.False(LoginThrottle.TryBegin("1.1.1.1", "keka", Noon, out string error));

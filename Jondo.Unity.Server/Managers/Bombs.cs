@@ -96,16 +96,16 @@ namespace Jondo.Unity.Server.Managers
                     }
                     else
                     {
-                        Program.LogDebug($"[Bombas] No está {path}; ninguna bomba explotará.");
+                        Program.LogDebug($"[Bombs] {path} is not there; no bomb will explode.");
                     }
                 }
                 catch (System.Exception ex)
                 {
-                    Program.LogDebug($"[Bombas] Tabla ilegible: {ex.Message}");
+                    Program.LogDebug($"[Bombs] Unreadable table: {ex.Message}");
                 }
 
                 _all = table;
-                Program.LogDebug($"[Bombas] {table.Count} bomba(s) leídas del cliente.");
+                Program.LogDebug($"[Bombs] {table.Count} bomb(s) read from the client.");
             }
         }
 

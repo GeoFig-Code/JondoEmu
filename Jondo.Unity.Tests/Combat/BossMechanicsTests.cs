@@ -309,7 +309,7 @@ namespace Jondo.Unity.Tests.Combat
 
             // The kills the fight then deals: both players, wherever they stand.
             Assert.True(outcomes.Any(o => o.Fulmina && o.Sobre == attacker),
-                string.Join(" | ", outcomes.Select(o => $"{o.HechizoOrigen}:{o.Efecto?.EffectId}->{o.Sobre?.Id} mueve={o.Mueve} fin={o.CasillaHasta}")) +
+                string.Join(" | ", outcomes.Select(o => $"{o.HechizoOrigen}:{o.Efecto?.EffectId}->{o.Sobre?.Id} moves={o.Mueve} end={o.CasillaHasta}")) +
                 $" count@{count.CellId} attacker@{attacker.CellId}");
             Assert.Contains(outcomes, o => o.Fulmina && o.Sobre == friend);
             Assert.True(count.Buffs.TieneEstado(Invulnerable));

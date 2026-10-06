@@ -169,8 +169,8 @@ namespace Jondo.Unity.Server.Handlers
 
             if (!Roles.AlMenos(rol, haceFalta))
             {
-                Console.WriteLine($"[Comandos] La cuenta {quien} ({Roles.Nombre(rol)}) ha intentado " +
-                                  $"{command}, que es de {Roles.Nombre(haceFalta)}. Rechazado.");
+                Console.WriteLine($"[Commands] Account {quien} ({Roles.Nombre(rol)}) tried " +
+                                  $"{command}, which is for {Roles.Nombre(haceFalta)}. Rejected.");
                 ActivityJournal.Current.Write("command.denied", quien, GameState.CharacterId,
                     new { command, role = rol, requiredRole = haceFalta });
                 await NotifyAsync(stream, T("command.denied", command), channel, accountId);
@@ -178,8 +178,8 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             string rest = RestOf(text);
-            Console.WriteLine($"[Comandos] {command} {rest}".TrimEnd() +
-                              $"  (cuenta {quien}, {Roles.Nombre(rol)})");
+            Console.WriteLine($"[Commands] {command} {rest}".TrimEnd() +
+                              $"  (account {quien}, {Roles.Nombre(rol)})");
             ActivityJournal.Current.Write("command.requested", quien, GameState.CharacterId,
                 new { command, role = rol });
 
@@ -212,7 +212,7 @@ namespace Jondo.Unity.Server.Handlers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Comandos] {command} ha fallado: {ex}");
+                Console.WriteLine($"[Commands] {command} failed: {ex}");
                 ActivityJournal.Current.Write("command.failed", quien, GameState.CharacterId,
                     new { command, error = ex.GetType().Name, message = ex.Message });
                 await NotifyAsync(stream, T("command.failed", command, ex.Message),
@@ -252,7 +252,7 @@ namespace Jondo.Unity.Server.Handlers
                                          difference >= 0 ? "+" : "", difference),
                               channel, accountId);
 
-            Console.WriteLine($"[Comandos] Kamas {before} -> {GameState.Kamas}.");
+            Console.WriteLine($"[Commands] Kamas {before} -> {GameState.Kamas}.");
         }
 
         // ─── .level ─────────────────────────────────────────────────────────────
@@ -368,7 +368,7 @@ namespace Jondo.Unity.Server.Handlers
                     (job, JobExperience.Next(level), level, JobExperience.Floor(level), experience)))));
 
             await NotifyAsync(stream, T("jobs.result", jobs.Count, level), channel, accountId);
-            Console.WriteLine($"[Comandos] {jobs.Count} jobs of {state.CharacterName} at level {level}.");
+            Console.WriteLine($"[Commands] {jobs.Count} jobs of {state.CharacterName} at level {level}.");
         }
 
         // ─── .forjadios / .forgegod / .forgedieu ───────────────────────────────
@@ -398,7 +398,7 @@ namespace Jondo.Unity.Server.Handlers
 
             state.ForgeGod = on.Value;
             await NotifyAsync(stream, T(on.Value ? "forgegod.on" : "forgegod.off"), channel, accountId);
-            Console.WriteLine($"[Comandos] Forgegod {(on.Value ? "on" : "off")} for {state.CharacterName}.");
+            Console.WriteLine($"[Commands] Forgegod {(on.Value ? "on" : "off")} for {state.CharacterName}.");
         }
 
         public sealed class LevelChange
@@ -493,8 +493,8 @@ namespace Jondo.Unity.Server.Handlers
             string spellNote = await RefreshSpellsAsync(stream, before);
             await FightHandler.RefreshPlayerSpellBarAsync(stream);
 
-            Console.WriteLine($"[Comandos] Nivel {oldLevel} -> {newLevel}, experiencia " +
-                              $"{GameState.Experience}, puntos {GameState.CharacterRemainingPoints}.");
+            Console.WriteLine($"[Commands] Level {oldLevel} -> {newLevel}, experience " +
+                              $"{GameState.Experience}, points {GameState.CharacterRemainingPoints}.");
             return new LevelChange
             {
                 PreviousLevel = oldLevel,
@@ -811,7 +811,7 @@ namespace Jondo.Unity.Server.Handlers
             await NotifyAsync(stream, T("size.result", size, capped, CharacterSize.Normal),
                               channel, accountId);
 
-            Console.WriteLine($"[Comandos] Tamaño del personaje {GameState.CharacterId}: {size} %.");
+            Console.WriteLine($"[Commands] Size of character {GameState.CharacterId}: {size} %.");
         }
 
         // ─── .item / .itemset ──────────────────────────────────────────────────
@@ -1012,7 +1012,7 @@ namespace Jondo.Unity.Server.Handlers
             string warning = missing.Count == 0 ? "" : T("itemset.templates_missing", string.Join(", ", missing));
             await NotifyAsync(stream, T("recipe.added", gid, times, recipe.JobId, recipe.ResultLevel, list, warning),
                               channel, accountId);
-            Console.WriteLine($"[Comandos] Recipe {gid} x{times} for {GameState.CharacterName}: {list}" +
+            Console.WriteLine($"[Commands] Recipe {gid} x{times} for {GameState.CharacterName}: {list}" +
                               (missing.Count == 0 ? "." : $", missing {string.Join(", ", missing)}."));
         }
 
@@ -1156,7 +1156,7 @@ namespace Jondo.Unity.Server.Handlers
                     0, 1000 + 5L * GameState.TotalStrength)));
         }
 
-        // ─── Piezas sueltas ─────────────────────────────────────────────────────
+        // ─── Loose pieces ───────────────────────────────────────────────────────
 
         private static string T(string key, params object[] values)
             => CommandTexts.Get(key, values);

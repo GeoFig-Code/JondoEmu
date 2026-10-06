@@ -67,14 +67,14 @@ namespace Jondo.Unity.Server.Managers
 
                 if (!book.Ready)
                 {
-                    Console.WriteLine("[Logros] No hay catálogo. No se conseguirá ninguno.");
+                    Console.WriteLine("[Achievements] There is no catalogue. None will be earned.");
                     return;
                 }
 
-                Console.WriteLine($"[Logros] {book.Count:N0} logros, {book.ObjectiveCount:N0} objetivos, " +
-                                  $"{book.RewardCount:N0} recompensas, {book.FromQuestsCount:N0} " +
-                                  $"que se ganan acabando misiones, {book.LinkedCount} objetivos del " +
-                                  "servidor atados a zonas, niveles y oficios.");
+                Console.WriteLine($"[Achievements] {book.Count:N0} achievements, {book.ObjectiveCount:N0} objectives, " +
+                                  $"{book.RewardCount:N0} rewards, {book.FromQuestsCount:N0} " +
+                                  $"earned by finishing quests, {book.LinkedCount} server objectives " +
+                                  "tied to areas, levels and jobs.");
             }
         }
 
@@ -129,8 +129,8 @@ namespace Jondo.Unity.Server.Managers
             state.Achievements = log;
             if (rows > 0)
             {
-                Console.WriteLine($"[Logros] {rows} en la vitrina del personaje {characterId}, " +
-                                  $"{log.Points} puntos.");
+                Console.WriteLine($"[Achievements] {rows} in the showcase of character {characterId}, " +
+                                  $"{log.Points} points.");
             }
         }
 
@@ -334,7 +334,7 @@ namespace Jondo.Unity.Server.Managers
                     ConnectionProtocol.Push(Op.Mfu, AchievementProtocol.BuildEarned(
                         LevelOnTheWire(state.CharacterLevel), state.CharacterId, achievementId)));
 
-                Console.WriteLine($"[Logros] {state.CharacterName} consigue el {achievementId}.");
+                Console.WriteLine($"[Achievements] {state.CharacterName} earns {achievementId}.");
             }
         }
 
@@ -478,7 +478,7 @@ namespace Jondo.Unity.Server.Managers
                 {
                     if (!await Equipment.GiveAsync(stream, item, Math.Max(1, count)))
                     {
-                        Console.WriteLine($"[Logros] El objeto {item} del logro {id} no se ha podido dar.");
+                        Console.WriteLine($"[Achievements] Item {item} of achievement {id} could not be given.");
                     }
                 }
 
@@ -489,11 +489,11 @@ namespace Jondo.Unity.Server.Managers
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Mfs, AchievementProtocol.BuildRewarded(id)));
 
-                Console.WriteLine($"[Logros] {state.CharacterName} cobra el {id}: {payout.Experience} de " +
-                                  $"experiencia, {payout.Kamas} kamas, {payout.Items.Count} objeto(s), " +
-                                  $"{payout.Emotes.Count} actitud(es)" +
+                Console.WriteLine($"[Achievements] {state.CharacterName} claims {id}: {payout.Experience} " +
+                                  $"experience, {payout.Kamas} kamas, {payout.Items.Count} item(s), " +
+                                  $"{payout.Emotes.Count} attitude(s)" +
                                   (payout.Titles.Count + payout.Ornaments.Count > 0
-                                      ? $", {payout.Titles.Count} título(s) y {payout.Ornaments.Count} ornamento(s) que ya se ofrecen a todos."
+                                      ? $", {payout.Titles.Count} title(s) and {payout.Ornaments.Count} ornament(s) that are already offered to everybody."
                                       : "."));
             }
 

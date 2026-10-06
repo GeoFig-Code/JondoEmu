@@ -52,7 +52,7 @@ namespace Jondo.Unity.Server.Managers
                 _placed.Add(new Placement(kind.Id, subArea, mapId, cell));
             }
 
-            Console.WriteLine($"[Raids] {_placed.Count} cofres puestos, uno al final de cada raid.");
+            Console.WriteLine($"[Raids] {_placed.Count} chests placed, one at the end of each raid.");
         }
 
         /// <summary>Which raid's chest stands on this map, or zero when none does.</summary>
@@ -91,8 +91,8 @@ namespace Jondo.Unity.Server.Managers
             long worth = RaidTreasures.Worth(dropped);
             long now = raid.Add(RaidInstance.ScoreVariable, worth);
 
-            Console.WriteLine($"[Raids] El {characterId} suelta {dropped.Count} clases de tesoro " +
-                              $"por {worth} puntos; el cofre va por {now}.");
+            Console.WriteLine($"[Raids] {characterId} drops {dropped.Count} kinds of treasure " +
+                              $"for {worth} points; the chest is at {now}.");
             return now;
         }
 

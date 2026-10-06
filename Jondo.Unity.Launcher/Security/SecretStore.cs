@@ -56,7 +56,7 @@ namespace Jondo.Unity.Launcher.Security
                 // Without encryption it is NOT stored. Before, this ended up in Base64 and it looked like something was
                 // protected; returning empty makes the session not be remembered, which is worse to use
                 // and much better to defend.
-                Program.LogDebug($"[Lanzador] No se ha podido cifrar lo que se iba a guardar: {ex.Message}");
+                Program.LogDebug($"[Launcher] Could not encrypt what was about to be saved: {ex.Message}");
                 return "";
             }
         }
@@ -83,7 +83,7 @@ namespace Jondo.Unity.Launcher.Security
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[Lanzador] Se descarta una sesion guardada que no se descifra: {ex.Message}");
+                Program.LogDebug($"[Launcher] Discarding a saved session that does not decrypt: {ex.Message}");
                 return "";
             }
 
@@ -157,7 +157,7 @@ namespace Jondo.Unity.Launcher.Security
 
         private static byte[] DescifrarConAes(byte[] blob)
         {
-            if (blob.Length < 28) throw new CryptographicException("El bloque cifrado está incompleto.");
+            if (blob.Length < 28) throw new CryptographicException("The encrypted block is incomplete.");
 
             var nonce = new byte[12];
             var tag = new byte[16];

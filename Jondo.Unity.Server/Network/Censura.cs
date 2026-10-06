@@ -45,7 +45,7 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         public static string Valor(string? secreto)
         {
-            if (string.IsNullOrEmpty(secreto)) return "(vacío)";
+            if (string.IsNullOrEmpty(secreto)) return "(empty)";
             return secreto.Length <= 4 ? "***" : secreto.Substring(0, 4) + "***";
         }
 

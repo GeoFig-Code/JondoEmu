@@ -100,7 +100,7 @@ namespace Jondo.Unity.Launcher
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Control] No se ha podido escribir el secreto: {ex.Message}");
+                Console.WriteLine($"[Control] Could not write the secret: {ex.Message}");
             }
             return secreto;
         }

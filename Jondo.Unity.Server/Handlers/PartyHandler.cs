@@ -51,7 +51,7 @@ namespace Jondo.Unity.Server.Handlers
     /// </summary>
     public static class PartyHandler
     {
-        // ─── Invitar ────────────────────────────────────────────────────────────
+        // ─── Inviting ───────────────────────────────────────────────────────────
 
         public static async Task InviteAsync(NetworkStream stream, byte[] payload)
         {
@@ -66,20 +66,20 @@ namespace Jondo.Unity.Server.Handlers
 
             if (string.Equals(target, meName, StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine($"[Grupo] {meName} intenta invitarse a sí mismo.");
+                Console.WriteLine($"[Party] {meName} tries to invite themselves.");
                 return;
             }
 
             var guest = SessionRegistry.FindByName(target);
             if (guest == null)
             {
-                Console.WriteLine($"[Grupo] {meName} invita a «{target}», que no está conectado.");
+                Console.WriteLine($"[Party] {meName} invites «{target}», who is not connected.");
                 return;
             }
 
             if (Parties.IsInParty(guest.State.CharacterId))
             {
-                Console.WriteLine($"[Grupo] {guest.State.CharacterName} ya está en un grupo.");
+                Console.WriteLine($"[Party] {guest.State.CharacterName} is already in a party.");
                 return;
             }
 
@@ -90,7 +90,7 @@ namespace Jondo.Unity.Server.Handlers
 
             if (!Parties.Invite(party, guest.State.CharacterId, meId))
             {
-                Console.WriteLine($"[Grupo] No se ha podido invitar a {guest.State.CharacterName}.");
+                Console.WriteLine($"[Party] Could not invite {guest.State.CharacterName}.");
                 if (nuevo) Parties.Dissolve(party);
                 return;
             }
@@ -109,11 +109,11 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.BuildPartyInvitation(guest.State.CharacterId, meId, meName,
                                                         party.Id, Parties.MaxMembers)));
 
-            Console.WriteLine($"[Grupo] {meName} invita a {guest.State.CharacterName} " +
-                              $"al grupo {party.Id}.");
+            Console.WriteLine($"[Party] {meName} invites {guest.State.CharacterName} " +
+                              $"to party {party.Id}.");
         }
 
-        // ─── Aceptar ────────────────────────────────────────────────────────────
+        // ─── Accepting ──────────────────────────────────────────────────────────
 
         public static async Task AcceptAsync(NetworkStream stream, byte[] payload)
         {
@@ -125,7 +125,7 @@ namespace Jondo.Unity.Server.Handlers
             long meId = SessionContext.State.CharacterId;
             if (party == null || !Parties.Accept(party, meId))
             {
-                Console.WriteLine($"[Grupo] Aceptación sin invitación: grupo {partyId}.");
+                Console.WriteLine($"[Party] Acceptance without an invitation: party {partyId}.");
                 return;
             }
 
@@ -151,11 +151,11 @@ namespace Jondo.Unity.Server.Handlers
                 await sesion.SendAsync(entra);
             }
 
-            Console.WriteLine($"[Grupo] {meName} entra en el grupo {party.Id} " +
-                              $"({Parties.MembersOf(party).Count} miembros).");
+            Console.WriteLine($"[Party] {meName} joins party {party.Id} " +
+                              $"({Parties.MembersOf(party).Count} members).");
         }
 
-        // ─── Rechazar ───────────────────────────────────────────────────────────
+        // ─── Rejecting ──────────────────────────────────────────────────────────
 
         public static async Task RefuseAsync(NetworkStream stream, byte[] payload)
         {
@@ -190,10 +190,10 @@ namespace Jondo.Unity.Server.Handlers
                 }
             }
 
-            Console.WriteLine($"[Grupo] {SessionContext.State.CharacterName} rechaza el grupo {partyId}.");
+            Console.WriteLine($"[Party] {SessionContext.State.CharacterName} turns down party {partyId}.");
         }
 
-        // ─── Salirse ────────────────────────────────────────────────────────────
+        // ─── Leaving ────────────────────────────────────────────────────────────
 
         public static async Task LeaveAsync(NetworkStream stream, byte[] payload)
         {
@@ -212,11 +212,11 @@ namespace Jondo.Unity.Server.Handlers
 
             await AnnounceGoneAsync(party, partyId, salida);
 
-            Console.WriteLine($"[Grupo] {SessionContext.State.CharacterName} deja el grupo " +
-                              $"{partyId}{(salida.Dissolved ? " y se deshace" : "")}.");
+            Console.WriteLine($"[Party] {SessionContext.State.CharacterName} leaves party " +
+                              $"{partyId}{(salida.Dissolved ? " and it breaks up" : "")}.");
         }
 
-        // ─── Expulsar ───────────────────────────────────────────────────────────
+        // ─── Expelling ──────────────────────────────────────────────────────────
 
         /// <summary>
         /// Kicking somebody out of the party. The client asks for it with
@@ -250,7 +250,7 @@ namespace Jondo.Unity.Server.Handlers
             // Only the leader kicks, and for leaving oneself there is the inh.
             if (party.LeaderId != meId)
             {
-                Console.WriteLine($"[Grupo] {meName} intenta echar del grupo {partyId} sin mandarlo.");
+                Console.WriteLine($"[Party] {meName} tries to kick from party {partyId} without leading it.");
                 return;
             }
             if (quien == meId) return;
@@ -260,7 +260,7 @@ namespace Jondo.Unity.Server.Handlers
             if (host != 0)
             {
                 await WithdrawAsync(stream, party, partyId, quien, host);
-                Console.WriteLine($"[Grupo] {meName} retira la invitación de {quien} al grupo {partyId}.");
+                Console.WriteLine($"[Party] {meName} withdraws {quien}'s invitation to party {partyId}.");
                 return;
             }
 
@@ -277,9 +277,9 @@ namespace Jondo.Unity.Server.Handlers
 
             await AnnounceGoneAsync(party, partyId, salida);
 
-            Console.WriteLine($"[Grupo] {meName} echa a " +
-                              $"{echado?.State.CharacterName ?? quien.ToString()} del grupo " +
-                              $"{partyId}{(salida.Dissolved ? ", que se deshace" : "")}.");
+            Console.WriteLine($"[Party] {meName} kicks " +
+                              $"{echado?.State.CharacterName ?? quien.ToString()} out of party " +
+                              $"{partyId}{(salida.Dissolved ? ", which breaks up" : "")}.");
         }
 
         /// <summary>
@@ -374,7 +374,7 @@ namespace Jondo.Unity.Server.Handlers
             // the followers, so they get it too. Inferred; see PartyFollowHandler.
             await PartyFollowHandler.LeaderChangedAsync(party);
 
-            Console.WriteLine($"[Grupo] El grupo {partyId} pasa a mandarlo {nuevo}.");
+            Console.WriteLine($"[Party] Party {partyId} is now led by {nuevo}.");
         }
 
         /// <summary>Somebody has disconnected: he leaves the party without a word.</summary>
@@ -387,7 +387,7 @@ namespace Jondo.Unity.Server.Handlers
             await AnnounceGoneAsync(party, partyId, Parties.Leave(party, characterId));
         }
 
-        // ─── Piezas ─────────────────────────────────────────────────────────────
+        // ─── Pieces ─────────────────────────────────────────────────────────────
 
         /// <summary>
         /// The whole party (ing): { f1 (repeated): member, f4: the leader, f5: 1, f6: 1,

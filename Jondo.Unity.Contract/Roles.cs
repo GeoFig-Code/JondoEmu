@@ -23,7 +23,7 @@ namespace Jondo.Unity.Launcher
         /// <summary>Game master padawan: first assistance and event tools.</summary>
         public const int GameMasterPadawan = 3;
 
-        /// <summary>Game master: además toca personajes —nivel, kamas, aspecto— para arreglar cosas.</summary>
+        /// <summary>Game master: also touches characters —level, kamas, look— to fix things.</summary>
         public const int GameMaster = 4;
 
         /// <summary>Administrator: on top of that rules over the server itself.</summary>
@@ -37,12 +37,12 @@ namespace Jondo.Unity.Launcher
         /// <summary>The role's name, for the logs and for the server window.</summary>
         public static string Nombre(int rol) => rol switch
         {
-            Administrador => "administrador",
+            Administrador => "administrator",
             GameMaster => "game master",
             GameMasterPadawan => "game master padawan",
-            Moderador => "moderador",
-            Jugador => "jugador",
-            _ => $"desconocido ({rol})",
+            Moderador => "moderator",
+            Jugador => "player",
+            _ => $"unknown ({rol})",
         };
     }
 }

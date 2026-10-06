@@ -56,7 +56,7 @@ namespace Jondo.Unity.Server.Managers
             new Prize(158, 200, 400),  // poder
             new Prize(138, 300, 600),  // potencia
             new Prize(115, 50, 100),   // % critical
-            new Prize(182, 5, 8),      // invocaciones
+            new Prize(182, 5, 8),      // summons
         };
 
         /// <summary>The five characteristics, which come out over the top.</summary>
@@ -129,7 +129,7 @@ namespace Jondo.Unity.Server.Managers
 
             Equipment.Add(uid, gid, 1, Equipment.Bag, json);
 
-            Console.WriteLine($"[Lotería] Sale el objeto {gid} (uid {uid}) con {effects.Count} efectos.");
+            Console.WriteLine($"[Lottery] Item {gid} comes out (uid {uid}) with {effects.Count} effects.");
 
             return new HavenBagStore.StoredItem
             {
@@ -186,7 +186,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Lotería] No se pudo elegir objeto: {ex.Message}");
+                Console.WriteLine($"[Lottery] Could not pick an item: {ex.Message}");
             }
             return 0;
         }

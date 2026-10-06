@@ -100,6 +100,6 @@ namespace Jondo.Unity.World.Fights
         public bool Cubre(int casilla) => Casillas.Contains(casilla);
 
         public override string ToString()
-            => $"glifo {Id} de {Dueno}: hechizo {Hechizo} grado {Grado} en {Casillas.Count} casilla(s)";
+            => $"glyph {Id} of {Dueno}: spell {Hechizo} grade {Grado} on {Casillas.Count} cell(s)";
     }
 }

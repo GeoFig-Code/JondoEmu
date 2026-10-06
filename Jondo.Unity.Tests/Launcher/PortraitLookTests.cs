@@ -68,7 +68,7 @@ namespace Jondo.Unity.Tests.Launcher
 
             // And the head goes after, added. Without it the character comes out without a face.
             int cabeza = Jondo.Unity.Server.Managers.HeadTable.SkinFor(137, 9, 1);
-            Assert.True(cabeza > 0, "la cabeza 137 tiene que tener piel en heads.json");
+            Assert.True(cabeza > 0, "head 137 has to have a skin in heads.json");
             Assert.Contains(cabeza, look.Skins);
             Assert.NotEqual(cabeza, look.Skins[0]);
         }

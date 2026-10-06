@@ -27,7 +27,7 @@ namespace Jondo.Unity.Server.Managers
         public bool Covers(int cell) => Cells.Contains(cell);
 
         public override string ToString()
-            => $"muro de {Bombs.Count} bomba(s) {Template} de {Owner}, {Cells.Count} casilla(s)";
+            => $"wall of {Bombs.Count} bomb(s) {Template} of {Owner}, {Cells.Count} cell(s)";
     }
 
     /// <summary>

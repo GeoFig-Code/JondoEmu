@@ -135,8 +135,8 @@ namespace Jondo.Unity.Server.Handlers
 
             if (dungeon.MinLevel > 0 && state.CharacterLevel < dungeon.MinLevel)
             {
-                Console.WriteLine($"[Mazmorra] {dungeon.Name}: hace falta nivel {dungeon.MinLevel} y " +
-                                  $"se tiene {state.CharacterLevel}.");
+                Console.WriteLine($"[Dungeon] {dungeon.Name}: needs level {dungeon.MinLevel} and " +
+                                  $"has {state.CharacterLevel}.");
                 await WarnAsync(stream, NotHighEnough);
                 return false;
             }
@@ -170,8 +170,8 @@ namespace Jondo.Unity.Server.Handlers
                 // itself, "falta la llave (8143 x1, o el manojo 10207) y no hay manojo".
                 if (keyringSpent)
                 {
-                    Console.WriteLine($"[Mazmorra] {dungeon.Name}: el manojo ya se usó esta semana " +
-                                      $"y no hay llave suelta.");
+                    Console.WriteLine($"[Dungeon] {dungeon.Name}: the keyring was already used this week " +
+                                      $"and there is no loose key.");
                     await TellAsync(stream,
                         $"Ya has usado el manojo de llaves en {dungeon.Name} esta semana. " +
                         $"Vuelve el martes {DungeonKeyring.NextReset(DateTime.Now):d/M}. " +
@@ -179,8 +179,8 @@ namespace Jondo.Unity.Server.Handlers
                     return false;
                 }
 
-                Console.WriteLine($"[Mazmorra] {dungeon.Name}: falta la llave " +
-                                  $"({Wanted(dungeon)}) y no hay manojo.");
+                Console.WriteLine($"[Dungeon] {dungeon.Name}: the key is missing " +
+                                  $"({Wanted(dungeon)}) and there is no keyring.");
                 await WarnAsync(stream, InfoMessages.MissingItem);
                 return false;
             }
@@ -194,7 +194,7 @@ namespace Jondo.Unity.Server.Handlers
                     Equipment.Remove(uid, 1);
                     await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                         ConnectionProtocol.Push(Op.Ium, ConnectionProtocol.BuildItemGone(uid)));
-                    Console.WriteLine($"[Mazmorra] {dungeon.Name}: se gasta el objeto {item}.");
+                    Console.WriteLine($"[Dungeon] {dungeon.Name}: item {item} is spent.");
                 }
             }
 
@@ -203,8 +203,8 @@ namespace Jondo.Unity.Server.Handlers
                 // One free entry per dungeon per week, and the week turns over on Tuesday. See
                 // DungeonKeyring: this is the client's own help text, not a house rule.
                 DungeonKeyring.SpendFreeEntry(state.CharacterId, dungeon.Id, DateTime.Now);
-                Console.WriteLine($"[Mazmorra] {dungeon.Name}: entra con el manojo. La entrada " +
-                                  $"gratis vuelve el {DungeonKeyring.NextReset(DateTime.Now):dd/MM}.");
+                Console.WriteLine($"[Dungeon] {dungeon.Name}: goes in with the keyring. The free entry " +
+                                  $"comes back on {DungeonKeyring.NextReset(DateTime.Now):dd/MM}.");
             }
 
             // The guardian's window is closed before anybody is moved. The client does not close it
@@ -214,7 +214,7 @@ namespace Jondo.Unity.Server.Handlers
             // what changes the map.
             await NpcHandler.CloseAsync(stream);
 
-            Console.WriteLine($"[Mazmorra] Entra en {dungeon.Name}, sala 1 de {dungeon.Rooms.Count}.");
+            Console.WriteLine($"[Dungeon] Enters {dungeon.Name}, room 1 of {dungeon.Rooms.Count}.");
             await TeleportHandler.ToMapAsync(stream, dungeon.FirstRoom);
             return true;
         }
@@ -333,8 +333,8 @@ namespace Jondo.Unity.Server.Handlers
         {
             var parts = new List<string>();
             foreach (var (item, count) in dungeon.Required) parts.Add($"{item} x{count}");
-            if (dungeon.OnKeyring) parts.Add($"o el manojo {Keyring}");
-            return parts.Count == 0 ? "nada" : string.Join(", ", parts);
+            if (dungeon.OnKeyring) parts.Add($"or the keyring {Keyring}");
+            return parts.Count == 0 ? "nothing" : string.Join(", ", parts);
         }
 
         /// <summary>

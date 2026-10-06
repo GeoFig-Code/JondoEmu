@@ -309,8 +309,8 @@ namespace Jondo.Unity.Server.Network
                 string ruta = Paths.CharacteristicFieldsJson;
                 if (!System.IO.File.Exists(ruta))
                 {
-                    Console.WriteLine("[World] No está datos/caracteristicas_kub.json: la ficha de " +
-                                      "características saldrá corta.");
+                    Console.WriteLine("[World] datos/caracteristicas_kub.json is not there: the characteristics " +
+                                      "sheet will come out short.");
                     return;
                 }
 
@@ -323,12 +323,12 @@ namespace Jondo.Unity.Server.Network
                     _containers[id] = hueco;
                 }
 
-                Console.WriteLine($"[World] {_characteristicIds.Count} características leídas de " +
+                Console.WriteLine($"[World] {_characteristicIds.Count} characteristics read from " +
                                   $"datos/caracteristicas_kub.json.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[World] No se pudo leer la lista de características: {ex.Message}");
+                Console.WriteLine($"[World] Could not read the characteristics list: {ex.Message}");
             }
         }
 
@@ -360,8 +360,8 @@ namespace Jondo.Unity.Server.Network
             // CharacterJobs and nobody to show it to.
             if (payload == null || payload.Length == 0)
             {
-                Console.WriteLine("[World] El irq viene sin cuerpo: no se puede saber qué oficios " +
-                                  "existen y el personaje entra sin ninguno.");
+                Console.WriteLine("[World] The irq comes without a body: there is no knowing which jobs " +
+                                  "exist and the character comes in without any.");
                 return jobs.Build();
             }
 
@@ -395,7 +395,7 @@ namespace Jondo.Unity.Server.Network
 
             // Always, also with zero: a zero in the log is what would have given away the day
             // they stopped coming out, instead of printing nothing and seeming that nothing had happened.
-            Console.WriteLine($"[World] {count} oficios enviados, {conNivel} con progreso.");
+            Console.WriteLine($"[World] {count} jobs sent, {conNivel} with progress.");
             return jobs.Build();
         }
 
@@ -526,9 +526,9 @@ namespace Jondo.Unity.Server.Network
 
             if (WorldEntryContent.Ready)
             {
-                Console.WriteLine($"[World] Entrada al mundo: {WorldEntryContent.Count(BlockAfterCharacter)} + " +
+                Console.WriteLine($"[World] Entering the world: {WorldEntryContent.Count(BlockAfterCharacter)} + " +
                                   $"{WorldEntryContent.Count(BlockAfterConfirm)} + " +
-                                  $"{WorldEntryContent.Count(BlockMap)} tramas, sin abrir un solo .bin.");
+                                  $"{WorldEntryContent.Count(BlockMap)} frames, without opening a single .bin.");
             }
 
             LearnCapturedIdentity();
@@ -588,8 +588,8 @@ namespace Jondo.Unity.Server.Network
             // because nothing of the recorded character is left to replace: WorldEntryContentTests
             // checks it frame by frame. The warning said «el cliente se negará a entrar al mundo», which
             // was false and came out on every start.
-            Console.WriteLine("[World] El manifiesto no trae el kva de la captura, que es lo " +
-                              "esperado: el del personaje se construye desde la base de datos.");
+            Console.WriteLine("[World] The manifest does not carry the capture's kva, which is " +
+                              "expected: the character's is built from the database.");
         }
 
         /// <summary>Every submessage under that field number, not just the first one.</summary>

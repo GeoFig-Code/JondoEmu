@@ -84,7 +84,7 @@ namespace Jondo.Unity.Tests.Network
             var oferta = KoliseoOffers.Open(0, 1, new long[] { 7 }, new long[] { 8 });
 
             KoliseoOffers.Accept(oferta, 7);
-            Assert.True(KoliseoOffers.Accept(oferta, 8));   // completa: queda cerrada
+            Assert.True(KoliseoOffers.Accept(oferta, 8));   // full: it stays closed
 
             // The clock arrives afterwards and has to find it closed, or it would set up the fight and
             // undo it at the same time.

@@ -42,7 +42,7 @@ namespace Jondo.Unity.Server.Network
 
             // And with four monsters there are FIVE blocks, each with its own negative, which is what
             // takes apart the "one block per team" reading.
-            Same(failures, "jzu (cuatro monstruos)",
+            Same(failures, "jzu (four monsters)",
                  "12091a0710a28280c8e708120d1a0b10ffffffffffffffffff01120d1a0b10feffffffffffffffff01"
                  + "120d1a0b10fdffffffffffffffff01120d1a0b10fcffffffffffffffff01",
                  FightProtocol.BuildTeams(new[] { fighter, -1L, -2L, -3L, -4L }));
@@ -61,7 +61,7 @@ namespace Jondo.Unity.Server.Network
             var outer = ProtoMessage.Parse(fighterMsg).Fields;
             if (outer.Count != 1 || outer[0].FieldNumber != 2 || outer[0].WireType != 2)
             {
-                failures.Add("jxg: lo de dentro tiene que ir envuelto en un único f2");
+                failures.Add("jxg: what is inside has to be wrapped in a single f2");
             }
             else
             {
@@ -71,7 +71,7 @@ namespace Jondo.Unity.Server.Network
                 bool who = inner.Exists(f => f.FieldNumber == 3 && f.WireType == 0);
                 if (!where || !body || !who)
                 {
-                    failures.Add("jxg: dentro del f2 faltan la casilla (f1), el cuerpo (f2) o quién es (f3)");
+                    failures.Add("jxg: inside the f2 the cell (f1), the body (f2) or who it is (f3) are missing");
                 }
             }
 
@@ -80,7 +80,7 @@ namespace Jondo.Unity.Server.Network
             // A cast, byte by byte. What matters here is the inner f7: the spell goes
             // in TWO numbers, 25188 (the spell) and 63926 (its grade), and f8 is one and is not
             // the spell. When this was sent wrong, the client drew a punch.
-            Same(failures, "jwe (lanzar un hechizo)",
+            Same(failures, "jwe (casting a spell)",
                  "18a28280c8e7083a1f10a28280c8e708220720a28280c8e708308f023a0810e4c40118b6f303"
                  + "400170ac02",
                  FightProtocol.BuildAction(
@@ -98,18 +98,18 @@ namespace Jondo.Unity.Server.Network
                  }));
 
             // The hit, with its erosion, and the point removal. Both from the duel capture.
-            Same(failures, "jwe (daño con erosión)",
+            Same(failures, "jwe (damage with erosion)",
                  "18a282f0a6c4087060c2020e10a28280c8e70818ce032003282e",
                  FightProtocol.BuildDamage(293213045026, 96, 302677754146, 462, 3, 46));
 
             // The cast's own cost, which is 102 and goes with the same author and victim id.
-            Same(failures, "jwe (gasta cuatro PA al lanzar)",
+            Same(failures, "jwe (spends four AP on casting)",
                  "18a282f0a6c4087066a2011208fcffffffffffffffff0110a282f0a6c408",
                  FightProtocol.BuildPointsLost(293213045026, 102, 293213045026, -4));
 
             // The sheet with the life the player is missing, from the level 75 poutch capture:
             // he is missing 104 and carries 208 eroded.
-            Same(failures, "jxw (vida que le falta al jugador)",
+            Same(failures, "jxw (life the player is missing)",
                  "08a28280c8e7081a1e18022a1a086122161098ffffffffffffffff0140b0feffffffffffffff01",
                  FightProtocol.BuildLifeSheet(302677754146, -104, 208));
 
@@ -128,23 +128,23 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         private static void CheckChallenges(List<string> failures)
         {
-            Same(failures, "kxa (cuántos retos)", "0801",
+            Same(failures, "kxa (how many challenges)", "0801",
                  FightProtocol.BuildChallengeCount(1));
 
-            Same(failures, "kxa (dos, como en la mazmorra)", "0802",
+            Same(failures, "kxa (two, as in the dungeon)", "0802",
                  FightProtocol.BuildChallengeCount(2));
 
             byte[] intocable = FightProtocol.BuildChallenge(17, 95);
-            Same(failures, "ldd (reto 17 al 95 %)", "085f1011205f2802", intocable);
+            Same(failures, "ldd (challenge 17 at 95 %)", "085f1011205f2802", intocable);
 
-            Same(failures, "ldd (reto impuesto, sin porcentaje)", "1084062802",
+            Same(failures, "ldd (imposed challenge, no percentage)", "1084062802",
                  FightProtocol.BuildChallenge(772, 0));
 
-            Same(failures, "ldd (reto 35 con su objetivo)",
+            Same(failures, "ldd (challenge 35 with its target)",
                  "084610231a0e10860218fdffffffffffffffff0120462802",
                  FightProtocol.BuildChallenge(35, 70, new[] { (262, -3L) }));
 
-            Same(failures, "ldd (objetivo aún sin asignar)",
+            Same(failures, "ldd (target not assigned yet)",
                  "086410021a0b10ffffffffffffffffff0120642802",
                  FightProtocol.BuildChallenge(2, 100, new[] { (-1, 0L) }));
 
@@ -164,21 +164,21 @@ namespace Jondo.Unity.Server.Network
 
             // The result. Without f2 it is failed, which is how proto3 writes the false boolean;
             // the four come from the dungeon captures and the party's victory.
-            Same(failures, "kwl (reto 17 cumplido)", "08111001",
+            Same(failures, "kwl (challenge 17 met)", "08111001",
                  FightProtocol.BuildChallengeResult(17, true));
 
-            Same(failures, "kwl (reto 971 cumplido)", "08cb071001",
+            Same(failures, "kwl (challenge 971 met)", "08cb071001",
                  FightProtocol.BuildChallengeResult(971, true));
 
-            Same(failures, "kwl (reto 1 fallado)", "0801",
+            Same(failures, "kwl (challenge 1 failed)", "0801",
                  FightProtocol.BuildChallengeResult(1, false));
 
-            Same(failures, "kwl (reto 35 fallado)", "0823",
+            Same(failures, "kwl (challenge 35 failed)", "0823",
                  FightProtocol.BuildChallengeResult(35, false));
 
             // The notice accompanying the failure, from the dungeon: it arrives in the same millisecond as the
             // kwl and says whose fault it was.
-            Same(failures, "lqn (reto fallado por culpa de alguien)",
+            Same(failures, "lqn (challenge failed because of somebody)",
                  "10bc01220c53616372692d4d6173746572" + "22023335",
                  ConnectionProtocol.BuildSystemMessage(188, "Sacri-Master", "35"));
 
@@ -203,7 +203,7 @@ namespace Jondo.Unity.Server.Network
             // one thing it cannot fix: the file not being there at all.
             if (!ExperienceTable.IsLoaded)
             {
-                failures.Add("jyg: no se puede comprobar, falta la tabla de experiencia " +
+                failures.Add("jyg: cannot be checked, the experience table is missing " +
                              "(character_xp.json)");
                 return;
             }
@@ -222,7 +222,7 @@ namespace Jondo.Unity.Server.Network
                 new FightProtocol.FightResult { Fighter = FightProtocol.Nobody },
             };
 
-            Same(failures, "jyg (fin de combate)",
+            Same(failures, "jyg (end of fight)",
                  "123212001a2c08a28280c8e70812210a1c121a109e88dc93591801200128b38bd2d15830eeaaada558"
                  + "4001480110e20218012002121112001a0d08ffffffffffffffffff01180120cdb303"
                  + "40ffffffffffffffffff01",
@@ -263,8 +263,8 @@ namespace Jondo.Unity.Server.Network
                 Console.ResetColor();
 
                 throw new InvalidOperationException(
-                    $"[Protocol] {failures.Count} mensaje(s) de conexión no cuadran con la captura. " +
-                    "Están escritos arriba, cada uno con los bytes de la captura y los nuestros.");
+                    $"[Protocol] {failures.Count} connection message(s) do not match the capture. " +
+                    "They are written above, each with the capture's bytes and ours.");
             }
 
             Console.WriteLine("[Protocol] The connection messages match the captured shape.");
@@ -315,33 +315,33 @@ namespace Jondo.Unity.Server.Network
                      302677754146, 293213045026, "Harmoo", 71272, 8));
 
             // And the decline ones, from the koliseo capture and the inviter's.
-            Same(failures, "ilo (invitacion cerrada)", "08d8af0410a28280c8e708",
+            Same(failures, "ilo (invitation closed)", "08d8af0410a28280c8e708",
                  ConnectionProtocol.BuildInvitationClosed(71640, 302677754146));
-            Same(failures, "iko (invitado fuera)", "08a282a8ffa40e10999c04",
+            Same(failures, "iko (guest out)", "08a282a8ffa40e10999c04",
                  ConnectionProtocol.BuildInvitationWithdrawn(490967007522, 69145));
-            Same(failures, "imy (grupo deshecho)", "08999c04",
+            Same(failures, "imy (party broken up)", "08999c04",
                  ConnectionProtocol.BuildPartyDissolved(69145));
-            Same(failures, "ils (te has salido)", "08c29c04",
+            Same(failures, "ils (you have left)", "08c29c04",
                  ConnectionProtocol.BuildPartyLeft(69186));
-            Same(failures, "ilx (jefe nuevo)", "08a282acf7bd1a10a69c04",
+            Same(failures, "ilx (new leader)", "08a282acf7bd1a10a69c04",
                  ConnectionProtocol.BuildPartyLeader(909978042658, 69158));
 
             // The last connection notice. Without an IP it has to come out byte for byte the same as the one
             // the recorded block brings: 9 August 2026 at 18:53. It is what pins the order of
             // the parameters, which is not the reading order.
-            Same(failures, "lqn (ultima conexion, sin IP)",
+            Same(failures, "lqn (last connection, no IP)",
                  "10c101220432303236220230382202303922023138220235 33".Replace(" ", ""),
                  ConnectionProtocol.BuildLastConnection(
                      new DateTimeOffset(2026, 8, 9, 18, 53, 0, TimeSpan.Zero), ""));
 
             // And with an IP, which adds the sixth parameter and changes template.
-            Same(failures, "lqn (ultima conexion, con IP)",
+            Same(failures, "lqn (last connection, with IP)",
                  "1098012204323032362202303822023039220231382202353322093132372e302e302e31",
                  ConnectionProtocol.BuildLastConnection(
                      new DateTimeOffset(2026, 8, 9, 18, 53, 0, TimeSpan.Zero), "127.0.0.1"));
 
             // The private message, just as the real server sent it on whispering to Hiierbita-Xx.
-            Same(failures, "kth (mensaje privado)",
+            Same(failures, "kth (private message)",
                  "0a19323032362d30382d31325432323a35343a32392b30323a3030220028a282acfea805"
                  + "320c4869696572626974612d58783a04686f6c61",
                  ConnectionProtocol.BuildPrivateMessage(
@@ -353,18 +353,18 @@ namespace Jondo.Unity.Server.Network
 
             // The refusal of a whisper. 0802 is what the real server answers on whispering
             // to oneself, in the capture of the craftsmen list.
-            Same(failures, "ktl (susurro rechazado)", "0802",
+            Same(failures, "ktl (whisper rejected)", "0802",
                  ConnectionProtocol.BuildChatError(Handlers.PrivateMessageHandler.CannotWhisper));
 
             // The information messages, which is how the player is spoken to. Type 0 is not
             // sent —proto3 swallows the zero— and 1 is; the four come from different captures.
-            Same(failures, "lqn (bienvenida, tipo 1)", "08011059",
+            Same(failures, "lqn (welcome, type 1)", "08011059",
                  ConnectionProtocol.BuildInfoMessage(Managers.InfoMessages.Warning, 89));
-            Same(failures, "lqn (hechizo imposible, tipo 1)", "080110af01",
+            Same(failures, "lqn (impossible spell, type 1)", "080110af01",
                  ConnectionProtocol.BuildInfoMessage(Managers.InfoMessages.Warning, 175));
-            Same(failures, "lqn (kamas ganados, tipo 0)", "102d220132",
+            Same(failures, "lqn (kamas earned, type 0)", "102d220132",
                  ConnectionProtocol.BuildSystemMessage(Managers.InfoMessages.KamasGained, "2"));
-            Same(failures, "lqn (objeto conseguido, tipo 0)", "101522013122053130373834",
+            Same(failures, "lqn (item obtained, type 0)", "101522013122053130373834",
                  ConnectionProtocol.BuildSystemMessage(Managers.InfoMessages.ItemGained, "1", "10784"));
 
             // And the list of discovered zaaps, which is what keeps the window from coming out empty.
@@ -386,7 +386,7 @@ namespace Jondo.Unity.Server.Network
                      142087694, 100270593, 108789760,
                  }));
 
-            Same(failures, "hjj (anomalía)",
+            Same(failures, "hjj (anomaly)",
                  "1a13088c0118042204102b187828c9e6e91930e104",
                  ConnectionProtocol.BuildZaapList(0, new[]
                  {

@@ -49,7 +49,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The common ones, which everyone carries.</summary>
         private static readonly List<Pair> _common = new List<Pair>();
 
-        /// <summary>spell id -> (grado -> nivel que pide).</summary>
+        /// <summary>spell id -> (grade -> level it asks for).</summary>
         private static readonly Dictionary<int, SortedDictionary<int, int>> _grades =
             new Dictionary<int, SortedDictionary<int, int>>();
 
@@ -94,9 +94,9 @@ namespace Jondo.Unity.Server.Managers
             LoadGrades();
             LoadPairs();
 
-            Console.WriteLine($"[SpellTable] {_pairsById.Count} parejas de hechizo " +
-                              $"({_pairsByBreed.Count} razas y {_common.Count} comunes), " +
-                              $"{_grades.Count} hechizos con sus niveles.");
+            Console.WriteLine($"[SpellTable] {_pairsById.Count} spell pairs " +
+                              $"({_pairsByBreed.Count} breeds and {_common.Count} common), " +
+                              $"{_grades.Count} spells with their levels.");
         }
 
         private static void LoadGrades()
@@ -125,7 +125,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SpellTable] No se pudieron leer los niveles de hechizo: {ex.Message}");
+                Console.WriteLine($"[SpellTable] Could not read the spell levels: {ex.Message}");
             }
         }
 
@@ -138,8 +138,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.SpellVariantsJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[SpellTable] Falta {Path.GetFileName(path)}: sin él no se sabe " +
-                                  "qué hechizos hacen pareja y la barra sale vacía.");
+                Console.WriteLine($"[SpellTable] {Path.GetFileName(path)} is missing: without it there is no knowing " +
+                                  "which spells pair up and the bar comes out empty.");
                 return;
             }
 
@@ -150,7 +150,7 @@ namespace Jondo.Unity.Server.Managers
                 if (!doc.RootElement.TryGetProperty("references", out var references) ||
                     !references.TryGetProperty("RefIds", out var refIds))
                 {
-                    Console.WriteLine("[SpellTable] spell_variants.json no tiene el bloque references.");
+                    Console.WriteLine("[SpellTable] spell_variants.json does not have the references block.");
                     return;
                 }
 
@@ -198,7 +198,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SpellTable] No se pudo leer {Path.GetFileName(path)}: {ex.Message}");
+                Console.WriteLine($"[SpellTable] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
         }
 
@@ -223,7 +223,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SpellTable] No se pudieron leer los nombres de hechizo: {ex.Message}");
+                Console.WriteLine($"[SpellTable] Could not read the spell names: {ex.Message}");
             }
             return names;
         }

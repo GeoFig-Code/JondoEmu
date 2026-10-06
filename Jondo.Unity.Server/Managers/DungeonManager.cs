@@ -90,8 +90,8 @@ namespace Jondo.Unity.Server.Managers
             Store();
 
             if (reordenadas > 0)
-                Console.WriteLine($"[DungeonManager] {reordenadas} mazmorra(s) tenían las salas " +
-                                  $"desordenadas; se han puesto en su orden de juego.");
+                Console.WriteLine($"[DungeonManager] {reordenadas} dungeon(s) had their rooms " +
+                                  $"out of order; they have been put in their play order.");
 
             int rooms = 0;
             foreach (var dungeon in _byId.Values) rooms += dungeon.Rooms.Count;
@@ -162,8 +162,8 @@ namespace Jondo.Unity.Server.Managers
             {
                 // A first boot, or a world without these tables. The rooms keep the order they
                 // came in, which is what happened before this method existed.
-                Console.WriteLine($"[DungeonManager] No se pudo leer el mapa para ordenar las " +
-                                  $"salas: {ex.Message}");
+                Console.WriteLine($"[DungeonManager] Could not read the map to order the " +
+                                  $"rooms: {ex.Message}");
                 return 0;
             }
 

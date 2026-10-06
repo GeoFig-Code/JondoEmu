@@ -31,7 +31,7 @@ namespace Jondo.Unity.Server.Handlers
             long uid = 0;
             int quantity = 0;
 
-            // Va envuelto: f2 { f2: uid, f3: cuántos }.
+            // It comes wrapped: f2 { f2: uid, f3: how many }.
             foreach (var field in ProtoMessage.Parse(iuw).Fields)
             {
                 if (field.FieldNumber != 2 || field.WireType != 2) continue;
@@ -47,7 +47,7 @@ namespace Jondo.Unity.Server.Handlers
             var item = Equipment.ByUid(uid);
             if (item == null)
             {
-                Console.WriteLine($"[Inventario] Piden destruir {uid}, que no es nuestro.");
+                Console.WriteLine($"[Inventory] Asked to destroy {uid}, which is not ours.");
                 return;
             }
 
@@ -79,8 +79,8 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Push(Op.Iun,
                     ConnectionProtocol.BuildPods(0, 1000 + 5L * Jondo.Unity.Server.Network.SessionContext.State.TotalStrength)));
 
-            Console.WriteLine($"[Inventario] Destruido {destruye} de {uid}" +
-                              (entero ? " (entero)." : "."));
+            Console.WriteLine($"[Inventory] Destroyed {destruye} of {uid}" +
+                              (entero ? " (whole)." : "."));
         }
     }
 }

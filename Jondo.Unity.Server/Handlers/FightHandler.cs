@@ -232,7 +232,7 @@ namespace Jondo.Unity.Server.Handlers
                     if (f == null || f.FightId != currentFightId) return;
                     if (f.State != Jondo.Unity.World.Fights.FightState.Placement) return;
 
-                    Program.LogDebug($"[Combate] Se acabó el tiempo de colocación del combate #{currentFightId}.");
+                    Program.LogDebug($"[Fight] Placement time ran out for fight #{currentFightId}.");
                     if (GetCurrentFight() == f) await HandleTurnReady(stream, Array.Empty<byte>());
 
                     // Whoever came in later and has not pressed ready is not waited for either.
@@ -240,7 +240,7 @@ namespace Jondo.Unity.Server.Handlers
                 }
                 catch (Exception ex)
                 {
-                    Program.LogDebug($"[Combate] La cuenta atrás de la colocación se atragantó: {ex.Message}");
+                    Program.LogDebug($"[Fight] The placement countdown choked: {ex.Message}");
                 }
                 finally
                 {
@@ -292,7 +292,7 @@ namespace Jondo.Unity.Server.Handlers
                 if (esSuyo) _activeFights.TryRemove(par.Key, out _);
             }
 
-            Program.LogDebug("[Combate] Fuera del combate; el personaje vuelve al mapa de superficie.");
+            Program.LogDebug("[Fight] Out of the fight; the character goes back to the surface map.");
         }
 
         /// <summary>
@@ -435,7 +435,7 @@ namespace Jondo.Unity.Server.Handlers
                 // checked against the real server's kba. No splitting a list in half.
                 fight.SetPlacementCells(arenaKoliseo.Blue, arenaKoliseo.Red);
                 Program.LogDebug($"[Koliseo] Arena {arenaKoliseo.MapId} «{arenaKoliseo.Name}», " +
-                                 $"{arenaKoliseo.Capacity} por bando.");
+                                 $"{arenaKoliseo.Capacity} per side.");
             }
             else
             {
@@ -552,8 +552,8 @@ namespace Jondo.Unity.Server.Handlers
                 }
             }
 
-            Console.WriteLine($"[{(koliseo ? "Koliseo" : "PvP")}] Combate #{fightId} en el mapa " +
-                              $"{arenaMapId}: {blue.Count + blueBots.Count} contra {red.Count + redBots.Count}" +
+            Console.WriteLine($"[{(koliseo ? "Koliseo" : "PvP")}] Fight #{fightId} on map " +
+                              $"{arenaMapId}: {blue.Count + blueBots.Count} against {red.Count + redBots.Count}" +
                               (blueBots.Count + redBots.Count > 0 ? $", {blueBots.Count + redBots.Count} JondoBot(s)." : "."));
             return true;
         }
@@ -715,7 +715,7 @@ namespace Jondo.Unity.Server.Handlers
             {
                 var applied = Managers.Dreams.ApplyTo(playerFighter, dream);
                 if (applied.Count > 0)
-                    Program.LogDebug($"[Sueños] Bonuses in the fight: {string.Join(", ", applied)}.");
+                    Program.LogDebug($"[Dreams] Bonuses in the fight: {string.Join(", ", applied)}.");
             }
 
             // The attitudes his items give him: the six dofus and the trophies each give a
@@ -744,7 +744,7 @@ namespace Jondo.Unity.Server.Handlers
 
             if (playerFighter.Buffs.Actitudes.Count > 0)
             {
-                Program.LogDebug($"[Combate] Actitudes del equipo: " +
+                Program.LogDebug($"[Fight] Team attitudes: " +
                                  string.Join(", ", playerFighter.Buffs.Actitudes));
             }
 
@@ -800,8 +800,8 @@ namespace Jondo.Unity.Server.Handlers
 
             await WriteFrameAsync(stream, ConnectionProtocol.BuildMapDiscovered(fight.MapId));
 
-            Program.LogDebug($"[Combate] Combate #{fight.FightId} en el mapa {fight.MapId}. " +
-                             "Esperando a que el cliente pida los actores.");
+            Program.LogDebug($"[Fight] Fight #{fight.FightId} on map {fight.MapId}. " +
+                             "Waiting for the client to ask for the actors.");
         }
 
         /// <summary>The life the kuq reports for whoever is entering: his fighter's, else full.</summary>
@@ -974,10 +974,10 @@ namespace Jondo.Unity.Server.Handlers
             // that kwo -- including the two the server sends without anybody asking --. It is fired from
             // ChallengeHandler.SettingsAsync.
 
-            Program.LogDebug($"[Combate] Preparación del combate #{fight.FightId}: " +
-                             $"{fight.Azul.Count} contra {fight.Rojo.Count}, " +
-                             $"{fight.BluePlacementCells.Count} casillas azules y " +
-                             $"{fight.RedPlacementCells.Count} rojas.");
+            Program.LogDebug($"[Fight] Preparation of fight #{fight.FightId}: " +
+                             $"{fight.Azul.Count} against {fight.Rojo.Count}, " +
+                             $"{fight.BluePlacementCells.Count} blue cells and " +
+                             $"{fight.RedPlacementCells.Count} red.");
         }
 
         /// <summary>
@@ -1022,7 +1022,7 @@ namespace Jondo.Unity.Server.Handlers
             if (dx > 0 && dy > 0) return 3;    // down and to the left
             if (dx == 0 && dy > 0) return 4;   // izquierda
             if (dx < 0 && dy > 0) return 5;    // up and to the left
-            if (dx < 0 && dy == 0) return 6;   // arriba
+            if (dx < 0 && dy == 0) return 6;   // up
             if (dx < 0 && dy < 0) return 7;    // up and to the right
             if (dx == 0 && dy < 0) return 0;   // derecha
             if (dx > 0 && dy < 0) return 1;    // down and to the right
@@ -1355,10 +1355,10 @@ namespace Jondo.Unity.Server.Handlers
             Poner(27, sabiduria / PorCadaDiez);   // action point dodge
             Poner(28, sabiduria / PorCadaDiez);   // movement point dodge
             Poner(82, sabiduria / PorCadaDiez);   // retira PA: a tenth of wisdom, plus the gear's 410/411
-            Poner(83, sabiduria / PorCadaDiez);   // retira PM: idem, 412/413
+            Poner(83, sabiduria / PorCadaDiez);   // MP reduction: likewise, 412/413
             Poner(12, GameState.TotalWisdom);     // wisdom
             Poner(49, 0);                         // flat heals
-            Poner(26, 0);                         // invocaciones
+            Poner(26, 0);                         // summons
             Poner(50, 0);                         // reflect
             // TEN, NOT ZERO. The sheet sent to the client already said (75, base 10) -- see
             // FullSheetOf -- while the server kept its own copy at zero: the client showed 10%
@@ -1499,7 +1499,7 @@ namespace Jondo.Unity.Server.Handlers
                     if (Array.IndexOf(interesan, cual) < 0) continue;
                     pintado.Add($"{cual}={baseV}+{extra}");
                 }
-                Program.LogDebug($"[FICHA] {fighter.Id}: " + string.Join(" ", pintado));
+                Program.LogDebug($"[SHEET] {fighter.Id}: " + string.Join(" ", pintado));
             }
 
             return ficha;
@@ -1546,8 +1546,8 @@ namespace Jondo.Unity.Server.Handlers
                 int bones = Managers.Cosmetics.AppearanceBones(appearance);
                 if (bones <= 0)
                 {
-                    Program.LogDebug($"[Combate] La apariencia {appearance} no tiene huesos " +
-                                     "compatibles; no se cambia el aspecto.");
+                    Program.LogDebug($"[Fight] Appearance {appearance} has no compatible " +
+                                     "bones; the look is not changed.");
                     return;
                 }
                 look = Network.FightProtocol.WithRootBones(look, bones);
@@ -1555,8 +1555,8 @@ namespace Jondo.Unity.Server.Handlers
 
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildLookChanged(fighter.Id, look)));
-            Program.LogDebug($"[Combate] Aspecto de {fighter.Id}: " +
-                             (appearance == 0 ? "normal" : $"apariencia {appearance}"));
+            Program.LogDebug($"[Fight] Look of {fighter.Id}: " +
+                             (appearance == 0 ? "normal" : $"appearance {appearance}"));
         }
 
         public static byte[] BuildIgsPacket(FightInstance fight)
@@ -1787,7 +1787,7 @@ namespace Jondo.Unity.Server.Handlers
             if (fight != null && fight.FinPendiente != 0 && !payloadStr.Contains(Op.Uri(Op.Jti)))
             {
                 fight.FinPendiente = 0;
-                Program.LogDebug("[Combate] El final estaba esperando el acuse y ha llegado otra cosa; se enseña.");
+                Program.LogDebug("[Fight] The ending was waiting for the acknowledgement and something else arrived; it is shown.");
                 await EndFightAsync(fight);
             }
 
@@ -1892,8 +1892,8 @@ namespace Jondo.Unity.Server.Handlers
             var group = MobSpawnManager.GetMobsForMap(here).Find(g => g.MobId == groupId);
             if (group == null)
             {
-                Program.LogDebug($"[Combate] El cliente ataca al {groupId} del mapa {here}, " +
-                                 "que aquí no es ningún grupo.");
+                Program.LogDebug($"[Fight] The client attacks {groupId} on map {here}, " +
+                                 "which is no group here.");
                 return;
             }
 
@@ -1957,8 +1957,8 @@ namespace Jondo.Unity.Server.Handlers
                     return;
                 }
 
-                Program.LogDebug($"[Combate] El cliente pide pelear con el {mobContextId} del mapa " +
-                                 $"{GameState.MapId}, que aquí no es ningún grupo. No se hace nada.");
+                Program.LogDebug($"[Fight] The client asks to fight {mobContextId} on map " +
+                                 $"{GameState.MapId}, which is no group here. Nothing is done.");
             }
             else
             {
@@ -2185,8 +2185,8 @@ namespace Jondo.Unity.Server.Handlers
                 fight.ForgetReady(suyo.CharacterId);
             }
 
-            Program.LogDebug($"[Combate] {suyo.CharacterName} vuelve al combate #{fight.FightId} " +
-                             $"({fight.State}), mapa {fight.MapId}.");
+            Program.LogDebug($"[Fight] {suyo.CharacterName} goes back into fight #{fight.FightId} " +
+                             $"({fight.State}), map {fight.MapId}.");
         }
 
         /// <summary>
@@ -2246,8 +2246,8 @@ namespace Jondo.Unity.Server.Handlers
                 quitter.CurrentHP = 0;
             }
 
-            Program.LogDebug($"[Combate] {characterId} renuncia al combate #{fight.FightId} desde " +
-                             $"la pantalla de personajes; quedan {others.Count} persona(s) dentro.");
+            Program.LogDebug($"[Fight] {characterId} gives up fight #{fight.FightId} from " +
+                             $"the character screen; {others.Count} person(s) left inside.");
 
             if (others.Count == 0)
             {
@@ -2412,10 +2412,10 @@ namespace Jondo.Unity.Server.Handlers
                 }
             }
 
-            Program.LogDebug($"[Combate] {GameState.CharacterName} tiene otra vez el tablero del " +
-                             $"combate #{fight.FightId}: ronda {fight.RoundNumber}, " +
-                             $"turno de {fight.CurrentFighter?.Id}" +
-                             (fight.TurnAwaitingConfirmation ? ", esperando su jwz." : "."));
+            Program.LogDebug($"[Fight] {GameState.CharacterName} has the board of " +
+                             $"fight #{fight.FightId} again: round {fight.RoundNumber}, " +
+                             $"turn of {fight.CurrentFighter?.Id}" +
+                             (fight.TurnAwaitingConfirmation ? ", waiting for their jwz." : "."));
         }
 
         /// <summary>
@@ -2462,8 +2462,8 @@ namespace Jondo.Unity.Server.Handlers
             var suyas = esAzul ? fight.BluePlacementCells : fight.RedPlacementCells;
             if (!suyas.Contains(newCell))
             {
-                Program.LogDebug($"[Combate] La casilla {newCell} no es de las " +
-                                 $"{(esAzul ? "azules" : "rojas")}; no se coloca ahí.");
+                Program.LogDebug($"[Fight] Cell {newCell} is not one of the " +
+                                 $"{(esAzul ? "blue" : "red")} ones; no placing there.");
                 return;
             }
 
@@ -2488,7 +2488,7 @@ namespace Jondo.Unity.Server.Handlers
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Kmk,
                 Network.FightProtocol.BuildFightersPlaced(spots)));
 
-            Program.LogDebug($"[Combate] El jugador se coloca en la casilla {newCell} (venía de la {oldCell}).");
+            Program.LogDebug($"[Fight] The player moves to cell {newCell} (coming from {oldCell}).");
         }
 
         // NOTE: HandleCombatMovementRequest used to live here, an old version of combat movement
@@ -2503,11 +2503,11 @@ namespace Jondo.Unity.Server.Handlers
             if (fight == null) return;
             if (fight.State != Jondo.Unity.World.Fights.FightState.Placement)
             {
-                Program.LogDebug("[Combate] Un listo (kaq) con el combate ya en marcha; se ignora.");
+                Program.LogDebug("[Fight] A ready (kaq) with the fight already going; ignored.");
                 return;
             }
 
-            Program.LogDebug("[Combate] El jugador se declara listo (kaq).");
+            Program.LogDebug("[Fight] The player declares themselves ready (kaq).");
 
             // The members of his party with the automatic ready on are ready with him, BEFORE
             // the count of who is ready is made: fight 488 of the follow capture starts on the
@@ -2694,8 +2694,8 @@ namespace Jondo.Unity.Server.Handlers
                 Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), me,
                                                        Network.FightProtocol.OpeningSequence)));
 
-            Program.LogDebug($"[Combate] Empieza el combate #{fight.FightId}: " +
-                             $"{everyone.Count} combatientes, primero {fight.CurrentFighter?.Id}.");
+            Program.LogDebug($"[Fight] Fight #{fight.FightId} starts: " +
+                             $"{everyone.Count} fighters, first {fight.CurrentFighter?.Id}.");
 
             await CascadaDePasivosAsync(stream, fight);
 
@@ -2808,12 +2808,12 @@ namespace Jondo.Unity.Server.Handlers
                     if (ahora.State != Jondo.Unity.World.Fights.FightState.Ongoing) return;
                     if (ahora.CurrentFighter?.Id != deQuien || fight.RoundNumber != ronda) return;
 
-                    Program.LogDebug($"[Combate] Se le acabó el tiempo a {deQuien}; se le pasa el turno.");
+                    Program.LogDebug($"[Fight] {deQuien} ran out of time; the turn is passed.");
                     await PassTurnAsync(stream);
                 }
                 catch (Exception ex)
                 {
-                    Program.LogDebug($"[Combate] El reloj del turno se atragantó: {ex.Message}");
+                    Program.LogDebug($"[Fight] The turn clock choked: {ex.Message}");
                 }
                 finally
                 {
@@ -3015,8 +3015,8 @@ namespace Jondo.Unity.Server.Handlers
                     Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), fighter.Id,
                                                            Network.FightProtocol.ActionSequence)));
 
-                Program.LogDebug($"[Combate] Se caen {caducados.Count} embrujo(s): " +
-                                 string.Join(", ", caducados.ConvertAll(c => $"{c.Caido.Numero} de {c.Quien.Id}")));
+                Program.LogDebug($"[Fight] {caducados.Count} buff(s) drop: " +
+                                 string.Join(", ", caducados.ConvertAll(c => $"{c.Caido.Numero} of {c.Quien.Id}")));
 
                 // A state that fell with its row sets off what waits on it going (EOFF<n>), as
                 // when a spell takes it away: Protozorror, Tal Kasha and their kind turn on it.
@@ -3062,8 +3062,8 @@ namespace Jondo.Unity.Server.Handlers
             // PassTurnAsync, and it has to be taken explicitly.
             if (!fighter.IsAlive)
             {
-                Program.LogDebug($"[Combate] {fighter.Id} se muere al empezar su turno; " +
-                                 $"se pasa el turno.");
+                Program.LogDebug($"[Fight] {fighter.Id} dies on starting their turn; " +
+                                 $"the turn is passed.");
                 if (!await CheckFightOverAsync(stream, fight)) await PassTurnAsync(stream);
                 return;
             }
@@ -3098,8 +3098,8 @@ namespace Jondo.Unity.Server.Handlers
             // stood until his clock ran out.
             if (!fighter.IsAlive || !fight.SigueVivo(FightInstance.Azules) || !fight.SigueVivo(FightInstance.Rojos))
             {
-                Program.LogDebug($"[Combate] {fighter.Id} empieza el turno y alguien cae por lo que salta " +
-                                 $"al empezarlo.");
+                Program.LogDebug($"[Fight] {fighter.Id} starts the turn and somebody falls to what fires " +
+                                 $"on starting it.");
                 if (await CheckFightOverAsync(stream, fight)) return;
                 // A dream's next wave came in instead: whoever is standing plays on.
                 if (!fighter.IsAlive)
@@ -3135,8 +3135,8 @@ namespace Jondo.Unity.Server.Handlers
                     Network.FightProtocol.BuildYourTurn()));
             }
 
-            Program.LogDebug($"[Combate] Turno de {fighter.Id} ({(fighter.IsMonster ? "monstruo" : "jugador")}), " +
-                             $"{duration} décimas, puesto {fight.CurrentTurnIndex}.");
+            Program.LogDebug($"[Fight] Turn of {fighter.Id} ({(fighter.IsMonster ? "monster" : "player")}), " +
+                             $"{duration} tenths, position {fight.CurrentTurnIndex}.");
 
             // And the clock, with the SAME duration the client has just been told.
             ArrancarElReloj(stream, fight, fighter, duration + carried);
@@ -3151,7 +3151,7 @@ namespace Jondo.Unity.Server.Handlers
             if (fighter.Buffs.Puestos.Any(b => b.EffectId == Managers.EffectEngine.TurnoCancelado
                                                && b.Vivo(fight.RoundNumber) && !b.Pendiente))
             {
-                Program.LogDebug($"[Combate] {fighter.Id} pierde el turno: turno cancelado.");
+                Program.LogDebug($"[Fight] {fighter.Id} loses the turn: turn cancelled.");
                 await PassTurnAsync(stream);
                 return;
             }
@@ -3251,8 +3251,8 @@ namespace Jondo.Unity.Server.Handlers
                 if (result.Kills)
                 {
                     if (!result.Target.IsAlive) continue;
-                    Program.LogDebug($"[Combate] Se cumple el plazo: {caster.Id} fulmina a {result.Target.Id} " +
-                                     $"con el hechizo {waiting.HechizoOrigen} en la ronda {fight.RoundNumber}.");
+                    Program.LogDebug($"[Fight] The delay is up: {caster.Id} strikes down {result.Target.Id} " +
+                                     $"with spell {waiting.HechizoOrigen} in round {fight.RoundNumber}.");
                     await UnGolpeAsync(stream, fight, caster, waiting.HechizoOrigen,
                                        new Managers.SpellEffect { EffectId = waiting.EffectId, EffectUid = waiting.EffectUid },
                                        0, result.Target, 0, 0, false, 0, fulmina: true);
@@ -3268,9 +3268,9 @@ namespace Jondo.Unity.Server.Handlers
                 else if (result.Casts)
                 {
                     if (!result.Target.IsAlive) continue;
-                    Program.LogDebug($"[Combate] Se cumple el plazo: {caster.Id} lanza {waiting.Dado} " +
-                                     $"(grado {Math.Max(1, waiting.Cara)}) sobre {result.Target.Id}, del hechizo " +
-                                     $"{waiting.HechizoOrigen}, en la ronda {fight.RoundNumber}.");
+                    Program.LogDebug($"[Fight] The delay is up: {caster.Id} casts {waiting.Dado} " +
+                                     $"(grade {Math.Max(1, waiting.Cara)}) on {result.Target.Id}, from spell " +
+                                     $"{waiting.HechizoOrigen}, in round {fight.RoundNumber}.");
                     if (Managers.PlayerSpells.Contains(waiting.Dado))
                     {
                         await AplicarEfectosAsync(stream, fight, caster, waiting.Dado, Math.Max(1, waiting.Cara),
@@ -3299,10 +3299,10 @@ namespace Jondo.Unity.Server.Handlers
                             waiting.Valor, waiting.Dado, waiting.Cara, waiting.HechizoOrigen,
                             Managers.EffectEngine.Esperando, result.Live.CaducaEnRonda, waiting.Dispellable,
                             familia, waiting.NivelOrigen, critico: waiting.Critico, padre: waiting.Numero)));
-                    Program.LogDebug($"[Combate] Se cumple el plazo del embrujo {waiting.Numero} sobre {result.Target.Id}: " +
-                                     $"efecto {waiting.EffectId}" +
-                                     (waiting.Caracteristica != 0 ? $", característica {waiting.Caracteristica} {waiting.Cuanto:+#;-#;0}" : "") +
-                                     $" como el {result.Live.Numero}, hasta la ronda {result.Live.CaducaEnRonda}.");
+                    Program.LogDebug($"[Fight] The delay of buff {waiting.Numero} on {result.Target.Id} is up: " +
+                                     $"effect {waiting.EffectId}" +
+                                     (waiting.Caracteristica != 0 ? $", characteristic {waiting.Caracteristica} {waiting.Cuanto:+#;-#;0}" : "") +
+                                     $" as {result.Live.Numero}, until round {result.Live.CaducaEnRonda}.");
                 }
             }
 
@@ -3507,7 +3507,7 @@ namespace Jondo.Unity.Server.Handlers
             {
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                     Network.FightProtocol.BuildGlyphGone(caido.Dueno, caido.Id)));
-                Program.LogDebug($"[Combate] Se cae el glifo {caido.Id} de {caido.Dueno} al empezar el turno de {quienEmpieza.Id}.");
+                Program.LogDebug($"[Fight] Glyph {caido.Id} of {caido.Dueno} drops at the start of {quienEmpieza.Id}'s turn.");
             }
         }
 
@@ -3540,7 +3540,7 @@ namespace Jondo.Unity.Server.Handlers
                     if (!quien.Buffs.TieneEstado(estado))
                         await DispararAsync(stream, fight, quien, Managers.EffectEngine.AlQuitarseElEstado(estado));
                 }
-                Program.LogDebug($"[Combate] {quien.Id} sale del aura {aura.Id}: se le quitan {quitados.Count} embrujo(s).");
+                Program.LogDebug($"[Fight] {quien.Id} leaves aura {aura.Id}: {quitados.Count} buff(s) removed.");
             }
         }
 
@@ -3578,7 +3578,7 @@ namespace Jondo.Unity.Server.Handlers
             }
             if (caidos.Count > 0)
             {
-                Program.LogDebug($"[Combate] Se llevan por delante {caidos.Count} glifo(s).");
+                Program.LogDebug($"[Fight] {caidos.Count} glyph(s) swept away.");
             }
         }
 
@@ -3653,9 +3653,9 @@ namespace Jondo.Unity.Server.Handlers
             // written down here, and only a displacement ever reads it.
             if (Managers.BombWalls.IsWall(glifo)) fight.WallHitThisTurn.Add(quien.Id);
 
-            Program.LogDebug($"[Combate] {quien.Id} {(alPisar ? "pisa" : "empieza el turno en")} " +
-                             $"el glifo {glifo.Id} de {glifo.Dueno}: lanza el hechizo " +
-                             $"{glifo.Hechizo} grado {glifo.Grado}.");
+            Program.LogDebug($"[Fight] {quien.Id} {(alPisar ? "steps on" : "starts the turn on")} " +
+                             $"glyph {glifo.Id} of {glifo.Dueno}: casts spell " +
+                             $"{glifo.Hechizo} grade {glifo.Grado}.");
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                 Network.FightProtocol.BuildSequenceStart(quien.Id,
@@ -3782,7 +3782,7 @@ namespace Jondo.Unity.Server.Handlers
                 fight.Glifos.Remove(sobra);
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                     Network.FightProtocol.BuildGlyphGone(sobra.Dueno, sobra.Id)));
-                Program.LogDebug($"[Muro] Se cae el glifo {sobra.Id} de {sobra.Dueno}.");
+                Program.LogDebug($"[Wall] Glyph {sobra.Id} of {sobra.Dueno} drops.");
             }
 
             var yaCubiertas = puestos.Where(g => fight.Glifos.Contains(g))
@@ -3803,8 +3803,8 @@ namespace Jondo.Unity.Server.Handlers
                                                      quien.Hechizo, MuroGrado, size: 2,
                                                      colour: Network.FightProtocol.GlyphRed)));
 
-                Program.LogDebug($"[Muro] Glifo {glifo.Id} de {quien.Dueno.Id} en la casilla " +
-                                 $"{casilla} con el hechizo {quien.Hechizo}.");
+                Program.LogDebug($"[Wall] Glyph {glifo.Id} of {quien.Dueno.Id} on cell " +
+                                 $"{casilla} with spell {quien.Hechizo}.");
                 justBorn.Add(glifo);
             }
 
@@ -3887,7 +3887,7 @@ namespace Jondo.Unity.Server.Handlers
                 }
                 if (apuntado == null)
                 {
-                    Program.LogDebug($"[Combate] El carrusel apunta a {senalado}, que no esta en el combate.");
+                    Program.LogDebug($"[Fight] The carousel points at {senalado}, which is not in the fight.");
                     return;
                 }
                 cell = apuntado.CellId;
@@ -3902,7 +3902,7 @@ namespace Jondo.Unity.Server.Handlers
             // Invocación de Chaferloko came out of his Arakna at grade 0 and summoned for her.
             if (caster.EsInvocado && spell != 0 && (caster.HechizosDeInvocado == null || !caster.HechizosDeInvocado.Any(h => h.Spell == spell)))
             {
-                Program.LogDebug($"[Combate] {caster.Id} no tiene el hechizo {spell}; no se lanza.");
+                Program.LogDebug($"[Fight] {caster.Id} does not have spell {spell}; it is not cast.");
                 return;
             }
 
@@ -3939,11 +3939,11 @@ namespace Jondo.Unity.Server.Handlers
 
                 // Range TRACE: where each addend comes from. With this it can be seen at a glance
                 // whether what fails is the equipment, the generic buff or the one aimed at this spell.
-                Program.LogDebug($"[ALCANCE] hechizo {spell} a {lejos} casillas. " +
-                                 $"minimo {minimo} = base {limites.AlcanceMinimo} + embrujo " +
+                Program.LogDebug($"[RANGE] spell {spell} at {lejos} cells. " +
+                                 $"minimum {minimo} = base {limites.AlcanceMinimo} + buff " +
                                  $"{caster.Buffs.DelHechizo(spell, Jondo.Unity.World.Fights.SpellAspect.AlcanceMinimo, fight.RoundNumber)}. " +
-                                 $"maximo {maximo} = base {limites.AlcanceMaximo} + equipo {caster.Range} + " +
-                                 $"caracteristica {caster.Buffs.De(AlcanceCaracteristica, fight.RoundNumber)} + embrujo " +
+                                 $"maximum {maximo} = base {limites.AlcanceMaximo} + equipment {caster.Range} + " +
+                                 $"characteristic {caster.Buffs.De(AlcanceCaracteristica, fight.RoundNumber)} + buff " +
                                  $"{caster.Buffs.DelHechizo(spell, Jondo.Unity.World.Fights.SpellAspect.AlcanceMaximo, fight.RoundNumber)}");
 
                 // And the rest of the spell's modifiers: 294/295 take range away, 2905/2906 pin it.
@@ -3951,8 +3951,8 @@ namespace Jondo.Unity.Server.Handlers
 
                 if (lejos < minimo || lejos > maximo)
                 {
-                    Program.LogDebug($"[Combate] El hechizo {spell} no llega: {lejos} casillas, " +
-                                     $"y su alcance es de {minimo} a {maximo}.");
+                    Program.LogDebug($"[Fight] Spell {spell} does not reach: {lejos} cells, " +
+                                     $"and its range is {minimo} to {maximo}.");
                     return;
                 }
             }
@@ -3984,12 +3984,12 @@ namespace Jondo.Unity.Server.Handlers
                                                                       limites.NeedTakenCell, fight.RoundNumber);
             if (needTaken && victim == null)
             {
-                Program.LogDebug($"[Combate] El hechizo {spell} quiere una casilla ocupada y la {cell} está vacía.");
+                Program.LogDebug($"[Fight] Spell {spell} wants an occupied cell and cell {cell} is empty.");
                 return;
             }
             if (needFree && victim != null)
             {
-                Program.LogDebug($"[Combate] El hechizo {spell} quiere una casilla libre y en la {cell} está {victim.Id}.");
+                Program.LogDebug($"[Fight] Spell {spell} wants a free cell and on cell {cell} there is {victim.Id}.");
                 return;
             }
             long aQuien = victim?.Id ?? 0;
@@ -3999,8 +3999,8 @@ namespace Jondo.Unity.Server.Handlers
             // per-target cap and 9 rounds of cooldown.
             if (caster.Recarga.TryGetValue(spell, out int leFalta) && leFalta > 0)
             {
-                Program.LogDebug($"[Combate] El hechizo {spell} todavía tiene {leFalta} ronda(s) " +
-                                 $"de espera; no se lanza.");
+                Program.LogDebug($"[Fight] Spell {spell} still has {leFalta} round(s) " +
+                                 $"of cooldown; it is not cast.");
                 return;
             }
 
@@ -4008,8 +4008,8 @@ namespace Jondo.Unity.Server.Handlers
             int porTurno = Managers.SpellModifiers.CastsPerTurn(caster, spell, limites.PorTurno, fight.RoundNumber);
             if (porTurno > 0 && esteTurno >= porTurno)
             {
-                Program.LogDebug($"[Combate] El hechizo {spell} ya se ha lanzado {esteTurno} " +
-                                 $"vez/veces este turno, y el tope es {porTurno}.");
+                Program.LogDebug($"[Fight] Spell {spell} has already been cast {esteTurno} " +
+                                 $"time(s) this turn, and the cap is {porTurno}.");
                 return;
             }
 
@@ -4021,8 +4021,8 @@ namespace Jondo.Unity.Server.Handlers
             int topePorObjetivo = porObjetivo > 0 ? porObjetivo + caster.ExtraCastsPerTarget : 0;
             if (aQuien != 0 && topePorObjetivo > 0 && sobreEse >= topePorObjetivo)
             {
-                Program.LogDebug($"[Combate] El hechizo {spell} ya se ha lanzado {sobreEse} " +
-                                 $"vez/veces sobre {aQuien}, y el tope es {topePorObjetivo}.");
+                Program.LogDebug($"[Fight] Spell {spell} has already been cast {sobreEse} " +
+                                 $"time(s) on {aQuien}, and the cap is {topePorObjetivo}.");
                 return;
             }
 
@@ -4041,9 +4041,9 @@ namespace Jondo.Unity.Server.Handlers
             bool critico = TirarCritico(probabilidadCritico);
             if (critico)
             {
-                Program.LogDebug($"[Combate] ¡CRÍTICO! con el hechizo {spell} " +
-                                 $"({probabilidadCritico}% = {limites.CriticoPropio} del hechizo + " +
-                                 $"{ConBonos(caster, CriticoCaracteristica, 0, fight.RoundNumber)} del personaje).");
+                Program.LogDebug($"[Fight] CRITICAL! with spell {spell} " +
+                                 $"({probabilidadCritico}% = {limites.CriticoPropio} from the spell + " +
+                                 $"{ConBonos(caster, CriticoCaracteristica, 0, fight.RoundNumber)} from the character).");
             }
 
             // The capacity refusal and AP mutation stay in one tested operation. Previously the
@@ -4150,8 +4150,8 @@ namespace Jondo.Unity.Server.Handlers
                 Network.FightProtocol.BuildSequenceEnd(cierre, caster.Id,
                                                        Network.FightProtocol.ActionSequence)));
 
-            Program.LogDebug($"[Combate] Lanza el hechizo {spell} (grado {spellLevel}) a la casilla " +
-                             $"{cell} por {cost} PA; le quedan {caster.CurrentAP}.");
+            Program.LogDebug($"[Fight] Casts spell {spell} (grade {spellLevel}) at cell " +
+                             $"{cell} for {cost} AP; {caster.CurrentAP} left.");
 
             if (await CheckFightOverAsync(stream, fight, cierre)) return;
 
@@ -4182,7 +4182,7 @@ namespace Jondo.Unity.Server.Handlers
             var receta = Managers.Summons.De(plantilla, grado);
             if (receta == null)
             {
-                Program.LogDebug($"[Combate] No hay plantilla {plantilla} grado {grado}; no se invoca.");
+                Program.LogDebug($"[Fight] There is no template {plantilla} grade {grado}; nothing is summoned.");
                 return null;
             }
 
@@ -4220,7 +4220,7 @@ namespace Jondo.Unity.Server.Handlers
             int celda = CasillaLibreCerca(fight, celdaApuntada >= 0 ? celdaApuntada : quienInvoca.CellId);
             if (celda < 0)
             {
-                Program.LogDebug($"[Combate] No hay sitio libre para invocar la {plantilla}.");
+                Program.LogDebug($"[Fight] There is no free place to summon {plantilla}.");
                 return null;
             }
 
@@ -4311,9 +4311,9 @@ namespace Jondo.Unity.Server.Handlers
                 });
             }
 
-            Program.LogDebug($"[Combate] {quienInvoca.Id} invoca la plantilla {plantilla} grado " +
-                             $"{grado} como {invocado.Id} en la casilla {celda} con " +
-                             $"{invocado.MaxHP} de vida y el hechizo {receta.HechizoPropio}.");
+            Program.LogDebug($"[Fight] {quienInvoca.Id} summons template {plantilla} grade " +
+                             $"{grado} as {invocado.Id} on cell {celda} with " +
+                             $"{invocado.MaxHP} life and spell {receta.HechizoPropio}.");
 
             // Its spell becomes its attitude, and it is cast on the spot so that its triggers and
             // its countdown are in place.
@@ -4345,7 +4345,7 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     await UnComboAsync(stream, fight, quienInvoca, invocado);
                 }
-                Program.LogDebug($"[Combo] La bomba {invocado.Id} nace en el nivel " +
+                Program.LogDebug($"[Combo] Bomb {invocado.Id} is born at level " +
                                  $"{Managers.Combo.LevelOf(invocado)}.");
             }
 
@@ -4662,7 +4662,7 @@ namespace Jondo.Unity.Server.Handlers
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                 Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), quien.Id,
                                                        Network.FightProtocol.ActionSequence)));
-            Program.LogDebug($"[Combate] {quien.Id} lanza su hechizo de comportamiento {hechizo} (grado {grado}).");
+            Program.LogDebug($"[Fight] {quien.Id} casts its behaviour spell {hechizo} (grade {grado}).");
         }
 
         /// <summary>
@@ -4699,7 +4699,7 @@ namespace Jondo.Unity.Server.Handlers
                                                           && m.IsMonster && m != quien);
             if (muerto == null)
             {
-                Program.LogDebug($"[Combate] {quien.Id} quiere resucitar a alguien y no ha caído nadie de los suyos.");
+                Program.LogDebug($"[Fight] {quien.Id} wants to revive somebody and none of its side has fallen.");
                 return;
             }
             int donde = celda >= 0 && !Occupied(fight, celda) && PisableEnCombate(fight, celda)
@@ -4734,8 +4734,8 @@ namespace Jondo.Unity.Server.Handlers
                     Jondo.Unity.World.Combat.EffectSupport.AddState, 0, EstadoZombi, 0, 0, hechizo,
                     Managers.EffectEngine.AlLanzar, -1, 0, 2, grado)));
 
-            Program.LogDebug($"[Combate] {quien.Id} resucita a {muerto.Id} (plantilla {muerto.MonsterId}) en la casilla " +
-                             $"{donde} con {muerto.CurrentHP}/{muerto.MaxHP}.");
+            Program.LogDebug($"[Fight] {quien.Id} revives {muerto.Id} (template {muerto.MonsterId}) on cell " +
+                             $"{donde} with {muerto.CurrentHP}/{muerto.MaxHP}.");
 
             await DispararAsync(stream, fight, muerto, Managers.EffectEngine.AlPonerseElEstado(EstadoZombi));
             await AplicarLoDelInvocadoAsync(stream, fight, quien, hechizo, grado, muerto);
@@ -4973,7 +4973,7 @@ namespace Jondo.Unity.Server.Handlers
                 catch (Exception ex)
                 {
                     // One having lost his socket cannot leave the other without his frame.
-                    Program.LogDebug($"[Combate] No se ha podido escribir a {sesion.Id}: {ex.Message}");
+                    Program.LogDebug($"[Fight] Could not write to {sesion.Id}: {ex.Message}");
                 }
             }
         }
@@ -4995,7 +4995,7 @@ namespace Jondo.Unity.Server.Handlers
                 }
                 catch (Exception ex)
                 {
-                    Program.LogDebug($"[Combate] No se ha podido escribir a {sesion.Id}: {ex.Message}");
+                    Program.LogDebug($"[Fight] Could not write to {sesion.Id}: {ex.Message}");
                 }
             }
         }
@@ -5053,7 +5053,7 @@ namespace Jondo.Unity.Server.Handlers
                 }
                 catch (Exception ex)
                 {
-                    Program.LogDebug($"[Combate] Falló lo de {sesion.Id}: {ex.Message}");
+                    Program.LogDebug($"[Fight] {sesion.Id}'s part failed: {ex.Message}");
                 }
             }
         }
@@ -5463,7 +5463,7 @@ namespace Jondo.Unity.Server.Handlers
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                 Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), dueno.Id,
                                                        Network.FightProtocol.TurnStartSequence)));
-            Program.LogDebug($"[Combate] Se desvanecen las ilusiones de {dueno.Id}.");
+            Program.LogDebug($"[Fight] {dueno.Id}'s illusions vanish.");
         }
 
         /// <summary>
@@ -5504,7 +5504,7 @@ namespace Jondo.Unity.Server.Handlers
                 Network.FightProtocol.BuildIllusionGone(copia.Invocador, copia.Id)));
             fight.Quitar(copia);
             dueno?.Ilusiones.Remove(copia.Id);
-            Program.LogDebug($"[Combate] La ilusión {copia.Id} se desvanece al recibir un golpe.");
+            Program.LogDebug($"[Fight] Illusion {copia.Id} vanishes on being hit.");
 
             if (dueno != null && dueno.Ilusiones.Count == 0) await VolverAVerseAsync(fight, dueno);
         }
@@ -5582,7 +5582,7 @@ namespace Jondo.Unity.Server.Handlers
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[Combate] El motor de efectos se ha atragantado con el hechizo " +
+                Program.LogDebug($"[Fight] The effects engine choked on spell " +
                                  $"{hechizo}: {ex.Message}");
                 return;
             }
@@ -5696,8 +5696,8 @@ namespace Jondo.Unity.Server.Handlers
                         Network.FightProtocol.BuildSpellGlyph(dueno.Id, c.Glifo.Id, c.Glifo.Casillas, apuntada,
                                                               c.Glifo.Hechizo, c.HechizoOrigen, c.NivelOrigen,
                                                               c.Glifo.Color)));
-                    Program.LogDebug($"[Combate] Glifo {c.Glifo.Id} de {dueno.Id}: {c.Glifo.Casillas.Count} casilla(s), " +
-                                     $"lanza {c.Glifo.Hechizo}, color {c.Glifo.Color:X6}, cae en la ronda {c.Glifo.CaducaEnRonda}.");
+                    Program.LogDebug($"[Fight] Glyph {c.Glifo.Id} of {dueno.Id}: {c.Glifo.Casillas.Count} cell(s), " +
+                                     $"casts {c.Glifo.Hechizo}, colour {c.Glifo.Color:X6}, drops in round {c.Glifo.CaducaEnRonda}.");
                     continue;
                 }
 
@@ -5734,8 +5734,8 @@ namespace Jondo.Unity.Server.Handlers
                             c.Caracteristica == ActionPointsCharacteristic || c.Efecto.EffectId is 1079 or 101 or 84 or 440
                                 ? ActionPointsCharacteristic : MovementPointsCharacteristic,
                             c.Sobre.Id, c.PuntosEsquivados)));
-                    Program.LogDebug($"[PUNTOS] {c.Sobre.Id} esquiva {c.PuntosEsquivados} punto(s) del efecto " +
-                                     $"{c.Efecto.EffectId} del hechizo {hechizo}.");
+                    Program.LogDebug($"[POINTS] {c.Sobre.Id} dodges {c.PuntosEsquivados} point(s) of effect " +
+                                     $"{c.Efecto.EffectId} of spell {hechizo}.");
                     if (c.Buff == null && c.Caracteristica == 0) continue;
                 }
 
@@ -5754,9 +5754,9 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     if (!c.Sobre.IsAlive) continue;
 
-                    Program.LogDebug($"[Combate] {(c.Caster ?? quienLanza).Id} fulmina a " +
-                                     $"{c.Sobre.Id} con el hechizo {c.HechizoOrigen} " +
-                                     $"({c.Sobre.CurrentHP} de vida).");
+                    Program.LogDebug($"[Fight] {(c.Caster ?? quienLanza).Id} strikes down " +
+                                     $"{c.Sobre.Id} with spell {c.HechizoOrigen} " +
+                                     $"({c.Sobre.CurrentHP} life).");
 
                     int dondeEstaba = c.Sobre.CellId;
                     await UnGolpeAsync(stream, fight, c.Caster ?? quienLanza, c.HechizoOrigen,
@@ -5782,8 +5782,8 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     int leQuedaba = c.Sobre.CurrentHP;
                     c.Sobre.TakeDamage(c.Sobre.PasarPorElEscudo(c.VidaQueSeVa));
-                    Program.LogDebug($"[Combate] A {c.Sobre.Id} se le van {c.VidaQueSeVa} de vida " +
-                                     $"({leQuedaba} -> {c.Sobre.CurrentHP}) por el efecto " +
+                    Program.LogDebug($"[Fight] {c.Sobre.Id} loses {c.VidaQueSeVa} life " +
+                                     $"({leQuedaba} -> {c.Sobre.CurrentHP}) to effect " +
                                      $"{c.Efecto.EffectId}.");
                     await RefrescarLaVidaAsync(stream, fight, c.Sobre, quienLanza);
                     continue;
@@ -5796,8 +5796,8 @@ namespace Jondo.Unity.Server.Handlers
                     c.Sobre.CurrentHP = Math.Min(c.Sobre.MaxHP,
                                                  c.Sobre.CurrentHP + c.VidaTransferida);
 
-                    Program.LogDebug($"[Combate] {daLaVida.Id} le pasa {c.VidaTransferida} de vida " +
-                                     $"a {c.Sobre.Id}.");
+                    Program.LogDebug($"[Fight] {daLaVida.Id} passes {c.VidaTransferida} life " +
+                                     $"to {c.Sobre.Id}.");
 
                     await RefrescarLaVidaAsync(stream, fight, daLaVida, quienLanza);
                     await RefrescarLaVidaAsync(stream, fight, c.Sobre, quienLanza);
@@ -5865,11 +5865,11 @@ namespace Jondo.Unity.Server.Handlers
                         if (deAccion) c.Sobre.CurrentAP = Math.Max(0, c.Sobre.CurrentAP + c.Cuanto);
                         else c.Sobre.CurrentMP = Math.Max(0, c.Sobre.CurrentMP + c.Cuanto);
                     }
-                    Program.LogDebug($"[PUNTOS] {(deAccion ? "PA" : "PM")} de {c.Sobre.Id}: {antes} -> " +
-                                     $"{(deAccion ? c.Sobre.CurrentAP : c.Sobre.CurrentMP)} ({c.Cuanto:+#;-#;0}) por el " +
-                                     $"efecto {c.Efecto.EffectId} del hechizo {hechizo}" +
-                                     (enSuTurno ? "" : " (fuera de su turno: cuenta para el siguiente)") +
-                                     $"; tope {(deAccion ? c.Sobre.MaxAP : c.Sobre.MaxMP)}, embrujos encima: " +
+                    Program.LogDebug($"[POINTS] {(deAccion ? "AP" : "MP")} of {c.Sobre.Id}: {antes} -> " +
+                                     $"{(deAccion ? c.Sobre.CurrentAP : c.Sobre.CurrentMP)} ({c.Cuanto:+#;-#;0}) from " +
+                                     $"effect {c.Efecto.EffectId} of spell {hechizo}" +
+                                     (enSuTurno ? "" : " (outside its turn: it counts for the next one)") +
+                                     $"; cap {(deAccion ? c.Sobre.MaxAP : c.Sobre.MaxMP)}, buffs on top: " +
                                      $"{c.Sobre.Buffs.De(c.Caracteristica, fight.RoundNumber)}");
 
                     // AP given back (120) go out at once: the sheet in its own short sequence,
@@ -5920,8 +5920,8 @@ namespace Jondo.Unity.Server.Handlers
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                         Network.FightProtocol.BuildHeal(quienLanza.Id, c.Cura, c.Sobre.Id)));
                     AnotarLaCura(fight, quienLanza, c.Sobre, c.Cura);
-                    Program.LogDebug($"[Combate] {quienLanza.Id} cura {c.Cura} a {c.Sobre.Id}; " +
-                                     $"queda en {c.Sobre.CurrentHP}/{c.Sobre.MaxHP}.");
+                    Program.LogDebug($"[Fight] {quienLanza.Id} heals {c.Cura} to {c.Sobre.Id}; " +
+                                     $"left at {c.Sobre.CurrentHP}/{c.Sobre.MaxHP}.");
 
                     // Heartless: healing oneself is fine, being healed by somebody else is not.
                     await ChallengeWatcher.HealedAsync(stream, fight, quienLanza, c.Sobre);
@@ -5972,7 +5972,7 @@ namespace Jondo.Unity.Server.Handlers
                         await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                             Network.FightProtocol.BuildGlyphGone(g.Dueno, g.Id)));
                     }
-                    Program.LogDebug($"[Combate] {quienLanza.Id} disipa {c.GlifosQuitados.Count} glifo(s) de {c.Sobre.Id}.");
+                    Program.LogDebug($"[Fight] {quienLanza.Id} dispels {c.GlifosQuitados.Count} glyph(s) of {c.Sobre.Id}.");
                     continue;
                 }
 
@@ -6018,8 +6018,8 @@ namespace Jondo.Unity.Server.Handlers
                                 c.CasillaDesde, FacingOf(fight, quienLanza),
                                 suFicha, look, identity: comoEl)));
                     }
-                    Program.LogDebug($"[Combate] {quienLanza.Id} salta de {c.CasillaDesde} a " +
-                                     $"{c.CasillaHasta} y deja {c.Ilusiones.Count} ilusiones.");
+                    Program.LogDebug($"[Fight] {quienLanza.Id} jumps from {c.CasillaDesde} to " +
+                                     $"{c.CasillaHasta} and leaves {c.Ilusiones.Count} illusions.");
                     movidos.Add(quienLanza);
                     continue;
                 }
@@ -6028,14 +6028,14 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                         Network.FightProtocol.BuildCarry(quienLanza.Id, c.CasillaDesde, c.Sobre.Id)));
-                    Program.LogDebug($"[Combate] {quienLanza.Id} carga con {c.Sobre.Id} desde la casilla {c.CasillaDesde}.");
+                    Program.LogDebug($"[Fight] {quienLanza.Id} carries {c.Sobre.Id} from cell {c.CasillaDesde}.");
                     continue;
                 }
                 if (c.Lanza)
                 {
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                         Network.FightProtocol.BuildThrow(quienLanza.Id, c.Sobre.Id, c.CasillaHasta)));
-                    Program.LogDebug($"[Combate] {quienLanza.Id} lanza a {c.Sobre.Id} a la casilla {c.CasillaHasta}.");
+                    Program.LogDebug($"[Fight] {quienLanza.Id} throws {c.Sobre.Id} to cell {c.CasillaHasta}.");
                     movidos.Add(c.Sobre);
                     await RefreshPortalsAsync(fight);
                     continue;
@@ -6049,8 +6049,8 @@ namespace Jondo.Unity.Server.Handlers
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                         Network.FightProtocol.BuildSwap(quienLanza.Id, c.CasillaDesdeDelOtro,
                                                         c.Sobre.Id, c.CasillaDesde)));
-                    Program.LogDebug($"[Combate] {quienLanza.Id} y {c.Sobre.Id} intercambian " +
-                                     $"{c.CasillaDesdeDelOtro} y {c.CasillaDesde}.");
+                    Program.LogDebug($"[Fight] {quienLanza.Id} and {c.Sobre.Id} swap " +
+                                     $"{c.CasillaDesdeDelOtro} and {c.CasillaDesde}.");
                     movidos.Add(c.Sobre);
                     movidos.Add(c.Tambien);
                     // Moved by a swap (MS), both of them; and the caster moved somebody else (PO).
@@ -6070,8 +6070,8 @@ namespace Jondo.Unity.Server.Handlers
                     // "jwe f3=-17 f14=4 f35{f1=328 f2=-17}", three casts out of three.
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                         Network.FightProtocol.BuildTeleport(c.Sobre.Id, c.Sobre.Id, c.CasillaHasta)));
-                    Program.LogDebug($"[Combate] El hechizo {hechizo} teletransporta a {c.Sobre.Id} " +
-                                     $"de la casilla {c.CasillaDesde} a la {c.CasillaHasta}.");
+                    Program.LogDebug($"[Fight] Spell {hechizo} teleports {c.Sobre.Id} " +
+                                     $"from cell {c.CasillaDesde} to {c.CasillaHasta}.");
                     movidos.Add(c.Sobre);
                     Disparo(c.Sobre, Managers.EffectEngine.AlSerTeletransportado, quienLanza);
                     Disparo(c.Sobre, Managers.EffectEngine.AlSerMovido, quienLanza);
@@ -6081,8 +6081,8 @@ namespace Jondo.Unity.Server.Handlers
                     {
                         await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                             Network.FightProtocol.BuildTeleport(c.Tambien.Id, c.Tambien.Id, c.CasillaHastaDelOtro)));
-                        Program.LogDebug($"[Combate] Telefrag: {c.Tambien.Id} pasa de {c.CasillaDesdeDelOtro} " +
-                                         $"a {c.CasillaHastaDelOtro}.");
+                        Program.LogDebug($"[Fight] Telefrag: {c.Tambien.Id} goes from {c.CasillaDesdeDelOtro} " +
+                                         $"to {c.CasillaHastaDelOtro}.");
                         movidos.Add(c.Tambien);
                         Disparo(c.Tambien, Managers.EffectEngine.AlSerTeletransportado, quienLanza);
                         Disparo(c.Tambien, Managers.EffectEngine.AlSerMovido, quienLanza);
@@ -6104,8 +6104,8 @@ namespace Jondo.Unity.Server.Handlers
                         Network.FightProtocol.BuildDisplacement(
                             quienLanza.Id, comoViaja, c.Sobre.Id,
                             c.CasillaDesde, c.CasillaHasta)));
-                    Program.LogDebug($"[Combate] El hechizo {hechizo} mueve a {c.Sobre.Id} " +
-                                     $"de la casilla {c.CasillaDesde} a la {c.CasillaHasta}.");
+                    Program.LogDebug($"[Fight] Spell {hechizo} moves {c.Sobre.Id} " +
+                                     $"from cell {c.CasillaDesde} to {c.CasillaHasta}.");
 
                     // WHOEVER IS MOVED STEPS AS WELL. The ground only went off when walking, so
                     // putting somebody into a wall with a push or a pull did nothing to him
@@ -6129,8 +6129,8 @@ namespace Jondo.Unity.Server.Handlers
                             Network.FightProtocol.BuildDisplacement(
                                 quienLanza.Id, comoViaja, c.Tambien.Id,
                                 c.CasillaDesdeDelOtro, c.CasillaHastaDelOtro)));
-                        Program.LogDebug($"[Combate] Y mueve a {c.Tambien.Id} de la casilla " +
-                                         $"{c.CasillaDesdeDelOtro} a la {c.CasillaHastaDelOtro}.");
+                        Program.LogDebug($"[Fight] And moves {c.Tambien.Id} from cell " +
+                                         $"{c.CasillaDesdeDelOtro} to {c.CasillaHastaDelOtro}.");
                     }
 
                     await DanoDeColisionAsync(stream, fight, quienLanza, c);
@@ -6244,17 +6244,17 @@ namespace Jondo.Unity.Server.Handlers
                             c.HechizoOrigen, Managers.EffectEngine.Esperando, c.Buff.EmpiezaEnRonda,
                             c.Efecto.Dispellable, Network.FightProtocol.HiddenFamily, c.NivelOrigen,
                             critico: c.Critico, activacion: c.Buff.EmpiezaEnRonda)));
-                    Program.LogDebug($"[Combate] Embrujo {c.Buff.Numero} sobre {c.Sobre.Id} a la espera: efecto " +
-                                     $"{c.Efecto.EffectId} del hechizo {c.HechizoOrigen}, salta en la ronda " +
+                    Program.LogDebug($"[Fight] Buff {c.Buff.Numero} on {c.Sobre.Id} waiting: effect " +
+                                     $"{c.Efecto.EffectId} of spell {c.HechizoOrigen}, fires in round " +
                                      $"{c.Buff.EmpiezaEnRonda}.");
                     continue;
                 }
 
                 if (c.SoloParaElPanel)
                 {
-                    Program.LogDebug($"[Combate] El efecto {c.Efecto.EffectId} del hechizo {hechizo} " +
-                                     $"todavía no se sabe aplicar; se manda al panel tal cual " +
-                                     $"(valor {c.Efecto.Value}, dado {c.Efecto.DiceNum}/{c.Efecto.DiceSide}).");
+                    Program.LogDebug($"[Fight] Effect {c.Efecto.EffectId} of spell {hechizo} " +
+                                     $"is not known how to apply yet; it goes to the panel as it is " +
+                                     $"(value {c.Efecto.Value}, dice {c.Efecto.DiceNum}/{c.Efecto.DiceSide}).");
                 }
 
                 // An effect with several triggers is announced once for each, which is what the real
@@ -6312,14 +6312,14 @@ namespace Jondo.Unity.Server.Handlers
                     await AnnounceAppearanceAsync(stream, c.Sobre, c.Apariencia);
                 }
 
-                Program.LogDebug($"[Combate] Buff {c.Buff.Numero} sobre {c.Sobre.Id}: efecto " +
+                Program.LogDebug($"[Fight] Buff {c.Buff.Numero} on {c.Sobre.Id}: effect " +
                                  $"{c.Efecto.EffectId}" +
-                                 (c.Caracteristica != 0 ? $", característica {c.Caracteristica} {c.Cuanto:+#;-#;0}" : "") +
-                                 (c.Buff.Estado != 0 ? $", estado {c.Buff.Estado}" : "") +
+                                 (c.Caracteristica != 0 ? $", characteristic {c.Caracteristica} {c.Cuanto:+#;-#;0}" : "") +
+                                 (c.Buff.Estado != 0 ? $", state {c.Buff.Estado}" : "") +
                                  (c.Buff.HechizoAfectado != 0
-                                     ? $", {c.Buff.Sobre} {c.Buff.Cuanto:+#;-#;0} del hechizo {c.Buff.HechizoAfectado}"
+                                     ? $", {c.Buff.Sobre} {c.Buff.Cuanto:+#;-#;0} of spell {c.Buff.HechizoAfectado}"
                                      : "") +
-                                 $", hasta la ronda {c.Buff.CaducaEnRonda}.");
+                                 $", until round {c.Buff.CaducaEnRonda}.");
             }
 
             // And now the ground of whoever ended up on another cell. WHOEVER IS PUSHED STEPS AS
@@ -6397,8 +6397,8 @@ namespace Jondo.Unity.Server.Handlers
                 if (aspecto.Length == 0) continue;
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                     Network.FightProtocol.BuildLookChanged(bomba.Id, aspecto)));
-                Program.LogDebug($"[Combo] La bomba {bomba.Id} crece al {tamano}% " +
-                                 $"en el nivel {Managers.Combo.LevelOf(bomba)}.");
+                Program.LogDebug($"[Combo] Bomb {bomba.Id} grows to {tamano}% " +
+                                 $"at level {Managers.Combo.LevelOf(bomba)}.");
             }
         }
 
@@ -6494,7 +6494,7 @@ namespace Jondo.Unity.Server.Handlers
                     Network.FightProtocol.BuildSpellModifier(quien.Id, modificador, hechizo, cuanto, accion)));
             }
 
-            Program.LogDebug($"[ALCANCE] Anunciados {tocados.Count} modificador(es) de hechizo con hnd.");
+            Program.LogDebug($"[RANGE] {tocados.Count} spell modifier(s) announced with hnd.");
         }
 
         /// <summary>
@@ -6554,8 +6554,8 @@ namespace Jondo.Unity.Server.Handlers
 
                 if (quien.Buffs.Actitudes.Count > 0)
                 {
-                    Program.LogDebug($"[Combate] Cascada de {quien.Buffs.Actitudes.Count} " +
-                                     $"actitud(es) de {quien.Id} antes del primer turno.");
+                    Program.LogDebug($"[Fight] Cascade of {quien.Buffs.Actitudes.Count} " +
+                                     $"attitude(s) of {quien.Id} before the first turn.");
                 }
 
                 // And a monster's behaviour spell.
@@ -6667,8 +6667,8 @@ namespace Jondo.Unity.Server.Handlers
             if (quien == null || !quien.IsAlive || string.IsNullOrEmpty(disparador)) return;
             if (fight.TriggerDepth >= TopeDeDisparosEncadenados)
             {
-                Program.LogDebug($"[Combate] Disparo {disparador} sobre {quien.Id} descartado: " +
-                                 $"{fight.TriggerDepth} disparos encadenados.");
+                Program.LogDebug($"[Fight] Trigger {disparador} on {quien.Id} discarded: " +
+                                 $"{fight.TriggerDepth} chained triggers.");
                 return;
             }
             fight.TriggerDepth++;
@@ -6959,7 +6959,7 @@ namespace Jondo.Unity.Server.Handlers
             // A Pacifista deals no damage at all: Klim's Carcassetagne leaves the players unable to hurt.
             if (!fulmina && Managers.SpellStates.KeepsFromDealingDamage(caster))
             {
-                Program.LogDebug($"[Combate] {caster.Id} no puede hacer daño: el efecto {efecto.EffectId} no le quita nada a {target.Id}.");
+                Program.LogDebug($"[Fight] {caster.Id} cannot deal damage: effect {efecto.EffectId} takes nothing from {target.Id}.");
                 return;
             }
 
@@ -6967,8 +6967,8 @@ namespace Jondo.Unity.Server.Handlers
             {
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                     Network.FightProtocol.BuildDamage(caster.Id, efecto.EffectId, target.Id, 0, elemento)));
-                Program.LogDebug($"[Combate] {target.Id} es invulnerable: el efecto {efecto.EffectId} " +
-                                 $"del hechizo {spell} no le quita nada.");
+                Program.LogDebug($"[Fight] {target.Id} is invulnerable: effect {efecto.EffectId} " +
+                                 $"of spell {spell} takes nothing from it.");
 
                 // But it is still a blow, and what waits on being hit goes off: Conde Kontatrás
                 // is invulnerable for the whole fight, and being HIT is what throws him on an even
@@ -7004,8 +7004,8 @@ namespace Jondo.Unity.Server.Handlers
             if (deSuVida)
             {
                 baseDamage = Managers.EffectEngine.BaseDelModo(efecto, sacadoDelDado, caster, target, fight);
-                Program.LogDebug($"[Combate] El efecto {efecto.EffectId} ({Managers.EffectEngine.ModoDe(efecto.EffectId)}) " +
-                                 $"pega {baseDamage} con el dado en {sacadoDelDado}.");
+                Program.LogDebug($"[Fight] Effect {efecto.EffectId} ({Managers.EffectEngine.ModoDe(efecto.EffectId)}) " +
+                                 $"hits {baseDamage} with the dice at {sacadoDelDado}.");
             }
 
             if (Managers.EffectEngine.PegaSegunLoErosionado(efecto.EffectId))
@@ -7014,8 +7014,8 @@ namespace Jondo.Unity.Server.Handlers
                 // del lanzador", in their own description.
                 var deQuien = efecto.EffectId >= 1118 && efecto.EffectId <= 1122 ? caster : target;
                 baseDamage = deQuien.VidaErosionada * sacadoDelDado / 100;
-                Program.LogDebug($"[Combate] El efecto {efecto.EffectId} pega el {sacadoDelDado}% de " +
-                                 $"los {deQuien.VidaErosionada} erosionados de {deQuien.Id}: {baseDamage}.");
+                Program.LogDebug($"[Fight] Effect {efecto.EffectId} hits {sacadoDelDado}% of " +
+                                 $"the {deQuien.VidaErosionada} eroded of {deQuien.Id}: {baseDamage}.");
             }
 
             // And whatever has been added to THAT spell by a buff: effect 293, "+#3 basic damage".
@@ -7026,8 +7026,8 @@ namespace Jondo.Unity.Server.Handlers
             if (deEmbrujo != 0)
             {
                 baseDamage += deEmbrujo;
-                Program.LogDebug($"[Combate] El hechizo {spell} lleva {deEmbrujo:+#;-#;0} de daños " +
-                                 $"básicos por embrujo: base {baseDamage}.");
+                Program.LogDebug($"[Fight] Spell {spell} carries {deEmbrujo:+#;-#;0} base " +
+                                 $"damage from buffs: base {baseDamage}.");
             }
 
             // The fixed damages go at the END, without multiplying by the characteristic or by
@@ -7043,9 +7043,9 @@ namespace Jondo.Unity.Server.Handlers
             int enElBorde = Managers.EffectEngine.ConLaCaidaDeLaZona(baseDamage, efecto, lejosDelCentro);
             if (enElBorde != baseDamage)
             {
-                Program.LogDebug($"[Combate] {target.Id} está a {lejosDelCentro} casilla(s) del centro: " +
-                                 $"los daños base bajan de {baseDamage} a {enElBorde} " +
-                                 $"({efecto.PasoDeCaida}% por casilla, tope {efecto.TopeDeCaida}).");
+                Program.LogDebug($"[Fight] {target.Id} is {lejosDelCentro} cell(s) from the centre: " +
+                                 $"the base damage goes down from {baseDamage} to {enElBorde} " +
+                                 $"({efecto.PasoDeCaida}% per cell, cap {efecto.TopeDeCaida}).");
                 baseDamage = enElBorde;
             }
 
@@ -7077,8 +7077,8 @@ namespace Jondo.Unity.Server.Handlers
             {
                 int antes = damage;
                 damage = Math.Max(0, (int)Math.Round(damage * finalInfligido / 100.0));
-                Program.LogDebug($"[Combate] {caster.Id} pega con el daño final al " +
-                                 $"{finalInfligido}%: {antes} se queda en {damage}.");
+                Program.LogDebug($"[Fight] {caster.Id} hits with final damage at " +
+                                 $"{finalInfligido}%: {antes} is left at {damage}.");
             }
 
             // Through portals, the blow grows with the network it crossed: "+#3% daños, +#1% de
@@ -7120,9 +7120,9 @@ namespace Jondo.Unity.Server.Handlers
             {
                 int antesDelCombo = damage;
                 damage = Math.Max(0, (int)Math.Round(damage * (100 + combo) / 100.0));
-                Program.LogDebug($"[Combo] {caster.Id} está en el nivel " +
+                Program.LogDebug($"[Combo] {caster.Id} is at level " +
                                  $"{Managers.Combo.LevelOf(caster)}, +{combo}%: " +
-                                 $"{antesDelCombo} pasa a {damage}.");
+                                 $"{antesDelCombo} becomes {damage}.");
             }
 
             // What the caster deals, in percent, multiplying everything above: a dream's "%
@@ -7131,8 +7131,8 @@ namespace Jondo.Unity.Server.Handlers
             {
                 int antesDelPorcentaje = damage;
                 damage = Math.Max(0, (int)Math.Round(damage * caster.DamageDealtPercent / 100.0));
-                Program.LogDebug($"[Combate] {caster.Id} hace el {caster.DamageDealtPercent}% de daño: " +
-                                 $"{antesDelPorcentaje} pasa a {damage}.");
+                Program.LogDebug($"[Fight] {caster.Id} deals {caster.DamageDealtPercent}% damage: " +
+                                 $"{antesDelPorcentaje} becomes {damage}.");
             }
 
             // THE KINDS OF THIS BLOW, for the rows that name one: "D" any, "DM"/"DCAC" from
@@ -7151,8 +7151,8 @@ namespace Jondo.Unity.Server.Handlers
             {
                 int antes = damage;
                 damage = (int)Math.Round(damage * multiplica / 100.0);
-                Program.LogDebug($"[Combate] {target.Id} sufre los daños al {multiplica}%: " +
-                                 $"{antes} pasa a {damage}.");
+                Program.LogDebug($"[Fight] {target.Id} takes damage at {multiplica}%: " +
+                                 $"{antes} becomes {damage}.");
             }
 
             // "-N de daños recibidos" (105, 265): a flat cut at the end of the sum, from the
@@ -7165,8 +7165,8 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     int antes = damage;
                     damage = Math.Max(0, damage - reduccion);
-                    Program.LogDebug($"[Combate] {target.Id} recibe {reduccion} menos de daño " +
-                                     $"({(deCerca ? "de cerca" : "de lejos")}): {antes} se queda en {damage}.");
+                    Program.LogDebug($"[Fight] {target.Id} takes {reduccion} less damage " +
+                                     $"({(deCerca ? "close up" : "from afar")}): {antes} is left at {damage}.");
                 }
             }
 
@@ -7201,9 +7201,9 @@ namespace Jondo.Unity.Server.Handlers
             {
                 int antesDelEscudo = damage;
                 damage = target.PasarPorElEscudo(damage);
-                Program.LogDebug($"[Combate] El escudo de {target.Id} se come " +
-                                 $"{antesDelEscudo - damage} de {antesDelEscudo}; le quedan " +
-                                 $"{target.PuntosDeEscudo} de escudo.");
+                Program.LogDebug($"[Fight] {target.Id}'s shield eats " +
+                                 $"{antesDelEscudo - damage} of {antesDelEscudo}; " +
+                                 $"{target.PuntosDeEscudo} shield left.");
             }
 
             // What is ANNOUNCED can never go beyond the life he has left. If a piwi with seventy
@@ -7224,7 +7224,7 @@ namespace Jondo.Unity.Server.Handlers
                     if (target.CurrentHP <= suelo || target.CurrentHP - aplicado > suelo) continue;
                     aplicado = target.CurrentHP - suelo;
                     umbralCruzado = umbral;
-                    Program.LogDebug($"[Combate] {target.Id} se queda en su umbral de {umbral.Cuanto}% ({suelo} de vida).");
+                    Program.LogDebug($"[Fight] {target.Id} stays at its {umbral.Cuanto}% threshold ({suelo} life).");
                     break;
                 }
             }
@@ -7257,9 +7257,9 @@ namespace Jondo.Unity.Server.Handlers
             int erosionado = target.Erosionar(damage, porcientoDeErosion);
             if (erosionado > 0)
             {
-                Program.LogDebug($"[Combate] {target.Id} se erosiona {erosionado} de vida máxima " +
-                                 $"({porcientoDeErosion}% de {damage}); se queda en " +
-                                 $"{target.CurrentHP}/{target.MaxHP}, {target.VidaErosionada} erosionados.");
+                Program.LogDebug($"[Fight] {target.Id} has {erosionado} of maximum life eroded " +
+                                 $"({porcientoDeErosion}% of {damage}); left at " +
+                                 $"{target.CurrentHP}/{target.MaxHP}, {target.VidaErosionada} eroded.");
             }
 
             // He has been hit, and the attitudes look at that: it is half of the Ochre Dofus rule.
@@ -7302,9 +7302,9 @@ namespace Jondo.Unity.Server.Handlers
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                         Network.FightProtocol.BuildHeal(caster.Id, curado, caster.Id)));
                     AnotarLaCura(fight, caster, caster, curado);
-                    Program.LogDebug($"[Combate] Robo de vida del efecto {efecto.EffectId}: " +
-                                     $"{caster.Id} se cura {curado} de los {aplicado} quitados; " +
-                                     $"se queda en {caster.CurrentHP}/{caster.MaxHP}.");
+                    Program.LogDebug($"[Fight] Life steal from effect {efecto.EffectId}: " +
+                                     $"{caster.Id} heals {curado} of the {aplicado} taken; " +
+                                     $"left at {caster.CurrentHP}/{caster.MaxHP}.");
                 }
             }
 
@@ -7340,8 +7340,8 @@ namespace Jondo.Unity.Server.Handlers
             }
             fight.TriggeringAttacker = null;
 
-            Program.LogDebug($"[Combate] {aplicado} de daño a {target.Id} (calculado {damage}); " +
-                             $"le quedan {target.CurrentHP}.");
+            Program.LogDebug($"[Fight] {aplicado} damage to {target.Id} (computed {damage}); " +
+                             $"{target.CurrentHP} left.");
 
             // The death, LAST. And without sending a sheet with life at zero first: the real server
             // does not send it, the client subtracts the life from the hit above, and sending it
@@ -7352,7 +7352,7 @@ namespace Jondo.Unity.Server.Handlers
                 CarriedFollows(fight, target);
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                     Network.FightProtocol.BuildDeath(caster.Id, target.Id)));
-                Program.LogDebug($"[Combate] {target.Id} se queda sin vida.");
+                Program.LogDebug($"[Fight] {target.Id} runs out of life.");
 
                 // Level order, finishing with a weapon and falling next to an obstacle: all three are
                 // judged here. The weapon is spell zero, which is how melee travels.
@@ -7538,7 +7538,7 @@ namespace Jondo.Unity.Server.Handlers
             // And an invulnerable one loses nothing to it, the same as to a spell's blow.
             if (Managers.SpellStates.ShieldsFromBlow(quien, 1))
             {
-                Program.LogDebug($"[Combate] {quien.Id} es invulnerable: el choque no le quita nada.");
+                Program.LogDebug($"[Fight] {quien.Id} is invulnerable: the crash takes nothing from it.");
                 return;
             }
 
@@ -7569,8 +7569,8 @@ namespace Jondo.Unity.Server.Handlers
 
             await RefrescarLaVidaAsync(stream, fight, quien, quienEmpuja);
 
-            Program.LogDebug($"[Combate] {quien.Id} se estampa al ser empujado: {aplicado} de daño " +
-                             $"(calculado {dano}, erosión {erosionado}); le quedan {quien.CurrentHP}.");
+            Program.LogDebug($"[Fight] {quien.Id} crashes on being pushed: {aplicado} damage " +
+                             $"(computed {dano}, erosion {erosionado}); {quien.CurrentHP} left.");
 
             if (quien.LeHanPegado)
             {
@@ -7584,7 +7584,7 @@ namespace Jondo.Unity.Server.Handlers
             CarriedFollows(fight, quien);
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildDeath(quienEmpuja.Id, quien.Id)));
-            Program.LogDebug($"[Combate] {quien.Id} se queda sin vida por el golpe del empujón.");
+            Program.LogDebug($"[Fight] {quien.Id} runs out of life from the push crash.");
 
             await ChallengeWatcher.DiedAsync(stream, fight, quien, false, quienEmpuja);
             await ChallengeWatcher.AllyDiedAsync(stream, fight, quien);
@@ -7652,7 +7652,7 @@ namespace Jondo.Unity.Server.Handlers
             // And out of the carousel, so that their turn never comes.
             fight.RebuildTurnOrderOnFighterDeath();
 
-            Program.LogDebug($"[Combate] Con {muerto.Id} se caen sus {suyos.Count} invocación(es): " +
+            Program.LogDebug($"[Fight] With {muerto.Id} its {suyos.Count} summon(s) fall: " +
                              $"{string.Join(", ", suyos.ConvertAll(f => f.Id.ToString()))}.");
         }
 
@@ -7694,8 +7694,8 @@ namespace Jondo.Unity.Server.Handlers
                     continue;
                 }
 
-                Program.LogDebug($"[IA] {monster.Id} lanza {action.Spell.Id} a {action.Target.Id} " +
-                                 $"(casilla {action.TargetCell}) desde {monster.CellId}, valor {action.Score:0.0}.");
+                Program.LogDebug($"[AI] {monster.Id} casts {action.Spell.Id} at {action.Target.Id} " +
+                                 $"(cell {action.TargetCell}) from {monster.CellId}, score {action.Score:0.0}.");
                 await MonsterCastAsync(stream, fight, monster, action.Spell, action.Target, action.TargetCell);
                 // Dead of its own blow, or the blow that emptied a side: the turn ends there, as
                 // in the Dopeul's defeat, with no step taken after it.
@@ -7709,7 +7709,7 @@ namespace Jondo.Unity.Server.Handlers
                 if (fight.EndTurnRequested)
                 {
                     fight.EndTurnRequested = false;
-                    Program.LogDebug($"[IA] {monster.Id} pasa el turno por su hechizo {action.Spell.Id}.");
+                    Program.LogDebug($"[AI] {monster.Id} passes the turn because of its spell {action.Spell.Id}.");
                     await EndMonsterTurnAsync(stream, fight);
                     return;
                 }
@@ -8042,7 +8042,7 @@ namespace Jondo.Unity.Server.Handlers
             }
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Lqn,
                 ConnectionProtocol.BuildNotice(CommandTexts.Get("dream.wave", wave, level))));
-            Program.LogDebug($"[Sueños] Wave {wave}: {joined} monster(s) at level {level}.");
+            Program.LogDebug($"[Dreams] Wave {wave}: {joined} monster(s) at level {level}.");
             return true;
         }
 
@@ -8290,9 +8290,9 @@ namespace Jondo.Unity.Server.Handlers
                     Network.FightProtocol.BuildConfirmTurn(whose.Id)));
             }
             fight.FinPendiente = esperarAcuse != 0 ? esperarAcuse : FightInstance.WaitsForTheJwz;
-            Program.LogDebug($"[Combate] Se acabó en el turno de {whose.Id}; el final espera a que el cliente " +
-                             (esperarAcuse != 0 ? $"acuse la acción {esperarAcuse} o conteste el jxh."
-                                                : "conteste el jxh (jwz)."));
+            Program.LogDebug($"[Fight] It ended on {whose.Id}'s turn; the ending waits for the client " +
+                             (esperarAcuse != 0 ? $"to acknowledge action {esperarAcuse} or answer the jxh."
+                                                : "to answer the jxh (jwz)."));
             return true;
         }
 
@@ -8447,16 +8447,16 @@ namespace Jondo.Unity.Server.Handlers
                 loot = Managers.KoliseoRewards.Botin();
                 EntregarBotin(loot, out caidos);
 
-                Program.LogDebug($"[Koliseo] Victoria: {kamas} kamas, " +
+                Program.LogDebug($"[Koliseo] Victory: {kamas} kamas, " +
                                  $"{Managers.KoliseoRewards.KolichasPorVictoria} kolicha(s), " +
-                                 $"{Managers.KoliseoRewards.VitorichasPorVictoria} vitoricha(s) y " +
-                                 $"{xpGained} de experiencia.");
+                                 $"{Managers.KoliseoRewards.VitorichasPorVictoria} vitoricha(s) and " +
+                                 $"{xpGained} experience.");
             }
 
             if (extraDeRetos > 0)
             {
-                Program.LogDebug($"[Retos] Los retos cumplidos suman un {extraDeRetos} % de mas: " +
-                                 $"{xpGained} de experiencia y {kamas} kamas.");
+                Program.LogDebug($"[Challenges] The challenges met add {extraDeRetos} % more: " +
+                                 $"{xpGained} experience and {kamas} kamas.");
             }
 
             if (xpGained > 0)
@@ -8472,8 +8472,8 @@ namespace Jondo.Unity.Server.Handlers
                     int upToTwoHundred = Math.Max(0, Math.Min(newLevel, MaxLevelWithPoints)
                                                      - Math.Min(GameState.CharacterLevel, MaxLevelWithPoints));
                     if (upToTwoHundred > 0) GameState.CharacterRemainingPoints += upToTwoHundred * 5;
-                    Program.LogDebug($"[Combate] ¡Sube de nivel! {GameState.CharacterLevel} -> {newLevel} " +
-                                     $"(+{upToTwoHundred * 5} puntos).");
+                    Program.LogDebug($"[Fight] Level up! {GameState.CharacterLevel} -> {newLevel} " +
+                                     $"(+{upToTwoHundred * 5} points).");
                     GameState.CharacterLevel = newLevel;
 
                     // And the window, which is what the player expects to see on levelling up.
@@ -8551,8 +8551,8 @@ namespace Jondo.Unity.Server.Handlers
                     })));
             }
 
-            Program.LogDebug($"[Combate] Reparto: {xpGained} de experiencia (total {GameState.Experience}, " +
-                             $"nivel {GameState.CharacterLevel}), {kamas} kamas y {loot.Count} clase(s) de objeto.");
+            Program.LogDebug($"[Fight] Share: {xpGained} experience (total {GameState.Experience}, " +
+                             $"level {GameState.CharacterLevel}), {kamas} kamas and {loot.Count} kind(s) of item.");
 
             // What losing costs, against monsters (FightDefeat.cs): the energy, half the life, and
             // the way back to the save point. Applied before the kub, which is what shows the
@@ -8599,7 +8599,7 @@ namespace Jondo.Unity.Server.Handlers
                     ? GameState.CurrentFightMobId
                     : fight.DefenderLeaderId;
                 MobSpawnManager.RemoveMobGroup(fight.RoleplayMapId, muerto);
-                Program.LogDebug($"[Combate] El grupo #{muerto} desaparece del mapa {fight.RoleplayMapId}.");
+                Program.LogDebug($"[Fight] Group #{muerto} disappears from map {fight.RoleplayMapId}.");
 
                 // In a dream room it is NOT replaced: the room is cleared and stays cleared, which
                 // is what makes advancing mean something. Replacing it would leave the player fighting
@@ -8614,8 +8614,8 @@ namespace Jondo.Unity.Server.Handlers
                     if (repuesto != null)
                     {
                         Replaced(fight, repuesto);
-                        Program.LogDebug($"[Combate] Repuesto el grupo #{repuesto.MobId} en la casilla " +
-                                         $"{repuesto.CellId} con {repuesto.Members.Count} miembro(s).");
+                        Program.LogDebug($"[Fight] Group #{repuesto.MobId} put back on cell " +
+                                         $"{repuesto.CellId} with {repuesto.Members.Count} member(s).");
                     }
                 }
             }
@@ -8696,8 +8696,8 @@ namespace Jondo.Unity.Server.Handlers
             await WriteFrameAsync(stream, ConnectionProtocol.BuildLoadMap(back));
             await WriteFrameAsync(stream, ConnectionProtocol.BuildMapClock());
 
-            Program.LogDebug($"[Combate] Se acabó el combate #{fight.FightId}: " +
-                             $"{(alliesAlive ? "victoria" : "derrota")}. De vuelta al mapa {back}.");
+            Program.LogDebug($"[Fight] Fight #{fight.FightId} is over: " +
+                             $"{(alliesAlive ? "victory" : "defeat")}. Back to map {back}.");
         }
 
         /// <summary>
@@ -8792,8 +8792,8 @@ namespace Jondo.Unity.Server.Handlers
                 // There was a silent catch here. The interval columns are not in the emulator's CREATE
                 // TABLE, so a regenerated database would lose them and every spell would start costing
                 // three action points without anybody noticing.
-                Program.LogDebug($"[Combate] No se pudieron leer los límites del hechizo {spellId} " +
-                                 $"para el nivel {nivel}: {ex.Message}");
+                Program.LogDebug($"[Fight] Could not read the limits of spell {spellId} " +
+                                 $"for level {nivel}: {ex.Message}");
             }
 
             _grades[(spellId, nivel)] = salida;
@@ -8958,7 +8958,7 @@ namespace Jondo.Unity.Server.Handlers
                 // different numbers following each other.
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jxz,
                     Network.FightProtocol.BuildRound(fight.RoundNumber)));
-                Program.LogDebug($"[Combate] Empieza la ronda {fight.RoundNumber}.");
+                Program.LogDebug($"[Fight] Round {fight.RoundNumber} starts.");
 
                 // Unpredictable points out another enemy on every global turn.
                 await ChallengeWatcher.RoundStartedAsync(stream, fight);

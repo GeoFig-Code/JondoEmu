@@ -93,8 +93,8 @@ namespace Jondo.Unity.Server.Managers
 
             if (keyring.Count == 0 && key.Count == 0)
             {
-                Console.WriteLine("[Mazmorra] No se han encontrado las frases de las puertas: " +
-                                  "los guardianes no ofrecerán ni llave ni manojo.");
+                Console.WriteLine("[Dungeon] The door lines were not found: " +
+                                  "the guardians will offer neither key nor keyring.");
                 return;
             }
 
@@ -109,9 +109,9 @@ namespace Jondo.Unity.Server.Managers
             }
 
             _ready = true;
-            Console.WriteLine($"[Mazmorra] {_byNpc.Count} guardianes con puerta que abrir" +
+            Console.WriteLine($"[Dungeon] {_byNpc.Count} guardians with a door to open" +
                               (ambiguos > 0
-                                  ? $", {ambiguos} de ellos guardan varias y se coge la primera."
+                                  ? $", {ambiguos} of them guard several and the first is taken."
                                   : "."));
         }
 
@@ -192,7 +192,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Mazmorra] No se han podido leer las frases de las puertas: {ex.Message}");
+                Console.WriteLine($"[Dungeon] Could not read the door lines: {ex.Message}");
             }
 
             return found;

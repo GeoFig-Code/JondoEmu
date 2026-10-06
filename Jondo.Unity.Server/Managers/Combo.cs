@@ -170,8 +170,8 @@ namespace Jondo.Unity.Server.Managers
                 _percentByLevel = percents;
                 _gradeByLevel = grades;
 
-                Program.LogDebug($"[Combo] {levels.Count} peldanos leidos del hechizo " +
-                                 $"{LadderSpell}; tope {percents.Values.DefaultIfEmpty(0).Max()}%.");
+                Program.LogDebug($"[Combo] {levels.Count} steps read from spell " +
+                                 $"{LadderSpell}; cap {percents.Values.DefaultIfEmpty(0).Max()}%.");
             }
         }
 

@@ -70,7 +70,7 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.JondoVendorsJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine("[Vendedores] No se junta ninguno: no hay " +
+                Console.WriteLine("[Vendors] None is merged: there is no " +
                                   $"{Path.GetFileName(path)}.");
                 return;
             }
@@ -80,7 +80,7 @@ namespace Jondo.Unity.Server.Managers
                 using var doc = JsonDocument.Parse(File.ReadAllText(path));
                 if (!doc.RootElement.TryGetProperty("vendedores", out var vendedores))
                 {
-                    Console.WriteLine("[Vendedores] El fichero no tiene «vendedores».");
+                    Console.WriteLine("[Vendors] The file has no «vendedores».");
                     return;
                 }
 
@@ -105,14 +105,14 @@ namespace Jondo.Unity.Server.Managers
                             // the second would leave its catalogue repeated in two places.
                             if (id == keeps)
                             {
-                                Console.WriteLine($"[Vendedores] El {keeps} se absorbe a sí mismo; " +
-                                                  "se ignora esa línea.");
+                                Console.WriteLine($"[Vendors] {keeps} absorbs itself; " +
+                                                  "that line is ignored.");
                                 continue;
                             }
                             if (!_absorbed.Add(id))
                             {
-                                Console.WriteLine($"[Vendedores] El {id} lo absorben dos vendedores; " +
-                                                  "se queda con el primero.");
+                                Console.WriteLine($"[Vendors] {id} is absorbed by two vendors; " +
+                                                  "the first one keeps it.");
                                 continue;
                             }
                             merge.Absorbs.Add(id);
@@ -126,8 +126,8 @@ namespace Jondo.Unity.Server.Managers
                 foreach (var merge in _merges)
                 {
                     if (!_absorbed.Contains(merge.Keeps)) continue;
-                    Console.WriteLine($"[Vendedores] El {merge.Keeps} se queda Y desaparece a la " +
-                                      "vez. Se queda.");
+                    Console.WriteLine($"[Vendors] {merge.Keeps} stays AND disappears at the " +
+                                      "same time. It stays.");
                     _absorbed.Remove(merge.Keeps);
                 }
 
@@ -148,12 +148,12 @@ namespace Jondo.Unity.Server.Managers
                     }
                 }
 
-                Console.WriteLine($"[Vendedores] {_merges.Count} vendedor(es) se quedan con lo de " +
-                                  $"otros {_absorbed.Count}; {_placements.Count} colocado(s) a mano.");
+                Console.WriteLine($"[Vendors] {_merges.Count} vendor(s) take over the stock of " +
+                                  $"{_absorbed.Count} others; {_placements.Count} placed by hand.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Vendedores] No se pudo leer {Path.GetFileName(path)}: {ex.Message}");
+                Console.WriteLine($"[Vendors] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
         }
 

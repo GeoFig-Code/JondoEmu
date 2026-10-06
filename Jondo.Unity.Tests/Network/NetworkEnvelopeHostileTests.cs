@@ -49,8 +49,8 @@ namespace Jondo.Unity.Tests.Network
                 int pos = start;
                 NetworkEnvelope.SkipField(frame, wireType, ref pos);
 
-                Assert.True(pos >= start, $"tipo {wireType} desde {start}: el cursor retrocedió a {pos}");
-                Assert.True(pos <= frame.Length, $"tipo {wireType} desde {start}: el cursor se fue a {pos}");
+                Assert.True(pos >= start, $"type {wireType} from {start}: the cursor went back to {pos}");
+                Assert.True(pos <= frame.Length, $"type {wireType} from {start}: the cursor went off to {pos}");
             }
         }
 

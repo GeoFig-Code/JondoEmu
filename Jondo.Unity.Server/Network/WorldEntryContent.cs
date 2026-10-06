@@ -74,7 +74,7 @@ namespace Jondo.Unity.Server.Network
             _blocks.Clear();
             if (!File.Exists(path))
             {
-                complain?.Invoke($"[World] No está {path}: nadie podrá entrar al mundo.");
+                complain?.Invoke($"[World] {path} is not there: nobody will be able to enter the world.");
                 return;
             }
 
@@ -104,7 +104,7 @@ namespace Jondo.Unity.Server.Network
             }
             catch (Exception ex)
             {
-                complain?.Invoke($"[World] {path} no se ha podido leer: {ex.Message}");
+                complain?.Invoke($"[World] {path} could not be read: {ex.Message}");
                 _blocks.Clear();
             }
         }

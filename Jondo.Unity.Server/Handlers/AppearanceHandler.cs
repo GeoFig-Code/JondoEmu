@@ -74,7 +74,7 @@ namespace Jondo.Unity.Server.Handlers
             int slot = Cosmetics.SlotOf(gid, variant);
             if (gid == 0 || slot < 0)
             {
-                Console.WriteLine($"[Apariencias] La prenda {gid} no está en el catálogo.");
+                Console.WriteLine($"[Appearances] Garment {gid} is not in the catalogue.");
                 return;
             }
 
@@ -85,7 +85,7 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Answer(Op.Lwz, Pb.New().Var(1, 1).Var(3, slot).Build(),
                                           ConnectionProtocol.RequestId(frame)));
 
-            Console.WriteLine($"[Apariencias] Prenda {gid} (variante {variant}) al hueco {slot}.");
+            Console.WriteLine($"[Appearances] Garment {gid} (variant {variant}) to slot {slot}.");
         }
 
         /// <summary>Putting on or taking off in a specific slot. With no item, it is emptied.</summary>
@@ -106,12 +106,12 @@ namespace Jondo.Unity.Server.Handlers
             if (gid == 0)
             {
                 Wardrobe.TakeOff(who, slot);
-                Console.WriteLine($"[Apariencias] Hueco {slot} vaciado.");
+                Console.WriteLine($"[Appearances] Slot {slot} emptied.");
             }
             else
             {
                 Wardrobe.Wear(who, slot, VariantUid(gid, 0), gid);
-                Console.WriteLine($"[Apariencias] Prenda {gid} al hueco {slot}.");
+                Console.WriteLine($"[Appearances] Garment {gid} to slot {slot}.");
             }
 
             await PreviewAsync(stream);
@@ -147,7 +147,7 @@ namespace Jondo.Unity.Server.Handlers
                 if (slot >= 0)
                 {
                     Wardrobe.SetHidden(Jondo.Unity.Server.Network.SessionContext.State.CharacterId, slot, ocultar);
-                    Console.WriteLine($"[Apariencias] Hueco {slot} {(ocultar ? "oculto" : "a la vista")}.");
+                    Console.WriteLine($"[Appearances] Slot {slot} {(ocultar ? "hidden" : "on show")}.");
                 }
             }
 
@@ -178,7 +178,7 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Answer(Op.Lwx, Pb.New().Var(1, 1).Build(),
                                           ConnectionProtocol.RequestId(frame)));
 
-            Console.WriteLine($"[Apariencias] Aura {aura}.");
+            Console.WriteLine($"[Appearances] Aura {aura}.");
         }
 
         /// <summary>

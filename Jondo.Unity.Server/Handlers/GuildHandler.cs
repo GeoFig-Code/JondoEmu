@@ -59,7 +59,7 @@ namespace Jondo.Unity.Server.Handlers
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Iwn,
                 ConnectionProtocol.BuildElementInUse(elementId, skillId, SessionContext.State.CharacterId)));
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jjc, System.Array.Empty<byte>()));
-            Console.WriteLine($"[Gremio] {SessionContext.State.CharacterName} abre el editor de fundación.");
+            Console.WriteLine($"[Guild] {SessionContext.State.CharacterName} opens the founding editor.");
         }
 
         /// <summary>
@@ -98,7 +98,7 @@ namespace Jondo.Unity.Server.Handlers
             {
                 // There is no measured frame to tell the editor no: the capture only has the good case.
                 // It is told as an information line, which only they see.
-                Console.WriteLine($"[Gremio] Fundación de «{name}» rechazada: {fallo}.");
+                Console.WriteLine($"[Guild] Founding of «{name}» rejected: {fallo}.");
                 await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
                     ConnectionProtocol.BuildNotice(CommandTexts.Get(fallo, name))));
             }
@@ -159,8 +159,8 @@ namespace Jondo.Unity.Server.Handlers
                     SessionContext.Current.AccountId)));
             }
 
-            Console.WriteLine($"[Gremio] {SessionContext.State.CharacterName} funda «{name}» " +
-                              "y gasta su gremialogema.");
+            Console.WriteLine($"[Guild] {SessionContext.State.CharacterName} founds «{name}» " +
+                              "and spends their guildalogem.");
             return null;
         }
 
@@ -410,7 +410,7 @@ namespace Jondo.Unity.Server.Handlers
             GuildStore.SaveRank(rank);
 
             await SendRanksAsync(stream, guild);
-            Console.WriteLine($"[Gremio] Rango {id} de «{guild.Name}» editado: «{rank.Name}».");
+            Console.WriteLine($"[Guild] Rank {id} of «{guild.Name}» edited: «{rank.Name}».");
         }
 
         /// <summary>A rank's permissions (jck): f1 the list as it is, f2 the rank. The mark stays.</summary>
@@ -456,7 +456,7 @@ namespace Jondo.Unity.Server.Handlers
 
             var created = GuildStore.CreateRank(guild.Id, name, icon, order);
             await SendRanksAsync(stream, guild);
-            Console.WriteLine($"[Gremio] Rango {created.Id} «{created.Name}» creado en «{guild.Name}».");
+            Console.WriteLine($"[Guild] Rank {created.Id} «{created.Name}» created in «{guild.Name}».");
         }
 
         /// <summary>
@@ -572,7 +572,7 @@ namespace Jondo.Unity.Server.Handlers
 
             GuildStore.SaveProfile(profile);
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jci, ProfileOf(guild)));
-            Console.WriteLine($"[Gremio] Ficha de «{guild.Name}» escrita: «{profile.Title}».");
+            Console.WriteLine($"[Guild] Profile of «{guild.Name}» written: «{profile.Title}».");
         }
 
         /// <summary>
@@ -620,7 +620,7 @@ namespace Jondo.Unity.Server.Handlers
 
             await GoneAsync(stream, who);
             if (guild != null) await RefreshEveryoneAsync(guild, who);
-            Console.WriteLine($"[Gremio] {SessionContext.State.CharacterName} deja «{guild?.Name}».");
+            Console.WriteLine($"[Guild] {SessionContext.State.CharacterName} leaves «{guild?.Name}».");
         }
 
         /// <summary>
@@ -686,7 +686,7 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             await RefreshEveryoneAsync(guild);
-            Console.WriteLine($"[Gremio] {targetName} expulsado de «{guild.Name}».");
+            Console.WriteLine($"[Guild] {targetName} expelled from «{guild.Name}».");
             return null;
         }
 
@@ -806,7 +806,7 @@ namespace Jondo.Unity.Server.Handlers
                 GuildProtocol.BuildAlteration(catalogue.Alteration, from, to)));
         }
 
-        // ─── Contribuir ─────────────────────────────────────────────────────────
+        // ─── Contributing ───────────────────────────────────────────────────────
 
         /// <summary>
         /// Contributing (jlb): ten thousand kamas of the character for ten of the guild, five times a
@@ -842,7 +842,7 @@ namespace Jondo.Unity.Server.Handlers
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jla, GuildProtocol.BuildContributionsLeft(left)));
         }
 
-        // ─── Candidaturas ───────────────────────────────────────────────────────
+        // ─── Applications ───────────────────────────────────────────────────────
 
         /// <summary>What is needed of each applicant to build his block.</summary>
         private static List<(GuildStore.Application, string, int, long, string, string)> Detailed(
@@ -926,7 +926,7 @@ namespace Jondo.Unity.Server.Handlers
             await RefreshEveryoneAsync(guild, applicant);
         }
 
-        // ─── Invitaciones ───────────────────────────────────────────────────────
+        // ─── Invitations ────────────────────────────────────────────────────────
 
         /// <summary>
         /// Inviting somebody. The client's button appears in no capture -- the ones there are come from

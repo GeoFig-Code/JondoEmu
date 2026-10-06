@@ -18,18 +18,18 @@ namespace Jondo.Unity.Server.Handlers
             error = "";
             if (!SkillManager.TryGet(skillId, out skill))
             {
-                error = $"Habilidad {skillId} desconocida.";
+                error = $"Unknown skill {skillId}.";
                 return false;
             }
             recipes = RecipeManager.ForSkill(skillId);
             if (recipes.Count == 0)
             {
-                error = $"No hay receta 3.6 para la habilidad {skillId}.";
+                error = $"There is no 3.6 recipe for skill {skillId}.";
                 return false;
             }
             if (!JobManager.TryGet(skill.ParentJobId, out job))
             {
-                error = $"Falta el oficio {skill.ParentJobId} de la habilidad {skillId}.";
+                error = $"Job {skill.ParentJobId} of skill {skillId} is missing.";
                 return false;
             }
             return true;
@@ -68,12 +68,12 @@ namespace Jondo.Unity.Server.Handlers
             error = "";
             if (!RecipeManager.TryGetByResult(resultId, out recipe))
             {
-                error = $"Recette produisant l'objet {resultId} inconnue.";
+                error = $"Unknown recipe producing item {resultId}.";
                 return false;
             }
             if (recipe.SkillId != skillId)
             {
-                error = $"La receta {resultId} no es de la habilidad {skillId}.";
+                error = $"Recipe {resultId} does not belong to skill {skillId}.";
                 recipe = null!;
                 return false;
             }

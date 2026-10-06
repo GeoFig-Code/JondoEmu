@@ -33,7 +33,7 @@ namespace Jondo.Unity.Server.Handlers
     /// </remarks>
     public static class ChallengeDuelHandler
     {
-        /// <summary>El cliente reta a alguien (hph).</summary>
+        /// <summary>The client challenges somebody (hph).</summary>
         public static async Task OfferAsync(NetworkStream stream, byte[] payload)
         {
             byte[]? hph = ConnectionProtocol.ReadPayload(payload, Op.Hph);
@@ -51,7 +51,7 @@ namespace Jondo.Unity.Server.Handlers
             var otro = SessionRegistry.FindByCharacter(targetId);
             if (otro == null || !otro.IsInWorld)
             {
-                Console.WriteLine($"[Desafío] {challengerId} reta a {targetId}, que no está conectado.");
+                Console.WriteLine($"[Duel] {challengerId} challenges {targetId}, who is not connected.");
                 return;
             }
 
@@ -59,7 +59,7 @@ namespace Jondo.Unity.Server.Handlers
             // map would leave, on accepting, a fight with no known place to set it up.
             if (otro.MapId != SessionContext.State.MapId)
             {
-                Console.WriteLine($"[Desafío] {challengerId} reta a {targetId}, que está en otro mapa.");
+                Console.WriteLine($"[Duel] {challengerId} challenges {targetId}, who is on another map.");
                 return;
             }
 
@@ -67,7 +67,7 @@ namespace Jondo.Unity.Server.Handlers
             // times and have his screen filled, or ten can be challenged and all of them accepted.
             if (Duels.Busy(challengerId) || Duels.Busy(targetId))
             {
-                Console.WriteLine($"[Desafío] {challengerId} o {targetId} ya andan en uno.");
+                Console.WriteLine($"[Duel] {challengerId} or {targetId} is already in one.");
                 return;
             }
 
@@ -79,7 +79,7 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, aviso);
             await otro.SendAsync(aviso);
 
-            Console.WriteLine($"[Desafío] #{desafio.Id}: {challengerId} reta a {targetId}.");
+            Console.WriteLine($"[Duel] #{desafio.Id}: {challengerId} challenges {targetId}.");
         }
 
         /// <summary>The challenged player's answer (hpu): with f2 he accepts, without it he refuses.</summary>
@@ -107,7 +107,7 @@ namespace Jondo.Unity.Server.Handlers
             // third player could accept for him just by guessing the number.
             if (GameState.CharacterId != desafio.TargetId)
             {
-                Console.WriteLine($"[Desafío] #{id}: contesta {GameState.CharacterId} y no le toca.");
+                Console.WriteLine($"[Duel] #{id}: {GameState.CharacterId} answers and it is not their turn to.");
                 return;
             }
 
@@ -118,8 +118,8 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, resultado);
             SessionRegistry.FindByCharacter(desafio.ChallengerId)?.SendAsync(resultado);
 
-            Console.WriteLine($"[Desafío] #{id}: {desafio.TargetId} " +
-                              $"{(accepted ? "acepta" : "rechaza")} a {desafio.ChallengerId}.");
+            Console.WriteLine($"[Duel] #{id}: {desafio.TargetId} " +
+                              $"{(accepted ? "accepts" : "rejects")} {desafio.ChallengerId}.");
 
             if (!accepted) return;
 
@@ -132,8 +132,8 @@ namespace Jondo.Unity.Server.Handlers
             if (retador == null || retado == null || !retador.IsInWorld || !retado.IsInWorld
                 || retador.MapId != retado.MapId)
             {
-                Console.WriteLine($"[Desafío] #{id}: aceptado, pero ya no están los dos en el " +
-                                  $"mismo sitio; no se monta el combate.");
+                Console.WriteLine($"[Duel] #{id}: accepted, but the two are no longer in the " +
+                                  $"same place; the fight is not set up.");
                 return;
             }
 

@@ -331,8 +331,8 @@ namespace Jondo.Unity.Server.Network
                                     // of a few KB, so there is room to spare.
                                     if (length < 0 || length > Jondo.Protocol.NetworkMessage.MaxFrameLength)
                                     {
-                                        Console.WriteLine($"[Zaap] Trama de {length} bytes: pasa del " +
-                                                          "tope. Se cierra la conexión.");
+                                        Console.WriteLine($"[Zaap] Frame of {length} bytes: over the " +
+                                                          "cap. The connection is closed.");
                                         break;
                                     }
 

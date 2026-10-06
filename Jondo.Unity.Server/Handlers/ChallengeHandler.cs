@@ -137,7 +137,7 @@ namespace Jondo.Unity.Server.Handlers
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kwx,
                 Network.FightProtocol.BuildChallengeList(lista)));
 
-            Console.WriteLine($"[Retos] Se ofrecen {Names(nombres)} en el combate #{fight.FightId}.");
+            Console.WriteLine($"[Challenges] {Names(nombres)} offered in fight #{fight.FightId}.");
         }
 
         /// <summary>
@@ -274,8 +274,8 @@ namespace Jondo.Unity.Server.Handlers
                         Network.FightProtocol.BuildChallenge(reto.Id, 0))));
             }
 
-            Console.WriteLine($"[Retos] El sitio impone {puestos.Count} reto(s) más en el " +
-                              $"combate #{fight.FightId}.");
+            Console.WriteLine($"[Challenges] The place imposes {puestos.Count} more challenge(s) in " +
+                              $"fight #{fight.FightId}.");
         }
 
         /// <summary>The final list (kwu). It goes between the kai and the jyy.</summary>
@@ -292,11 +292,11 @@ namespace Jondo.Unity.Server.Handlers
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kwu,
                 Network.FightProtocol.BuildChallengeFinalList(lista)));
 
-            Console.WriteLine($"[Retos] El combate #{fight.FightId} se pelea con " +
+            Console.WriteLine($"[Challenges] Fight #{fight.FightId} is fought with " +
                               $"{Fixed(fight)}.");
         }
 
-        // ─── Piezas ─────────────────────────────────────────────────────────────
+        // ─── Pieces ─────────────────────────────────────────────────────────────
 
         private static async Task FixAsync(NetworkStream stream, FightInstance fight, int id)
         {
@@ -322,8 +322,8 @@ namespace Jondo.Unity.Server.Handlers
         private static string Names(IReadOnlyList<Challenges.Challenge> retos)
         {
             var trozos = new List<string>();
-            foreach (var reto in retos) trozos.Add($"«{reto.Name}» al {reto.Percent} %");
-            return string.Join(" o ", trozos);
+            foreach (var reto in retos) trozos.Add($"«{reto.Name}» at {reto.Percent} %");
+            return string.Join(" or ", trozos);
         }
 
         private static string Fixed(FightInstance fight)
@@ -331,9 +331,9 @@ namespace Jondo.Unity.Server.Handlers
             var trozos = new List<string>();
             foreach (var (id, percent) in fight.ChallengesFixed)
             {
-                trozos.Add($"«{Challenges.Get(id)?.Name ?? id.ToString()}» al {percent} %");
+                trozos.Add($"«{Challenges.Get(id)?.Name ?? id.ToString()}» at {percent} %");
             }
-            return string.Join(" y ", trozos);
+            return string.Join(" and ", trozos);
         }
 
         private static long VarField(byte[] payload, int number)

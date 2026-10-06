@@ -87,7 +87,7 @@ namespace Jondo.Unity.Server.Network
             else return Mal(400, "tipo-invalido");
 
             MapAdmin.RefreshAsync(mapId).GetAwaiter().GetResult();
-            Console.WriteLine($"[Control] {own.State.CharacterName} invoca {tipo} en el mapa {mapId}, casilla {cell}.");
+            Console.WriteLine($"[Control] {own.State.CharacterName} summons {tipo} on map {mapId}, cell {cell}.");
             return Bien(Describe(mapId, cell));
         }
 
@@ -113,7 +113,7 @@ namespace Jondo.Unity.Server.Network
 
             ActivityJournal.Current.Write("admin.removed", administrador, own.CharacterId, new { map = mapId, tipo, id });
             MapAdmin.RefreshAsync(mapId).GetAwaiter().GetResult();
-            Console.WriteLine($"[Control] {own.State.CharacterName} quita {tipo} {id} del mapa {mapId}.");
+            Console.WriteLine($"[Control] {own.State.CharacterName} removes {tipo} {id} from map {mapId}.");
             return Bien(Describe(mapId, own.State.CellId));
         }
 
@@ -166,7 +166,7 @@ namespace Jondo.Unity.Server.Network
             var prisoner = Jail.Prisoners.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
             if (prisoner == null) return Mal(404, "no-esta-preso");
 
-            var refusal = Jail.ReleaseAsync(prisoner.CharacterId, "liberado por un administrador").GetAwaiter().GetResult();
+            var refusal = Jail.ReleaseAsync(prisoner.CharacterId, "released by an administrator").GetAwaiter().GetResult();
             if (refusal != Jail.Refusal.None) return Mal(Code(refusal), Reason(refusal));
 
             ActivityJournal.Current.Write("admin.released", administrador, 0,

@@ -165,8 +165,8 @@ namespace Jondo.Unity.Server.Network
             // being from another start, the column having been overwritten, or the client
             // sending something else— and without distinguishing them there is nowhere to go. Masked: it is a
             // live credential and the log stays on disk.
-            Console.WriteLine($"[Lanzamientos] Token {Enmascarar(token)} desconocido: no está entre " +
-                              $"los {Tokens.Count} de este arranque, ni en LauncherToken, ni en GameToken.");
+            Console.WriteLine($"[Launches] Token {Enmascarar(token)} unknown: it is not among " +
+                              $"the {Tokens.Count} of this startup, nor in LauncherToken, nor in GameToken.");
             return 0;
         }
 
@@ -265,8 +265,8 @@ namespace Jondo.Unity.Server.Network
 
                 Remove(launch);
                 soltados++;
-                Console.WriteLine($"[Lanzamientos] La cuenta {launch.AccountId} lleva " +
-                                  $"{(ahora - visto).TotalMinutes:0} min sin dar senales. Se suelta.");
+                Console.WriteLine($"[Launches] Account {launch.AccountId} has gone " +
+                                  $"{(ahora - visto).TotalMinutes:0} min without a sign of life. It is released.");
             }
             return soltados;
         }

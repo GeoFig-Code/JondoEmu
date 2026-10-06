@@ -1149,7 +1149,7 @@ public static class Op
     /// <summary>S→C: you are invited to a guild. f1 the guild block, f2 who invites.</summary>
     public const string Jiq = "jiq";
 
-    /// <summary>C→S: contestar a la invitación. Vacío rechaza; f1 = 1 acepta.</summary>
+    /// <summary>C→S: answering the invitation. Empty rejects; f1 = 1 accepts.</summary>
     public const string Jiz = "jiz";
 
     /// <summary>C→S: viewing an application. f2 the character who sent it.</summary>
@@ -2006,7 +2006,7 @@ public static class Op
     /// <summary>The account's characters on the chosen server.</summary>
     public const string Kvi = "kvi";
 
-    /// <summary>Un nombre de personaje sugerido (el boton del dado).</summary>
+    /// <summary>A suggested character name (the dice button).</summary>
     public const string Kvk = "kvk";
 
     /// <summary>The same step right after a successful creation: the client sends kvl behind kvi and enters the world without going through the list.</summary>
@@ -2018,7 +2018,7 @@ public static class Op
     /// <summary>Crear un personaje.</summary>
     public const string Kvz = "kvz";
 
-    // ─── Borrar un personaje ────────────────────────────────────────────────────────────────
+    // ─── Deleting a character ───────────────────────────────────────────────────────────────
     //
     // Measured in "crear personaje - borrar personaje.pcapng", which records one deletion from
     // end to end. The client sends three messages and the server answers with five frames:
@@ -2247,7 +2247,7 @@ public static class Op
     /// <summary>Unidentified. 2 uses in the emulator.</summary>
     public const string Lwb = "lwb";
 
-    /// <summary>Elegir un ornamento; un mensaje vacio significa ninguno.</summary>
+    /// <summary>Choosing an ornament; an empty message means none.</summary>
     public const string Lwm = "lwm";
 
     /// <summary>Acknowledgement of receipt.</summary>
@@ -2323,8 +2323,8 @@ public static class Op
     public const string Mgz = "mgz";
 
     /// <summary>
-    /// The real name of the message travelling with this opcode. 0 of 253
-    /// are known; for the rest it returns an empty string, which is the honest thing.
+    /// The real name of the message travelling with this opcode. 0 of
+    /// 253 are known; for the rest it returns an empty string, which is the honest thing.
     /// </summary>
     public static string Label(string opcode) => Labels.GetValueOrDefault(opcode, "");
 

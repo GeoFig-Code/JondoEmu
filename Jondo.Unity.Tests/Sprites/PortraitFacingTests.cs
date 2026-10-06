@@ -47,7 +47,7 @@ namespace Jondo.Unity.Tests.Sprites
             // 2 is south, the only one of the five the rig brings that looks at the camera.
             Assert.EndsWith("_2", pintor.LastAnimation);
             Assert.True(pintor.LastDirectionFound,
-                $"la dirección de frente no se ha encontrado; se dibujó con «{pintor.LastAnimation}»");
+                $"the facing direction was not found; it was drawn with «{pintor.LastAnimation}»");
         }
 
         [AvaloniaFact]
@@ -62,10 +62,10 @@ namespace Jondo.Unity.Tests.Sprites
             // triangles and not just looking that the slot exists: a slot nobody fills also
             // appears on the list, with zero.
             Assert.True(pintor.LastSlots.TryGetValue("Tete_2", out int cabeza) && cabeza > 0,
-                        $"la cabeza no se ha dibujado. Huecos: {pintor.LastMakeup}");
+                        $"the head was not drawn. Slots: {pintor.LastMakeup}");
 
             Assert.True(pintor.LastSlots.TryGetValue("Torse_2", out int torso) && torso > 0,
-                        "el torso tampoco, así que esto no es sólo la cabeza");
+                        "nor was the torso, so this is not only the head");
         }
 
         [AvaloniaFact]

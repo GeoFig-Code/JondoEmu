@@ -52,7 +52,7 @@ namespace Jondo.Unity.Launcher
             }
             catch (Exception ex)
             {
-                Program.LogDebug($"[Lanzador] No se ha podido traer al frente el que ya estaba: {ex.Message}");
+                Program.LogDebug($"[Launcher] Could not bring the one already open to the front: {ex.Message}");
             }
 
             return false;

@@ -240,8 +240,8 @@ namespace Jondo.Unity.Server.Network
 
             if (seVa > 0 || llega > 0)
             {
-                Program.LogDebug($"[Mudanza] {ficha.Name}: {mapaQueDeja} -> {quien.MapId}. " +
-                                 $"Avisados {seVa} que deja y {llega} que se encuentra.");
+                Program.LogDebug($"[Move] {ficha.Name}: {mapaQueDeja} -> {quien.MapId}. " +
+                                 $"Told {seVa} on the map left and {llega} on the one found.");
             }
             return (seVa, llega);
         }

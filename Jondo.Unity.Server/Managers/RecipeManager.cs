@@ -56,7 +56,7 @@ namespace Jondo.Unity.Server.Managers
         {
             ImportIfAvailable();
             LoadFromDatabase();
-            Console.WriteLine($"[Recipes] {_byResult.Count} recetas cargadas.");
+            Console.WriteLine($"[Recipes] {_byResult.Count} recipes loaded.");
         }
 
         private static void ImportIfAvailable()
@@ -64,7 +64,7 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.RecipesJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Recipes] Falta {path}; se usa el catalogo que ya hay en la base.");
+                Console.WriteLine($"[Recipes] {path} is missing; the catalogue already in the database is used.");
                 return;
             }
 
@@ -78,7 +78,7 @@ namespace Jondo.Unity.Server.Managers
                     var quantities = DofusDudeCatalog.IntArray(data, "quantities");
                     if (ingredientIds.Count != quantities.Count)
                         throw new InvalidOperationException(
-                            $"Recette {DofusDudeCatalog.Int32(data, "resultId")}: ingredientes y cantidades descuadrados.");
+                            $"Recipe {DofusDudeCatalog.Int32(data, "resultId")}: ingredients and quantities do not match.");
 
                     var recipe = new RecipeDefinition
                     {
@@ -93,12 +93,12 @@ namespace Jondo.Unity.Server.Managers
                         recipe.MutableIngredients.Add(new RecipeIngredient(ingredientIds[i], quantities[i]));
                     rows.Add(recipe);
                 }
-                if (rows.Count == 0) throw new InvalidOperationException("El catalogo de recetas esta vacio.");
+                if (rows.Count == 0) throw new InvalidOperationException("The recipes catalogue is empty.");
                 Import(rows);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Recipes] Importacion cancelada, se conserva el catalogo de la base: {ex.Message}");
+                Console.WriteLine($"[Recipes] Import cancelled, the database's catalogue is kept: {ex.Message}");
             }
         }
 

@@ -49,7 +49,7 @@ namespace Jondo.Unity.Tests.Combat
             // FightResultsTests, which reads it through FightProtocol and runs in parallel.
             long suelo = ExperienceTable.LevelFloor(nivel);
             long banda = ExperienceTable.NextLevelFloor(nivel) - suelo;
-            Assert.True(banda > 0, $"el nivel {nivel} no tiene banda");
+            Assert.True(banda > 0, $"level {nivel} has no band");
 
             long gana = KoliseoRewards.Experiencia(nivel);
 

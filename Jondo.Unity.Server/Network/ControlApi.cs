@@ -175,8 +175,8 @@ namespace Jondo.Unity.Server.Network
             int rol = DatabaseManager.GetAccountRole(cuenta);
             if (!Roles.AlMenos(rol, haceFalta))
             {
-                Console.WriteLine($"[Control] La cuenta {cuenta} ({Roles.Nombre(rol)}) ha intentado algo " +
-                                  $"de {Roles.Nombre(haceFalta)}. Rechazado.");
+                Console.WriteLine($"[Control] Account {cuenta} ({Roles.Nombre(rol)}) tried something " +
+                                  $"for {Roles.Nombre(haceFalta)}. Rejected.");
                 ActivityJournal.Current.Write("admin.denied", cuenta,
                     details: new { role = rol, requiredRole = haceFalta });
                 return Mal(403, "rol");
@@ -190,7 +190,7 @@ namespace Jondo.Unity.Server.Network
             string quien = Texto(cuerpo, "cuenta");
             int rol = (int)Numero(cuerpo, "rol");
             bool bien = DatabaseManager.SetAccountRole(quien, rol, out int cuantas);
-            if (bien) Console.WriteLine($"[Control] {quien} pasa a {Roles.Nombre(rol)}.");
+            if (bien) Console.WriteLine($"[Control] {quien} becomes {Roles.Nombre(rol)}.");
             ActivityJournal.Current.Write("admin.role.changed", administrador,
                 details: new { account = quien, requestedRole = rol, changed = bien, rows = cuantas });
             return Bien(new { bien, cuantas });
@@ -334,14 +334,14 @@ namespace Jondo.Unity.Server.Network
                                                            targetCell).GetAwaiter().GetResult();
                     }
 
-                    Console.WriteLine($"[Control] Personaje {estado.CharacterName}: caracteristicas " +
+                    Console.WriteLine($"[Control] Character {estado.CharacterName}: characteristics " +
                                       $"{estado.StatVitality}/{estado.StatWisdom}/{estado.StatStrength}/" +
                                       $"{estado.StatIntelligence}/{estado.StatChance}/{estado.StatAgility}, " +
                                       $"kamas {estado.Kamas}" +
                                       (levelChange != null ? $", nivel {estado.CharacterLevel}" : "") +
-                                      (granted != null ? $", objeto {granted.Gid} (uid {granted.Uid})" : "") +
-                                      (mount != null ? $", montura {mount.Gid}" : "") +
-                                      (landed != null ? $", mapa {estado.MapId} celda {landed}" : "") + ".");
+                                      (granted != null ? $", item {granted.Gid} (uid {granted.Uid})" : "") +
+                                      (mount != null ? $", mount {mount.Gid}" : "") +
+                                      (landed != null ? $", map {estado.MapId} cell {landed}" : "") + ".");
                     ActivityJournal.Current.Write("admin.character.updated", administrador,
                         estado.CharacterId,
                         new
@@ -645,12 +645,12 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         private static Respuesta Apagar(long administrador)
         {
-            Console.WriteLine("[Control] El lanzador pide apagar el servidor.");
+            Console.WriteLine("[Control] The launcher asks to shut the server down.");
             ActivityJournal.Current.Write("admin.server.shutdown", administrador);
             _ = System.Threading.Tasks.Task.Run(async () =>
             {
                 await System.Threading.Tasks.Task.Delay(300);
-                Program.RequestShutdown("orden del lanzador");
+                Program.RequestShutdown("launcher's order");
             });
             return Bien(new { bien = true });
         }

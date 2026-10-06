@@ -46,7 +46,7 @@ namespace Jondo.Unity.Tests.Combat
 
             var muro = Assert.Single(muros);
             Assert.Equal(2, muro.Bombs.Count);
-            Assert.Equal(3, muro.Cells.Count);          // cuatro de separación, tres en medio
+            Assert.Equal(3, muro.Cells.Count);          // four apart, three in between
             Assert.DoesNotContain(a, muro.Cells);       // its own are not part of the wall
             Assert.DoesNotContain(b, muro.Cells);
         }
@@ -166,8 +166,8 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void El_paquete_del_glifo_es_el_medido_en_la_captura()
         {
-            // f3=dueño f14=401 f32{f1{f1{f2=color f3=casilla} f4=id f5=huella f6=grado
-            //                        f9=hechizo f10=casilla f11=1 f12=dueño}}
+            // f3=owner f14=401 f32{f1{f1{f2=colour f3=cell} f4=id f5=print f6=grade
+            //                        f9=spell f10=cell f11=1 f12=owner}}
             byte[] paquete = FightProtocol.BuildGlyph(
                 owner: 53721497699, glyphId: 1, cell: 260, spell: 13458, grade: 3,
                 size: 2, colour: FightProtocol.GlyphRed);

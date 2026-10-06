@@ -104,9 +104,9 @@ namespace Jondo.Unity.Server.Managers
                 var today = Today();
                 if (today != null)
                 {
-                    Console.WriteLine($"[Almanax] {calendar.Count} días en el calendario; hoy es el {today.Id}, " +
-                                      $"ofrenda en la misión {today.QuestId}, santo {today.Saint}, " +
-                                      $"{today.Bonuses.Count} bonus sin aplicar. La entrega Ontoral (NPC {Giver}).");
+                    Console.WriteLine($"[Almanax] {calendar.Count} days in the calendar; today is {today.Id}, " +
+                                      $"offering in quest {today.QuestId}, saint {today.Saint}, " +
+                                      $"{today.Bonuses.Count} bonuses not applied. Ontoral hands it over (NPC {Giver}).");
                 }
             }
         }

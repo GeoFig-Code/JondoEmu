@@ -65,7 +65,7 @@ namespace Jondo.Unity.Tests.Launcher
             foreach (string nombre in pedidos)
             {
                 Assert.True(Application.Current!.Resources.ContainsKey(nombre),
-                    $"El XAML pide «{nombre}» y no está puesto en App.axaml.cs.");
+                    $"The XAML asks for «{nombre}» and it is not set in App.axaml.cs.");
             }
         }
 
@@ -107,7 +107,7 @@ namespace Jondo.Unity.Tests.Launcher
             //
             // So here pixels are counted: on black, the title has to leave gold.
             Assert.True(PintaAlgo(new LogoBanner(), 350, 120),
-                        "El rótulo no ha pintado un solo píxel.");
+                        "The label has not painted a single pixel.");
 
             // And below a certain size it draws nothing ON PURPOSE: the window shrinks it
             // when it does not fit, and half a cut-off title is worse than none.

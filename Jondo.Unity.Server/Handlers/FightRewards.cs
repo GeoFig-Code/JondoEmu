@@ -145,16 +145,16 @@ namespace Jondo.Unity.Server.Handlers
 
             if (dream != null)
             {
-                Program.LogDebug($"[Sueños] Fight #{fight.FightId} pays {winners.Count} dreamer(s) at a loot bonus of " +
+                Program.LogDebug($"[Dreams] Fight #{fight.FightId} pays {winners.Count} dreamer(s) at a loot bonus of " +
                                  $"{dream.LootBonus}: {Dreams.ReflectionsFor(dream.LootBonus)} reflection(s) each" +
                                  (dream.Finished ? $", {dream.Fragments} dream fragment(s) for {dream.Waves} wave(s)." : "."));
             }
 
             if (winners.Count > 1)
             {
-                Program.LogDebug($"[Combate] Reparto de #{fight.FightId} entre {winners.Count}: " +
+                Program.LogDebug($"[Fight] Share of #{fight.FightId} among {winners.Count}: " +
                                  string.Join(", ", plan.Select(p => $"{p.Key} {p.Value.Xp} xp {p.Value.Kamas} kamas " +
-                                                                    $"{p.Value.Loot.Sum(l => l.Value)} objeto(s)")));
+                                                                    $"{p.Value.Loot.Sum(l => l.Value)} item(s)")));
             }
         }
 

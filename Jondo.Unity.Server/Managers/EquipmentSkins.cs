@@ -49,7 +49,7 @@ namespace Jondo.Unity.Server.Managers
                 try
                 {
                     Load();
-                    Console.WriteLine($"[Equipo] {_skins.Count} objetos reales con su piel.");
+                    Console.WriteLine($"[Equipment] {_skins.Count} real items with their skin.");
                 }
                 finally
                 {
@@ -65,7 +65,7 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.EquipmentSkinsJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Equipo] Falta {Path.GetFileName(path)}.");
+                Console.WriteLine($"[Equipment] {Path.GetFileName(path)} is missing.");
                 return;
             }
 
@@ -105,13 +105,13 @@ namespace Jondo.Unity.Server.Managers
 
                 if (saltadas > 0)
                 {
-                    Console.WriteLine($"[Equipo] {saltadas} pieles marcadas para revisar se quedan " +
-                                      "fuera hasta que alguien las mida.");
+                    Console.WriteLine($"[Equipment] {saltadas} skins marked for review stay " +
+                                      "out until somebody measures them.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Equipo] No se pudo leer el aspecto del equipo: {ex.Message}");
+                Console.WriteLine($"[Equipment] Could not read the equipment's look: {ex.Message}");
             }
         }
 

@@ -172,9 +172,9 @@ namespace Jondo.Unity.Launcher.UI
                 _cuentas.Add(new TeamAccount
                 {
                     AccountId = 188940900 + i,
-                    Login = "cuenta" + i,
-                    Nickname = i == 1 ? "Keka" : "Cuenta " + i,
-                    Token = "de mentira",
+                    Login = "account" + i,
+                    Nickname = i == 1 ? "Keka" : "Account " + i,
+                    Token = "fake",
                     Selected = i <= 2,
                 });
             }
@@ -218,7 +218,7 @@ namespace Jondo.Unity.Launcher.UI
                 catch (Exception ex)
                 {
                     // A look that cannot be drawn cannot leave the launcher without a team.
-                    Program.LogDebug($"[Lanzador] Sin retrato para {personajes[0].Name}: {ex.Message}");
+                    Program.LogDebug($"[Launcher] No portrait for {personajes[0].Name}: {ex.Message}");
                 }
             }
 
@@ -296,7 +296,7 @@ namespace Jondo.Unity.Launcher.UI
 
             // Closing the window NO longer shuts down the emulator: it only ends this process. The server is
             // another program and carries on with whatever players it has inside.
-            Program.RequestShutdown("se ha cerrado la ventana del lanzador");
+            Program.RequestShutdown("the launcher window was closed");
         }
 
         // ═══════════════════════════════════════════════════════════════════════

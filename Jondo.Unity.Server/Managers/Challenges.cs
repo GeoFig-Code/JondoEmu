@@ -307,8 +307,8 @@ namespace Jondo.Unity.Server.Managers
                 total++;
                 if (challenge.Judged) judged++;
             }
-            Console.WriteLine($"[Retos] De los {total} que impone un monstruo, {judged} tienen quien " +
-                              $"los juzgue; los otros {total - judged} no se impondrán.");
+            Console.WriteLine($"[Challenges] Of the {total} a monster imposes, {judged} have someone " +
+                              $"to judge them; the other {total - judged} will not be imposed.");
         }
 
         /// <summary>
@@ -369,8 +369,8 @@ namespace Jondo.Unity.Server.Managers
             }
 
             int medidos = _offerable.FindAll(r => r.PercentMeasured).Count;
-            Console.WriteLine($"[Retos] Se ofrecerán {_offerable.Count}: {medidos} con el porcentaje " +
-                              $"medido y {_offerable.Count - medidos} con uno puesto por nosotros.");
+            Console.WriteLine($"[Challenges] {_offerable.Count} will be offered: {medidos} with the measured " +
+                              $"percentage and {_offerable.Count - medidos} with one set by us.");
         }
 
         public static Challenge? Get(int id) => _byId.TryGetValue(id, out var reto) ? reto : null;
@@ -396,8 +396,8 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.Resolve("retos_3.6.10.10.json");
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Retos] Falta {Path.GetFileName(path)}; no se ofrecerá ninguno. " +
-                                  "Genéralo con tools/extraer_retos.py.");
+                Console.WriteLine($"[Challenges] {Path.GetFileName(path)} is missing; none will be offered. " +
+                                  "Generate it with tools/extraer_retos.py.");
                 return;
             }
 
@@ -452,12 +452,12 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Retos] No se han podido leer: {ex.Message}");
+                Console.WriteLine($"[Challenges] Could not be read: {ex.Message}");
                 return;
             }
 
-            Console.WriteLine($"[Retos] {_byId.Count} retos, {_offerable.Count} ofrecibles " +
-                              "(los que tienen porcentaje medido).");
+            Console.WriteLine($"[Challenges] {_byId.Count} challenges, {_offerable.Count} offerable " +
+                              "(the ones with a measured percentage).");
         }
 
         /// <summary>

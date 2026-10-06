@@ -114,7 +114,7 @@ namespace Jondo.Unity.Tests.World
             Assert.True(Criterion.Met(criterion, raid.ResolverFor(1131)));       // lit, at peace
 
             raid.Set(RaidInstance.LightVariable(1), 0);
-            Assert.False(Criterion.Met(criterion, raid.ResolverFor(1131)));      // a oscuras, encima
+            Assert.False(Criterion.Met(criterion, raid.ResolverFor(1131)));      // in the dark, on top
         }
 
         /// <summary>

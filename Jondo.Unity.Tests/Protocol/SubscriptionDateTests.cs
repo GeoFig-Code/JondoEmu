@@ -56,7 +56,7 @@ namespace Jondo.Unity.Tests.Protocol
             var parsed = DateTimeOffset.ParseExact(Today(), Format, CultureInfo.InvariantCulture);
 
             Assert.True(parsed.ToUnixTimeSeconds() < int.MaxValue,
-                        $"{parsed:yyyy-MM-dd} son {parsed.ToUnixTimeSeconds()} segundos y no caben en int32");
+                        $"{parsed:yyyy-MM-dd} is {parsed.ToUnixTimeSeconds()} seconds and does not fit in int32");
         }
 
         [Fact]
@@ -71,7 +71,7 @@ namespace Jondo.Unity.Tests.Protocol
             // not run past twelve months, so "far in the future" is not the virtue it looked like.
             // What this has to catch is a date in the PAST, which expires the account outright.
             Assert.True(parsed > DateTimeOffset.Now.AddDays(7),
-                        "la fecha de abono tiene que estar claramente por delante");
+                        "the subscription date has to be clearly ahead");
         }
 
         [Fact]

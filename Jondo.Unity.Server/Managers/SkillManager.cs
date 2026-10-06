@@ -52,7 +52,7 @@ namespace Jondo.Unity.Server.Managers
         {
             ImportIfAvailable();
             LoadFromDatabase();
-            Console.WriteLine($"[Skills] {_byId.Count} habilidades cargadas.");
+            Console.WriteLine($"[Skills] {_byId.Count} skills loaded.");
         }
 
         private sealed class SourceSkill
@@ -67,7 +67,7 @@ namespace Jondo.Unity.Server.Managers
             string path = Paths.SkillsJson;
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[Skills] Falta {path}; se usa el catalogo que ya hay en la base.");
+                Console.WriteLine($"[Skills] {path} is missing; the catalogue already in the database is used.");
                 return;
             }
 
@@ -100,12 +100,12 @@ namespace Jondo.Unity.Server.Managers
                         Modifiable = DofusDudeCatalog.IntArray(data, "modifiableItemTypeIds"),
                     });
                 }
-                if (rows.Count == 0) throw new InvalidOperationException("El catalogo de habilidades esta vacio.");
+                if (rows.Count == 0) throw new InvalidOperationException("The skills catalogue is empty.");
                 Import(rows);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Skills] Importacion cancelada, se conserva el catalogo de la base: {ex.Message}");
+                Console.WriteLine($"[Skills] Import cancelled, the database's catalogue is kept: {ex.Message}");
             }
         }
 
