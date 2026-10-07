@@ -21,6 +21,22 @@ namespace Jondo.Unity.World.Fights
         public int Breed { get; set; }
 
         public int Level { get; set; }
+
+        /// <summary>
+        /// The last level that adds to what a character can do. Above it are the Omega levels: the
+        /// level and the experience go on, and the client shows them, but they give no life, no
+        /// points and no strength to a formula. Measured: a character with the experience of
+        /// level 354 gets 1,050 base life from the real server, which is 50 + 5 x 200.
+        /// </summary>
+        public const int MaxLevelWithStats = 200;
+
+        /// <summary>
+        /// The level the formulas read: shields per level, pushback damage, what a summon inherits.
+        /// A player's Omega levels are left out; <see cref="Level"/> stays the real one, for what
+        /// the client draws. A monster keeps its own level, since Omega is a character's thing.
+        /// </summary>
+        public int StatLevel => IsMonster ? Level : System.Math.Min(Level, MaxLevelWithStats);
+
         public int LookBoneId { get; set; }
         public string Look { get; set; } = "";
 

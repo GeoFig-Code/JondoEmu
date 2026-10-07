@@ -664,13 +664,37 @@ namespace Jondo.Unity.World.Maps
         }
 
         /// <summary>
+        /// Which way a push sends whoever stands at <paramref name="hasta"/>, seen from
+        /// <paramref name="desde"/>: along the line when the two share one of the eight, and
+        /// otherwise along the walking axis that separates them the most.
+        /// </summary>
+        /// <remarks>
+        /// It is not the nearest of the eight. A target two cells along one axis and one along
+        /// the other is closer to the diagonal than to the axis, and the push went diagonally:
+        /// Amenaza pulled a Puch two steps that way and left it on the far side of the Yopuka,
+        /// while the client's preview drew it in front of him. Over the 469 displacements of the
+        /// captures with a known origin, the axis gets 435 right and the nearest of the eight 408;
+        /// of the 31 where they part, the axis takes 29 (Feca, Hipermago, Osamodas, Tymador,
+        /// Zobal, Zurcarák...).
+        /// </remarks>
+        public static (int Dx, int Dy)? DisplacementDirection(int desde, int hasta)
+        {
+            if (!MapGeometry.IsValid(desde) || !MapGeometry.IsValid(hasta) || desde == hasta) return null;
+            var (ax, ay) = MapGeometry.CellToPoint(desde);
+            var (bx, by) = MapGeometry.CellToPoint(hasta);
+            int dx = bx - ax, dy = by - ay;
+            if (dx == 0 || dy == 0 || Math.Abs(dx) == Math.Abs(dy)) return (Math.Sign(dx), Math.Sign(dy));
+            return Math.Abs(dx) > Math.Abs(dy) ? (Math.Sign(dx), 0) : (0, Math.Sign(dy));
+        }
+
+        /// <summary>
         /// Where whoever receives a push ends up (or a pull, with the cells as a negative), and
         /// what it stops against.
         ///
         /// The direction comes from the cell the spell was cast at —its zone's centre—
         /// towards whoever goes flying; if it is the one right on that cell, there is no vector and
         /// then the caster's cell rules. Measured over the 76 displacements of the
-        /// Cra captures.
+        /// Cra captures. Which of the eight ways it takes is <see cref="DisplacementDirection"/>.
         /// </summary>
         public static PushResult Push(int centro, int deQuienLanza, int aQuien, int casillas,
                                       HashSet<int> pisables, HashSet<int> ocupadas,
@@ -681,7 +705,7 @@ namespace Jondo.Unity.World.Maps
             if (casillas == 0 || !MapGeometry.IsValid(aQuien)) return quieto;
 
             int origen = (centro != aQuien && MapGeometry.IsValid(centro)) ? centro : deQuienLanza;
-            var d = DireccionEntre(origen, aQuien);
+            var d = DisplacementDirection(origen, aQuien);
             if (d == null) return quieto;
 
             int dx = d.Value.Dx, dy = d.Value.Dy;
@@ -708,21 +732,6 @@ namespace Jondo.Unity.World.Maps
                     freno = PushStop.Fighter; paredEn = siguiente; break;
                 }
 
-                // A PULL DOES NOT OVERSHOOT. Pulling walks towards the centre, and without this it
-                // crossed it and came out the other side: the Rogue's Imantación pulls his bombs
-                // six cells, so a bomb two from the point ended up four cells
-                // beyond, in the opposite direction. And since the spell pulls TWICE -- once in its
-                // own effect 6 and again in the 18652 it chains --, the second brought it
-                // back: in the log the dance is seen, bomb -5 from 272 to 185 and from
-                // 185 back to 272.
-                //
-                // What it stops at is as soon as it would step on the centre, which is where a pull stops in
-                // the game: stuck to whoever pulls.
-                if (casillas < 0 && siguiente == centro)
-                {
-                    freno = PushStop.Fighter; paredEn = siguiente; break;
-                }
-
                 donde = siguiente;
                 dadas++;
 
@@ -734,6 +743,27 @@ namespace Jondo.Unity.World.Maps
                 if (paran != null && paran.Contains(siguiente))
                 {
                     freno = PushStop.Wall;
+                    break;
+                }
+
+                // A PULL DOES NOT OVERSHOOT. Pulling walks towards the centre, and without this it
+                // crossed it and came out the other side: the Rogue's Imantación pulls his bombs
+                // six cells, so a bomb two from the point ended up four cells
+                // beyond, in the opposite direction. And since the spell pulls TWICE -- once in its
+                // own effect 6 and again in the 18652 it chains --, the second brought it
+                // back: in the log the dance is seen, bomb -5 from 272 to 185 and from
+                // 185 back to 272.
+                //
+                // It stops ON the centre, not short of it. Stopping a cell before left
+                // Congregación's Puch beside the cell it was pulled to -- diagonal to the
+                // Yopuka, where the client's preview stood it on that cell. The captures land
+                // on it whenever it is free: Cruce (Q1 to Q3, three cells), Colapso, Cencerro,
+                // Timón, Cabestrante, Shock, Ovillo, Parafuso. When somebody stands there --
+                // the caster, a first one pulled -- the occupied cell above has already
+                // stopped it beside them, which is Imantación's 303 to 274 with a bomb on 260.
+                if (casillas < 0 && siguiente == centro)
+                {
+                    dadas = pedidas;
                     break;
                 }
             }

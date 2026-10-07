@@ -564,7 +564,7 @@ namespace Jondo.Unity.Server.Network
         /// the formula gives, and that surplus is what quests and parchments hand out over a
         /// lifetime: ours will come from the database the day we store it.
         /// </summary>
-        private static long BaseLife(int level) => 50 + 5L * Math.Max(1, level);
+        private static long BaseLife(int level) => Handlers.StatsHandler.BaseLifeForLevel(level);
 
         /// <summary>
         /// Characteristics of the character (kub). Without it the client shows the life bar at
@@ -1701,11 +1701,17 @@ namespace Jondo.Unity.Server.Network
             //
             // f1, f5{f7:1} and f7 were missing, and without them the client did not draw the title nor
             // the ornament on hovering over.
+            //
+            // The level goes twice, and not the same: f1.f5 stops at 200 and the ornament carries the
+            // whole level, Omega included. Measured over the 319 players with an ornament in the
+            // captures: below 200 both are equal (64), and every one above shows 200 in f1.f5 and its
+            // full level in the ornament (255) -- a 253 is a 200 with Omega 53. See AddCharacterOptions.
             var cuerpo = Pb.New()
-                .Msg(1, Pb.New().Var(2, HumanKind).VarIfNotZero(5, character.Level))
+                .Msg(1, Pb.New().Var(2, HumanKind)
+                                .VarIfNotZero(5, Handlers.StatsHandler.StatLevel(character.Level)))
                 .Var(3, accountId);
 
-            AddCharacterOptions(cuerpo, character.Id);
+            AddCharacterOptions(cuerpo, character.Id, character.Level);
 
             cuerpo.Msg(5, Pb.New().Var(7, 1));
             cuerpo.Var(6, 1);
@@ -2438,13 +2444,14 @@ namespace Jondo.Unity.Server.Network
         /// The character's "options" within the actor block: the title and the ornament.
         ///
         ///   f5 { f2 { f2: title } }
-        ///   f5 { f9 { f1: counter, f4: ornament } }
+        ///   f5 { f9 { f1: level, f4: ornament } }
         ///
         /// They go repeated inside the same f3 that already carries the account, and the one not held is not
-        /// emitted. f9.f1 is a counter of the character's own that the real server hands out with no
-        /// visible pattern; here it is derived from the id so that it is stable.
+        /// emitted. f9.f1 is the character's whole level, Omega included: it is what the ornament shows,
+        /// and above 200 it is the only place the level travels whole (see PlayerActor). It used to be
+        /// a number made up from the id, which put a level-1000 character's ornament at Omega 34.
         /// </summary>
-        private static void AddCharacterOptions(Pb humanoidBody, long characterId)
+        private static void AddCharacterOptions(Pb humanoidBody, long characterId, int level)
         {
             // The guild, the first of the options. Measured in the founder's jsn right after founding
             // «Jondo»: f5 { f4 { f1{f3 emblem}, f2 id, f3 name, f4 level } }, before the
@@ -2466,12 +2473,10 @@ namespace Jondo.Unity.Server.Network
             if (ornament != Managers.Wardrobe.None)
             {
                 humanoidBody.Msg(5, Pb.New().Msg(9, Pb.New()
-                    .Var(1, OrnamentCounterOf(characterId))
+                    .Var(1, level)
                     .Var(4, ornament)));
             }
         }
-
-        private static long OrnamentCounterOf(long characterId) => (characterId % 300) + 174;
 
         /// <summary>The identity block's f2. It is 3 for the players in the captures.</summary>
         private const int HumanKind = 3;

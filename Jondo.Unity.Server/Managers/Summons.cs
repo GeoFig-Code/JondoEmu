@@ -235,7 +235,9 @@ namespace Jondo.Unity.Server.Managers
                 return new Summon
                 {
                     Plantilla = plantilla,
-                    Grado = grado,
+                    // The grade actually read: one the template lacks falls back to its first,
+                    // and that is the grade the creature is born at and the wire carries.
+                    Grado = Entero(gr, "grade") > 0 ? Entero(gr, "grade") : grado,
                     Nivel = Math.Max(1, Entero(gr, "level")),
                     Look = look,
                     PlantillaDelAspecto = deQuien,

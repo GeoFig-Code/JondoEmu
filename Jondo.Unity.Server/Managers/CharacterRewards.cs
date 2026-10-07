@@ -28,7 +28,7 @@ namespace Jondo.Unity.Server.Managers
     /// </remarks>
     public static class CharacterRewards
     {
-        private const int MaxLevelWithPoints = 200;
+        private const int MaxLevelWithPoints = Handlers.StatsHandler.MaxLevelWithStats;
 
         /// <summary>Hands over kamas and says so. Returns false when there was nothing to give.</summary>
         public static async Task<bool> GiveKamasAsync(NetworkStream stream, long kamas)

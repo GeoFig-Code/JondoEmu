@@ -13,6 +13,7 @@ namespace Jondo.Unity.Tests.Combat
     public class DelayedEffectsTests
     {
         private const int PasoDeCaceria = 32464;
+        private const int FlechaPerseguidora = 32433;
         private const int SurvivalBeaconOwnSpell = 32477;
         private const int SurvivalBeacon = 8348;
 
@@ -21,6 +22,38 @@ namespace Jondo.Unity.Tests.Combat
             Id = id, TeamId = team, CellId = cell, MaxHP = 2000, CurrentHP = 2000, Level = 200,
             MaxAP = 7, CurrentAP = 7, MaxMP = 3, CurrentMP = 3,
         };
+
+        /// <summary>
+        /// A waiting row can cancel the ones behind it, so they are taken one at a time. It is
+        /// Flecha Perseguidora's round after, in its capture: the waiting sub-cast 32615 goes
+        /// first and takes the spell's waiting rows off the target -- jya 5, 6 and 7 -- and no
+        /// blow follows. Taken all at once, the held "98 de daños de aire" was out of the 406's
+        /// reach and went off anyway. The two rows are put by hand: a player's delayed sub-cast
+        /// still runs at the cast.
+        /// </summary>
+        [Fact]
+        public async System.Threading.Tasks.Task A_waiting_row_can_cancel_the_held_blow_behind_it()
+        {
+            var fight = new FightInstance(1, 1);
+            var ocra = Person(10, 0, 300);
+            var enemy = Person(20, 1, 304);
+            fight.AddPlayer(ocra); fight.AddOpponent(enemy);
+
+            Buff Waiting(int effect, int dice, int side) => new()
+            {
+                EffectId = effect, Dado = dice, Cara = side, HechizoOrigen = FlechaPerseguidora, NivelOrigen = 2,
+                Quien = ocra.Id, Pendiente = true, Disparador = EffectEngine.Esperando,
+                EmpiezaEnRonda = fight.RoundNumber, CaducaEnRonda = fight.RoundNumber, Apila = true,
+            };
+            enemy.Buffs.Poner(Waiting(1160, 32615, 1), fight.SiguienteEmbrujo);
+            enemy.Buffs.Poner(Waiting(98, 34, 38), fight.SiguienteEmbrujo);
+            int before = enemy.CurrentHP;
+
+            await Jondo.Unity.Server.Handlers.FightHandler.ApplyDuePendingAsync(null, fight);
+
+            Assert.Equal(before, enemy.CurrentHP);
+            Assert.DoesNotContain(enemy.Buffs.Puestos, b => b.Pendiente);
+        }
 
         /// <summary>
         /// The capture, three casts out of three: the Ocra lands on the aimed cell, and the +1

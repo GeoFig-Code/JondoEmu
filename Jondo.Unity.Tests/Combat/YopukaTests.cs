@@ -33,6 +33,8 @@ namespace Jondo.Unity.Tests.Combat
         private const int Manticolmillo = 24011;
         private const int Tumulto = 13144;
         private const int EspadaDelJuicio = 13117;
+        private const int Congregacion = 13136;
+        private const int Amenaza = 13130;
         private const int BumeranPerfido = 364;
 
         private const int Incurable = 776;
@@ -584,6 +586,149 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Empty(me.Buffs.ActiveSpells);
         }
 
+        // ─── Espada del Juicio ──────────────────────────────────────────────────
+
+        /// <summary>
+        /// Espada del Juicio hits 31 to 35 at the cast and holds its 48 to 52 for two rounds, as
+        /// its capture goes: one blow, a waiting "jxm 96" for round 7 when cast in round 5, and
+        /// the blow at that round. Both went out at the cast, and the marker alone two rounds on.
+        /// </summary>
+        [Fact]
+        public void Espada_del_Juicio_holds_its_second_blow_two_rounds()
+        {
+            var fight = new FightInstance(1, 1);
+            var me = Yopuka(10, 300);
+            var (x, y) = MapGeometry.CellToPoint(300);
+            var puch = Monster(-1, MapGeometry.PointToCell(x + 1, y));
+            fight.AddPlayer(me); fight.AddOpponent(puch);
+
+            var blow = Assert.Single(EffectEngine.Golpes(fight, me, EspadaDelJuicio, 2, puch, puch.CellId));
+            Assert.Equal(31, blow.Efecto.DiceNum);
+
+            Cast(fight, me, EspadaDelJuicio, 2, puch, puch.CellId, round: 5);
+            var waiting = Assert.Single(puch.Buffs.Puestos, b => b.Pendiente && b.EffectId == 96);
+            Assert.Equal(7, waiting.EmpiezaEnRonda);
+            Assert.Equal(48, waiting.Dado);
+
+            Assert.DoesNotContain(EffectEngine.ActivateDuePending(fight, 6), p => p.Hits);
+            var due = Assert.Single(EffectEngine.ActivateDuePending(fight, 7), p => p.Hits);
+            Assert.Same(puch, due.Target);
+            Assert.Null(due.Live);
+        }
+
+        /// <summary>When its round comes, the held blow lands: from the Yopuka, on the Puch.</summary>
+        [Fact]
+        public async System.Threading.Tasks.Task Espada_del_Juicio_lands_its_second_blow_when_its_round_comes()
+        {
+            var fight = new FightInstance(1, 1);
+            var me = Yopuka(10, 300);
+            var (x, y) = MapGeometry.CellToPoint(300);
+            var puch = Monster(-1, MapGeometry.PointToCell(x + 1, y));
+            fight.AddPlayer(me); fight.AddOpponent(puch);
+
+            // Cast two rounds before this one, so that its round is now.
+            Cast(fight, me, EspadaDelJuicio, 2, puch, puch.CellId, round: fight.RoundNumber - 2);
+            int before = puch.CurrentHP;
+
+            await FightHandler.ApplyDuePendingAsync(null, fight);
+
+            Assert.True(puch.CurrentHP <= before - 48, $"{before} -> {puch.CurrentHP}");
+            Assert.DoesNotContain(puch.Buffs.Puestos, b => b.Pendiente);
+        }
+
+        // ─── Congregación and Amenaza ───────────────────────────────────────────
+
+        /// <summary>
+        /// Congregación pulls each enemy in its cross as many cells as it stands from the
+        /// centre, and the pull ends ON the centre: next to the Yopuka standing beside it, as
+        /// the client's preview draws it, and not one cell short, diagonal to him.
+        /// </summary>
+        [Fact]
+        public void Congregacion_pulls_onto_the_centre()
+        {
+            var fight = new FightInstance(1, 1);
+            var me = Yopuka(10, 300);
+            var (x, y) = MapGeometry.CellToPoint(300);
+            int centre = MapGeometry.PointToCell(x, y + 1);
+            var puch = Monster(-1, MapGeometry.PointToCell(x + 3, y + 1));
+            fight.AddPlayer(me); fight.AddOpponent(puch);
+
+            Cast(fight, me, Congregacion, 1, null, centre);
+
+            Assert.Equal(centre, puch.CellId);
+            Assert.Equal(300, me.CellId);
+        }
+
+        /// <summary>
+        /// Amenaza on a Puch off the eight lines pulls it along the longer axis, in front of the
+        /// Yopuka; it went diagonally and ended past him, on the other side.
+        /// </summary>
+        [Fact]
+        public void Amenaza_off_the_lines_pulls_along_the_longer_axis()
+        {
+            var fight = new FightInstance(1, 1);
+            var me = Yopuka(10, 300);
+            var (x, y) = MapGeometry.CellToPoint(300);
+            var puch = Monster(-1, MapGeometry.PointToCell(x + 2, y + 1));
+            fight.AddPlayer(me); fight.AddOpponent(puch);
+
+            Cast(fight, me, Amenaza, 2, puch, puch.CellId);
+
+            Assert.Equal(MapGeometry.PointToCell(x, y + 1), puch.CellId);
+        }
+
+        // ─── Conquista ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// One strategist per side: the new one's own spell (19723 grade 1) kills every other
+        /// ally of template 5130 on the board, as the capture goes -- the second Conquista
+        /// summons -6 and then -6 kills -5.
+        /// </summary>
+        [Fact]
+        public void A_new_strategist_kills_the_old_one()
+        {
+            var fight = new FightInstance(1, 1);
+            var me = Yopuka(10, 300);
+            var puch = Monster(-9, 400);
+            fight.AddPlayer(me); fight.AddOpponent(puch);
+            var first = Strategist(-1, 301);
+            fight.Invocar(first, me);
+            var second = Strategist(-2, 302);
+            fight.Invocar(second, me);
+
+            var outcomes = EffectEngine.Resolver(fight, second, StrategistSpell, 1, second, EffectEngine.AlLanzar, 1,
+                                                 celdaApuntada: second.CellId);
+
+            Assert.Contains(outcomes, o => o.Fulmina && o.Sobre == first);
+            Assert.DoesNotContain(outcomes, o => o.Fulmina && o.Sobre != first);
+        }
+
+        /// <summary>
+        /// Conquista's row asks for the strategist at grade 1, the grade whose startingSpellId is
+        /// its spell; born at the spell's grade 2 it had none. And a row asking for a grade the
+        /// template lacks gets its first: the Osamodas' Crujintesco is asked at 2 and has only 1.
+        /// </summary>
+        [Fact]
+        public void A_summon_is_born_at_the_grade_its_row_names()
+        {
+            var row = SpellEffects.De(13148, 2).Single(e => e.EffectId == 181);
+            Assert.Equal(5130, row.DiceNum);
+
+            var strategist = Summons.De(row.DiceNum, row.DiceSide);
+            Assert.Equal(1, strategist.Grado);
+            Assert.Equal(StrategistSpell, strategist.HechizoPropio);
+
+            Assert.Equal(1, Summons.De(8078, 2).Grado);
+        }
+
+        private const int StrategistSpell = 19723;
+
+        private static Fighter Strategist(long id, int cell) => new()
+        {
+            Id = id, TeamId = 0, CellId = cell, MaxHP = 1000, CurrentHP = 1000, Level = 200,
+            IsMonster = true, MonsterId = 5130, GradeIndex = 2,
+        };
+
         // ─── Tumulto ────────────────────────────────────────────────────────────
 
         /// <summary>Tumulto: one "+20 de daños básicos" per enemy hit, both kept ("-1").</summary>
@@ -600,6 +745,39 @@ namespace Jondo.Unity.Tests.Combat
             Cast(fight, me, Tumulto, 1, null, 330);
             Assert.Equal(2, me.Buffs.Puestos.Count(b => b.EffectId == BasicDamage));
             Assert.Equal(40, me.Buffs.DelHechizo(Tumulto, SpellAspect.DanoBase, 1));
+        }
+
+        /// <summary>
+        /// The bonus is for this very cast: the 1160 that gives it is written before the blow,
+        /// and in the capture the jxm 293 goes out before the blows, which carry it. Dealt
+        /// after the blows it only reached the next cast, and Tumulto is cast once a turn.
+        /// </summary>
+        [Fact]
+        public async System.Threading.Tasks.Task Tumulto_hits_with_the_bonus_of_the_enemies_it_hits()
+        {
+            var fight = new FightInstance(1, 1);
+            var me = Yopuka(10, 300);
+            var (x, y) = MapGeometry.CellToPoint(330);
+            var one = Monster(-1, MapGeometry.PointToCell(x + 1, y));
+            var two = Monster(-2, MapGeometry.PointToCell(x - 1, y));
+            fight.AddPlayer(me); fight.AddOpponent(one); fight.AddOpponent(two);
+
+            var left = await FightHandler.BoostsFirstAsync(null, fight, me, Tumulto, 1, null, 330, false,
+                                                           SpellEffects.De(Tumulto, 1));
+
+            Assert.Equal(40, me.Buffs.DelHechizo(Tumulto, SpellAspect.DanoBase, fight.RoundNumber));
+            Assert.DoesNotContain(left, row => row.EffectId == 1160);
+            Assert.Contains(left, row => row.EffectId == 99);
+        }
+
+        /// <summary>
+        /// Only what raises the spell NOW goes first: Ira de Yopuka's "+110" waits three turns
+        /// (its delay), and stays where it is.
+        /// </summary>
+        [Fact]
+        public void A_delayed_boost_does_not_go_before_the_blow()
+        {
+            Assert.Empty(EffectEngine.BoostsBeforeTheBlows(15661, SpellEffects.De(15661, 1)));
         }
     }
 }

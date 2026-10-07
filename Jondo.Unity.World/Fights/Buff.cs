@@ -744,14 +744,17 @@ namespace Jondo.Unity.World.Fights
         }
 
         /// <summary>
-        /// Removes and returns the pending rows whose round has come, in the order they were
-        /// put. Like the delayed heals, before the expiry sweep: a pending row's expiry is its
-        /// activation round, and the sweep would take it as merely expired.
+        /// Removes and returns the first pending row whose round has come, in the order they were
+        /// put, or null. Like the delayed heals, before the expiry sweep: a pending row's expiry is
+        /// its activation round, and the sweep would take it as merely expired. One at a time, so
+        /// that what one of them does can still reach the ones behind it.
         /// </summary>
-        public List<Buff> TakeDuePending(int round)
+        public Buff TakeFirstDuePending(int round)
         {
-            var due = _puestos.FindAll(e => e.Pendiente && round >= e.EmpiezaEnRonda);
-            _puestos.RemoveAll(e => e.Pendiente && round >= e.EmpiezaEnRonda);
+            int i = _puestos.FindIndex(e => e.Pendiente && round >= e.EmpiezaEnRonda);
+            if (i < 0) return null;
+            var due = _puestos[i];
+            _puestos.RemoveAt(i);
             return due;
         }
 

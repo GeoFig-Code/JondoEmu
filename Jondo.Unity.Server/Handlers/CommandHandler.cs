@@ -115,7 +115,7 @@ namespace Jondo.Unity.Server.Handlers
             => HaceFalta.TryGetValue(command, out int role) ? role : Roles.Administrador;
 
         /// <summary>The level at which the normal game ends; from there up it is Omega.</summary>
-        private const int MaxNormalLevel = 200;
+        private const int MaxNormalLevel = StatsHandler.MaxLevelWithStats;
 
         /// <summary>
         /// Serves the line. Returns true when it was a command and so it must NOT be published in the
@@ -476,8 +476,8 @@ namespace Jondo.Unity.Server.Handlers
                     "type.ankama.com/bcy", Pb.New()
                         .Var(1, newLevel)
                         .Var(2, oldLevel)
-                        .Var(3, 5L * (newLevel - oldLevel))
-                        .Var(4, 5L * (newLevel - oldLevel))
+                        .Var(3, 5L * (StatsHandler.StatLevel(newLevel) - StatsHandler.StatLevel(oldLevel)))
+                        .Var(4, 5L * (StatsHandler.StatLevel(newLevel) - StatsHandler.StatLevel(oldLevel)))
                         .Build()));
             }
 

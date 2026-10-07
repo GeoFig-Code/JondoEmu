@@ -30,8 +30,23 @@ namespace Jondo.Unity.Server.Handlers
         // since it also derived the capital from the stats instead of from the level, the panel
         // ended up showing "-75 / 245" and the reset button could never add up.
 
-        /// <summary>Total point capital for a level: 5 per level starting from level 1.</summary>
-        public static int TotalCapitalForLevel(int level) => Math.Max(0, (level - 1) * 5);
+        /// <summary>
+        /// The last level that gives life and characteristic points. From 201 on the level is
+        /// Omega: it keeps climbing in the client's experience table and adds nothing to the sheet.
+        /// Measured: the character of the characteristics captures has the experience of level 354
+        /// (200 with Omega 154), and the real server sends it 1,050 base life, which is
+        /// 50 + 5 x 200, and 995 points to spend, which is 5 x 199.
+        /// </summary>
+        public const int MaxLevelWithStats = Jondo.Unity.World.Fights.Fighter.MaxLevelWithStats;
+
+        /// <summary>The level life and points are worked out from: the real one, up to 200.</summary>
+        public static int StatLevel(int level) => Math.Min(level, MaxLevelWithStats);
+
+        /// <summary>Total point capital for a level: 5 per level from the second one, up to level 200.</summary>
+        public static int TotalCapitalForLevel(int level) => Math.Max(0, (StatLevel(level) - 1) * 5);
+
+        /// <summary>Life by level alone, before vitality: fifty plus five a level, up to level 200.</summary>
+        public static int BaseLifeForLevel(int level) => 50 + 5 * Math.Max(1, StatLevel(level));
 
         /// <summary>Tier thresholds for the four elemental characteristics.</summary>
         private static readonly (int Upto, int Cost)[] ElementalTiers =
@@ -455,7 +470,7 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         public static int GetPlayerMaxHp()
         {
-            int baseHp = 50 + (GameState.CharacterLevel * 5) + GameState.TotalVitality;
+            int baseHp = BaseLifeForLevel(GameState.CharacterLevel) + GameState.TotalVitality;
             int equipHp = GetEquipBonus(11) + GetEquipBonus(0);
             return baseHp + equipHp;
         }

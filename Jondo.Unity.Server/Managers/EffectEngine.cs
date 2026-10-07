@@ -274,6 +274,9 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>A waiting sub-cast: its round has come and the child is cast now.</summary>
         public bool Casts => EffectEngine.EsDeLaFamiliaDeSublanzar(Waiting.EffectId);
+
+        /// <summary>A waiting blow: its round has come and it is dealt now (see EffectEngine.IsDelayedBlow).</summary>
+        public bool Hits => EffectEngine.EsDeDano(Waiting.EffectId);
     }
 
     /// <summary>
@@ -488,22 +491,11 @@ namespace Jondo.Unity.Server.Managers
                 if (!efecto.Disparadores().Any(d => string.Equals(d, disparador, StringComparison.OrdinalIgnoreCase)))
                     continue;
 
-                // The element is said by the spell itself in its effectElement; if it does not carry
-                // one, by the catalogue through the effect number.
-                int elemento = efecto.Element >= 0 ? efecto.Element
-                                                   : DatabaseManager.EffectElement(efecto.EffectId);
+                // And a blow with a delay is not dealt at the cast either: it waits on whoever it
+                // lands on and hits when its round comes (see IsDelayedBlow).
+                if (IsDelayedBlow(efecto, disparador)) continue;
 
-                // The «best element» is not an element: it is a question to the caster. It is resolved
-                // here, with the buffs on, because a spell that raises your agility halfway through the
-                // fight can change which is your best element, and that is exactly what it is cast for.
-                if (efecto.EffectId == DanoDelMejorElemento || elemento == ElementoMejor)
-                {
-                    elemento = MejorElementoDe(quienLanza, combate.RoundNumber);
-                }
-                else if (efecto.EffectId == DanoDelPeorElemento)
-                {
-                    elemento = PeorElementoDe(quienLanza, combate.RoundNumber);
-                }
+                int elemento = ElementOfTheBlow(efecto, quienLanza, combate.RoundNumber);
 
                 // A share of the blow that set it off, in that blow's element (see ResolveEffects).
                 var fila = efecto;
@@ -528,6 +520,42 @@ namespace Jondo.Unity.Server.Managers
             }
             return fuera;
         }
+
+        /// <summary>
+        /// The element a damage row hits in. The spell says it in its effectElement and, when it
+        /// carries none, the catalogue does through the effect number.
+        /// </summary>
+        /// <remarks>
+        /// The «best element» is not an element: it is a question to the caster. It is resolved
+        /// at the blow, with the buffs on, because a spell that raises your agility halfway through
+        /// the fight can change which is your best element, and that is exactly what it is cast for.
+        /// </remarks>
+        internal static int ElementOfTheBlow(SpellEffect efecto, Fighter quienLanza, int ronda)
+        {
+            int elemento = efecto.Element >= 0 ? efecto.Element
+                                               : DatabaseManager.EffectElement(efecto.EffectId);
+            if (efecto.EffectId == DanoDelMejorElemento || elemento == ElementoMejor)
+                return MejorElementoDe(quienLanza, ronda);
+            if (efecto.EffectId == DanoDelPeorElemento)
+                return PeorElementoDe(quienLanza, ronda);
+            return elemento;
+        }
+
+        /// <summary>
+        /// A damage row cast with a delay: it is not dealt at the cast but waits on its target, and
+        /// hits when its round comes.
+        /// </summary>
+        /// <remarks>
+        /// Espada del Juicio hits 31 to 35 of water and, two turns later, 48 to 52 more. Both were
+        /// dealt at the cast -- a blow far above the client's preview -- and two turns later only
+        /// the 3793 marker that goes with the second went out: its animation and no damage. In
+        /// the capture the cast hits 66 and registers the second as a waiting row ("jxm 96",
+        /// 48 to 52, f12 the round two on), and at the first turn of that round the 3793 goes out
+        /// and then the blow, 96.
+        /// </remarks>
+        internal static bool IsDelayedBlow(SpellEffect efecto, string disparador)
+            => efecto.Delay > 0 && EsDeDano(efecto.EffectId)
+               && string.Equals(disparador, AlLanzar, StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
         /// The damage left for somebody <paramref name="lejos"/> cells from the centre.
@@ -2121,6 +2149,18 @@ namespace Jondo.Unity.Server.Managers
                     continue;
                 }
 
+                // A blow with a delay waits on each one it lands on, for its round to come.
+                if (IsDelayedBlow(efecto, trigger))
+                {
+                    foreach (var recipient in AQuien(
+                                 combat, caster, target, efecto, aimedCell, estadosAlEmpezar, celdasAlEmpezar, soloAlObjetivo: soloAlObjetivo))
+                    {
+                        if (recipient == null || !recipient.IsAlive) continue;
+                        fuera.Add(Pendiente(combat, caster, recipient, spell, grade, efecto, round));
+                    }
+                    continue;
+                }
+
                 // Root damage is sent by HurtAsync. Damage inside a hidden chained spell must be
                 // materialized here or Aplicar will deliberately discard it as an ordinary row.
                 if (depth > 0 && EsDeDano(efecto.EffectId))
@@ -3682,7 +3722,7 @@ namespace Jondo.Unity.Server.Managers
                         Name = "ilusión",
                         CellId = celda,
                         Level = quienLanza.Level,
-                        MaxHP = 50 + 5 * Math.Max(1, quienLanza.Level),
+                        MaxHP = Handlers.StatsHandler.BaseLifeForLevel(quienLanza.Level),
                         SummonCost = 0,
                         JuegaTurno = false,
                         EsIlusion = true,
@@ -3816,7 +3856,7 @@ namespace Jondo.Unity.Server.Managers
                 // 1020 goes on the CASTER's level and 1039 on the RECEIVER's life. They are two
                 // different bases and confusing them gives shields of another order: 150% of the level
                 // is 300 points at level 200, and 150% of life would be thousands.
-                int base_ = efecto.EffectId == EscudoPorNivel ? quienLanza.Level : sobre.MaxHP;
+                int base_ = efecto.EffectId == EscudoPorNivel ? quienLanza.StatLevel : sobre.MaxHP;
                 int cuanto = base_ * porciento / 100;
                 if (cuanto <= 0) return null;
 
@@ -4047,7 +4087,7 @@ namespace Jondo.Unity.Server.Managers
                     int resiste = sobre.Otra(ResistenciaAlEmpuje) +
                                   sobre.Buffs.De(ResistenciaAlEmpuje, ronda);
 
-                    colision = DanoDeColision(quienLanza.Level, deEmpuje, resiste,
+                    colision = DanoDeColision(quienLanza.StatLevel, deEmpuje, resiste,
                                               empujon.BlockedCells);
 
                     // And if what stopped him was another fighter, that one pays half. Walls do not pay.
@@ -4781,56 +4821,80 @@ namespace Jondo.Unity.Server.Managers
         internal static List<PendingActivation> ActivateDuePending(FightInstance combat, int round)
         {
             var results = new List<PendingActivation>();
+            for (var next = ActivateNextDuePending(combat, round); next != null;
+                 next = ActivateNextDuePending(combat, round))
+            {
+                results.Add(next);
+            }
+            return results;
+        }
+
+        /// <summary>
+        /// The first waiting row whose round has come, taken and activated as
+        /// <see cref="ActivateDuePending"/> does; null when none is left.
+        /// </summary>
+        /// <remarks>
+        /// One at a time because what one does can cancel the ones behind it. Flecha
+        /// Perseguidora's waiting sub-cast (32615) goes first and, with the target in sight,
+        /// takes the spell's effects off him -- the 3793 and the "98 de daños de aire" still
+        /// waiting: jya 5, 6 and 7 in its capture, and no blow. Taken all at once, the blow
+        /// was already out of the 406's reach and went off anyway.
+        /// </remarks>
+        internal static PendingActivation ActivateNextDuePending(FightInstance combat, int round)
+        {
             foreach (var target in Todos(combat))
             {
                 if (target == null) continue;
-                foreach (var waiting in target.Buffs.TakeDuePending(round))
-                {
-                    Buff live = null;
-                    if (waiting.EffectId == QuitarEstado)
-                    {
-                        results.Add(new PendingActivation
-                        {
-                            Target = target, CasterId = waiting.Quien, Waiting = waiting,
-                            Quitados = target.Buffs.QuitarEstadoConEmbrujos(waiting.Valor != 0 ? waiting.Valor : waiting.Dado),
-                        });
-                        continue;
-                    }
-                    if (waiting.EffectId == PonerEstado && target.IsAlive)
-                        target.Buffs.PonerEstado(waiting.Valor != 0 ? waiting.Valor : waiting.Dado);
-
-                    if (waiting.EffectId != MataAlObjetivo && waiting.EffectId != MarcadorDeGuion
-                        && !EsDeLaFamiliaDeSublanzar(waiting.EffectId) && target.IsAlive)
-                    {
-                        live = target.Buffs.Poner(new Buff
-                        {
-                            EffectId = waiting.EffectId,
-                            EffectUid = waiting.EffectUid,
-                            MaxStacks = waiting.MaxStacks,
-                            Caracteristica = waiting.Caracteristica,
-                            Cuanto = waiting.Cuanto,
-                            Dado = waiting.Dado,
-                            Cara = waiting.Cara,
-                            Valor = waiting.Valor,
-                            Dispellable = waiting.Dispellable,
-                            HechizoOrigen = waiting.HechizoOrigen,
-                            NivelOrigen = waiting.NivelOrigen,
-                            Quien = waiting.Quien,
-                            Disparador = Esperando,
-                            EmpiezaEnRonda = round,
-                            CaducaEnRonda = waiting.Duracion < 0 ? -1 : round + Math.Max(1, waiting.Duracion),
-                            Padre = waiting.Numero,
-                            Apila = true,
-                            Estado = waiting.EffectId == PonerEstado ? (waiting.Valor != 0 ? waiting.Valor : waiting.Dado) : 0,
-                        }, combat.SiguienteEmbrujo);
-                    }
-                    results.Add(new PendingActivation
-                    {
-                        Target = target, CasterId = waiting.Quien, Waiting = waiting, Live = live,
-                    });
-                }
+                var waiting = target.Buffs.TakeFirstDuePending(round);
+                if (waiting != null) return Activate(combat, target, waiting, round);
             }
-            return results;
+            return null;
+        }
+
+        private static PendingActivation Activate(FightInstance combat, Fighter target, Buff waiting, int round)
+        {
+            Buff live = null;
+            if (waiting.EffectId == QuitarEstado)
+            {
+                return new PendingActivation
+                {
+                    Target = target, CasterId = waiting.Quien, Waiting = waiting,
+                    Quitados = target.Buffs.QuitarEstadoConEmbrujos(waiting.Valor != 0 ? waiting.Valor : waiting.Dado),
+                };
+            }
+            if (waiting.EffectId == PonerEstado && target.IsAlive)
+                target.Buffs.PonerEstado(waiting.Valor != 0 ? waiting.Valor : waiting.Dado);
+
+            if (waiting.EffectId != MataAlObjetivo && waiting.EffectId != MarcadorDeGuion
+                && !EsDeLaFamiliaDeSublanzar(waiting.EffectId) && !EsDeDano(waiting.EffectId)
+                && target.IsAlive)
+            {
+                live = target.Buffs.Poner(new Buff
+                {
+                    EffectId = waiting.EffectId,
+                    EffectUid = waiting.EffectUid,
+                    MaxStacks = waiting.MaxStacks,
+                    Caracteristica = waiting.Caracteristica,
+                    Cuanto = waiting.Cuanto,
+                    Dado = waiting.Dado,
+                    Cara = waiting.Cara,
+                    Valor = waiting.Valor,
+                    Dispellable = waiting.Dispellable,
+                    HechizoOrigen = waiting.HechizoOrigen,
+                    NivelOrigen = waiting.NivelOrigen,
+                    Quien = waiting.Quien,
+                    Disparador = Esperando,
+                    EmpiezaEnRonda = round,
+                    CaducaEnRonda = waiting.Duracion < 0 ? -1 : round + Math.Max(1, waiting.Duracion),
+                    Padre = waiting.Numero,
+                    Apila = true,
+                    Estado = waiting.EffectId == PonerEstado ? (waiting.Valor != 0 ? waiting.Valor : waiting.Dado) : 0,
+                }, combat.SiguienteEmbrujo);
+            }
+            return new PendingActivation
+            {
+                Target = target, CasterId = waiting.Quien, Waiting = waiting, Live = live,
+            };
         }
 
         /// <summary>
@@ -4863,6 +4927,47 @@ namespace Jondo.Unity.Server.Managers
         /// Counted over the whole database: there are 1,335 spell levels with effects of this kind, and in
         /// 1,129 of their groups the sum is exactly a hundred.
         /// </summary>
+        /// <summary>
+        /// The rows of a cast to resolve before its blows: the immediate ones written ahead of
+        /// its first damage row that raise this very spell's base damage, directly ("+N de
+        /// daños básicos" with the spell in the die) or through the spell they cast.
+        /// </summary>
+        /// <remarks>
+        /// A cast deals its blows first and does the rest after, and these are the rows that
+        /// order gets wrong: the real server walks the rows as they are written. Tumulto casts
+        /// 13154 on every enemy in its cross, a "+20 de daños básicos" for Tumulto each, and
+        /// then hits; in its capture the jxm 293 goes out before the blows, and the enemy takes
+        /// 72 where the bare 19 to 21 gives about 50. Dealt first, the bonus only reached the
+        /// next cast, which never comes: Tumulto is cast once a turn and the bonus ends with
+        /// it. Rayo Oscuro's "+12 per telefrag in the zone" has the same shape (its capture too
+        /// puts the 293 before the blows), and 25 spells carry it. None of their sub-casts
+        /// moves anybody, so going first changes nothing of who the blows land on.
+        /// </remarks>
+        public static IReadOnlyList<SpellEffect> BoostsBeforeTheBlows(int spell, IReadOnlyList<SpellEffect> rows)
+        {
+            var ahead = new List<SpellEffect>();
+            if (spell == 0 || rows == null) return ahead;
+            int firstBlow = -1;
+            for (int i = 0; i < rows.Count && firstBlow < 0; i++)
+                if (EsDeDano(rows[i].EffectId) && IsImmediate(rows[i])) firstBlow = i;
+            for (int i = 0; i < firstBlow; i++)
+                if (RaisesTheSpell(spell, rows[i], 0)) ahead.Add(rows[i]);
+            return ahead;
+        }
+
+        private static bool IsImmediate(SpellEffect row)
+            => row.Delay <= 0
+               && row.Disparadores().All(t => string.Equals(t, AlLanzar, StringComparison.OrdinalIgnoreCase));
+
+        private static bool RaisesTheSpell(int spell, SpellEffect row, int depth)
+        {
+            if (!IsImmediate(row)) return false;
+            if (row.EffectId == (int)SpellAspect.DanoBase) return row.DiceNum == spell;
+            if (depth >= 2 || !EsDeLaFamiliaDeSublanzar(row.EffectId) || row.DiceNum <= 0) return false;
+            return SpellEffects.De(row.DiceNum, Math.Max(1, row.DiceSide))
+                               .Any(child => RaisesTheSpell(spell, child, depth + 1));
+        }
+
         /// <summary>
         /// The effects of a cast that really run: the rows of the grade with the random ones
         /// drawn ONCE. The blows and the rows of one cast come out of the same draw, so that

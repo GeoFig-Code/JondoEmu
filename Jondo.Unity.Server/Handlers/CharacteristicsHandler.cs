@@ -106,7 +106,7 @@ namespace Jondo.Unity.Server.Handlers
         /// worked out rather than stored, so that a character that levels up gets its points
         /// without anything having to remember to hand them over.
         /// </summary>
-        private static int Capital() => 5 * Math.Max(0, Jondo.Unity.Server.Network.SessionContext.State.CharacterLevel - 1);
+        private static int Capital() => StatsHandler.TotalCapitalForLevel(Jondo.Unity.Server.Network.SessionContext.State.CharacterLevel);
 
         /// <summary>
         /// Gives every point back. What a character has to spend over its life is five a level

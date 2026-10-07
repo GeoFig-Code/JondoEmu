@@ -528,6 +528,7 @@ namespace Jondo.Unity.Server
                 // original item and left the sheet without its effects. Reassigns once any uid that
                 // cannot make the round trip without being truncated.
                 RepairClientItemUids(worldConnection);
+                RepairWeaponDamageRanges(worldConnection);
 
                 // Migration: Ensure Effects column exists in CharacterItems
                 try
@@ -2848,8 +2849,9 @@ namespace Jondo.Unity.Server
                     if (!entrada.TryGetProperty("rid", out var rid)) continue;
 
                     var efecto = connection.CreateCommand();
-                    efecto.CommandText = "SELECT EffectId, DiceNum, DiceSide, Value FROM ItemEffects " +
-                                         "WHERE Rid = $rid;";
+                    efecto.CommandText = "SELECT ie.EffectId, ie.DiceNum, ie.DiceSide, ie.Value, " +
+                                         "COALESCE(e.Category, 0) FROM ItemEffects ie " +
+                                         "LEFT JOIN Effects e ON e.Id = ie.EffectId WHERE ie.Rid = $rid;";
                     efecto.Parameters.AddWithValue("$rid", rid.GetInt64());
 
                     using var reader = efecto.ExecuteReader();
@@ -2860,6 +2862,15 @@ namespace Jondo.Unity.Server
                     int diceSide = reader.GetInt32(2);
                     int value = reader.GetInt32(3);
                     if (id == 0) continue;
+
+                    // A weapon's damage keeps its range, as a crafted one does (Forgemagic.Roll):
+                    // it is a range on the wire, and as a lone number the client drew the Arco de
+                    // vueloceronte's four lines as "0 de daños" three times and "15" once.
+                    if (reader.GetInt32(4) == WeaponDamageCategory && diceSide > diceNum)
+                    {
+                        salida.Add($"[{id},0,{diceNum},{diceSide}]");
+                        continue;
+                    }
 
                     // The brand-new value: the die's top if there is one, and if not, the fixed one.
                     int fijo = value != 0 ? value : (diceSide != 0 ? diceSide : diceNum);
@@ -5091,6 +5102,144 @@ namespace Jondo.Unity.Server
                 Console.WriteLine($"[SQLite] Could not read the highest uid in use: {ex.Message}");
                 return 0;
             }
+        }
+
+        /// <summary>The client's effect category for weapon damage: 96 to 100 and their kin.</summary>
+        internal const int WeaponDamageCategory = 2;
+
+        /// <summary>
+        /// Gives back their range to the weapon damage lines stored as a lone number.
+        /// </summary>
+        /// <remarks>
+        /// Items made from a template -- a command, a quest reward -- had every line rolled to its
+        /// top, weapon damage included: the Arco de vueloceronte came out as "[97,15,0,0]" four
+        /// times where its template says 11 to 15, and the client drew three of its lines as "0 de
+        /// daños". Only a line the template gives a range is touched, and only while it has no dice,
+        /// so it is done once and a fixed damage stays fixed. The bank and the storages hold items
+        /// too, and are looked at when they exist.
+        /// </remarks>
+        private static void RepairWeaponDamageRanges(SqliteConnection connection)
+        {
+            try
+            {
+                var weaponDamage = new HashSet<int>();
+                using (var read = connection.CreateCommand())
+                {
+                    read.CommandText = "SELECT Id FROM Effects WHERE Category = $category;";
+                    read.Parameters.AddWithValue("$category", WeaponDamageCategory);
+                    using var reader = read.ExecuteReader();
+                    while (reader.Read()) weaponDamage.Add(reader.GetInt32(0));
+                }
+                if (weaponDamage.Count == 0) return;
+
+                var ranges = new Dictionary<int, Dictionary<int, (long Min, long Max)>>();
+                Dictionary<int, (long Min, long Max)> RangesOf(int gid)
+                {
+                    if (ranges.TryGetValue(gid, out var known)) return known;
+                    var found = new Dictionary<int, (long Min, long Max)>();
+                    foreach (var line in GetItemEffectsData(GetItemTemplatePossibleEffects(gid)))
+                        if (weaponDamage.Contains(line.EffectId) && line.DiceSide > line.DiceNum)
+                            found[line.EffectId] = (line.DiceNum, line.DiceSide);
+                    return ranges[gid] = found;
+                }
+
+                int repaired = 0;
+                foreach (var (table, key) in new[] { ("CharacterItems", "Id"), ("BankItems", "Uid"), ("StorageItems", "Uid") })
+                {
+                    using (var exists = connection.CreateCommand())
+                    {
+                        exists.CommandText = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = $name;";
+                        exists.Parameters.AddWithValue("$name", table);
+                        if (exists.ExecuteScalar() == null) continue;
+                    }
+
+                    var broken = new List<(long Key, int Gid, string Old, string New)>();
+                    using (var read = connection.CreateCommand())
+                    {
+                        read.CommandText = $"SELECT {key}, Gid, Effects FROM {table} WHERE Effects IS NOT NULL;";
+                        using var reader = read.ExecuteReader();
+                        while (reader.Read())
+                        {
+                            int gid = reader.GetInt32(1);
+                            string old = reader.GetString(2);
+                            if (!weaponDamage.Any(e => old.Contains("[" + e + ","))) continue;
+                            string repairedEffects = WithWeaponDamageRanges(old, RangesOf(gid));
+                            if (repairedEffects != null) broken.Add((reader.GetInt64(0), gid, old, repairedEffects));
+                        }
+                    }
+                    if (broken.Count == 0) continue;
+
+                    using var transaction = connection.BeginTransaction();
+                    foreach (var row in broken)
+                    {
+                        using var update = connection.CreateCommand();
+                        update.Transaction = transaction;
+                        update.CommandText = $"UPDATE {table} SET Effects = $new " +
+                                             $"WHERE {key} = $key AND Gid = $gid AND Effects = $old;";
+                        update.Parameters.AddWithValue("$new", row.New);
+                        update.Parameters.AddWithValue("$key", row.Key);
+                        update.Parameters.AddWithValue("$gid", row.Gid);
+                        update.Parameters.AddWithValue("$old", row.Old);
+                        repaired += update.ExecuteNonQuery();
+                    }
+                    transaction.Commit();
+                }
+
+                if (repaired > 0)
+                    Console.WriteLine($"[SQLite] {repaired} item(s) with weapon damage stored as a lone number, given back their range.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] Could not repair the weapon damage ranges: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// An item's stored effects with every weapon damage line that is a lone number and has a
+        /// range in <paramref name="templateRanges"/> written back as that range; null when there is
+        /// nothing to change. Every other line goes through as it was written.
+        /// </summary>
+        internal static string WithWeaponDamageRanges(string effects,
+                                                      IReadOnlyDictionary<int, (long Min, long Max)> templateRanges)
+        {
+            if (string.IsNullOrEmpty(effects) || templateRanges == null || templateRanges.Count == 0) return null;
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(effects);
+                if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array) return null;
+
+                var lines = new List<string>();
+                bool changed = false;
+                foreach (var entry in doc.RootElement.EnumerateArray())
+                {
+                    if (IsALoneWeaponDamage(entry, templateRanges, out int effect, out var range))
+                    {
+                        lines.Add($"[{effect},0,{range.Min},{range.Max}]");
+                        changed = true;
+                        continue;
+                    }
+                    lines.Add(entry.GetRawText());
+                }
+                return changed ? "[" + string.Join(",", lines) + "]" : null;
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return null;
+            }
+        }
+
+        private static bool IsALoneWeaponDamage(System.Text.Json.JsonElement entry,
+                                                IReadOnlyDictionary<int, (long Min, long Max)> templateRanges,
+                                                out int effect, out (long Min, long Max) range)
+        {
+            effect = 0;
+            range = default;
+            if (entry.ValueKind != System.Text.Json.JsonValueKind.Array || entry.GetArrayLength() < 2) return false;
+            if (!entry[0].TryGetInt32(out effect) || !templateRanges.TryGetValue(effect, out range)) return false;
+            if (!entry[1].TryGetInt64(out long value) || value == 0) return false;
+            for (int i = 2; i < Math.Min(4, entry.GetArrayLength()); i++)
+                if (!entry[i].TryGetInt64(out long dice) || dice != 0) return false;
+            return true;
         }
 
         /// <summary>

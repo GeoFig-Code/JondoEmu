@@ -1820,7 +1820,7 @@ namespace Jondo.Unity.Server.Network
                 {
                     1 => 5,
                     23 => 4,
-                    0 => 50 + 5 * Math.Max(1, level),
+                    0 => Handlers.StatsHandler.BaseLifeForLevel(level),
                     10 or 11 or 13 or 14 or 15 => 100,
                     19 or 26 => 1,
                     107 or 150 or 120 or 121 or 122 or 123 or 124 or 125 or 141 or 142 or 143 => 100,

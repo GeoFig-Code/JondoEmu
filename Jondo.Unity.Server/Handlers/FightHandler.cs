@@ -3234,17 +3234,22 @@ namespace Jondo.Unity.Server.Handlers
         /// names the waiting one, and then every waiting row falls with its jya. The order and
         /// the frames are those of the Baliza de Supervivencia and Paso de Cacería captures.
         /// </summary>
-        private static async Task ApplyDuePendingAsync(NetworkStream stream, FightInstance fight)
+        internal static async Task ApplyDuePendingAsync(NetworkStream stream, FightInstance fight)
         {
-            var due = Managers.EffectEngine.ActivateDuePending(fight, fight.RoundNumber);
-            if (due.Count == 0) return;
+            // Taken one at a time: what one does -- a 406 from a waiting sub-cast -- can still
+            // cancel the ones behind it (see EffectEngine.ActivateNextDuePending).
+            var first = Managers.EffectEngine.ActivateNextDuePending(fight, fight.RoundNumber);
+            if (first == null) return;
+            var due = new List<Managers.PendingActivation>();
 
             long sequenceOwner = fight.CurrentFighter?.Id ?? 0;
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                 Network.FightProtocol.BuildSequenceStart(sequenceOwner, Network.FightProtocol.ActionSequence)));
 
-            foreach (var result in due)
+            for (var result = first; result != null;
+                 result = Managers.EffectEngine.ActivateNextDuePending(fight, fight.RoundNumber))
             {
+                due.Add(result);
                 var caster = fight.Buscar(result.CasterId) ?? result.Target;
                 var waiting = result.Waiting;
 
@@ -3289,6 +3294,10 @@ namespace Jondo.Unity.Server.Handlers
                         Network.FightProtocol.BuildScriptMarker(caster.Id, waiting.NivelOrigen, result.Target.CellId,
                                                                 waiting.HechizoOrigen, waiting.Valor)));
                 }
+                else if (result.Hits)
+                {
+                    await DelayedBlowAsync(stream, fight, result);
+                }
                 else if (result.Live != null)
                 {
                     var (categoria, boost) = DatabaseManager.EffectFamily(waiting.EffectId);
@@ -3322,6 +3331,38 @@ namespace Jondo.Unity.Server.Handlers
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                 Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), sequenceOwner,
                                                        Network.FightProtocol.TurnStartSequence)));
+        }
+
+        /// <summary>
+        /// A blow its delay held back, dealt when its round comes: the row it was cast with,
+        /// rolled now, from its caster as he stands now. Espada del Juicio's second blow, 48 to 52
+        /// of water, which its capture deals right after the 3793 marker at the first turn of the
+        /// round two after the cast. A caster no longer in the fight deals nothing.
+        /// </summary>
+        private static async Task DelayedBlowAsync(NetworkStream stream, FightInstance fight,
+                                                   Managers.PendingActivation result)
+        {
+            var waiting = result.Waiting;
+            var caster = fight.Buscar(result.CasterId);
+            if (caster == null || !result.Target.IsAlive) return;
+
+            int grade = Math.Max(1, waiting.NivelOrigen);
+            var row = Managers.EffectEngine.EfectosDeLaTirada(waiting.HechizoOrigen, grade, waiting.Critico)
+                          .FirstOrDefault(f => waiting.EffectUid != 0 && f.EffectUid == waiting.EffectUid)
+                      ?? new Managers.SpellEffect
+                      {
+                          EffectId = waiting.EffectId, EffectUid = waiting.EffectUid,
+                          DiceNum = waiting.Dado, DiceSide = waiting.Cara, Value = waiting.Valor,
+                      };
+            int element = Managers.EffectEngine.ElementOfTheBlow(row, caster, fight.RoundNumber);
+            int rolled = TirarElDado(row);
+
+            Program.LogDebug($"[Fight] The delay is up: {caster.Id} hits {result.Target.Id} with effect " +
+                             $"{row.EffectId} of spell {waiting.HechizoOrigen} ({rolled} on the dice) " +
+                             $"in round {fight.RoundNumber}.");
+            await UnGolpeAsync(stream, fight, caster, waiting.HechizoOrigen, row, element, result.Target,
+                               rolled, 0, waiting.Critico, fromTurnTrigger: true);
+            await RefrescarLaVidaAsync(stream, fight, result.Target, caster);
         }
 
         /// <summary>
@@ -3674,6 +3715,8 @@ namespace Jondo.Unity.Server.Handlers
             try
             {
                 var tirada = Managers.EffectEngine.EfectosSorteados(glifo.Hechizo, glifo.Grado, false);
+                tirada = await BoostsFirstAsync(stream, fight, dueno, glifo.Hechizo, glifo.Grado, quien,
+                                                celda, false, tirada);
                 await HurtAsync(stream, fight, dueno, glifo.Hechizo, glifo.Grado, quien,
                                 celdaApuntada: celda, tirada: tirada);
 
@@ -4119,6 +4162,7 @@ namespace Jondo.Unity.Server.Handlers
             fight.PortalBonusPercent = proyeccion is { } porElPortal ? Jondo.Unity.World.Fights.PortalNetwork.BonusPercent(porElPortal.Chain) : 0;
             try
             {
+                tirada = await BoostsFirstAsync(stream, fight, caster, spell, grade, victim, cell, critico, tirada);
                 await HurtAsync(stream, fight, caster, spell, grade, victim, cell, critico, tirada);
 
                 // And what the spell leaves behind, which is not only damage: the AP Flecha Helada steals,
@@ -4162,6 +4206,26 @@ namespace Jondo.Unity.Server.Handlers
                 fight.EndTurnRequested = false;
                 await PassTurnAsync(stream);
             }
+        }
+
+        /// <summary>
+        /// The grade a summon is born at: the die side of the row that summons it, "Invoca: #1"
+        /// with the template in the die and the grade beside it.
+        /// </summary>
+        /// <remarks>
+        /// It was the summoning spell's grade, and the two part more often than not. Conquista is
+        /// grade 2 and summons the Yopuka strategist at grade 1, the only one whose
+        /// startingSpellId is its spell: born at 2, the strategist had no spell, and so neither
+        /// its damage return nor the 141 that kills the strategist already on the board -- "solo
+        /// puede haber un único estratega yopuka por equipo". Over the 482 summons of the
+        /// captures with their row, the wire carries the die side in 473 and the spell's grade
+        /// against it in 9, which are the Osamodas' four creatures whose rows ask for grade 2
+        /// of templates that only have a grade 1 (see <see cref="Managers.Summons.De"/>).
+        /// </remarks>
+        private static int GradoDeLaInvocacion(Managers.Outcome c, int hechizo, int grado)
+        {
+            if (c.Efecto != null && c.Efecto.DiceSide > 0) return c.Efecto.DiceSide;
+            return (c.HechizoOrigen, c.NivelOrigen) == (hechizo, grado) ? grado : c.NivelOrigen;
         }
 
         /// <summary>
@@ -4231,7 +4295,7 @@ namespace Jondo.Unity.Server.Handlers
                 CellId = celda,
                 IsMonster = true,
                 MonsterId = plantilla,
-                GradeIndex = grado,
+                GradeIndex = receta.Grado,
                 Level = receta.Nivel,
                 SummonCost = receta.SummonCost,
                 Look = receta.Look,
@@ -4257,15 +4321,15 @@ namespace Jondo.Unity.Server.Handlers
                 AirResPct = receta.ResistenciaAire,
             };
             invocado.Otras[Fighter.CaracteristicaDeErosion] = Fighter.ErosionBase;
-            invocado.MaxHP = Managers.Summons.VidaDelInvocado(receta.Vida, quienInvoca.Level,
+            invocado.MaxHP = Managers.Summons.VidaDelInvocado(receta.Vida, quienInvoca.StatLevel,
                                                               receta.VidaFija);
 
             // And its characteristics, which it went without: every summon hit with its spells'
             // bare dice. See Summons.CaracteristicaDelInvocado.
-            invocado.Strength = Managers.Summons.CaracteristicaDelInvocado(receta.Fuerza, receta.BonusFuerza, quienInvoca.Level);
-            invocado.Intelligence = Managers.Summons.CaracteristicaDelInvocado(receta.Inteligencia, receta.BonusInteligencia, quienInvoca.Level);
-            invocado.Chance = Managers.Summons.CaracteristicaDelInvocado(receta.Suerte, receta.BonusSuerte, quienInvoca.Level);
-            invocado.Agility = Managers.Summons.CaracteristicaDelInvocado(receta.Agilidad, receta.BonusAgilidad, quienInvoca.Level);
+            invocado.Strength = Managers.Summons.CaracteristicaDelInvocado(receta.Fuerza, receta.BonusFuerza, quienInvoca.StatLevel);
+            invocado.Intelligence = Managers.Summons.CaracteristicaDelInvocado(receta.Inteligencia, receta.BonusInteligencia, quienInvoca.StatLevel);
+            invocado.Chance = Managers.Summons.CaracteristicaDelInvocado(receta.Suerte, receta.BonusSuerte, quienInvoca.StatLevel);
+            invocado.Agility = Managers.Summons.CaracteristicaDelInvocado(receta.Agilidad, receta.BonusAgilidad, quienInvoca.StatLevel);
             invocado.Power = Managers.Summons.PotenciaDelInvocado(receta.BonusDeDanos);
             invocado.CurrentHP = invocado.MaxHP;
 
@@ -4286,7 +4350,7 @@ namespace Jondo.Unity.Server.Handlers
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildSummon(
                     quienInvoca.Id, invocado.Id, celda, FacingOf(fight, invocado),
-                    receta.PlantillaDelAspecto, plantilla, grado, FullSheetOf(invocado),
+                    receta.PlantillaDelAspecto, plantilla, receta.Grado, FullSheetOf(invocado),
                     efectoQueInvoca)));
 
             // And after it, the list of fighters again: it is what registers the summon in the
@@ -4312,7 +4376,7 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             Program.LogDebug($"[Fight] {quienInvoca.Id} summons template {plantilla} grade " +
-                             $"{grado} as {invocado.Id} on cell {celda} with " +
+                             $"{receta.Grado} as {invocado.Id} on cell {celda} with " +
                              $"{invocado.MaxHP} life and spell {receta.HechizoPropio}.");
 
             // Its spell becomes its attitude, and it is cast on the spot so that its triggers and
@@ -4600,6 +4664,22 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
+        /// A cast's rows that raise the spell itself and are written before its blows, resolved
+        /// ahead of them (see <see cref="Managers.EffectEngine.BoostsBeforeTheBlows"/>). Returns
+        /// the draw without them, for the blows and the rest of the rows.
+        /// </summary>
+        internal static async Task<IReadOnlyList<Managers.SpellEffect>> BoostsFirstAsync(
+            NetworkStream stream, FightInstance fight, Fighter caster, int spell, int grade,
+            Fighter target, int cell, bool critico, IReadOnlyList<Managers.SpellEffect> tirada)
+        {
+            var first = Managers.EffectEngine.BoostsBeforeTheBlows(spell, tirada);
+            if (first.Count == 0) return tirada;
+            await AplicarEfectosAsync(stream, fight, caster, spell, grade, target,
+                                      Managers.EffectEngine.AlLanzar, cell, critico, first);
+            return tirada.Where(row => !first.Contains(row)).ToList();
+        }
+
+        /// <summary>
         /// A monster spell's rows done in the order they are written: the blows through HurtAsync and
         /// the rest through the engine, a run of each at a time. Arm spells like Kabaal's are
         /// "952 on his invulnerability, then the blow, then 406": dealt before the 952, the blow
@@ -4611,9 +4691,11 @@ namespace Jondo.Unity.Server.Handlers
                                                       bool critico = false, int rondaDelEnganche = -1,
                                                       bool soloAlObjetivo = false, bool conducta = false)
         {
+            // A delayed blow is no blow at the cast: the engine registers it to wait.
             bool EsGolpe(Managers.SpellEffect f)
                 => Managers.EffectEngine.EsDeDano(f.EffectId)
-                   && f.Disparadores().Any(d => string.Equals(d, disparador, StringComparison.OrdinalIgnoreCase));
+                   && f.Disparadores().Any(d => string.Equals(d, disparador, StringComparison.OrdinalIgnoreCase))
+                   && !Managers.EffectEngine.IsDelayedBlow(f, disparador);
 
             int i = 0;
             while (i < filas.Count)
@@ -5767,7 +5849,8 @@ namespace Jondo.Unity.Server.Handlers
                     // free, the summon looks for room like any other.
                     if (c.Invoca != 0)
                     {
-                        await InvocarAsync(stream, fight, quienLanza, c.Invoca, grado,
+                        await InvocarAsync(stream, fight, quienLanza, c.Invoca,
+                                           GradoDeLaInvocacion(c, hechizo, grado),
                                            c.EnLaCasillaDelMuerto ? dondeEstaba : celdaApuntada,
                                            c.Efecto.EffectId);
                     }
@@ -5937,10 +6020,10 @@ namespace Jondo.Unity.Server.Handlers
                 if (c.Invoca != 0)
                 {
                     // Owned by whoever cast the spell that summons -- a sub-cast's own caster -- at
-                    // that spell's grade; and what the spell writes for it ("U") done on it.
+                    // the grade its row names; and what the spell writes for it ("U") done on it.
                     var invoca = c.Caster ?? quienLanza;
-                    int suGrado = (c.HechizoOrigen, c.NivelOrigen) == (hechizo, grado) ? grado : c.NivelOrigen;
-                    var nuevo = await InvocarAsync(stream, fight, invoca, c.Invoca, suGrado,
+                    var nuevo = await InvocarAsync(stream, fight, invoca, c.Invoca,
+                                                   GradoDeLaInvocacion(c, hechizo, grado),
                                                    c.CasillaDeLaInvocacion >= 0 ? c.CasillaDeLaInvocacion : celdaApuntada,
                                                    c.Efecto.EffectId);
                     await AplicarLoDelInvocadoAsync(stream, fight, invoca, c.HechizoOrigen, c.NivelOrigen, nuevo);
@@ -7968,6 +8051,8 @@ namespace Jondo.Unity.Server.Handlers
             }
             else
             {
+                tirada = await BoostsFirstAsync(stream, fight, monster, spell, monsterGrade, objetivo,
+                                                aim, critico, tirada);
                 await HurtAsync(stream, fight, monster, spell, monsterGrade, objetivo,
                                 aim, critico, tirada: tirada);
 
@@ -8704,7 +8789,7 @@ namespace Jondo.Unity.Server.Handlers
         /// The life points the level gives, without vitality: fifty to start with and five per level.
         /// It is the same calculation StatsHandler.GetPlayerMaxHp does before adding anything.
         /// </summary>
-        private static int LifeFromLevel(int level) => 50 + (Math.Max(1, level) * 5);
+        private static int LifeFromLevel(int level) => StatsHandler.BaseLifeForLevel(level);
 
         /// <summary>What casting something costs when it is not known: a spell's ordinary cost.</summary>
         private const int DefaultCastCost = 3;
@@ -8713,7 +8798,7 @@ namespace Jondo.Unity.Server.Handlers
         /// The last level that hands out characteristic points. The client's table goes up to 1889,
         /// but from 201 on that is Omega: the capture's 354 is a level 200 with Omega 154.
         /// </summary>
-        private const int MaxLevelWithPoints = 200;
+        private const int MaxLevelWithPoints = StatsHandler.MaxLevelWithStats;
 
         /// <summary>
         /// The grade of a spell the character has open: what it costs and its identifier.
