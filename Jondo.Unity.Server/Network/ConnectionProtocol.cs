@@ -1572,13 +1572,13 @@ namespace Jondo.Unity.Server.Network
                 .Build();
 
         /// <summary>
-        /// An emptied bar slot (ivk after iul). Same shape as a set, without the spell's f6 —
-        /// that is how the client says "this slot is clear" in an itz, and how it accepts the echo.
+        /// A shortcut removed from the bar (<c>ivr</c> / ShortcutBarRemovedEvent).
+        /// Flat: f1 the bar, f2 the slot. An emptied <c>ivk</c> leaves the client's icon in place.
         /// </summary>
-        public static byte[] BuildShortcutCleared(int slot)
+        public static byte[] BuildShortcutRemoved(int slot)
             => Pb.New()
-                .Msg(2, Pb.New().VarIfNotZero(2, slot))
-                .Var(3, SpellBar)
+                .Var(1, SpellBar)
+                .VarIfNotZero(2, slot)
                 .Build();
 
         /// <summary>How many slots of the bar we fill. The captured one runs from 0 to 48.</summary>

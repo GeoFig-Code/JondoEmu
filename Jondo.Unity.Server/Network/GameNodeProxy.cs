@@ -1133,27 +1133,32 @@ namespace Jondo.Unity.Server.Network
                     // rebuilt the same every session and whatever the player places is lost on leaving.
                     //
                     //   itz: f2 { f2: slot, f6 { f2: spell } }, f3: which bar
+                    // Without f6 the slot is being emptied — answer with ivr, not an emptied ivk.
                     byte[]? itz = ConnectionProtocol.ReadPayload(payload, Op.Itz);
                     if (itz != null)
                     {
-                        RememberShortcut(itz);
-                        await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                            ConnectionProtocol.Push(Op.Ivk, itz));
+                        int clearedSlot = RememberShortcut(itz);
+                        if (clearedSlot >= 0)
+                            await WriteShortcutRemovedAsync(stream, clearedSlot);
+                        else
+                            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                                ConnectionProtocol.Push(Op.Ivk, itz));
                     }
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Iul)))
                 {
-                    // Right-click → remove from the bar. Was falling through as unhandled, so the
-                    // client never got an ivk and put the spell straight back.
+                    // Right-click → remove from the bar.
                     //
-                    //   iul: f1: slot, f2: which bar
+                    //   iul: f1: which bar, f2: slot
+                    //   answer: ivr { f1: bar, f2: slot } — not an emptied ivk
                     await ClearShortcutAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Iuv)))
                 {
-                    // Drag one slot onto another. Same story as iul: no answer, no move.
+                    // Drag one slot onto another.
                     //
                     //   iuv: f1: first slot, f2: second slot, f3: which bar
+                    //   answer: ivk per filled slot, ivr per emptied one (ghost icon otherwise)
                     await SwapShortcutsAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kqo)))
@@ -1662,7 +1667,8 @@ namespace Jondo.Unity.Server.Network
         /// zero does not travel, like every zero in proto3, and an entry without f6 is a slot being emptied.
         /// Storing it is what keeps the bar the same in the next session.
         /// </summary>
-        private static void RememberShortcut(byte[] itz)
+        /// <returns>The cleared slot when the itz emptied one, otherwise -1.</returns>
+        private static int RememberShortcut(byte[] itz)
         {
             try
             {
@@ -1674,14 +1680,16 @@ namespace Jondo.Unity.Server.Network
                     else if (field.FieldNumber == 3 && field.WireType == 0) bar = (int)field.VarIntValue;
                 }
 
-                if (shortcut == null || bar != ConnectionProtocol.SpellBar) return;
+                if (shortcut == null || bar != ConnectionProtocol.SpellBar) return -1;
 
                 int slot = 0, spellId = 0;
+                bool hasSpell = false;
                 foreach (var field in ProtoMessage.Parse(shortcut).Fields)
                 {
                     if (field.FieldNumber == 2 && field.WireType == 0) slot = (int)field.VarIntValue;
                     else if (field.FieldNumber == 6 && field.WireType == 2)
                     {
+                        hasSpell = true;
                         foreach (var inner in ProtoMessage.Parse(field.BytesValue).Fields)
                         {
                             if (inner.FieldNumber == 2 && inner.WireType == 0)
@@ -1691,15 +1699,17 @@ namespace Jondo.Unity.Server.Network
                 }
 
                 Managers.SpellChoices.PutInBar(slot, spellId);
+                return !hasSpell || spellId == 0 ? slot : -1;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[Game Node] Could not read the itz: {ex.Message}");
+                return -1;
             }
         }
 
         /// <summary>
-        /// Clears one spell-bar slot (iul) and tells the client with an empty ivk.
+        /// Clears one spell-bar slot (iul) and tells the client with ivr.
         /// </summary>
         private static async Task ClearShortcutAsync(NetworkStream stream, byte[] frame)
         {
@@ -1708,18 +1718,20 @@ namespace Jondo.Unity.Server.Network
                 byte[]? body = ConnectionProtocol.ReadPayload(frame, Op.Iul);
                 if (body == null) return;
 
-                int slot = 0, bar = 0;
+                // Proto iul / ShortcutBarRemoveRequest: f1 bar, f2 slot. Traffic always has
+                // f1 = 1 (spell bar) and f2 = the slot being cleared. Reading them the other
+                // way around made bar == slot and the handler bail out on every right-click.
+                int bar = 0, slot = 0;
                 foreach (var field in ProtoMessage.Parse(body).Fields)
                 {
-                    if (field.FieldNumber == 1 && field.WireType == 0) slot = (int)field.VarIntValue;
-                    else if (field.FieldNumber == 2 && field.WireType == 0) bar = (int)field.VarIntValue;
+                    if (field.FieldNumber == 1 && field.WireType == 0) bar = (int)field.VarIntValue;
+                    else if (field.FieldNumber == 2 && field.WireType == 0) slot = (int)field.VarIntValue;
                 }
 
                 if (bar != ConnectionProtocol.SpellBar) return;
 
                 Managers.SpellChoices.PutInBar(slot, 0);
-                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                    ConnectionProtocol.Push(Op.Ivk, ConnectionProtocol.BuildShortcutCleared(slot)));
+                await WriteShortcutRemovedAsync(stream, slot);
             }
             catch (Exception ex)
             {
@@ -1728,7 +1740,8 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
-        /// Swaps two spell-bar slots (iuv) and tells the client with an ivk for each.
+        /// Swaps two spell-bar slots (iuv). Filled slots get an ivk; emptied ones get an ivr
+        /// so the source icon does not stay behind after a drag onto an empty slot.
         /// </summary>
         private static async Task SwapShortcutsAsync(NetworkStream stream, byte[] frame)
         {
@@ -1761,11 +1774,20 @@ namespace Jondo.Unity.Server.Network
         private static async Task WriteShortcutSlotAsync(NetworkStream stream, int slot)
         {
             int spell = Managers.SpellChoices.SpellInSlot(slot);
-            byte[] ivk = spell == 0
-                ? ConnectionProtocol.BuildShortcutCleared(slot)
-                : ConnectionProtocol.BuildShortcutChanged(slot, spell);
+            if (spell == 0)
+            {
+                await WriteShortcutRemovedAsync(stream, slot);
+                return;
+            }
+
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.Push(Op.Ivk, ivk));
+                ConnectionProtocol.Push(Op.Ivk, ConnectionProtocol.BuildShortcutChanged(slot, spell)));
+        }
+
+        private static async Task WriteShortcutRemovedAsync(NetworkStream stream, int slot)
+        {
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Ivr, ConnectionProtocol.BuildShortcutRemoved(slot)));
         }
 
         /// <summary>

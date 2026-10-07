@@ -4,37 +4,25 @@ using Xunit;
 namespace Jondo.Unity.Tests.Combat
 {
     /// <summary>
-    /// The ivk payloads that answer remove (iul) and swap (iuv) on the spell bar.
+    /// Payloads that answer remove (iul → ivr) and swap (iuv → ivk / ivr) on the spell bar.
     /// </summary>
     public class SpellBarEditTests
     {
         [Fact]
-        public void A_cleared_slot_ivk_has_no_spell_and_names_the_spell_bar()
+        public void A_removed_slot_ivr_is_flat_bar_then_slot()
         {
-            byte[] ivk = ConnectionProtocol.BuildShortcutCleared(7);
-            var root = ProtoMessage.Parse(ivk);
+            byte[] ivr = ConnectionProtocol.BuildShortcutRemoved(7);
+            var root = ProtoMessage.Parse(ivr);
 
-            int bar = 0;
-            byte[]? shortcut = null;
+            int bar = -1, slot = -1;
             foreach (var field in root.Fields)
             {
-                if (field.FieldNumber == 2 && field.WireType == 2) shortcut = field.BytesValue;
-                else if (field.FieldNumber == 3 && field.WireType == 0) bar = (int)field.VarIntValue;
+                if (field.FieldNumber == 1 && field.WireType == 0) bar = (int)field.VarIntValue;
+                else if (field.FieldNumber == 2 && field.WireType == 0) slot = (int)field.VarIntValue;
             }
 
             Assert.Equal(ConnectionProtocol.SpellBar, bar);
-            Assert.NotNull(shortcut);
-
-            int slot = -1;
-            bool hasSpell = false;
-            foreach (var field in ProtoMessage.Parse(shortcut!).Fields)
-            {
-                if (field.FieldNumber == 2 && field.WireType == 0) slot = (int)field.VarIntValue;
-                if (field.FieldNumber == 6) hasSpell = true;
-            }
-
             Assert.Equal(7, slot);
-            Assert.False(hasSpell);
         }
 
         [Fact]
@@ -59,6 +47,22 @@ namespace Jondo.Unity.Tests.Combat
             }
 
             Assert.Equal(12840, spell);
+        }
+
+        [Fact]
+        public void Iul_payload_is_bar_then_slot_like_the_captures()
+        {
+            // Traffic: iul { f1: 1, f2: 6 } — bar first, slot second.
+            byte[] body = Pb.New().Var(1, ConnectionProtocol.SpellBar).Var(2, 6).Build();
+            int bar = 0, slot = 0;
+            foreach (var field in ProtoMessage.Parse(body).Fields)
+            {
+                if (field.FieldNumber == 1 && field.WireType == 0) bar = (int)field.VarIntValue;
+                else if (field.FieldNumber == 2 && field.WireType == 0) slot = (int)field.VarIntValue;
+            }
+
+            Assert.Equal(ConnectionProtocol.SpellBar, bar);
+            Assert.Equal(6, slot);
         }
     }
 }
