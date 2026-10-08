@@ -28,7 +28,12 @@
     "They never move and are never replaced: a kanojedo map fights under the training rulebook,",
     "which leaves the group where it was after a win.",
     "",
-    "'orientation' is which way the group faces, 1 to 7, south-east when absent."
+    "'orientation' is which way the group faces, 1 to 7, south-east when absent.",
+    "",
+    "THE ASTRUB MILITIA TOWER'S PUNCHING BAGS. The same six Puch Ingball on 192415754, the",
+    "tower's training room, where the master stands too. Cells, facings and grades are",
+    "measured off the four jss of that room in 'bastante combate con steamer': one monster a",
+    "group, Puch Ingball at every level, drawn as the Kanojedo ones are ({431|||100})."
   ],
   "groups": [
     {
@@ -178,6 +183,84 @@
       "map": 146801922,
       "group": -2000011,
       "cell": 456,
+      "orientation": 3,
+      "_level": 200,
+      "members": [
+        {
+          "monster": 494,
+          "grade": 5
+        }
+      ]
+    },
+    {
+      "map": 192415754,
+      "group": -2000012,
+      "cell": 352,
+      "orientation": 1,
+      "_level": 1,
+      "members": [
+        {
+          "monster": 494,
+          "grade": 0
+        }
+      ]
+    },
+    {
+      "map": 192415754,
+      "group": -2000013,
+      "cell": 298,
+      "orientation": 5,
+      "_level": 25,
+      "members": [
+        {
+          "monster": 494,
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "map": 192415754,
+      "group": -2000014,
+      "cell": 244,
+      "orientation": 3,
+      "_level": 50,
+      "members": [
+        {
+          "monster": 494,
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "map": 192415754,
+      "group": -2000015,
+      "cell": 190,
+      "orientation": 5,
+      "_level": 75,
+      "members": [
+        {
+          "monster": 494,
+          "grade": 3
+        }
+      ]
+    },
+    {
+      "map": 192415754,
+      "group": -2000016,
+      "cell": 234,
+      "orientation": 1,
+      "_level": 100,
+      "members": [
+        {
+          "monster": 494,
+          "grade": 4
+        }
+      ]
+    },
+    {
+      "map": 192415754,
+      "group": -2000017,
+      "cell": 277,
       "orientation": 3,
       "_level": 200,
       "members": [

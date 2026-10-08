@@ -155,6 +155,46 @@ namespace Jondo.Unity.Tests.World
             Assert.Contains(tester, g => g.Cell == 456 && g.Members[0].Grade == 5);
         }
 
+        /// <summary>
+        /// The Astrub Militia Tower's training room, 192415754: the same six bags, as the four
+        /// jss of the Steamer capture put them -- cell, facing and grade.
+        /// </summary>
+        [Fact]
+        public void The_Astrub_tower_has_its_six_punching_bags()
+        {
+            var groups = MobGroupContent.Load(Paths.ContentFile(MobGroupContent.AuthoredFile));
+            var astrub = groups.Values.Where(g => g.MapId == 192415754).OrderBy(g => g.Members[0].Grade).ToList();
+
+            var expected = new (int Cell, int Facing)[] { (352, 1), (298, 5), (244, 3), (190, 5), (234, 1), (277, 3) };
+            Assert.Equal(6, astrub.Count);
+            for (int grade = 0; grade < 6; grade++)
+            {
+                Assert.Equal(expected[grade].Cell, astrub[grade].Cell);
+                Assert.Equal(expected[grade].Facing, astrub[grade].Orientation);
+                Assert.Equal(494, Assert.Single(astrub[grade].Members).MonsterId);
+                Assert.Equal(grade, astrub[grade].Members[0].Grade);
+            }
+        }
+
+        /// <summary>
+        /// Its way in, the arch of the hall 192413706, and its two exits back to it, which the
+        /// room's jss declares with skill 339.
+        /// </summary>
+        [Fact]
+        public void The_Astrub_tower_room_has_a_door_and_two_exits()
+        {
+            var passages = TeleportContent.Load(Paths.ContentFile(TeleportContent.AuthoredFile));
+
+            var door = passages.Values.Single(p => p.SourceMapId == 192413706 && p.ElementId == 515569);
+            Assert.Equal((246, 192415754L, 423), (door.SourceCell, door.DestinationMapId, door.DestinationCell));
+
+            foreach (int exit in new[] { 515546, 515570 })
+            {
+                var back = passages.Values.Single(p => p.SourceMapId == 192415754 && p.ElementId == exit);
+                Assert.Equal((339, 192413706L, 260), (back.SkillId, back.DestinationMapId, back.DestinationCell));
+            }
+        }
+
         /// <summary>The training book: against monsters, but with nothing at stake.</summary>
         [Fact]
         public void Training_is_a_monster_fight_with_nothing_at_stake()

@@ -44,7 +44,16 @@
     "",
     "Type -1 and skill 184, the pair every measured passage uses (TeleportContent.DefaultType",
     "and DefaultSkill). A prisoner goes through none of them: every passage ends in",
-    "TeleportHandler.ToMapAsync, which asks the jail first."
+    "TeleportHandler.ToMapAsync, which asks the jail first.",
+    "",
+    "THE ASTRUB MILITIA TOWER'S TRAINING ROOM. 192415754, the room with the puchs and their",
+    "master, at [5,-19] like the hall 192413706, and reached by nothing in any catalogue. The",
+    "hall's back wall has an arch, and under it, on cell 246, element 515569 (gfx 63584, next",
+    "to the 63583 of the street door into the hall): that is the door, landing on 423 inside",
+    "the room's two exits. Those two, 515546 on 422 and 515570 on 436, are measured in the jss",
+    "of 'bastante combate con steamer': type -1 and skill 339, 'Indicar una salida'. They lead",
+    "back to the arch, landing on 260, the hall's one walkable cell next to it. The arch's own",
+    "type and skill are the pair every measured passage uses: no capture walks through it."
   ],
   "passages": [
     {
@@ -126,6 +135,36 @@
       "skill": 184,
       "toMap": 105121026,
       "toCell": 342
+    },
+    {
+      "map": 192413706,
+      "element": 515569,
+      "cell": 246,
+      "gfx": 63584,
+      "type": -1,
+      "skill": 184,
+      "toMap": 192415754,
+      "toCell": 423
+    },
+    {
+      "map": 192415754,
+      "element": 515546,
+      "cell": 422,
+      "gfx": 3518,
+      "type": -1,
+      "skill": 339,
+      "toMap": 192413706,
+      "toCell": 260
+    },
+    {
+      "map": 192415754,
+      "element": 515570,
+      "cell": 436,
+      "gfx": 3518,
+      "type": -1,
+      "skill": 339,
+      "toMap": 192413706,
+      "toCell": 260
     }
   ]
 }
