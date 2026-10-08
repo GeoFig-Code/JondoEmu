@@ -786,7 +786,7 @@ difference left against its capture.
 | Xelor | 0 | 44 | 44 |
 | Zurcarák | 0 | 44 | 44 |
 | Aniripsa | 0 | 44 | 44 |
-| Yopuka | 22 | 44 | 44 |
+| Yopuka | 44 | 44 | 44 |
 | Ocra | 7 | 44 | 44 |
 | Sadida | 0 | 44 | 44 |
 | Sacrógrito | 0 | 44 | 44 |
@@ -798,7 +798,7 @@ difference left against its capture.
 | Hipermago | 0 | 44 | 44 |
 | Uginak | 0 | 44 | 44 |
 | Forjalanza | 0 | 44 | 44 |
-| **All** | **45** | **836** | **836** |
+| **All** | **67** | **836** | **836** |
 
 <details><summary><b>Feca</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
@@ -1143,52 +1143,52 @@ difference left against its capture.
 
 </details>
 
-<details><summary><b>Yopuka</b> — 22 of 44 seen working, 44 resolve on paper</summary>
+<details><summary><b>Yopuka</b> — 44 of 44 seen working, 44 resolve on paper</summary>
 
 - ✅ Machete
-- ❌ Acumulación
+- ✅ Acumulación
 - ✅ Intimidación
-- ❌ Conquista
+- ✅ Conquista
 - ✅ Salto — the x115% row on the enemies around the arrival, under D
-- ❌ Agitación
+- ✅ Agitación
 - ✅ Fervor
-- ❌ Amenaza
+- ✅ Amenaza
 - ✅ Espada Divina
-- ❌ Espada del Juicio
+- ✅ Espada del Juicio
 - ✅ Espada Destructora — the T is the bar across the cast, and two casts erode 26%
-- ❌ Fustigación
+- ✅ Fustigación
 - ✅ Aguante
-- ❌ Pugilato
+- ✅ Pugilato
 - ✅ Soplido
-- ❌ Congregación
+- ✅ Congregación
 - ✅ Concentración — the L,M,l,m,c and J,j rows: monsters and players, and the summons
-- ❌ Sentencia
+- ✅ Sentencia
 - ✅ Furor — 28604's rows alone: Furor I and II, and the decay at the end of the turn after
-- ❌ Ira de Yopuka
+- ✅ Ira de Yopuka
 - ✅ Fricción — the state lands on the enemy it just pulled, and the DBE hook pulls him again
-- ❌ Golpe por Golpe
+- ✅ Golpe por Golpe
 - ✅ Influencia — the Invulnerable state takes the whole blow, and the -100 PM row
-- ❌ Duelo Yopukil
+- ✅ Duelo Yopukil
 - ✅ Potencia
-- ❌ Vindicta
+- ✅ Vindicta
 - ✅ Virtud — 29723's rows alone: the shield around, 550% on a critical, and one -50 per ally in contact
-- ❌ Masacre
+- ✅ Masacre
 - ✅ Tempestad de Potencia
-- ❌ Casca
+- ✅ Casca
 - ✅ Espada Celeste
-- ❌ Cénit
+- ✅ Cénit
 - ✅ Vitalidad — 25215's row alone: +20% of the maximum life on oneself, +10% on the others
-- ❌ Violencia
+- ✅ Violencia
 - ✅ Espada de Yopuka
-- ❌ Cuchillo de Carnicero
+- ✅ Cuchillo de Carnicero
 - ✅ Espada del Destino
-- ❌ Tumulto
+- ✅ Tumulto
 - ✅ Presión — the two casts add up to 20% (its maxStack is 2)
-- ❌ Fractura
+- ✅ Fractura
 - ✅ Oleada
-- ❌ Anillo Destructor
+- ✅ Anillo Destructor
 - ✅ Precipitación
-- ❌ Determinación
+- ✅ Determinación
 
 </details>
 
