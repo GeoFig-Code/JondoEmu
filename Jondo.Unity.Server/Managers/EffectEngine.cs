@@ -1589,12 +1589,21 @@ namespace Jondo.Unity.Server.Managers
 
             foreach (int elemento in new[] { 1, 2, 3, 4 })
             {
-                int car = CharacteristicOfElement(elemento);
-                int tiene = StatOf(quien, car) + quien.Buffs.De(car, ronda);
+                int tiene = PointsOfElement(quien, elemento, ronda);
                 if (tiene > cuanto) { cuanto = tiene; mejor = elemento; }
             }
 
             return mejor;
+        }
+
+        /// <summary>
+        /// A fighter's points in the characteristic an element hits with, buffs included:
+        /// strength for neutral and earth, intelligence fire, chance water, agility air.
+        /// </summary>
+        internal static int PointsOfElement(Fighter quien, int element, int ronda)
+        {
+            int car = CharacteristicOfElement(element);
+            return StatOf(quien, car) + quien.Buffs.De(car, ronda);
         }
 
         /// <summary>The element of the caster's lowest characteristic; the first of a tie.</summary>

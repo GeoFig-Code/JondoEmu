@@ -4205,6 +4205,12 @@ namespace Jondo.Unity.Server
         /// that particular instance. Effects 91-95 (steal) and 96-100 (damage) carry their element
         /// in the client's own effect table, so no hand-written mapping is needed.
         /// </summary>
+        /// <summary>«#1 a #2 de daños del mejor elemento», a weapon damage line like 96 to 100.</summary>
+        private const int BestElementDamage = 2822;
+
+        /// <summary>«#1 a #2 de daños del peor elemento».</summary>
+        private const int WorstElementDamage = 2832;
+
         public static SpellCombatData? GetEquippedWeaponAsSpell(long characterId)
         {
             const int WeaponSlot = 1;
@@ -4215,9 +4221,18 @@ namespace Jondo.Unity.Server
             connection.Open();
 
             var cmd = connection.CreateCommand();
-            cmd.CommandText = "SELECT Data FROM ItemTemplates WHERE Id = $id;";
+            cmd.CommandText = "SELECT Data, Type FROM ItemTemplates WHERE Id = $id;";
             cmd.Parameters.AddWithValue("$id", weapon.ItemId);
-            string? json = cmd.ExecuteScalar() as string;
+            string? json = null;
+            int weaponType = 0;
+            using (var template = cmd.ExecuteReader())
+            {
+                if (template.Read())
+                {
+                    json = template.IsDBNull(0) ? null : template.GetString(0);
+                    weaponType = template.IsDBNull(1) ? 0 : template.GetInt32(1);
+                }
+            }
             if (string.IsNullOrEmpty(json)) return null;
 
             var data = new SpellCombatData
@@ -4229,7 +4244,8 @@ namespace Jondo.Unity.Server
                 MaxRange = 1,
                 BaseDamageMin = 0,
                 BaseDamageMax = 0,
-                NeedsLineOfSight = true
+                NeedsLineOfSight = true,
+                WeaponType = weaponType,
             };
 
             try
@@ -4240,6 +4256,10 @@ namespace Jondo.Unity.Server
                 if (root.TryGetProperty("minRange", out var mr)) data.MinRange = mr.GetInt32();
                 if (root.TryGetProperty("range", out var r)) data.MaxRange = r.GetInt32();
                 if (root.TryGetProperty("criticalHitProbability", out var cp)) data.CriticalHitProbability = cp.GetInt32();
+                if (root.TryGetProperty("criticalHitBonus", out var cb)) data.CriticalHitBonus = cb.GetInt32();
+                if (root.TryGetProperty("maxCastPerTurn", out var pt)) data.MaxCastPerTurn = pt.GetInt32();
+                if (root.TryGetProperty("castInLine", out var line)) data.CastInLine = line.GetInt32() != 0;
+                if (root.TryGetProperty("castTestLos", out var los)) data.NeedsLineOfSight = los.GetInt32() != 0;
             }
             catch { }
 
@@ -4271,7 +4291,11 @@ namespace Jondo.Unity.Server
             // largest is fine for that.
             foreach (var efecto in Managers.Equipment.ParseEffects(weapon.RawEffects))
             {
-                if (efecto.Effect < 91 || efecto.Effect > 100) continue;
+                // 91 to 100, and the best and worst element's damage, which Cocobur, Garra de
+                // Gargandias and Fervor de Amayiro hit with: left out, they had no damage at all.
+                bool deDano = (efecto.Effect >= 91 && efecto.Effect <= 100)
+                              || efecto.Effect == BestElementDamage || efecto.Effect == WorstElementDamage;
+                if (!deDano) continue;
 
                 int minimo = (int)(efecto.DiceNum != 0 ? efecto.DiceNum : efecto.Value);
                 int maximo = (int)(efecto.DiceSide != 0 ? efecto.DiceSide : minimo);
@@ -5888,6 +5912,15 @@ namespace Jondo.Unity.Server
         /// where the 20 % shown in the spell description comes from.
         /// </summary>
         public int CriticalHitProbability { get; set; }
+
+        /// <summary>
+        /// A weapon's «Bonus de críticos»: added to both ends of each of its damage lines on a
+        /// critical hit. The Arco de vueloceronte carries 3, so its 11 to 15 is 14 to 18.
+        /// </summary>
+        public int CriticalHitBonus { get; set; }
+
+        /// <summary>A weapon's item type, which says the zone it hits in (WeaponZones).</summary>
+        public int WeaponType { get; set; }
 
         public int CriticalDamageMin { get; set; }
         public int CriticalDamageMax { get; set; }

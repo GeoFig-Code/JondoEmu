@@ -2097,6 +2097,7 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>The cast limits of whoever is casting: a summon's own grade, a player's by level.</summary>
         private static LimitesDelHechizo LimitesDelQueLanza(Fighter caster, int spell)
         {
+            if (spell == 0) return WeaponLimits(caster);
             if (caster.EsInvocado)
             {
                 foreach (var (suyo, grado) in caster.HechizosDeInvocado)
@@ -2105,6 +2106,24 @@ namespace Jondo.Unity.Server.Handlers
                 }
             }
             return LimitesDe(spell, caster.Level);
+        }
+
+        /// <summary>
+        /// What hitting with the weapon in hand costs and what limits it: the weapon's own data,
+        /// as the client draws it. They were the bare hand's -- 3 AP, any range, no cap, no
+        /// critical of its own --, so the Arco de vueloceronte cost 3 and could be fired all turn,
+        /// where its sheet and the real server say 5 AP, 5 to 10 cells, once a turn and 10% of
+        /// critical ("GASTA PA -5" in both of its captured hits). Without a weapon it is still the
+        /// bare hand.
+        /// </summary>
+        private static LimitesDelHechizo WeaponLimits(Fighter caster)
+        {
+            var arma = caster.Id == GameState.CharacterId
+                ? DatabaseManager.GetEquippedWeaponAsSpell(caster.Id)
+                : null;
+            if (arma == null) return LimitesDe(0, caster.Level);
+            return new LimitesDelHechizo(arma.APCost, 0, 1, arma.MaxCastPerTurn, 0, 0, 0,
+                                         arma.CriticalHitProbability, arma.MinRange, arma.MaxRange);
         }
 
         /// <summary>The fight this character is in, or null. Anybody may ask, not only his session.</summary>
@@ -3974,7 +3993,9 @@ namespace Jondo.Unity.Server.Handlers
                 // when checking whether the spell reaches.
                 //
                 // Minimum range is NOT touched: 19 extends how far you reach, not from where.
-                int maximo = limites.AlcanceMaximo
+                // A weapon's range is its own and nothing makes it longer.
+                int maximo = spell == 0 ? limites.AlcanceMaximo
+                           : limites.AlcanceMaximo
                            + caster.Range
                            + caster.Buffs.De(AlcanceCaracteristica, fight.RoundNumber)
                            + caster.Buffs.DelHechizo(spell, Jondo.Unity.World.Fights.SpellAspect.AlcanceMaximo,
@@ -6843,8 +6864,7 @@ namespace Jondo.Unity.Server.Handlers
             var golpes = spell != 0
                 ? Managers.EffectEngine.Golpes(fight, caster, spell, grade, target, celdaApuntada, critico, tirada,
                                                disparador, soloAlObjetivo)
-                : (target != null ? GolpeDelArma(caster, target)
-                                  : new List<(Managers.SpellEffect, int, Fighter, int)>());
+                : GolpeDelArma(fight, caster, target, celdaApuntada, critico);
             if (golpes.Count == 0) return;
 
             // The die is rolled ONCE per effect, not once per target: if a "25 to 30" spell rolls a
@@ -6920,12 +6940,43 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>The equipped weapon's hit, which still comes from the usual summary.</summary>
+        /// <remarks>
+        /// Only the lines a hit deals (<see cref="Managers.WeaponHit"/>), and on a critical with
+        /// the weapon's bonus on both ends of each; on everybody in its type's zone but its
+        /// wielder (<see cref="Managers.WeaponZones"/>), each line losing its step per cell from
+        /// the aimed one.
+        /// </remarks>
         private static List<(Managers.SpellEffect Efecto, int Elemento, Fighter Sobre, int Lejos)>
-            GolpeDelArma(Fighter caster, Fighter target)
+            GolpeDelArma(FightInstance fight, Fighter caster, Fighter target, int celdaApuntada, bool critico)
         {
             var fuera = new List<(Managers.SpellEffect, int, Fighter, int)>();
             var arma = DatabaseManager.GetEquippedWeaponAsSpell(GameState.CharacterId);
             if (arma == null || (arma.BaseDamageMin <= 0 && arma.BaseDamageMax <= 0)) return fuera;
+
+            int centro = celdaApuntada >= 0 ? celdaApuntada : target?.CellId ?? -1;
+            if (centro < 0) return fuera;
+            var zona = Managers.WeaponZones.Of(arma.WeaponType);
+            var celdas = Jondo.Unity.World.Maps.Zone.Casillas(zona.Shape, zona.Size, caster.CellId, centro, zona.MinSize);
+            var alcanzados = new List<Fighter>();
+            foreach (int celda in celdas)
+            {
+                foreach (var quien in TodosLosCombatientes(fight))
+                {
+                    if (quien != null && quien.IsAlive && quien != caster && quien.CellId == celda
+                        && !alcanzados.Contains(quien))
+                        alcanzados.Add(quien);
+                }
+            }
+            if (alcanzados.Count == 0) return fuera;
+
+            int ronda = fight.RoundNumber;
+            int PointsOf(int element) => element < 0
+                ? new[] { 1, 2, 3, 4 }.Max(e => Managers.EffectEngine.PointsOfElement(caster, e, ronda))
+                : Managers.EffectEngine.PointsOfElement(caster, element, ronda);
+            var lineas = Managers.WeaponHit.LinesThatHit(
+                arma.WeaponLines.Select(l => new Managers.WeaponHit.Line(l.Effect, l.Element, l.Min, l.Max)).ToList(),
+                PointsOf);
+            int bonus = critico ? arma.CriticalHitBonus : 0;
 
             // ONE HIT PER LINE. Before, a single one came out, with the line doing the most damage
             // and the effect number at zero, so a three-line weapon showed one figure in the chat
@@ -6936,20 +6987,29 @@ namespace Jondo.Unity.Server.Handlers
             // The effect uid has to be different on each line or the die would be rolled once for
             // all three: whoever walks them groups them by that uid.
             int cual = 0;
-            foreach (var (efecto, elemento, minimo, maximo) in arma.WeaponLines)
+            foreach (var linea in lineas)
             {
-                fuera.Add((new Managers.SpellEffect
+                var fila = new Managers.SpellEffect
                 {
-                    EffectId = efecto,
+                    EffectId = linea.Effect,
                     EffectUid = -(++cual),
-                    DiceNum = minimo,
-                    DiceSide = maximo,
-                }, elemento, target, 0));
+                    DiceNum = linea.Min + bonus,
+                    DiceSide = linea.Max + bonus,
+                    PasoDeCaida = zona.DecreaseStep,
+                    TopeDeCaida = zona.MaxSteps,
+                };
+                // The best and worst element's lines are asked of the wielder at the hit.
+                int elemento = Managers.EffectEngine.ElementOfTheBlow(fila, caster, ronda);
+                foreach (var quien in alcanzados)
+                {
+                    fuera.Add((fila, elemento, quien,
+                               Jondo.Unity.World.Maps.MapGeometry.Distance(centro, quien.CellId)));
+                }
             }
 
             // And if for whatever reason there are no lines, it hits with what there was: better a
             // hit than none.
-            if (fuera.Count == 0)
+            if (fuera.Count == 0 && target != null)
             {
                 fuera.Add((new Managers.SpellEffect
                 {
