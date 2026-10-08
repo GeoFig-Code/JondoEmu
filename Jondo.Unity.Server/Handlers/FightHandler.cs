@@ -8624,6 +8624,9 @@ namespace Jondo.Unity.Server.Handlers
                     // And the window, which is what the player expects to see on levelling up.
                     await WriteFrameAsync(stream,
                         ConnectionProtocol.Push(Op.Kua, ConnectionProtocol.BuildLevelUp(newLevel)));
+
+                    // And what the new level opens, in the book and on the bar.
+                    await SpellHandler.SendSpellsAndBarAsync(stream);
                 }
             }
             if (kamas > 0) GameState.Kamas += kamas;

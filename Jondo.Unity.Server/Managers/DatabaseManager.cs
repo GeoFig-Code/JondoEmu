@@ -707,6 +707,17 @@ namespace Jondo.Unity.Server
                 ";
                 createSpellBar.ExecuteNonQuery();
 
+                // And up to which level the bar has been given its spells: a spell unlocked above
+                // it goes on the bar by itself, one the player took off below it stays off.
+                var createSpellBarLevel = worldConnection.CreateCommand();
+                createSpellBarLevel.CommandText = @"
+                    CREATE TABLE IF NOT EXISTS CharacterSpellBarLevel (
+                        CharacterId INTEGER PRIMARY KEY,
+                        Level INTEGER NOT NULL
+                    );
+                ";
+                createSpellBarLevel.ExecuteNonQuery();
+
                 // Seed default character if empty
                 var checkChar = worldConnection.CreateCommand();
                 checkChar.CommandText = "SELECT COUNT(*) FROM Characters WHERE Id = 13825558;";

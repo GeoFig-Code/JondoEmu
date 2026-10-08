@@ -307,6 +307,9 @@ namespace Jondo.Unity.Server
         internal Dictionary<int, int> SpellBar { get; } = new Dictionary<int, int>();
         internal long SpellChoicesCharacterId { get; set; }
 
+        /// <summary>The level whose spells the bar has been given; zero when it was never written.</summary>
+        internal int SpellBarLevel { get; set; }
+
         // Thread-Safety Synchronization Lock
         private readonly object _lock = new object();
 

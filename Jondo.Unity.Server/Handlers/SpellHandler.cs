@@ -23,6 +23,29 @@ namespace Jondo.Unity.Server.Handlers
     /// </summary>
     public static class SpellHandler
     {
+        /// <summary>
+        /// The spell list (hms) and the spell bar (itg) of the character's level, sent again: what
+        /// a level-up leaves the client with, the new spells in the book and on the bar.
+        /// </summary>
+        /// <remarks>
+        /// Only the .level command sent them. A level gained in a fight or from a reward showed its
+        /// window and nothing else: the spells it opened reached neither the book nor the bar until
+        /// the next login. With no spell table loaded nothing is sent: an empty hms does not say
+        /// "nothing changed", it says "you have no spells".
+        /// </remarks>
+        internal static async Task SendSpellsAndBarAsync(NetworkStream stream)
+        {
+            if (!SpellTable.IsLoaded) return;
+
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Hms,
+                    ConnectionProtocol.BuildSpellList(GameState.Breed, GameState.CharacterLevel,
+                        SessionContext.Current.AccountId)));
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Itg,
+                    ConnectionProtocol.BuildSpellBar(GameState.Breed, GameState.CharacterLevel)));
+        }
+
         public static async Task HandleVariantAsync(NetworkStream stream, byte[] payload)
         {
             byte[]? hmt = ConnectionProtocol.ReadPayload(payload, Op.Hmt);

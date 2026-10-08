@@ -69,6 +69,9 @@ namespace Jondo.Unity.Server.Managers
 
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Kua, ConnectionProtocol.BuildLevelUp(newLevel)));
+
+                // And what the new level opens, in the book and on the bar.
+                await Handlers.SpellHandler.SendSpellsAndBarAsync(stream);
             }
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,

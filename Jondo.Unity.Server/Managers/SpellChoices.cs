@@ -24,9 +24,13 @@ namespace Jondo.Unity.Server.Managers
         public static IReadOnlyDictionary<int, int> Chosen => ChosenStore;
         public static IReadOnlyDictionary<int, int> Bar => BarStore;
 
+        /// <summary>The level whose spells the bar has been given; zero when it was never written.</summary>
+        public static int BarLevel => SessionContext.State.SpellBarLevel;
+
         public static void LoadFrom(long characterId)
         {
             SessionContext.State.SpellChoicesCharacterId = characterId;
+            SessionContext.State.SpellBarLevel = 0;
             ChosenStore.Clear();
             BarStore.Clear();
 
@@ -50,6 +54,11 @@ namespace Jondo.Unity.Server.Managers
                 {
                     while (reader.Read()) BarStore[reader.GetInt32(0)] = reader.GetInt32(1);
                 }
+
+                var level = connection.CreateCommand();
+                level.CommandText = "SELECT Level FROM CharacterSpellBarLevel WHERE CharacterId = $id;";
+                level.Parameters.AddWithValue("$id", characterId);
+                if (level.ExecuteScalar() is long barLevel) SessionContext.State.SpellBarLevel = (int)barLevel;
 
                 Console.WriteLine($"[SpellChoices] {ChosenStore.Count} chosen variants and " +
                                   $"{BarStore.Count} bar slots saved.");
@@ -118,6 +127,54 @@ namespace Jondo.Unity.Server.Managers
             int spellRight = SpellInSlot(right);
             PutInBar(left, spellRight);
             PutInBar(right, spellLeft);
+        }
+
+        /// <summary>
+        /// Puts on the bar, each in the first free slot, the spells the character unlocks for the
+        /// first time: those of the pairs his level opens above the level the bar was last given.
+        /// </summary>
+        /// <remarks>
+        /// The bar is saved whole in the first session, and from then on what the player made of
+        /// it rules: a spell he took off is not put back when the bar is drawn again. So a spell
+        /// learned at a level-up has to be placed when it is learned, or it never reaches the bar
+        /// -- a level 200 Selatrop was left with eight. A bar never written is filled whole by
+        /// <see cref="FightSpellLayout.Build"/> and only gets its level here. A bar written before
+        /// the level was kept gets, once, every spell it lacks: until then the bar put them all
+        /// back each time it was drawn, so none had been taken off for good.
+        /// </remarks>
+        public static void PlaceNewlyUnlocked(int breed, int level)
+        {
+            if (level <= BarLevel) return;
+
+            if (BarStore.Count > 0)
+            {
+                var alreadyOpen = new HashSet<int>();
+                if (BarLevel > 0)
+                    foreach (var spell in SpellTable.KnownFor(breed, BarLevel, ChosenStore)) alreadyOpen.Add(spell.PairId);
+
+                var onTheBar = new HashSet<int>(BarStore.Values);
+                foreach (var spell in SpellTable.KnownFor(breed, level, ChosenStore))
+                {
+                    if (alreadyOpen.Contains(spell.PairId) || onTheBar.Contains(spell.SpellId)) continue;
+                    int slot = FirstFreeSlot();
+                    if (slot < 0) break;
+                    PutInBar(slot, spell.SpellId);
+                    onTheBar.Add(spell.SpellId);
+                }
+            }
+
+            SessionContext.State.SpellBarLevel = level;
+            Write("INSERT INTO CharacterSpellBarLevel (CharacterId, Level) VALUES ($c, $l) " +
+                  "ON CONFLICT(CharacterId) DO UPDATE SET Level = $l;",
+                  ("$l", level));
+        }
+
+        /// <summary>The first slot of the bar with nothing in it, past slot zero, which is the weapon's.</summary>
+        private static int FirstFreeSlot()
+        {
+            for (int slot = 1; slot < FightSpellLayout.SlotCount; slot++)
+                if (!BarStore.ContainsKey(slot)) return slot;
+            return -1;
         }
 
         /// <summary>

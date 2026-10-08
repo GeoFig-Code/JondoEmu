@@ -29,6 +29,9 @@ namespace Jondo.Unity.Server.Managers
         /// </remarks>
         public static Layout Current(int breed, int level, long accountId)
         {
+            // What a level-up unlocked goes on the saved bar before it is drawn.
+            SpellChoices.PlaceNewlyUnlocked(breed, level);
+
             var conocidos = new List<SpellTable.KnownSpell>(
                 SpellTable.KnownFor(breed, level, SpellChoices.Chosen));
 
