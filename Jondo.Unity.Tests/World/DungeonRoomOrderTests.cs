@@ -144,6 +144,37 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(181669888, DungeonManager.Get(105)?.LastRoom);
         }
 
+        /// <summary>
+        /// The dungeons whose corridors already gave their order keep the last room of it: the
+        /// partial names put these bosses in a Fourth or Third Room, and a win there left the
+        /// dungeon before its real last room.
+        /// </summary>
+        [Fact]
+        public void Live_catalogue_keeps_the_boss_rooms_the_corridors_give()
+        {
+            if (!File.Exists(Paths.DungeonsJson)) return;
+
+            DungeonManager.Initialize();
+            if (!DungeonManager.IsLoaded) return;
+
+            Assert.Equal(169873408, DungeonManager.Get(97)?.LastRoom);   // Captain Meno's Ship - Final Room
+            Assert.Equal(140776448, DungeonManager.Get(84)?.LastRoom);   // Belly of the Whale - Heart Room
+            Assert.Equal(152834048, DungeonManager.Get(90)?.LastRoom);   // Kardorim's Crypt - Kardorim's Tomb
+            Assert.Equal(157028352, DungeonManager.Get(91)?.LastRoom);   // LeChouque's Boat - LeChouque's Cabin
+            Assert.Equal(182456320, DungeonManager.Get(96)?.LastRoom);   // Cursed Araknas Temple - Araknas Altar
+            Assert.Equal(174330368, DungeonManager.Get(100)?.LastRoom);  // Mastodon Cemetery - Final Room
+            Assert.Equal(62135816, DungeonManager.Get(61)?.LastRoom);    // Bearbarian Antichamber - Celestial Bearbarian's Chamber
+        }
+
+        /// <summary>Every room numbered, past the twelfth: the Dragon Pig's Den ends in a Thirteenth Room.</summary>
+        [Fact]
+        public void An_ordinal_past_the_twelfth_still_counts()
+        {
+            Assert.Equal(13, DungeonManager.OrdinalOf("Dragon Pig's Den - Thirteenth Room"));
+            Assert.Equal(3, DungeonManager.OrdinalOf("Dragon Pig's Den - Third Room"));
+            Assert.Equal(4, DungeonManager.OrdinalOf("Dragon Pig's Den - Fourth Room"));
+        }
+
         [Fact]
         public void Live_catalogue_never_uses_an_Exit_as_LastRoom()
         {

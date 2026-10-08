@@ -117,21 +117,26 @@ namespace Jondo.Unity.Server.Managers
         /// First, Third -- and a player entering it landed in room two, and was moved to four, then
         /// five, then three. Exactly the list, read straight down.
         ///
-        /// Two sources say what the order is, and they are used in this order:
+        /// Three sources say what the order is, and they are used in this order:
         ///
         /// <list type="number">
-        /// <item>The room NAMES, when enough rooms carry an ordinal. Numbered rooms
-        /// ("… - Third Room") are ordered; hubs and Exits without an ordinal are kept after the
-        /// chain instead of aborting the whole dungeon. Sandy Castle used to fail because one map
-        /// is just "Sandy Castle".</item>
+        /// <item>The room NAMES, when every room carries a different ordinal ("… - Third Room").
+        /// It is the plainest statement of the order there is.</item>
         /// <item>The map LINKS otherwise. A room leads to the next through a corridor, and the
         /// corridor is the same map on both sides: the right-hand exit of one room is the left-hand
         /// entrance of the next. Following that from the only room nothing leads into gives the
         /// chain.</item>
+        /// <item>The PARTIAL names when neither answers: the numbered rooms in their order, and the
+        /// hubs and Exits without an ordinal kept after them instead of giving the dungeon up.
+        /// Sandy Castle used to fail because one map is just "Sandy Castle".</item>
         /// </list>
         ///
-        /// After ordering, <see cref="Dungeon.LastRoom"/> is chosen: never a bare hub or an Exit,
-        /// and a named throne / fissure beats the highest ordinal when both exist.
+        /// Then <see cref="Dungeon.LastRoom"/>: the map a quest names for one of the dungeon's
+        /// bosses; otherwise, for a walked order, its last room short of the Exit; and only for a
+        /// dungeon ordered by its partial names, the guess from them -- never a bare hub or an
+        /// Exit, a named throne or fissure before the highest ordinal. Measured against what the
+        /// boss rooms were before: the nine the corridors had right keep them, nineteen that sat
+        /// on a First Room, an Entrance or an Exit get a real one.
         ///
         /// Anything neither source can order keeps the catalogue list, but LastRoom is still
         /// resolved — Lord Crow's Library has no ordinals and still needs its Throne Room.
@@ -176,6 +181,8 @@ namespace Jondo.Unity.Server.Managers
                 return 0;
             }
 
+            var questBossRooms = BossRoomsTheQuestsName();
+
             int changed = 0;
             foreach (var dungeon in _byId.Values)
             {
@@ -191,8 +198,17 @@ namespace Jondo.Unity.Server.Managers
                     continue;
                 }
 
-                var byName = ByName(dungeon.Rooms, names);
-                List<long>? ordered = byName.Rooms ?? ByLinks(dungeon.Rooms, scrolls);
+                // The walked order first: every room numbered, or the corridors followed from the
+                // only room nothing leads into. Only a dungeon neither orders is ordered by its
+                // partial names, and only there is its boss room guessed from them. The other way
+                // round, the partial names moved the boss of nine dungeons the corridors had right
+                // -- Captain Meno's Ship, Koutoulou's Temple, Dantinea's Palace, the Mastodon
+                // Cemetery, the Belly of the Whale, Kardorim's Crypt, LeChouque's Boat, the Cursed
+                // Araknas Temple, the Bearbarian Antichamber -- into their Fourth or Third Room,
+                // and a win there left the dungeon before its last room.
+                var walked = ByEveryName(dungeon.Rooms, names) ?? ByLinks(dungeon.Rooms, scrolls);
+                var byName = walked == null ? ByName(dungeon.Rooms, names) : default;
+                List<long>? ordered = walked ?? byName.Rooms;
                 if (ordered != null && !ordered.SequenceEqual(dungeon.Rooms))
                 {
                     dungeon.Rooms.Clear();
@@ -200,15 +216,106 @@ namespace Jondo.Unity.Server.Managers
                     changed++;
                 }
 
-                dungeon.LastRoom = PickBossRoom(dungeon.Rooms, names, byName.NumberedLast);
+                // The boss room a quest names is the boss room: the client's own catalogue says
+                // "beat this boss on this map" for 31 dungeons.
+                long named = questBossRooms.TryGetValue(dungeon.Id, out var maps)
+                    ? dungeon.Rooms.LastOrDefault(maps.Contains)
+                    : 0;
+                dungeon.LastRoom = named != 0 ? named
+                                 : walked != null ? LastBeforeTheExit(dungeon.Rooms, names)
+                                 : PickBossRoom(dungeon.Rooms, names, byName.NumberedLast);
 
                 // No ordinal chain (Lord Crow): put the throne after the antechamber so FirstRoom
                 // is not the boss and a win there still leaves through WayOut.
-                if (byName.NumberedLast == 0 && MoveBossBeforeExits(dungeon, names))
+                if (walked == null && byName.NumberedLast == 0 && MoveBossBeforeExits(dungeon, names))
                     changed++;
             }
 
             return changed;
+        }
+
+        /// <summary>
+        /// The maps the quest catalogue names for each dungeon's bosses: the objectives that ask
+        /// to beat one of them "on this map" (type 16). Sandy Castle's quest 896 wants its boss
+        /// beaten in the Fifth Room, Ilyzaelle's in Erzal's Fissure, the Mastodon Cemetery's in
+        /// its Final Room.
+        /// </summary>
+        private static Dictionary<int, HashSet<long>> BossRoomsTheQuestsName()
+        {
+            const int BeatOnThisMap = 16;
+            var byDungeon = new Dictionary<int, HashSet<long>>();
+            try
+            {
+                string path = Paths.QuestsJson;
+                if (!File.Exists(path)) return byDungeon;
+
+                var mapsOfMonster = new Dictionary<long, HashSet<long>>();
+                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                if (!doc.RootElement.TryGetProperty("objectives", out var objectives)) return byDungeon;
+                foreach (var objective in objectives.EnumerateObject())
+                {
+                    var o = objective.Value;
+                    if (!o.TryGetProperty("type", out var type) || type.GetInt32() != BeatOnThisMap) continue;
+                    if (!o.TryGetProperty("map", out var map) || !o.TryGetProperty("params", out var parameters)
+                        || parameters.GetArrayLength() == 0) continue;
+                    long monster = parameters[0].GetInt64();
+                    if (!mapsOfMonster.TryGetValue(monster, out var set)) mapsOfMonster[monster] = set = new HashSet<long>();
+                    set.Add(map.GetInt64());
+                }
+
+                foreach (var dungeon in _byId.Values)
+                {
+                    var rooms = new HashSet<long>(dungeon.Rooms);
+                    foreach (int boss in dungeon.Bosses)
+                    {
+                        if (!mapsOfMonster.TryGetValue(boss, out var maps)) continue;
+                        foreach (long map in maps.Where(rooms.Contains))
+                        {
+                            if (!byDungeon.TryGetValue(dungeon.Id, out var set)) byDungeon[dungeon.Id] = set = new HashSet<long>();
+                            set.Add(map);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DungeonManager] Could not read the quests' boss maps: {ex.Message}");
+            }
+            return byDungeon;
+        }
+
+        /// <summary>
+        /// The last room of a walked order, the Exit left out: the corridors of the Magik Riktus
+        /// Big Top run on into its Exit, which is no boss room.
+        /// </summary>
+        private static long LastBeforeTheExit(IReadOnlyList<long> rooms, Dictionary<long, string> names)
+        {
+            for (int i = rooms.Count - 1; i >= 0; i--)
+            {
+                if (names.TryGetValue(rooms[i], out string? name) && name != null && IsExitName(name)) continue;
+                return rooms[i];
+            }
+            return rooms.Count == 0 ? 0 : rooms[^1];
+        }
+
+        /// <summary>
+        /// Rooms by the ordinal in their name when EVERY room has a different one, or null: the
+        /// plainest statement of the order there is, and the one this server trusted first.
+        /// </summary>
+        internal static List<long>? ByEveryName(List<long> rooms, Dictionary<long, string> names)
+        {
+            var numbered = new List<(long Map, int Position)>();
+            foreach (long room in rooms)
+            {
+                if (!names.TryGetValue(room, out string? name) || name == null) return null;
+                int position = OrdinalOf(name);
+                if (position == 0) return null;
+                numbered.Add((room, position));
+            }
+
+            // Two rooms claiming the same number is not an order, it is a coincidence of wording.
+            if (numbered.Select(pair => pair.Position).Distinct().Count() != numbered.Count) return null;
+            return numbered.OrderBy(pair => pair.Position).Select(pair => pair.Map).ToList();
         }
 
         /// <summary>Moves <see cref="Dungeon.LastRoom"/> ahead of any Exit maps. Returns whether the list changed.</summary>
@@ -242,6 +349,9 @@ namespace Jondo.Unity.Server.Managers
         {
             "first", "second", "third", "fourth", "fifth", "sixth",
             "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+            // The Dragon Pig's Den runs to a Thirteenth Room; without it the twelfth was its end.
+            "thirteenth", "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth",
+            "nineteenth", "twentieth",
         };
 
         /// <summary>Result of a name-based reorder: the full room list and the last numbered map.</summary>
