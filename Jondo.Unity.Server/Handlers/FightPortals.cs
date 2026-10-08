@@ -232,6 +232,45 @@ namespace Jondo.Unity.Server.Handlers
             return path;
         }
 
+        /// <summary>How many portals one push goes through at most: a network holds four a Selatrop.</summary>
+        private const int MaxPortalLegs = 8;
+
+        /// <summary>
+        /// A push or a pull that has just slid somebody: if it left him on a portal that is on, he
+        /// goes through it, and the cells the push had left go on from the way out, the same
+        /// way, as a slide of their own -- into the next portal, if one is in their path.
+        /// </summary>
+        /// <remarks>
+        /// Odisea measures the first part: stepped back onto the portal on 215, the Selatrop goes
+        /// through it right behind the slide, 307 and all (frames 74-79). Its step is one cell,
+        /// so nothing was left to go on with. That a longer push goes on from the way out is the
+        /// class's rule as played: before, the push slid over the portal and never went through.
+        /// </remarks>
+        internal static async Task ThroughThePortalsAsync(NetworkStream stream, FightInstance fight,
+                                                         Fighter pusher, int spell, Outcome leg)
+        {
+            for (int legs = 0; leg != null && legs < MaxPortalLegs; legs++)
+            {
+                var moved = leg.Sobre;
+                if (!moved.IsAlive || !DisplacementCrossesPortals(leg.Efecto.EffectId)
+                    || !PortalCatches(fight, moved, moved.CellId)
+                    || !await CrossPortalAsync(stream, fight, moved, walkedIn: true))
+                {
+                    await RefreshPortalsAsync(fight);
+                    return;
+                }
+
+                leg = EffectEngine.PastThePortal(fight, pusher, leg);
+                if (leg == null) return;
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                    FightProtocol.BuildDisplacement(pusher.Id, FightProtocol.Alejarse, moved.Id,
+                                                    leg.CasillaDesde, leg.CasillaHasta)));
+                Program.LogDebug($"[Portal] Spell {spell} goes on moving {moved.Id} from the way out, " +
+                                 $"{leg.CasillaDesde} to {leg.CasillaHasta}.");
+                await DanoDeColisionAsync(stream, fight, pusher, leg);
+            }
+        }
+
         /// <summary>
         /// The effects whose displacement takes a fighter through a portal he is moved onto: the
         /// pushes, the pulls, the steps back and forward. Measured on the step back (1041) of
@@ -247,17 +286,25 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// Where a spell aimed at a portal comes out, and through which portals: null when it is
-        /// not projected -- no portal on the cell, the portal off, a spell that deals with the
-        /// portals themselves (Neutral aimed at one switches it off: "usar neutral", frame 2), or
-        /// a caster the portals keep out.
+        /// not projected -- no portal on the cell, the portal off, a caster the portals keep out,
+        /// a level flagged <see cref="SpellLevelFlags.PortalProjectionForbidden"/>, or a spell that
+        /// switches portals off (Neutral aimed at one switches it off: "usar neutral", frames 2,
+        /// 14, 72 and 85, four portals out of four).
         /// </summary>
+        /// <remarks>
+        /// Portal itself goes through, and lays its portal where it comes out. The client draws it
+        /// so when a Portal is aimed at a portal, and its level carries no
+        /// PortalProjectionForbidden; it was kept out with Neutral, as "a spell about portals",
+        /// and laid nothing -- the aimed cell already held one. No capture casts it so.
+        /// </remarks>
         internal static (List<Portal> Chain, int Cell)? Projection(FightInstance fight, Fighter caster, int cell,
-                                                                     IEnumerable<SpellEffect> effects)
+                                                                     IEnumerable<SpellEffect> effects, int flags = 0)
         {
             if (fight.Portales.Count == 0 || caster == null) return null;
+            if ((flags & SpellLevelFlags.PortalProjectionForbidden) != 0) return null;
             var entry = fight.Portales.At(cell);
             if (entry == null || !entry.Active || !CanUsePortals(caster)) return null;
-            if (effects != null && effects.Any(e => EffectEngine.EsDePortales(e.EffectId))) return null;
+            if (effects != null && effects.Any(e => e.EffectId == EffectEngine.DesactivaUnPortal)) return null;
 
             var chain = fight.Portales.Chain(entry, fight.OccupantOf);
             if (chain.Count < 2) return null;

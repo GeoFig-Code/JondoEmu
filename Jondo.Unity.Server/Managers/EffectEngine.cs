@@ -232,6 +232,19 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public int CollisionDamageToBlocker { get; init; }
 
+        /// <summary>
+        /// A push that stopped on a portal that is on: the cells it has left, and the step they go
+        /// along from the way out. Null for any other push. The fight sends him through and walks
+        /// the rest (<see cref="EffectEngine.PastThePortal"/>).
+        /// </summary>
+        public (int Cells, int Dx, int Dy)? PastThePortal { get; init; }
+
+        /// <summary>
+        /// For a hook mark: the round it lasts to, when it is not its rows' durations that say so --
+        /// a poison's hook lives to the bearer's next turn. Null: the rows say.
+        /// </summary>
+        public int? HookUntil { get; init; }
+
         /// <summary>Buffs removed by an effect 406 or by a state being removed.</summary>
         public IReadOnlyList<Buff> BuffsQuitados { get; init; } = Array.Empty<Buff>();
 
@@ -616,6 +629,131 @@ namespace Jondo.Unity.Server.Managers
             int porCasilla = nivelDelQueEmpuja / 2 + suEmpuje - laResistencia + BaseDelEmpuje;
             return Math.Max(0, casillasSinRecorrer * porCasilla / 4);
         }
+
+        /// <summary>
+        /// What a push crashed into costs: the damage to the one pushed, the fighter he was
+        /// pushed into and that one's half.
+        /// </summary>
+        private static (int Damage, Fighter Blocker, int ToBlocker) CollisionOf(
+            FightInstance fight, Fighter pusher, Fighter pushed, SpellEffect effect, int cells,
+            Jondo.Unity.World.Maps.Zone.PushResult push, int round)
+        {
+            // COLLISION DAMAGE, which was not done at all.
+            //
+            // It comes from the cells NOT covered, and the formula is measured on the 127 push
+            // damage messages of the 401 captures:
+            //
+            //   damage = cellsNotCovered × (level/2 + the pusher's 84
+            //                               − the receiver's 85 + 32) / 4
+            //
+            // The three anchors: a level 200 caster with no bonuses hits 33 per cell -- 132/4 -- and
+            // only 33, 66, 99 and 132 come out, not one value in between; the Zurkarak «Daddy», who
+            // is LEVEL 165, hits 57 for two cells, which is floor(2 × 114.5 / 4) and which no fixed
+            // constant can give; and a Zobal with 100 push from equipment and masks of 0, 40, 80
+            // and 120 hits 58, 68, 78 and 88 per cell.
+            //
+            // The resistance goes INSIDE the quarter: in the koliseo, 561 push against 30
+            // resistance give 331 for two cells. Subtracting it outside would give 316.
+            //
+            // And only the push does it: the catalogue has a separate effect, «Pushes (no damage)»,
+            // which 54 spells use precisely so as not to do it, which is the proof that the normal
+            // 5 does. Of the PULL there is not a single blocked case in the 401 captures, so it
+            // stays at zero until it is measured.
+            int damage = 0, toBlocker = 0;
+            Fighter blocker = null;
+
+            // And a wall is NOT a crash. It stops the displacement, but the damage it deals
+            // is its own -- applied by the glyph, over in the handler -- not the damage of
+            // slamming into something: the class sheet mentions no collision damage at all
+            // for pushing somebody into a wall.
+            bool hurts = effect.EffectId == Empujar && cells > 0
+                         && push.Stop != Jondo.Unity.World.Maps.Zone.PushStop.Wall
+                         && push.Stop != Jondo.Unity.World.Maps.Zone.PushStop.Portal;
+            // The 1103 is the 5 that never collides; it took this same branch and paid.
+            if (hurts && push.BlockedCells > 0)
+            {
+                int pushDamage = pusher.PushDamage + pusher.Buffs.De(DanoDeEmpuje, round);
+                int resistance = pushed.Otra(ResistenciaAlEmpuje) +
+                                 pushed.Buffs.De(ResistenciaAlEmpuje, round);
+
+                damage = DanoDeColision(pusher.StatLevel, pushDamage, resistance, push.BlockedCells);
+
+                // And if what stopped him was another fighter, that one pays half. Walls do not pay.
+                if (damage > 0 && push.Stop == Jondo.Unity.World.Maps.Zone.PushStop.Fighter)
+                {
+                    foreach (var other in Todos(fight))
+                    {
+                        if (other == null || !other.IsAlive) continue;
+                        if (other.CellId != push.BlockerCell) continue;
+                        blocker = other;
+                        toBlocker = damage / 2;
+                        break;
+                    }
+                }
+            }
+
+            return (damage, blocker, toBlocker);
+        }
+
+        /// <summary>
+        /// The cells where a push of <paramref name="effect"/> hands <paramref name="moved"/> to a
+        /// portal: one that is on, and that would take him (FightHandler.PortalCatches). Null for
+        /// a displacement that does not go through portals -- a teleport does not.
+        /// </summary>
+        private static Func<int, bool> PortalStops(FightInstance fight, Fighter moved, SpellEffect effect)
+        {
+            if (fight.Portales.Count == 0 || !Handlers.FightHandler.DisplacementCrossesPortals(effect.EffectId)) return null;
+            return cell => Handlers.FightHandler.PortalCatches(fight, moved, cell);
+        }
+
+        /// <summary>What a push that stopped on a portal has left to do from the way out, or null.</summary>
+        private static (int Cells, int Dx, int Dy)? LeftPastThePortal(Jondo.Unity.World.Maps.Zone.PushResult push)
+            => push.Stop == Jondo.Unity.World.Maps.Zone.PushStop.Portal
+                ? (push.BlockedCells, push.Dx, push.Dy)
+                : null;
+
+        /// <summary>
+        /// The rest of a push that went through a portal: the cells it had left, walked from the
+        /// way out the same way it was going, with what they crash into and any portal they find.
+        /// Null when nothing is left or he cannot move.
+        /// </summary>
+        /// <param name="leg">The push that took him into the portal, with what it had left (<see cref="Outcome.PastThePortal"/>).</param>
+        public static Outcome PastThePortal(FightInstance fight, Fighter pusher, Outcome leg)
+        {
+            if (leg?.PastThePortal is not { } rest || rest.Cells <= 0) return null;
+            var moved = leg.Sobre;
+            if (moved == null || !moved.IsAlive) return null;
+
+            var occupied = new HashSet<int>();
+            foreach (var other in Todos(fight))
+                if (other != null && other.IsAlive && !other.EstaCargado && other != moved) occupied.Add(other.CellId);
+
+            int from = moved.CellId;
+            var push = Jondo.Unity.World.Maps.Zone.PushAlong(
+                from, rest.Dx, rest.Dy, rest.Cells,
+                MapManager.GetFightWalkable(fight.ArenaMapId), occupied,
+                BombWalls.StoppingCells(fight, moved), PortalStops(fight, moved, leg.Efecto));
+            moved.MoverA(push.ToCell);
+
+            // A rest that is blocked crashes as a blocked push would: the cells it could not
+            // walk, at the pusher's damage. The sign of the cells says push or pull.
+            int cells = leg.Efecto.EffectId is Tirar or EffectSupport.PullToTargetCell or TironForzado
+                ? -rest.Cells : rest.Cells;
+            var (damage, blocker, toBlocker) = CollisionOf(fight, pusher, moved, leg.Efecto,
+                                                           cells, push, fight.RoundNumber);
+            if (push.ToCell == from && damage <= 0) return null;
+
+            return new Outcome
+            {
+                Sobre = moved, Efecto = leg.Efecto,
+                HechizoOrigen = leg.HechizoOrigen, NivelOrigen = leg.NivelOrigen,
+                CasillaDesde = from, CasillaHasta = push.ToCell,
+                CollisionDamage = damage,
+                Blocker = blocker,
+                CollisionDamageToBlocker = toBlocker,
+                PastThePortal = LeftPastThePortal(push),
+            };
+        }
         /// <summary>«Teleports to the target cell». 425 spells carry it.</summary>
         /// <remarks>
         /// It is not a push of many cells: it does not travel the path, so it neither crashes nor does
@@ -794,6 +932,23 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Whether a row waits on anything but the cast.</summary>
         private static bool EsperaUnDisparador(SpellEffect efecto)
             => efecto.Disparadores().Any(d => !string.Equals(d, AlLanzar, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>Whether a row waits on the start or the end of a turn (TB, TE).</summary>
+        private static bool WaitsOnATurn(SpellEffect effect)
+            => effect.Disparadores().Any(d => string.Equals(d, AlEmpezarElTurno, StringComparison.OrdinalIgnoreCase)
+                                           || string.Equals(d, AlAcabarElTurno, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>
+        /// The round a hook for <paramref name="bearer"/>'s next turn lasts to: the next one when he
+        /// still plays this round, the one after when his turn has gone by -- a round starts with
+        /// the first of the order, so his next turn is then in the next round. Either way it goes
+        /// off on that turn and on no other.
+        /// </summary>
+        private static int UntilTheirNextTurn(FightInstance fight, Fighter bearer, int round)
+        {
+            int at = fight.TurnOrder.IndexOf(bearer);
+            return at > fight.CurrentTurnIndex ? round + 1 : round + 2;
+        }
 
         /// <summary>
         /// A mask without the conditions read when a row goes off -- states, life, the attacker,
@@ -1396,10 +1551,6 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>«Sigue al lanzador»: Lazo Espiritual's bond.</summary>
         public const int SigueAlLanzador = 2184;
 
-        /// <summary>The portal effects: a spell that carries one is not projected through a portal.</summary>
-        public static bool EsDePortales(int efecto)
-            => efecto == ColocaUnPortal || efecto == AtraviesaLosPortales || efecto == DesactivaUnPortal;
-
         /// <summary>
         /// The double of a fighter: his characteristics -- life, points, stats, resistances,
         /// the rest of his sheet -- his name, level and look, as a summon of his that plays no
@@ -1997,10 +2148,29 @@ namespace Jondo.Unity.Server.Managers
             // found the cell empty and the state went nowhere, and with it the hook that
             // makes the spell keep pulling.
             var celdasAlEmpezar = new Dictionary<Fighter, int>();
-            foreach (var luchador in Todos(combat))
+            // A cast's own rows go back further, to where everybody stood as it LANDED, before
+            // its blows: a blow can set off a hook that moves the one it hit, and the rest of the
+            // spell still reaches him. Shock's blow sets off Resonancia, whose Teleportal takes -1
+            // from 425 to 526, and Shock's pull, aimed around 411, moves him still, from 526 to
+            // 513 ("hechizos trascendencia y resonancia", frames 176-193). Judged after the blow,
+            // the pull found nobody in its zone, and Insulto's push after Resonancia's did nothing.
+            var asItLanded = depth == 0 && string.Equals(trigger, AlLanzar, StringComparison.OrdinalIgnoreCase)
+                ? combat.CellsAtCast(caster.Id, spell)
+                : null;
+            Dictionary<Fighter, int> movedByTheBlows = null;
+            foreach (var fighter in Todos(combat))
             {
-                if (luchador != null) celdasAlEmpezar[luchador] = luchador.CellId;
+                if (fighter == null) continue;
+                int cell = fighter.CellId;
+                if (asItLanded != null && asItLanded.TryGetValue(fighter.Id, out int landedOn) && landedOn != cell)
+                {
+                    (movedByTheBlows ??= new Dictionary<Fighter, int>())[fighter] = landedOn;
+                    cell = landedOn;
+                }
+                celdasAlEmpezar[fighter] = cell;
             }
+            var movedOutside = combat.MovedByTheBlows;
+            combat.MovedByTheBlows = movedByTheBlows;
 
             // Every state condition of one spell is judged against the SAME snapshot, and Rage is
             // why that matters: grade 1 of spell 13745 carries all three branches -- 0->I, I->II
@@ -2025,6 +2195,9 @@ namespace Jondo.Unity.Server.Managers
 
             // Whether this cast has already hooked the spell on its caster for a row of his.
             bool enganchadoAlLanzador = false;
+
+            // Who this cast has already hooked the spell on for a row that waits on their turn.
+            var hookedForTheirTurn = new HashSet<Fighter>();
 
             foreach (var filaLeida in effects)
             {
@@ -2111,6 +2284,36 @@ namespace Jondo.Unity.Server.Managers
                         HechizoOrigen = spell, NivelOrigen = grade,
                         EnganchePendiente = true,
                     });
+                }
+
+                // A player spell's own row that waits on a TURN of its target -- a poison or a heal
+                // at the start or the end of it -- hooks the spell on whoever its mask and zone
+                // name at the cast, although nothing it did stayed on them. Extinción's "99 under
+                // TE on a,A,R": in its capture the real server puts its 3793 and its 99 on -1 at
+                // the cast (frames 10-11) and burns him at the end of his turn (45-46). Hooked by
+                // nothing -- its blow stays on nobody -- the poison never went off. The row's
+                // conditions are read when it goes off, the R with the cast's portals, which the
+                // hook keeps.
+                if (!leToca && depth == 0
+                    && string.Equals(trigger, AlLanzar, StringComparison.OrdinalIgnoreCase)
+                    && PlayerSpells.Contains(spell) && WaitsOnATurn(efecto)
+                    && !EsFilaQueLeeElGolpe(efecto.EffectId)
+                    && efecto.TargetMask is not ("C" or "c"))
+                {
+                    var onTheirTurn = efecto.Copia();
+                    onTheirTurn.TargetMask = SinCondiciones(efecto.TargetMask);
+                    foreach (var bearer in AQuien(combat, caster, target, onTheirTurn, aimedCell,
+                                                  estadosAlEmpezar, celdasAlEmpezar, soloAlObjetivo: soloAlObjetivo))
+                    {
+                        if (bearer == null || !bearer.IsAlive || !hookedForTheirTurn.Add(bearer)) continue;
+                        fuera.Add(new Outcome
+                        {
+                            Sobre = bearer, Caster = caster, Efecto = efecto,
+                            HechizoOrigen = spell, NivelOrigen = grade,
+                            EnganchePendiente = true,
+                            HookUntil = UntilTheirNextTurn(combat, bearer, round),
+                        });
+                    }
                 }
 
                 if (!leToca) continue;
@@ -2645,6 +2848,7 @@ namespace Jondo.Unity.Server.Managers
             combat.Telefrags = telefragsDeFuera;
             combat.TeleportsFallidos = fallidosDeFuera;
             combat.CarriedAtCast = cargadoDeFuera;
+            combat.MovedByTheBlows = movedOutside;
             return fuera;
         }
 
@@ -4006,7 +4210,13 @@ namespace Jondo.Unity.Server.Managers
                 if (cuantas <= 0) return null;
                 if (efecto.EffectId == Tirar || efecto.EffectId == EffectSupport.PullToTargetCell
                     || efecto.EffectId == TironForzado) cuantas = -cuantas;
-                int centroDelEmpuje = hastaLaCasilla ? quienLanza.CellId : celdaApuntada;
+
+                // Through the portals the spell leaves from the way out, and it is from there
+                // that it pushes and pulls: Terapia aimed at the portal on 353, out of the one on
+                // 371 onto -1 at 411, drew him two cells towards 371 in the client's preview, and
+                // two towards the Selatrop on 313 here, to 382.
+                int castFrom = combate.ProjectedFrom >= 0 ? combate.ProjectedFrom : quienLanza.CellId;
+                int centroDelEmpuje = hastaLaCasilla ? castFrom : celdaApuntada;
 
                 // "Moves back" and "Moves forward" move THE CASTER, not the target. It is what Tiro de
                 // Repliegue does, which gives range and takes a step back; the target only serves to
@@ -4048,70 +4258,24 @@ namespace Jondo.Unity.Server.Managers
                 // only border left was the edge of the 560-cell grid, which is much larger than a map's
                 // floor.
                 var pisables = MapManager.GetFightWalkable(combate.ArenaMapId);
+                // Moved by one of the cast's own blows -- Resonancia's Teleportal -- he is pushed
+                // from where he is now, the way the spell found him (FightInstance.CastLanded).
+                int judgedFrom = combate.MovedByTheBlows != null
+                                 && combate.MovedByTheBlows.TryGetValue(sobre, out int landedOn) ? landedOn : -1;
                 // AND A BOMB WALL STOPS IT. "Desplazar una entidad a un muro detendra su
                 // desplazamiento y le infligira danos", says the class sheet; it steps onto the
                 // wall cell and goes no further. Which walls count for THIS fighter is the whole
                 // rule -- Kabum, its own bombs, once a turn -- and that lives in BombWalls.
+                // And so does a portal that is on, which takes him (PortalStops).
                 var empujon = Jondo.Unity.World.Maps.Zone.Push(
-                    centroDelEmpuje, quienLanza.CellId, desde, cuantas,
+                    centroDelEmpuje, castFrom, desde, cuantas,
                     pisables: pisables, ocupadas: ocupadas,
-                    paran: BombWalls.StoppingCells(combate, sobre));
+                    paran: BombWalls.StoppingCells(combate, sobre),
+                    judgedFrom: judgedFrom, portal: PortalStops(combate, sobre, efecto));
 
                 sobre.MoverA(empujon.ToCell);
-
-                // COLLISION DAMAGE, which was not done at all.
-                //
-                // It comes from the cells NOT covered, and the formula is measured on the 127 push
-                // damage messages of the 401 captures:
-                //
-                //   damage = cellsNotCovered × (level/2 + the pusher's 84
-                //                               − the receiver's 85 + 32) / 4
-                //
-                // The three anchors: a level 200 caster with no bonuses hits 33 per cell -- 132/4 -- and
-                // only 33, 66, 99 and 132 come out, not one value in between; the Zurkarak «Daddy», who
-                // is LEVEL 165, hits 57 for two cells, which is floor(2 × 114.5 / 4) and which no fixed
-                // constant can give; and a Zobal with 100 push from equipment and masks of 0, 40, 80
-                // and 120 hits 58, 68, 78 and 88 per cell.
-                //
-                // The resistance goes INSIDE the quarter: in the koliseo, 561 push against 30
-                // resistance give 331 for two cells. Subtracting it outside would give 316.
-                //
-                // And only the push does it: the catalogue has a separate effect, «Pushes (no damage)»,
-                // which 54 spells use precisely so as not to do it, which is the proof that the normal
-                // 5 does. Of the PULL there is not a single blocked case in the 401 captures, so it
-                // stays at zero until it is measured.
-                int colision = 0, aLaPared = 0;
-                Fighter pared = null;
-
-                // And a wall is NOT a crash. It stops the displacement, but the damage it deals
-                // is its own -- applied by the glyph, over in the handler -- not the damage of
-                // slamming into something: the class sheet mentions no collision damage at all
-                // for pushing somebody into a wall.
-                bool empujaConDano = efecto.EffectId == Empujar && cuantas > 0
-                                     && empujon.Stop != Jondo.Unity.World.Maps.Zone.PushStop.Wall;
-                // The 1103 is the 5 that never collides; it took this same branch and paid.
-                if (empujaConDano && empujon.BlockedCells > 0)
-                {
-                    int deEmpuje = quienLanza.PushDamage + quienLanza.Buffs.De(DanoDeEmpuje, ronda);
-                    int resiste = sobre.Otra(ResistenciaAlEmpuje) +
-                                  sobre.Buffs.De(ResistenciaAlEmpuje, ronda);
-
-                    colision = DanoDeColision(quienLanza.StatLevel, deEmpuje, resiste,
-                                              empujon.BlockedCells);
-
-                    // And if what stopped him was another fighter, that one pays half. Walls do not pay.
-                    if (colision > 0 && empujon.Stop == Jondo.Unity.World.Maps.Zone.PushStop.Fighter)
-                    {
-                        foreach (var otro in Todos(combate))
-                        {
-                            if (otro == null || !otro.IsAlive) continue;
-                            if (otro.CellId != empujon.BlockerCell) continue;
-                            pared = otro;
-                            aLaPared = colision / 2;
-                            break;
-                        }
-                    }
-                }
+                var (colision, pared, aLaPared) = CollisionOf(combate, quienLanza, sobre, efecto,
+                                                              cuantas, empujon, ronda);
 
                 // It leaves with nothing ONLY if there is no damage either: when the pushed one has not
                 // a single free cell he does not move, but he takes the whole blow. Measured: in that
@@ -4126,6 +4290,7 @@ namespace Jondo.Unity.Server.Managers
                     CollisionDamage = colision,
                     Blocker = pared,
                     CollisionDamageToBlocker = aLaPared,
+                    PastThePortal = LeftPastThePortal(empujon),
                 };
             }
 

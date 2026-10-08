@@ -912,6 +912,41 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public int PortalBonusPercent { get; set; }
 
+        /// <summary>
+        /// The cell of the portal a cast came out of, while a cast that went through portals is
+        /// resolved; -1 the rest of the time. The spell leaves from there: a pull through the
+        /// portals draws its target towards that portal, not towards the Selatrop.
+        /// </summary>
+        public int ProjectedFrom { get; set; } = -1;
+
+        /// <summary>
+        /// Where every fighter stood as a cast landed, before its blows: who caster, which spell,
+        /// and each one's cell by id. Null outside a cast. See <see cref="CellsAtCast"/>.
+        /// </summary>
+        public CastSnapshot CastLanded { get; set; }
+
+        /// <summary>
+        /// Where every fighter stood as a cast landed, kept for its rows after the blows: a blow
+        /// can set off a hook that moves the one it hit, and the rest of the spell still reaches
+        /// him there.
+        /// </summary>
+        /// <remarks>
+        /// "hechizos trascendencia y resonancia", frames 176-193: Shock lands on -1 at 425, the blow
+        /// sets off Resonancia, whose Teleportal takes him out at 526, and Shock's pull still moves
+        /// him, from 526 to 513 -- the one cell from 425 towards Shock's centre on 411.
+        /// </remarks>
+        public sealed record CastSnapshot(long Caster, int Spell, IReadOnlyDictionary<long, int> Cells);
+
+        /// <summary>The cells of the cast <paramref name="caster"/> is resolving of <paramref name="spell"/>, or null.</summary>
+        public IReadOnlyDictionary<long, int> CellsAtCast(long caster, int spell)
+            => CastLanded is { } landed && landed.Caster == caster && landed.Spell == spell ? landed.Cells : null;
+
+        /// <summary>
+        /// The fighters the blows of the cast being resolved have moved, with the cell each stood on
+        /// as it landed: a push of the same spell is judged from there. Null when nobody moved.
+        /// </summary>
+        public IReadOnlyDictionary<Fighter, int> MovedByTheBlows { get; set; }
+
         /// <summary>The portals of this fight (effect 1181): see <see cref="PortalNetwork"/>.</summary>
         public PortalNetwork Portales { get; } = new PortalNetwork();
 

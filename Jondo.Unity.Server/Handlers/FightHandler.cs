@@ -4029,13 +4029,21 @@ namespace Jondo.Unity.Server.Handlers
             // lands where the caster's aim leads from there (FightPortals.cs): whoever stands THERE
             // is its target, and what the cell has to be is judged there too.
             var proyeccion = spell != 0
-                ? Projection(fight, caster, cell, Managers.SpellEffects.De(spell, grade))
+                ? Projection(fight, caster, cell, Managers.SpellEffects.De(spell, grade), limites.Flags)
                 : null;
             if (proyeccion is { } alOtroLado)
             {
                 Program.LogDebug($"[Portal] {caster.Id} casts {spell} at the portal on {cell}: through " +
                                  $"{string.Join(", ", alOtroLado.Chain.Select(p => p.Id))}, it lands on {alOtroLado.Cell}.");
                 cell = alOtroLado.Cell;
+            }
+
+            // Portal, Errancia and Exilio want a cell with no portal on it, wherever they land. The
+            // client offers none, and cast anyway they spent their AP and laid nothing.
+            if ((limites.Flags & Managers.SpellLevelFlags.NeedCellWithoutPortal) != 0 && fight.Portales.At(cell) != null)
+            {
+                Program.LogDebug($"[Fight] Spell {spell} wants a cell without a portal and cell {cell} has one.");
+                return;
             }
 
             var victim = VictimAt(fight, caster, cell);
@@ -4181,6 +4189,8 @@ namespace Jondo.Unity.Server.Handlers
             // grow with the network it crossed.
             fight.CastThroughPortal = proyeccion != null;
             fight.PortalBonusPercent = proyeccion is { } porElPortal ? Jondo.Unity.World.Fights.PortalNetwork.BonusPercent(porElPortal.Chain) : 0;
+            fight.ProjectedFrom = proyeccion is { } throughThePortals ? throughThePortals.Chain[throughThePortals.Chain.Count - 1].Cell : -1;
+            fight.CastLanded = spell != 0 ? new FightInstance.CastSnapshot(caster.Id, spell, CellsOfEverybody(fight)) : null;
             try
             {
                 tirada = await BoostsFirstAsync(stream, fight, caster, spell, grade, victim, cell, critico, tirada);
@@ -4195,6 +4205,8 @@ namespace Jondo.Unity.Server.Handlers
             {
                 fight.CastThroughPortal = false;
                 fight.PortalBonusPercent = 0;
+                fight.ProjectedFrom = -1;
+                fight.CastLanded = null;
             }
 
             // Cast through a portal (PST): the Selatrop's passive gives him its +2% after every one,
@@ -4571,10 +4583,11 @@ namespace Jondo.Unity.Server.Handlers
         /// </remarks>
         /// <param name="incluirElPropio">Whether the spell fired itself is hooked, or only what it chained.</param>
         /// <param name="critico">Whether the cast was critical: the hook fires with the critical lists.</param>
+        /// <param name="throughPortal">Whether the cast went through portals: the hook's rows go off as its rows would.</param>
         internal static void EngancharLoPendiente(List<Managers.Outcome> consecuencias,
                                                   int hechizo, int grado, long lanzador, int ronda,
                                                   bool incluirElPropio = true, bool critico = false,
-                                                  bool conducta = false)
+                                                  bool conducta = false, bool throughPortal = false)
         {
             // A monster spell's rows armed by the engine, one hook per bearer, caster and spell,
             // holding just those rows. The behaviour spell's own rows are the monster's for good.
@@ -4637,9 +4650,12 @@ namespace Jondo.Unity.Server.Handlers
                                                         && c.HechizoOrigen == marca.HechizoOrigen
                                                         && c.NivelOrigen == marca.NivelOrigen);
                 if (yaTieneFilas) continue;
-                marca.Sobre.Buffs.Enganchar(marca.HechizoOrigen, marca.NivelOrigen,
-                    Managers.EffectEngine.CaducidadDelEnganche(marca.HechizoOrigen, marca.NivelOrigen, ronda),
-                    marca.Caster?.Id ?? lanzador, ronda, critico);
+                int byItsRows = Managers.EffectEngine.CaducidadDelEnganche(marca.HechizoOrigen, marca.NivelOrigen, ronda);
+                int until = marca.HookUntil is { } untilTheirTurn && byItsRows >= 0
+                    ? Math.Max(untilTheirTurn, byItsRows)
+                    : byItsRows;
+                marca.Sobre.Buffs.Enganchar(marca.HechizoOrigen, marca.NivelOrigen, until,
+                    marca.Caster?.Id ?? lanzador, ronda, critico, throughPortal);
             }
 
             foreach (var (cual, enGrado) in conAlgoPendiente)
@@ -4663,7 +4679,7 @@ namespace Jondo.Unity.Server.Handlers
                     {
                         if (c.HechizoOrigen == cual && c.NivelOrigen == enGrado && c.Sobre == quien && c.Caster != null) { quienLoLanzo = c.Caster.Id; break; }
                     }
-                    quien.Buffs.Enganchar(cual, enGrado, cuando, quienLoLanzo, ronda, critico);
+                    quien.Buffs.Enganchar(cual, enGrado, cuando, quienLoLanzo, ronda, critico, throughPortal);
                 }
             }
         }
@@ -4930,7 +4946,7 @@ namespace Jondo.Unity.Server.Handlers
         /// never went off. The effects come from whoever cast the spell, with the bearer as
         /// the target, which is who the mask letters were written for.
         /// </remarks>
-        private static async Task EngancheAsync(NetworkStream stream, FightInstance fight,
+        internal static async Task EngancheAsync(NetworkStream stream, FightInstance fight,
                                                 Fighter quien, string disparador)
         {
             if (quien == null) return;
@@ -4951,42 +4967,60 @@ namespace Jondo.Unity.Server.Handlers
                     // row on him and was hooked on top.
                     if (quien.Buffs.Actitudes.Contains(enganche.Hechizo)) continue;
 
-                    if (enganche.Filas != null)
+                    // Its rows go off as the cast that put it: through portals or not, to the
+                    // masks' R and r (Extinción's poison).
+                    bool castThroughPortal = fight.CastThroughPortal;
+                    fight.CastThroughPortal = enganche.ThroughPortal;
+                    try
                     {
-                        if (!enganche.Vivo(fight.RoundNumber)) continue;
-                        var armadas = FilasArmadas(enganche, disparador);
-                        if (armadas.Count == 0) continue;
-                        var suLanzador = (enganche.Lanzador != 0 ? fight.Buscar(enganche.Lanzador) : null) ?? quien;
-                        await LanzarPorOrdenAsync(stream, fight, suLanzador, enganche.Hechizo, enganche.Grado, quien,
-                                                  quien.CellId, disparador, armadas, enganche.Critico,
-                                                  rondaDelEnganche: enganche.PuestoEnRonda, soloAlObjetivo: true);
-                        continue;
+                        await FireHookAsync(stream, fight, quien, disparador, enganche);
                     }
-                    var lanzador = (enganche.Lanzador != 0 ? fight.Buscar(enganche.Lanzador) : null) ?? quien;
-
-                    // Its rows under this trigger, in their order: the blows through HurtAsync, the
-                    // rest through the engine. Arsénico's "3793, then 98 under TB" is its marker and
-                    // then its 27 air damage at the start of the target's turn, as in its capture;
-                    // handed whole to the engine, the damage row was dropped as a root blow -- the
-                    // cast had dealt it already, at the wrong time.
-                    var todas = enganche.Critico
-                        ? Managers.EffectEngine.EfectosDeLaTirada(enganche.Hechizo, enganche.Grado, true)
-                        : Managers.SpellEffects.De(enganche.Hechizo, enganche.Grado);
-                    var suyas = todas.Where(f => f.Disparadores().Any(d => string.Equals(d, disparador, StringComparison.OrdinalIgnoreCase)))
-                                     .ToList();
-                    if (suyas.Count == 0) continue;
-                    if (suyas.Any(f => Managers.EffectEngine.EsDeDano(f.EffectId)))
+                    finally
                     {
-                        await LanzarPorOrdenAsync(stream, fight, lanzador, enganche.Hechizo, enganche.Grado, quien,
-                                                  quien.CellId, disparador, suyas, enganche.Critico,
-                                                  rondaDelEnganche: enganche.PuestoEnRonda);
-                        continue;
+                        fight.CastThroughPortal = castThroughPortal;
                     }
-                    await AplicarEfectosAsync(stream, fight, lanzador, enganche.Hechizo, enganche.Grado,
-                                              quien, disparador, quien.CellId, critico: enganche.Critico,
-                                              rondaDelEnganche: enganche.PuestoEnRonda);
                 }
             });
+        }
+
+        /// <summary>One hook of <paramref name="quien"/>'s going off on <paramref name="disparador"/>: see <see cref="EngancheAsync"/>.</summary>
+        private static async Task FireHookAsync(NetworkStream stream, FightInstance fight, Fighter quien,
+                                                string disparador, Jondo.Unity.World.Fights.Buffs.ActiveSpell enganche)
+        {
+            if (enganche.Filas != null)
+            {
+                if (!enganche.Vivo(fight.RoundNumber)) return;
+                var armadas = FilasArmadas(enganche, disparador);
+                if (armadas.Count == 0) return;
+                var suLanzador = (enganche.Lanzador != 0 ? fight.Buscar(enganche.Lanzador) : null) ?? quien;
+                await LanzarPorOrdenAsync(stream, fight, suLanzador, enganche.Hechizo, enganche.Grado, quien,
+                                          quien.CellId, disparador, armadas, enganche.Critico,
+                                          rondaDelEnganche: enganche.PuestoEnRonda, soloAlObjetivo: true);
+                return;
+            }
+            var lanzador = (enganche.Lanzador != 0 ? fight.Buscar(enganche.Lanzador) : null) ?? quien;
+
+            // Its rows under this trigger, in their order: the blows through HurtAsync, the
+            // rest through the engine. Arsénico's "3793, then 98 under TB" is its marker and
+            // then its 27 air damage at the start of the target's turn, as in its capture;
+            // handed whole to the engine, the damage row was dropped as a root blow -- the
+            // cast had dealt it already, at the wrong time.
+            var todas = enganche.Critico
+                ? Managers.EffectEngine.EfectosDeLaTirada(enganche.Hechizo, enganche.Grado, true)
+                : Managers.SpellEffects.De(enganche.Hechizo, enganche.Grado);
+            var suyas = todas.Where(f => f.Disparadores().Any(d => string.Equals(d, disparador, StringComparison.OrdinalIgnoreCase)))
+                             .ToList();
+            if (suyas.Count == 0) return;
+            if (suyas.Any(f => Managers.EffectEngine.EsDeDano(f.EffectId)))
+            {
+                await LanzarPorOrdenAsync(stream, fight, lanzador, enganche.Hechizo, enganche.Grado, quien,
+                                          quien.CellId, disparador, suyas, enganche.Critico,
+                                          rondaDelEnganche: enganche.PuestoEnRonda);
+                return;
+            }
+            await AplicarEfectosAsync(stream, fight, lanzador, enganche.Hechizo, enganche.Grado,
+                                      quien, disparador, quien.CellId, critico: enganche.Critico,
+                                      rondaDelEnganche: enganche.PuestoEnRonda);
         }
 
         /// <summary>
@@ -5028,6 +5062,15 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>Everybody in the fight, on both sides.</summary>
         /// <summary>Everybody in the fight. It lives in the fight itself since the sides have names.</summary>
         private static IEnumerable<Fighter> TodosLosCombatientes(FightInstance fight) => fight.Todos;
+
+        /// <summary>Where everybody stands now, by id: the cells a cast lands on (<see cref="FightInstance.CastLanded"/>).</summary>
+        private static Dictionary<long, int> CellsOfEverybody(FightInstance fight)
+        {
+            var cells = new Dictionary<long, int>();
+            foreach (var fighter in fight.Todos)
+                if (fighter != null) cells[fighter.Id] = fighter.CellId;
+            return cells;
+        }
 
         // ═══════════════════════════════════════════════════════════════════════
         //  Who receives what happens in the fight
@@ -5700,7 +5743,8 @@ namespace Jondo.Unity.Server.Handlers
             // grade 3, whose own "1160 under TE" is what takes Furor I away a turn later.
             bool alLanzar = string.Equals(disparador, Managers.EffectEngine.AlLanzar, StringComparison.OrdinalIgnoreCase);
             EngancharLoPendiente(consecuencias, hechizo, grado, quienLanza.Id, fight.RoundNumber,
-                                 incluirElPropio: alLanzar, critico: critico, conducta: conducta);
+                                 incluirElPropio: alLanzar, critico: critico, conducta: conducta,
+                                 throughPortal: fight.CastThroughPortal);
 
             var fichas = new HashSet<(long Quien, int Caracteristica)>();
             var vidasCambiadas = new Dictionary<long, Fighter>();
@@ -6239,13 +6283,9 @@ namespace Jondo.Unity.Server.Handlers
 
                     await DanoDeColisionAsync(stream, fight, quienLanza, c);
 
-                    // Moved onto a portal that is on, he goes through it, right behind the move:
-                    // Odisea's step back onto the portal on 215, frames 92-97.
-                    if (c.Sobre.IsAlive && DisplacementCrossesPortals(c.Efecto.EffectId)
-                        && PortalCatches(fight, c.Sobre, c.Sobre.CellId))
-                        await CrossPortalAsync(stream, fight, c.Sobre, walkedIn: true);
-                    else
-                        await RefreshPortalsAsync(fight);
+                    // Moved onto a portal that is on, he goes through it, right behind the move,
+                    // and what the push has left goes on from the way out (FightPortals.cs).
+                    await ThroughThePortalsAsync(stream, fight, quienLanza, hechizo, c);
                     continue;
                 }
 
@@ -8884,7 +8924,7 @@ namespace Jondo.Unity.Server.Handlers
             int Cost, int LevelId, int Grade,
             int PorTurno, int PorObjetivo, int Intervalo, int EsperaInicial,
             int CriticoPropio, int AlcanceMinimo = 0, int AlcanceMaximo = 0,
-            bool NeedFreeCell = false, bool NeedTakenCell = false);
+            bool NeedFreeCell = false, bool NeedTakenCell = false, int Flags = 0);
 
         /// <summary>
         /// The casting limits, which come from the same SpellLevels columns the cost comes from:
@@ -8914,7 +8954,7 @@ namespace Jondo.Unity.Server.Handlers
                 command.CommandText =
                     "SELECT APCost, Id, Grade, MaxCastPerTurn, MaxCastPerTarget, " +
                     "MinCastInterval, InitialCooldown, CriticalHitProbability, " +
-                    "MinRange, MaxRange, NeedFreeCell, NeedTakenCell FROM SpellLevels " +
+                    "MinRange, MaxRange, NeedFreeCell, NeedTakenCell, Flags FROM SpellLevels " +
                     "WHERE SpellId = $id AND MinPlayerLevel <= $lvl ORDER BY Grade DESC LIMIT 1;";
                 command.Parameters.AddWithValue("$id", spellId);
                 command.Parameters.AddWithValue("$lvl", nivel);
@@ -8932,7 +8972,8 @@ namespace Jondo.Unity.Server.Handlers
                         reader.IsDBNull(8) ? 0 : (int)reader.GetInt64(8),
                         reader.IsDBNull(9) ? 0 : (int)reader.GetInt64(9),
                         !reader.IsDBNull(10) && reader.GetInt64(10) != 0,
-                        !reader.IsDBNull(11) && reader.GetInt64(11) != 0);
+                        !reader.IsDBNull(11) && reader.GetInt64(11) != 0,
+                        reader.IsDBNull(12) ? 0 : (int)reader.GetInt64(12));
                 }
             }
             catch (Exception ex)
@@ -8966,7 +9007,7 @@ namespace Jondo.Unity.Server.Handlers
                 command.CommandText =
                     "SELECT APCost, Id, Grade, MaxCastPerTurn, MaxCastPerTarget, " +
                     "MinCastInterval, InitialCooldown, CriticalHitProbability, " +
-                    "MinRange, MaxRange, NeedFreeCell, NeedTakenCell FROM SpellLevels " +
+                    "MinRange, MaxRange, NeedFreeCell, NeedTakenCell, Flags FROM SpellLevels " +
                     "WHERE SpellId = $id AND Grade = $grade LIMIT 1;";
                 command.Parameters.AddWithValue("$id", spellId);
                 command.Parameters.AddWithValue("$grade", exactGrade);
@@ -8984,7 +9025,8 @@ namespace Jondo.Unity.Server.Handlers
                         reader.IsDBNull(8) ? 0 : (int)reader.GetInt64(8),
                         reader.IsDBNull(9) ? 0 : (int)reader.GetInt64(9),
                         !reader.IsDBNull(10) && reader.GetInt64(10) != 0,
-                        !reader.IsDBNull(11) && reader.GetInt64(11) != 0);
+                        !reader.IsDBNull(11) && reader.GetInt64(11) != 0,
+                        reader.IsDBNull(12) ? 0 : (int)reader.GetInt64(12));
                 }
             }
             catch (Exception ex)

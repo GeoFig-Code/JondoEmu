@@ -247,12 +247,12 @@ namespace Jondo.Unity.Tests.Combat
         }
 
         /// <summary>
-        /// A spell aimed at a portal that is on goes through it; one that deals with the portals
-        /// themselves does not -- Neutral aimed at 400 switches that portal off ("usar neutral",
-        /// frame 2) where Shock, with the very same flags, goes through.
+        /// A spell aimed at a portal that is on goes through it; one that switches portals off
+        /// does not -- Neutral aimed at 400 switches that portal off ("usar neutral", frame 2)
+        /// where Shock, with the very same flags, goes through.
         /// </summary>
         [Fact]
-        public void Only_a_spell_that_is_not_about_portals_goes_through()
+        public void A_spell_that_switches_portals_off_does_not_go_through()
         {
             var selatrop = Character(Selatrop, 359);
             var fight = Board(selatrop, Monster(-1, 100));
@@ -266,6 +266,156 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Null(FightHandler.Projection(fight, selatrop, 400, SpellEffects.De(14582, 3)));
             Assert.Null(FightHandler.Projection(fight, selatrop, 305, SpellEffects.De(14583, 3)));
         }
+
+        /// <summary>
+        /// Portal aimed at a portal goes through, as the client draws it, and lays its portal where
+        /// it comes out; a level flagged PortalProjectionForbidden (bit 12) stays on the aimed cell.
+        /// </summary>
+        [Fact]
+        public void Portal_goes_through_the_portals_unless_its_level_forbids_it()
+        {
+            var selatrop = Character(Selatrop, 359);
+            var fight = Board(selatrop, Monster(-1, 100));
+            foreach (var (id, cell) in new[] { (7, 400), (8, 329), (9, 288), (10, 303) }) Laid(fight, id, cell);
+
+            var portal = FightHandler.Projection(fight, selatrop, 303, SpellEffects.De(14574, 3), flags: 2572);
+            Assert.NotNull(portal);
+            Assert.Equal(344, portal.Value.Cell);
+
+            Assert.Null(FightHandler.Projection(fight, selatrop, 303, SpellEffects.De(14583, 3),
+                                                flags: SpellLevelFlags.PortalProjectionForbidden));
+        }
+
+        /// <summary>
+        /// Insulto pushes -1 two cells, and the first is a portal that is on: he goes through it,
+        /// out of the other, and the cell left is walked from there, the same way.
+        /// </summary>
+        [Fact]
+        public async Task A_push_into_a_portal_goes_on_from_the_way_out()
+        {
+            int Cell(int x, int y) => MapGeometry.PointToCell(x, y);
+            var selatrop = Character(Selatrop, Cell(12, 2));
+            var enemy = Monster(-1, Cell(13, 2));
+            var fight = Board(selatrop, enemy);
+            Laid(fight, 1, Cell(14, 2));
+            Laid(fight, 2, Cell(14, 8));
+            await using var wire = await Wire.Open(Selatrop);
+
+            await FightHandler.AplicarEfectosAsync(null, fight, selatrop, 14575, 3, enemy, EffectEngine.AlLanzar, enemy.CellId);
+
+            Assert.Equal(Cell(15, 8), enemy.CellId);
+            Assert.True(fight.Portales.ById(1).Used && fight.Portales.ById(2).Used);
+            var frames = (await wire.Drain()).Where(f => f.Op == "jwe").Select(f => f.Payload).ToList();
+            byte[] Slide(int from, int to) => FightProtocol.BuildDisplacement(Selatrop, FightProtocol.Alejarse, -1, from, to);
+            int into = frames.FindIndex(f => f.SequenceEqual(Slide(Cell(13, 2), Cell(14, 2))));
+            int teleport = frames.FindIndex(f => f.SequenceEqual(FightProtocol.BuildTeleport(-1, -1, Cell(14, 8))));
+            int onwards = frames.FindIndex(f => f.SequenceEqual(Slide(Cell(14, 8), Cell(15, 8))));
+            Assert.True(into >= 0 && teleport > into && onwards > teleport, $"{into}, {teleport}, {onwards}");
+        }
+
+        /// <summary>
+        /// Terapia aimed at the portal on 353 comes out of the one on 371 onto -1 at 411, and draws
+        /// him two cells towards 371, to 384, as the client's preview does -- not towards the
+        /// Selatrop on 313, which left him on 382 (the log of 9 October, 00:59:10).
+        /// </summary>
+        [Fact]
+        public async Task A_pull_through_the_portals_draws_towards_the_way_out()
+        {
+            var selatrop = Character(Selatrop, 313);
+            var enemy = Monster(-1, 411);
+            var fight = Board(selatrop, enemy);
+
+            fight.CastThroughPortal = true;
+            fight.ProjectedFrom = 371;
+            await FightHandler.AplicarEfectosAsync(null, fight, selatrop, 14581, 3, enemy, EffectEngine.AlLanzar, 411);
+            Assert.Equal(384, enemy.CellId);
+
+            // Cast straight at him, it draws him towards the Selatrop, as it always did.
+            fight.CastThroughPortal = false;
+            fight.ProjectedFrom = -1;
+            enemy.MoverA(411);
+            await FightHandler.AplicarEfectosAsync(null, fight, selatrop, 14581, 3, enemy, EffectEngine.AlLanzar, 411);
+            Assert.Equal(382, enemy.CellId);
+        }
+
+        /// <summary>
+        /// Insulto on -1 at 382 with Resonancia on him: the blow sets Resonancia off and its
+        /// Teleportal takes him out at 371, and Insulto's push still reaches him there -- as
+        /// Shock's pull does after Resonancia in its capture (frames 176-193). Judged after the
+        /// blow, its zone found nobody on 382 and he stayed on 371 (the log of 9 October,
+        /// 01:01:02). The push is Insulto's chained 26192, cast at him where he stands, so it sends
+        /// him two cells away from the Selatrop on 355, from 371 to 400 -- what the same Insulto
+        /// did to him there at 01:01:13 with no portal involved.
+        /// </summary>
+        [Fact]
+        public async Task A_push_reaches_the_one_its_blow_teleported()
+        {
+            var selatrop = Character(Selatrop, 355);
+            var enemy = Monster(-1, 382);
+            var fight = Board(selatrop, enemy);
+            fight.CastLanded = new FightInstance.CastSnapshot(Selatrop, 14575,
+                new Dictionary<long, int> { [Selatrop] = 355, [-1] = 382 });
+            enemy.MoverA(371);
+
+            await FightHandler.AplicarEfectosAsync(null, fight, selatrop, 14575, 3, enemy, EffectEngine.AlLanzar, 382);
+
+            Assert.Equal(400, enemy.CellId);
+        }
+
+        /// <summary>
+        /// A pull of the cast's own rows, on one its blow has moved, goes the way the spell found
+        /// him: Shock's pull after Resonancia takes -1 from 526 to 513, the one cell from 425,
+        /// where he was hit, towards the centre on 411 ("hechizos trascendencia y resonancia",
+        /// frames 176-193).
+        /// </summary>
+        [Fact]
+        public async Task A_pull_after_the_teleportal_goes_the_way_the_spell_found_him()
+        {
+            var selatrop = Character(Selatrop, 368);
+            var enemy = Monster(-1, 425);
+            var fight = Board(selatrop, enemy);
+            fight.CastLanded = new FightInstance.CastSnapshot(Selatrop, 14583,
+                new Dictionary<long, int> { [Selatrop] = 368, [-1] = 425 });
+            enemy.MoverA(526);
+
+            await FightHandler.AplicarEfectosAsync(null, fight, selatrop, 14583, 3, enemy, EffectEngine.AlLanzar, 411);
+
+            Assert.Equal(513, enemy.CellId);
+        }
+
+        /// <summary>
+        /// Extinción through the portals hooks its poison on the target -- "99 under TE on a,A,R",
+        /// the 3793 and the 99 the capture puts on -1 at the cast (frames 10-11) -- and it burns
+        /// at the end of his turn (45-46). Cast straight at him, there is no poison.
+        /// </summary>
+        [Fact]
+        public async Task Extincion_through_a_portal_burns_at_the_end_of_the_target_s_turn()
+        {
+            var selatrop = Character(Selatrop, 300);
+            var enemy = Monster(-1, 302);
+            var fight = Board(selatrop, enemy);
+            await using var wire = await Wire.Open(Selatrop);
+
+            fight.CastThroughPortal = true;
+            await FightHandler.AplicarEfectosAsync(null, fight, selatrop, 14594, 2, enemy, EffectEngine.AlLanzar, 302);
+            fight.CastThroughPortal = false;
+            var hook = Assert.Single(enemy.Buffs.ActiveSpells, a => a.Hechizo == 14594);
+            Assert.True(hook.ThroughPortal);
+
+            int life = enemy.CurrentHP;
+            await FightHandler.EngancheAsync(null, fight, enemy, EffectEngine.AlAcabarElTurno);
+            Assert.True(enemy.CurrentHP < life);
+            Assert.False(fight.CastThroughPortal);
+
+            var straight = Monster(-2, 304);
+            fight.AddMonster(straight);
+            straight.CellId = 304;
+            await FightHandler.AplicarEfectosAsync(null, fight, selatrop, 14594, 2, straight, EffectEngine.AlLanzar, 304);
+            life = straight.CurrentHP;
+            await FightHandler.EngancheAsync(null, fight, straight, EffectEngine.AlAcabarElTurno);
+            Assert.Equal(life, straight.CurrentHP);
+        }
+
 
         /// <summary>"Teleportal Imposible" (678), which the passive puts on the enemies for the first round, keeps them out.</summary>
         [Fact]

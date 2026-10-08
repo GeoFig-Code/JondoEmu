@@ -271,6 +271,13 @@ namespace Jondo.Unity.World.Fights
             /// </summary>
             public bool Critico { get; set; }
 
+            /// <summary>
+            /// Whether the cast that put it went through portals: its rows go off as that cast's,
+            /// to the masks' R and r. Extinción's poison is "99 under TE on a,A,R", and it burns
+            /// at the end of the target's turn when the Extinción that put it was projected.
+            /// </summary>
+            public bool ThroughPortal { get; set; }
+
             public bool Vivo(int ronda) => CaducaEnRonda < 0 || ronda < CaducaEnRonda;
 
             /// <summary>
@@ -325,7 +332,7 @@ namespace Jondo.Unity.World.Fights
 
         /// <summary>Records that this spell is still on, or extends the one already there.</summary>
         public void Enganchar(int hechizo, int grado, int caducaEnRonda, long lanzador = 0, int puestoEnRonda = 0,
-                              bool critico = false)
+                              bool critico = false, bool throughPortal = false)
         {
             var ya = _enganchesPorHechizo(hechizo);
             if (ya != null)
@@ -335,12 +342,13 @@ namespace Jondo.Unity.World.Fights
                 ya.Lanzador = lanzador;
                 ya.PuestoEnRonda = puestoEnRonda;
                 ya.Critico = critico;
+                ya.ThroughPortal = throughPortal;
                 return;
             }
             ActiveSpells.Add(new ActiveSpell
             {
                 Hechizo = hechizo, Grado = grado, CaducaEnRonda = caducaEnRonda, Lanzador = lanzador,
-                PuestoEnRonda = puestoEnRonda, Critico = critico,
+                PuestoEnRonda = puestoEnRonda, Critico = critico, ThroughPortal = throughPortal,
             });
         }
 

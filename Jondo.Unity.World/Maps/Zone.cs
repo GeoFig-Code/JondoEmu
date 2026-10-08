@@ -640,6 +640,13 @@ namespace Jondo.Unity.World.Maps
             /// wall cell, and frame 8283 is the wall going off on it AT 260.
             /// </remarks>
             Wall,
+
+            /// <summary>
+            /// A portal that is on. It ENTERS the cell and stops there; the fight sends it through
+            /// the network and the cells left go on from the way out, the same way
+            /// (<see cref="PushResult.BlockedCells"/> are those cells, and do not hurt).
+            /// </summary>
+            Portal,
         }
 
         /// <summary>How a push ended.</summary>
@@ -661,6 +668,12 @@ namespace Jondo.Unity.World.Maps
 
             /// <summary>The cell of whoever acted as the wall, if it was a fighter. Minus one if not.</summary>
             public int BlockerCell { get; init; }
+
+            /// <summary>The way it went, one cell's step: what the cells left after a portal go on along.</summary>
+            public int Dx { get; init; }
+
+            /// <summary>See <see cref="Dx"/>.</summary>
+            public int Dy { get; init; }
         }
 
         /// <summary>
@@ -696,38 +709,63 @@ namespace Jondo.Unity.World.Maps
         /// then the caster's cell rules. Measured over the 76 displacements of the
         /// Cra captures. Which of the eight ways it takes is <see cref="DisplacementDirection"/>.
         /// </summary>
+        /// <param name="judgedFrom">
+        /// The cell the way is judged from, when the one moved is no longer where the spell
+        /// found him; minus one for where he stands. See FightInstance.CastLanded.
+        /// </param>
+        /// <param name="portal">Whether a cell holds a portal that takes him: he stops on it (<see cref="PushStop.Portal"/>).</param>
         public static PushResult Push(int centro, int deQuienLanza, int aQuien, int casillas,
                                       HashSet<int> pisables, HashSet<int> ocupadas,
-                                      HashSet<int> paran = null)
+                                      HashSet<int> paran = null, int judgedFrom = -1,
+                                      Func<int, bool> portal = null)
         {
             var quieto = new PushResult { ToCell = aQuien, BlockedCells = 0,
                                           Stop = PushStop.None, BlockerCell = -1 };
             if (casillas == 0 || !MapGeometry.IsValid(aQuien)) return quieto;
 
-            int origen = (centro != aQuien && MapGeometry.IsValid(centro)) ? centro : deQuienLanza;
-            var d = DisplacementDirection(origen, aQuien);
+            int seenAt = MapGeometry.IsValid(judgedFrom) ? judgedFrom : aQuien;
+            int origen = (centro != seenAt && MapGeometry.IsValid(centro)) ? centro : deQuienLanza;
+            var d = DisplacementDirection(origen, seenAt);
             if (d == null) return quieto;
 
             int dx = d.Value.Dx, dy = d.Value.Dy;
             if (casillas < 0) { dx = -dx; dy = -dy; }   // pulling is the same the other way round
 
-            int pedidas = Math.Abs(casillas);
-            var (x, y) = MapGeometry.CellToPoint(aQuien);
-            int donde = aQuien, dadas = 0;
+            return PushAlong(aQuien, dx, dy, Math.Abs(casillas), pisables, ocupadas, paran, portal,
+                             pullCentre: casillas < 0 ? centro : -1);
+        }
+
+        /// <summary>
+        /// A displacement of <paramref name="cells"/> cells from <paramref name="from"/>, one
+        /// step of (<paramref name="dx"/>, <paramref name="dy"/>) at a time, and what it stops
+        /// against: <see cref="Push"/> once it has its way, and the cells a portal leaves to go on
+        /// from its way out.
+        /// </summary>
+        /// <param name="pullCentre">A pull's centre, which it stops on; minus one for none.</param>
+        public static PushResult PushAlong(int from, int dx, int dy, int cells,
+                                           HashSet<int> walkable, HashSet<int> occupied,
+                                           HashSet<int> walls = null, Func<int, bool> portal = null,
+                                           int pullCentre = -1)
+        {
+            if (cells <= 0 || !MapGeometry.IsValid(from) || (dx == 0 && dy == 0))
+                return new PushResult { ToCell = from, Stop = PushStop.None, BlockerCell = -1, Dx = dx, Dy = dy };
+
+            var (x, y) = MapGeometry.CellToPoint(from);
+            int donde = from, dadas = 0;
             var freno = PushStop.None;
             int paredEn = -1;
 
-            for (int i = 0; i < pedidas; i++)
+            for (int i = 0; i < cells; i++)
             {
                 x += dx; y += dy;
                 int siguiente = MapGeometry.PointToCell(x, y);
 
                 if (siguiente < 0) { freno = PushStop.Edge; break; }
-                if (pisables != null && !pisables.Contains(siguiente))
+                if (walkable != null && !walkable.Contains(siguiente))
                 {
                     freno = PushStop.Obstacle; break;
                 }
-                if (ocupadas != null && ocupadas.Contains(siguiente))
+                if (occupied != null && occupied.Contains(siguiente))
                 {
                     freno = PushStop.Fighter; paredEn = siguiente; break;
                 }
@@ -740,9 +778,19 @@ namespace Jondo.Unity.World.Maps
                 // "desplazar una entidad a un muro detendra su desplazamiento", into it, not
                 // short of it, and the capture shows exactly that -- pulled from 274 to 260 and
                 // caught at 260.
-                if (paran != null && paran.Contains(siguiente))
+                if (walls != null && walls.Contains(siguiente))
                 {
                     freno = PushStop.Wall;
+                    break;
+                }
+
+                // A PORTAL THAT IS ON takes him, and the push goes on from its way out with what
+                // is left. Odisea's step back onto the portal on 215 goes through it right behind
+                // the slide (frames 74-79); that the cells beyond the portal are walked from the way
+                // out is the class's rule, with no capture of a longer push into one.
+                if (portal != null && portal(siguiente))
+                {
+                    freno = PushStop.Portal;
                     break;
                 }
 
@@ -761,9 +809,9 @@ namespace Jondo.Unity.World.Maps
                 // Timón, Cabestrante, Shock, Ovillo, Parafuso. When somebody stands there --
                 // the caster, a first one pulled -- the occupied cell above has already
                 // stopped it beside them, which is Imantación's 303 to 274 with a bomb on 260.
-                if (casillas < 0 && siguiente == centro)
+                if (siguiente == pullCentre)
                 {
-                    dadas = pedidas;
+                    dadas = cells;
                     break;
                 }
             }
@@ -771,9 +819,11 @@ namespace Jondo.Unity.World.Maps
             return new PushResult
             {
                 ToCell = donde,
-                BlockedCells = pedidas - dadas,
+                BlockedCells = cells - dadas,
                 Stop = freno,
                 BlockerCell = paredEn,
+                Dx = dx,
+                Dy = dy,
             };
         }
     }

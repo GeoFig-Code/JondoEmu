@@ -254,6 +254,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 
 - ✅ Information messages as `lqn { type, message, parameters }` against the client's 2,555-entry table
 - ✅ Level-up window with music and animation, on a real gain and on `.level` in either direction
+- ✅ A level-up — from a fight, a reward or `.level` — sends the spells and the spell bar of the new level at once; a spell unlocked for the first time takes the first free slot of the bar, and one the player took off stays off
 <img width="2560" height="1514" alt="image" src="https://github.com/user-attachments/assets/490997fc-1300-4a29-9963-32077efdf0dd" />
 
 - ✅ Private messages (`kth`)
@@ -455,6 +456,9 @@ Dofus does not ship the item-to-look table: the server sends it. **2,371 of the 
   spot. Themed puchs — Vil Smis, Sombra, Hiperescampo, Sylargh, Cráneo Rosa — take turns with the
   Ingball at random among those with a grade at that level. Training fights offer no challenges,
   give no rewards and leave the group in place
+- ✅ The training room of the Astrub Militia Tower (map 192415754), through the arch at the back of
+  the tower's hall: the same six Puch Ingball, at the cells and facings of its capture, and the
+  master; its two exits lead back to the hall
 - ✅ Measured arenas in `content/fights/arenas.json` pair a roleplay map with the arena its fights
   are held on, ahead of the general rule
 
@@ -749,7 +753,7 @@ with how many spells each touches, is [`docs/effect-coverage.txt`](docs/effect-c
 - ✅ AP given back (120) go out as the real server sends them: the AP sheet in its short sequence, then "jwe 120" with the points — 117 of them in 35 captures
 - ✅ Spell modifiers, the catalogue's category 3 — AP cost, cast interval, critical, casts per turn and per target, ranges added, taken away or pinned, the cell needed, line of sight, base healing — held as rows and told as the client computes with them: hnd for the total, hnk to take it away, the numbering read off the captures
 - ✅ Steals go out as two rows, the malus on the target and the bonus on the caster, as the 26 of the captures; and a double of the caster (180), invisibility revealed (202), a share of the final damage taken (1223), heals out of the blow (786, 2973, 2020), best-element healing (3002), rolls maximised and minimised (782, 781), damage by the MP left (1012–1016), one grade of a spell taken off (1406)
-- ✅ Portals (1181, 1182, 1183), checked frame for frame against the six Selatrop captures — four a Selatrop, the fifth pushing the oldest out (jwe 310, then its jwe 401); a portal on when it can be used and another of its network can too, off when crossed this turn, switched off by a 1183 until its caster's next turn, or stood on; each change a "jwe 1181", and a turn start bringing back what it can in a sequence of its own. Walked or pushed onto one that is on, a fighter goes through the network — from each portal the nearest usable one not yet taken, the newest between two as near, the last one the way out —, and a walk ends there; a Teleportal (1182) takes whoever stands on one. A spell aimed at a portal comes out of the last one, landing where the caster's aim leads from there, the cast naming the portals it crossed; a spell about portals is not projected. The enemies' first-round state, "Teleportal Imposible", keeps them out
+- ✅ Portals (1181, 1182, 1183), checked frame for frame against the six Selatrop captures — four a Selatrop, the fifth pushing the oldest out (jwe 310, then its jwe 401); a portal on when it can be used and another of its network can too, off when crossed this turn, switched off by a 1183 until its caster's next turn, or stood on; each change a "jwe 1181", and a turn start bringing back what it can in a sequence of its own. Walked or pushed onto one that is on, a fighter goes through the network — from each portal the nearest usable one not yet taken, the newest between two as near, the last one the way out —, and a walk ends there; a push or a pull that crosses one on its way goes through it and walks the cells it has left from the way out; a Teleportal (1182) takes whoever stands on one. A spell aimed at a portal comes out of the last one, landing where the caster's aim leads from there, the cast naming the portals it crossed, and pushes and pulls from that portal; Portal itself goes through and lays its portal where it lands, while a spell that switches portals off (Neutral) and a level flagged PortalProjectionForbidden are cast at the aimed portal. A blow that sets off a Teleportal leaves the rest of its spell to reach the one it moved, and a cast through portals keeps that for the poisons it hooks (Extinción's, at the end of the target's turn). The enemies' first-round state, "Teleportal Imposible", keeps them out
 - ✅ Poisons hit when their trigger comes, class spells too: a damage row under TB or TE (37 of them — Arsénico, Toxinas, Epidemia, Inyección Tóxica...) is hooked at the cast and dealt at the start or end of the bearer's turn, in its row order; in sram-arsenico.pcapng the cast hooks "98 under TB" and the 27 air damage go out at each target's turn start
 - ✅ A spell that runs at two grades in one cast is hooked grade by grade: Doble's "cast Intercambio de Doble at the end of the turn" (12966 grade 1) goes on the double and not on the Sram, who only carries grade 2's state — hooked on him too, he cast it at himself and died of it; in sram-doble.pcapng the double casts it in its own second turn, swaps with the Sram and dies
 - ✅ A trap goes off at its centre, wherever in it it is stepped on — the 306 of the Sram captures names the cell it was aimed at, and its push takes its direction from there — and is spent before its effects, so its own push cannot set it off twice
@@ -758,7 +762,7 @@ with how many spells each touches, is [`docs/effect-coverage.txt`](docs/effect-c
 - ✅ Lazo Espiritual's bond (2184): the bound walk up to the Osamodas as far as its die, into contact, in walks of their own with his facing — its capture, frame for frame
 - 🟡 2017, Recursividad's: 1017 with its value capping the candidates, read off its sheet — a turret in contact throws the enemy over it and pushes him on
 
-> The **Ocra**, the **Tymador** and the **Yopuka** have been checked against the real client spell by spell, and three of the **Selatrop**'s against their own captures; the check-list below says which spells. Every class spell now resolves on paper; what the paper cannot say is in the notes after the dashes.
+> The **Ocra**, the **Tymador** and the **Yopuka** have been checked against the real client spell by spell, and eight of the **Selatrop**'s in the client; the check-list below says which spells. Every class spell now resolves on paper; what the paper cannot say is in the notes after the dashes.
 
 ### 🔬 Spell check-list
 
@@ -794,11 +798,11 @@ difference left against its capture.
 | Tymador | 13 | 44 | 44 |
 | Zobal | 0 | 44 | 44 |
 | Steamer | 0 | 44 | 44 |
-| Selatrop | 3 | 44 | 44 |
+| Selatrop | 8 | 44 | 44 |
 | Hipermago | 0 | 44 | 44 |
 | Uginak | 0 | 44 | 44 |
 | Forjalanza | 0 | 44 | 44 |
-| **All** | **67** | **836** | **836** |
+| **All** | **72** | **836** | **836** |
 
 <details><summary><b>Feca</b> — 0 of 44 seen working, 44 resolve on paper</summary>
 
@@ -1535,17 +1539,17 @@ difference left against its capture.
 
 </details>
 
-<details><summary><b>Selatrop</b> — 3 of 44 seen working, 44 resolve on paper</summary>
+<details><summary><b>Selatrop</b> — 8 of 44 seen working, 44 resolve on paper</summary>
 
-- ✅ Portal — laid, turned on, the fifth pushing the first out, walked through and back at the next turn
+- ✅ Portal — laid, turned on, the fifth pushing the first out, walked through and back at the next turn; aimed at a portal it goes through and lays its portal where it lands
 - ❌ Errancia — Portal's rows at another grade, with no capture of its own
-- ❌ Insulto
+- ✅ Insulto — through a portal its push is not done, as its sheet says; a push that crosses a portal goes through it and on from the way out
 - ❌ Desprecio
-- ❌ Audacia
+- ✅ Audacia
 - ❌ Tribulación
-- ❌ Shock
+- ✅ Shock
 - ❌ Convulsión
-- ❌ Rayo de Wakfu
+- ✅ Rayo de Wakfu
 - ❌ Resplandor
 - ✅ Neutral — the portal off, its AP back, and the portal on again at the Selatrop's next turn
 - ❌ Interrupción — Neutral's 1183 on the whole map, with no capture of its own
@@ -1553,7 +1557,7 @@ difference left against its capture.
 - ❌ Aplomo
 - ❌ Trascendencia
 - ❌ Exilio — a portal under the target and a Teleportal, as Resonancia's; no capture of its own
-- ❌ Terapia
+- ❌ Terapia — through the portals it pulls towards the portal it came out of, as the client's preview draws it
 - ❌ Puño Relámpago
 - ❌ Distribución
 - ❌ Soberbia
@@ -1565,17 +1569,17 @@ difference left against its capture.
 - ❌ Conjuro
 - ❌ Insolencia
 - ❌ Desdén
-- ❌ Odisea
+- ✅ Odisea
 - ❌ Éxodo
 - ❌ Cábala
 - ❌ Resiliencia
 - ❌ Aflicción
 - ❌ Ofensiva
-- ❌ Resonancia — its 406, portal and Teleportal are its capture's, frame for frame; its hook goes out there as hidden rows, not here
+- ❌ Resonancia — its 406, portal and Teleportal are its capture's, frame for frame; its hook goes out there as hidden rows, not here; the spell whose blow set it off still reaches the one it teleported
 - ❌ Vestigio
 - ❌ Mofa
 - ❌ Sinecura
-- ❌ Extinción
+- ❌ Extinción — through a portal its fire poison is hooked on the target and burns at the end of his turn, as in its capture
 - ❌ Sermón
 - ❌ Ridículo
 - ❌ Sarcasmo
