@@ -88,7 +88,7 @@ namespace Jondo.Unity.Server.Managers
             return slots;
         }
 
-        /// <summary>Remembers which bar slot a spell ended up in.</summary>
+        /// <summary>Remembers which bar slot a spell ended up in. Zero clears the slot.</summary>
         public static void PutInBar(int slot, int spellId)
         {
             if (spellId == 0)
@@ -103,6 +103,21 @@ namespace Jondo.Unity.Server.Managers
             Write("INSERT INTO CharacterSpellBar (CharacterId, Slot, SpellId) VALUES ($c, $t, $s) " +
                   "ON CONFLICT(CharacterId, Slot) DO UPDATE SET SpellId = $s;",
                   ("$t", slot), ("$s", spellId));
+        }
+
+        /// <summary>What spell sits in a bar slot, or zero when the slot is empty.</summary>
+        public static int SpellInSlot(int slot)
+            => BarStore.TryGetValue(slot, out int spell) ? spell : 0;
+
+        /// <summary>Swaps the contents of two bar slots. Either side may be empty.</summary>
+        public static void SwapBarSlots(int left, int right)
+        {
+            if (left == right) return;
+
+            int spellLeft = SpellInSlot(left);
+            int spellRight = SpellInSlot(right);
+            PutInBar(left, spellRight);
+            PutInBar(right, spellLeft);
         }
 
         /// <summary>

@@ -1571,6 +1571,16 @@ namespace Jondo.Unity.Server.Network
                 .Var(3, SpellBar)
                 .Build();
 
+        /// <summary>
+        /// A shortcut removed from the bar (<c>ivr</c> / ShortcutBarRemovedEvent).
+        /// Flat: f1 the bar, f2 the slot. An emptied <c>ivk</c> leaves the client's icon in place.
+        /// </summary>
+        public static byte[] BuildShortcutRemoved(int slot)
+            => Pb.New()
+                .Var(1, SpellBar)
+                .VarIfNotZero(2, slot)
+                .Build();
+
         /// <summary>How many slots of the bar we fill. The captured one runs from 0 to 48.</summary>
 
         // ─── World: weight carried ──────────────────────────────────────────────

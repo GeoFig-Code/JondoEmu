@@ -263,8 +263,11 @@ Spells come in pairs and the character holds one half. Measured on four real var
 | `hmt` | C→S | 111 / 10 files | Swap a spell for its variant, from the panel or from the bar. | `SpellHandler.HandleVariantAsync` | `f1: wanted spell id` |
 | `iuq` | S→C | 147 / 10 files | One per bar slot that held the old half — a swap capture produced two of them because the spell sat in two slots, which is how we know it is one per slot and not one per swap. Sent **before** `hng`. | `BuildShortcutChanged` | `f2 { f2: slot, f6 { f2: spell id } }, f3: bar` |
 | `hng` | S→C | 123 / 11 files | The new spell and the grade the character's level opens. | `BuildSpellSwapped` | `f2: spell id, f3: grade` |
-| `itz` | C→S | 38 / 6 files | Edit one slot of a shortcut bar. Also written to the database — otherwise the bar is rebuilt identically each session and anything the player places is lost on exit. | `GameNodeProxy.RememberShortcut` | `f2 { f2: slot, f6 { f2: spell id } }, f3: bar` |
-| `ivk` | S→C | 40 / 7 files | The echo: the very same entry the client sent. | `GameNodeProxy` | identical to the `itz` payload |
+| `itz` | C→S | 38 / 6 files | Set one slot of a shortcut bar (place from the panel). Also written to the database — otherwise the bar is rebuilt identically each session and anything the player places is lost on exit. | `GameNodeProxy.RememberShortcut` | `f2 { f2: slot, f6 { f2: spell id } }, f3: bar` |
+| `iul` | C→S | emulator traffic | Remove one slot (right-click). Proto `ShortcutBarRemoveRequest`: bar then slot. | `GameNodeProxy.ClearShortcutAsync` | `f1: bar, f2: slot` |
+| `iuv` | C→S | emulator traffic | Swap two slots (drag). | `GameNodeProxy.SwapShortcutsAsync` | `f1: first slot, f2: second slot, f3: bar` |
+| `ivr` | S→C | proto shape | ShortcutBarRemovedEvent — the only answer that clears the client's icon. Emptied `ivk` leaves a ghost. | `BuildShortcutRemoved` | `f1: bar, f2: slot` |
+| `ivk` | S→C | 40 / 7 files | The echo of a set / filled swap slot (`itz` / half of `iuv`). | `GameNodeProxy` | same shape as `itz` |
 
 ### 2.9 Zaaps
 

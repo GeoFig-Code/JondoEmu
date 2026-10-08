@@ -649,6 +649,24 @@ public static class Op
     /// </summary>
     public const string Itu = "itu";
 
+    /// <summary>
+    /// Removing a shortcut from a bar (right-click). Proto and captures: f1 is which bar,
+    /// f2 is the slot — the reverse of the first wiring guess.
+    /// </summary>
+    public const string Iul = "iul";
+
+    /// <summary>
+    /// Swapping two slots of a shortcut bar (drag). Observed in the emulator's traffic as
+    /// unhandled until wired: f1 and f2 are the slots, f3 is which bar.
+    /// </summary>
+    public const string Iuv = "iuv";
+
+    /// <summary>
+    /// A shortcut left a bar (ShortcutBarRemovedEvent). Flat payload: f1 bar, f2 slot.
+    /// An emptied <c>ivk</c> does not clear the client's icon — this message does.
+    /// </summary>
+    public const string Ivr = "ivr";
+
     /// <summary>Editing a slot of a shortcut bar; it is also written to the database or it is lost on leaving.</summary>
     public const string Itz = "itz";
 
