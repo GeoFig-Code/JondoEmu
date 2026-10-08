@@ -12,7 +12,7 @@ namespace Jondo.Unity.Tests.Combat
     /// A JondoBot's spells weighed row by row, as the effect engine will apply them: whom each row
     /// reaches from where the bot stands and where it aims, and what it does to each of them.
     /// </summary>
-    [Collection("koliseo")]
+    [Collection("MapManager")]
     public class JondoBotTacticsTests
     {
         private const int Centre = 300;

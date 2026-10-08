@@ -36,6 +36,14 @@ namespace Jondo.Unity.Tests.Combat
     /// It was seen for what it is: the suite failed once in seven in
     /// An_arena_cell_is_pulled_onto_a_real_one, and in isolation it always passed. A test that fails
     /// sometimes is worse than one that fails: one learns to ignore it.
+    ///
+    /// The world's NPCs are the same kind of state: Npcs.Initialize() empties its tables and fills
+    /// them again, and a reader in between finds them half full. The Koliseo's tests read them --
+    /// a JondoBot dresses as a notable NPC of its class -- and one of them reloads them, so they
+    /// joined this collection from their own "koliseo" one, which they still share among
+    /// themselves here. Side by side with the dream and bank tests that reload the NPCs too, the
+    /// bank visit could not find its banker and a JondoBot its sheet, each once in a while and
+    /// never alone.
     /// </remarks>
     [CollectionDefinition("MapManager")]
     public class MapManagerCollection { }

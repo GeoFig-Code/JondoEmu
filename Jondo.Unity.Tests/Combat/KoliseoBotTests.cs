@@ -13,7 +13,7 @@ namespace Jondo.Unity.Tests.Combat
     /// The Koliseo's JondoBots: the fourth card of the window, the JondoBot's sheet as asked for,
     /// and a turn thought out with its class's own spells for every class.
     /// </summary>
-    [Collection("koliseo")]
+    [Collection("MapManager")]
     public class KoliseoBotTests
     {
         private const int Centre = 300;

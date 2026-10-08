@@ -12,7 +12,7 @@ namespace Jondo.Unity.Tests.Combat
     /// What a summon is when it comes out and what goes with it when it dies, against the sheets
     /// and the deaths of the captures.
     /// </summary>
-    [Collection("koliseo")]
+    [Collection("MapManager")]
     public class SummonSheetTests
     {
         /// <summary>

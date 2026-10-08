@@ -15,7 +15,7 @@ namespace Jondo.Unity.Tests.Combat
     /// placement, the day and the season, the lty the window draws, and a matchmaking that goes
     /// by rating and keeps levels apart unless the ladder says two players are even.
     /// </summary>
-    [Collection("koliseo")]
+    [Collection("MapManager")]
     public class KoliseoLadderTests : IDisposable
     {
         private static readonly DateTime CapturedSeason = new DateTime(2025, 3, 14, 20, 46, 31, 598, DateTimeKind.Utc);

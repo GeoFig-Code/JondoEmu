@@ -19,7 +19,7 @@ namespace Jondo.Unity.Tests.Combat
     /// What matters most to pin here is that accepting and declining are NOT two different opcodes: they are
     /// separated by a single field of the hpu, and confusing them would make declining set up the fight.
     /// </remarks>
-    [Collection("koliseo")]
+    [Collection("MapManager")]
     public class PvpTests
     {
         public PvpTests()
