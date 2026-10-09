@@ -8230,6 +8230,7 @@ namespace Jondo.Unity.Server.Handlers
 
             var fallen = fight.Rojo.LastOrDefault();
             int joined = 0;
+            long author = 0;
             foreach (var member in group.Members)
             {
                 int cell = fight.RedPlacementCells.Where(c => !Occupied(fight, c)).DefaultIfEmpty(-1).First();
@@ -8241,11 +8242,26 @@ namespace Jondo.Unity.Server.Handlers
                 fight.Join(monster);
                 joined++;
 
+                // INSIDE A SEQUENCE OF ITS OWN, as every one of the 663 summons of the captures
+                // comes. The wave went out bare, behind the closed sequence of the blow that ended
+                // the last one, and the client put the new monsters in the turns and drew none.
+                if (author == 0)
+                {
+                    author = fallen?.Id ?? monster.Id;
+                    await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
+                        Network.FightProtocol.BuildSequenceStart(author, Network.FightProtocol.ActionSequence)));
+                }
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                     Network.FightProtocol.BuildSummon(
-                        fallen?.Id ?? monster.Id, monster.Id, cell, FacingOf(fight, monster),
+                        author, monster.Id, cell, FacingOf(fight, monster),
                         monster.MonsterId, monster.MonsterId, monster.GradeIndex + 1, FullSheetOf(monster),
-                        Network.FightProtocol.Invoca)));
+                        Network.FightProtocol.Invoca, summoned: false)));
+            }
+            if (author != 0)
+            {
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
+                    Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), author,
+                                                           Network.FightProtocol.ActionSequence)));
             }
             if (joined == 0) return false;
 
