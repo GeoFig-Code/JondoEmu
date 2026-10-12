@@ -8,6 +8,9 @@ namespace Jondo.Unity.Server.Managers
 {
     public static class MobSpawnManager
     {
+        /// <summary>The banned maps, kept so that the repopulator respects them too.</summary>
+        private static HashSet<long> _vetados = new HashSet<long>();
+
         /// <summary>
         /// The maps where a monster is NOT placed, however much the table has them.
         ///
@@ -29,9 +32,6 @@ namespace Jondo.Unity.Server.Managers
         /// distributed compressed, so a deletion would be lost in the next regeneration and
         /// one would have to remember to repeat it. With this there is nothing to remember.
         /// </summary>
-        /// <summary>The banned maps, kept so that the repopulator respects them too.</summary>
-        private static HashSet<long> _vetados = new HashSet<long>();
-
         private static HashSet<long> MapasSinMonstruos(Microsoft.Data.Sqlite.SqliteConnection connection)
         {
             var vetados = new HashSet<long>();
@@ -779,10 +779,20 @@ namespace Jondo.Unity.Server.Managers
             };
 
             int groupSize = _rand.Next(1, 9); // 1 to 8 monsters, just like in Dofus
-            for (int m = 0; m < groupSize; m++)
+            var ids = new List<int>(groupSize);
+            for (int m = 0; m < groupSize; m++) ids.Add(availableMonsters[_rand.Next(availableMonsters.Count)]);
+
+            // The archmonster rules hold for a group that comes out now as for the ones read at
+            // start: the subarea's roster holds the one that stood there, and drawn freely a group
+            // could have it two and three times over. And one of the subarea's that is standing
+            // nowhere may come back in its ordinary version's place.
+            var map = MapManager.GetMapInfo(mapId);
+            if (map != null) Archimonsters.MayComeBack(map.SubAreaId, ids);
+            Archimonsters.Thin(mapId, group.MobId, ids);
+
+            foreach (int monsterId in ids)
             {
-                int monsterId = availableMonsters[_rand.Next(availableMonsters.Count)];
-                var mData = _monsters[monsterId];
+                if (!_monsters.TryGetValue(monsterId, out var mData)) continue;
                 int gradeIdx = 0;
                 int lvl = 1;
                 if (mData.Grades.Count > 0)
@@ -1206,8 +1216,9 @@ namespace Jondo.Unity.Server.Managers
         {
             lock (_candado)
             {
-                if (!_mapMobs.TryGetValue(mapId, out var mobs) || mobs.RemoveAll(m => m.MobId == mobId) == 0)
-                    return false;
+                if (!_mapMobs.TryGetValue(mapId, out var mobs)) return false;
+                ReleaseArchmonster(mapId, mobs, mobId);
+                if (mobs.RemoveAll(m => m.MobId == mobId) == 0) return false;
                 if (mobs.Count == 0) _emptiedByHand.Add(mapId);
                 return true;
             }
@@ -1222,9 +1233,21 @@ namespace Jondo.Unity.Server.Managers
             {
                 if (_mapMobs.TryGetValue(mapId, out var mobs))
                 {
+                    ReleaseArchmonster(mapId, mobs, mobId);
                     mobs.RemoveAll(m => m.MobId == mobId);
                 }
             }
+        }
+
+        /// <summary>
+        /// A group that leaves its map lets its archmonster go, so the zone can have it again
+        /// somewhere else (<see cref="Archimonsters.MayComeBack"/>).
+        /// </summary>
+        private static void ReleaseArchmonster(long mapId, List<MobGroup> mobs, long mobId)
+        {
+            var group = mobs.Find(m => m.MobId == mobId);
+            if (group == null) return;
+            Archimonsters.Release(mapId, group.Members.Where(m => m.Monster != null).Select(m => m.Monster.Id));
         }
 
         public static MobGroup? GetMobGroupById(long mobId)

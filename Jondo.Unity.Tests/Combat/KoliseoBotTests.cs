@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using Jondo.Unity.Server.Handlers;
 using Jondo.Unity.Server.Managers;
@@ -206,6 +206,35 @@ namespace Jondo.Unity.Tests.Combat
                 }
                 finally { KoliseoBots.Forget(spec.Id); }
             }
+        }
+
+        /// <summary>
+        /// Alone against JondoBots in the Koliseo, giving up is open from the start: the client
+        /// greys its leave button out in an arena fight until an ltm with f2 unlocks it. Not with
+        /// another person in the fight, nor outside the Koliseo.
+        /// </summary>
+        [Fact]
+        public void Giving_up_is_unlocked_alone_against_JondoBots()
+        {
+            var fight = new FightInstance(9_990_777, 1, 1) { KoliseoMode = 3 };
+            var player = new Fighter { Id = 13825558, MaxHP = 4000, CurrentHP = 4000 };
+            var bot = new Fighter { Id = KoliseoBots.FirstId + 777, IsBot = true, MaxHP = 6666, CurrentHP = 6666 };
+            var botSummon = new Fighter { Id = -1, Invocador = bot.Id, MaxHP = 315, CurrentHP = 315 };
+            fight.AddPlayer(player);
+            fight.AddOpponent(bot);
+            fight.AddOpponent(botSummon);
+
+            Assert.True(FightHandler.CanGiveUpAtOnce(fight, player.Id));
+            Assert.Equal(new byte[] { 0x10, 0x01 }, FightProtocol.BuildSurrenderUnlocked(true));
+
+            var other = new Fighter { Id = 13825559, MaxHP = 4000, CurrentHP = 4000 };
+            fight.AddOpponent(other);
+            Assert.False(FightHandler.CanGiveUpAtOnce(fight, player.Id));
+
+            var outside = new FightInstance(9_990_778, 1, 1);
+            outside.AddPlayer(player);
+            outside.AddOpponent(bot);
+            Assert.False(FightHandler.CanGiveUpAtOnce(outside, player.Id));
         }
     }
 }

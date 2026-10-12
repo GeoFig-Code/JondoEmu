@@ -52,9 +52,6 @@ namespace Jondo.Unity.Server.Managers
     /// </remarks>
     public static class Dreams
     {
-        /// <summary>How many rooms there are in each row of the diamond. Measured on the iyj's graph.</summary>
-        private static readonly int[] Filas = { 1, 3, 3, 3, 1 };
-
         /// <summary>What a middle row can measure. Measured from 2 to 4 in nine captures.</summary>
         private const int MinimoPorFila = 2;
         private const int MaximoPorFila = 4;
@@ -748,8 +745,6 @@ namespace Jondo.Unity.Server.Managers
         private static List<(int Id, long MapaId, int Casilla, int Nivel, string Miembros)>? _grupos;
         private static readonly object _candado = new object();
 
-        public static int Activos => _enCurso.Count;
-
         /// <summary>
         /// A character's dream: the one in memory, or the one it saved -- a dream outlives a
         /// disconnection and a restart, and it used to vanish with either, leaving the player in
@@ -910,7 +905,6 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        /// <summary>A group's level: that of its highest member, which is what makes it hard.</summary>
         /// <summary>A group's monsters, with the grade they come out with in the world.</summary>
         private static List<(int Monstruo, int Grado)> MiembrosDe(string miembros)
         {
@@ -929,6 +923,7 @@ namespace Jondo.Unity.Server.Managers
             return salen;
         }
 
+        /// <summary>A group's level: that of its highest member, which is what makes it hard.</summary>
         private static int NivelDe(string miembros)
         {
             int mayor = 0;
@@ -1630,12 +1625,6 @@ namespace Jondo.Unity.Server.Managers
 
         private static List<long>? _mapasDeSala;
 
-        /// <summary>The room maps: subarea 904 and with their three doors.</summary>
-        /// <remarks>
-        /// The subarea carries 484 maps and only 100 carry interactive elements. Those that do carry exactly
-        /// three, with graphic 90166 -- the same as the well's --, which are the doors. A room map without doors
-        /// would be a dead end there is no way out of.
-        /// </remarks>
         /// <summary>All the dream's maps, the entrance included, to declare their doors.</summary>
         public static IEnumerable<long> TodosLosMapasDeSala()
         {
@@ -1770,6 +1759,12 @@ namespace Jondo.Unity.Server.Managers
             return deLaSubarea;
         }
 
+        /// <summary>The room maps: subarea 904 and with their three doors.</summary>
+        /// <remarks>
+        /// The subarea carries 484 maps and only 100 carry interactive elements. Those that do carry exactly
+        /// three, with graphic 90166 -- the same as the well's --, which are the doors. A room map without doors
+        /// would be a dead end there is no way out of.
+        /// </remarks>
         private static List<long> MapasDeSala()
         {
             if (_mapasDeSala != null) return _mapasDeSala;
@@ -1980,8 +1975,5 @@ namespace Jondo.Unity.Server.Managers
             fighter.Initiative = (int)Math.Round(fighter.Initiative * ratio);
             fighter.Level = level;
         }
-
-        /// <summary>For tests: a dream in memory as if it had been read from the base.</summary>
-        internal static void Remember(Sueno dream) => _enCurso[dream.CharacterId] = dream;
     }
 }

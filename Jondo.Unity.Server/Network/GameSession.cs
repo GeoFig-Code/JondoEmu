@@ -32,19 +32,32 @@ namespace Jondo.Unity.Server.Network
         /// whole frame in an array and writes it in one go, behind a lock PER SOCKET, so
         /// that reason no longer exists.
         ///
-        /// When there are group fights this will fall short —two sessions touching the same
-        /// FightInstance— and a lock per fight will be needed. Today each fight belongs to a single
-        /// player (LeaveFight looks for the fights HE is in), so work that cannot yet be tested
-        /// is not done in advance.
+        /// It keeps ONE connection from trampling itself, not a fight shared by several: that is
+        /// the fight's own turn, FightInstance.Turno, taken after this one and never before it.
         /// </summary>
         public SemaphoreSlim UnoCadaVez { get; } = new SemaphoreSlim(1, 1);
 
+        /// <summary>
+        /// Takes this session's turn; disposing the result gives it back, and a second dispose does
+        /// nothing. The packet loop holds it for each packet it serves and gives it back before
+        /// waiting for the next one.
+        /// </summary>
+        public async Task<IDisposable> EnterTurnAsync()
+        {
+            await UnoCadaVez.WaitAsync();
+            return new TurnHold(UnoCadaVez);
+        }
+
+        private sealed class TurnHold : IDisposable
+        {
+            private SemaphoreSlim? _turn;
+            public TurnHold(SemaphoreSlim turn) => _turn = turn;
+            public void Dispose() => Interlocked.Exchange(ref _turn, null)?.Release();
+        }
+
         public Guid Id { get; } = Guid.NewGuid();
-        public DateTime ConnectedAtUtc { get; } = DateTime.UtcNow;
         public NetworkStream? Stream { get; }
 
-        /// <summary>Whether it has a client on the other side that something can be sent to.</summary>
-        public bool TieneCliente => Stream != null;
         public SessionState State { get; } = new SessionState();
         public long AccountId { get; private set; }
         public int ServerId { get; private set; }

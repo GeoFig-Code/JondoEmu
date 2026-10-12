@@ -220,11 +220,27 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         private readonly Dictionary<int, int> _gradosDeActitud = new Dictionary<int, int>();
 
-        public void PonerActitud(int hechizo, int grado = 1)
+        /// <summary>
+        /// The round an attitude was given in, for the ones given during the fight: a summon's own
+        /// spell, from the round it appears. See <see cref="RoundAttitudeGiven"/>.
+        /// </summary>
+        private readonly Dictionary<int, int> _attitudeRounds = new Dictionary<int, int>();
+
+        public void PonerActitud(int hechizo, int grado = 1, int givenInRound = -1)
         {
             if (!Actitudes.Contains(hechizo)) Actitudes.Add(hechizo);
             if (grado > 1) _gradosDeActitud[hechizo] = grado;
+            if (givenInRound >= 0) _attitudeRounds[hechizo] = givenInRound;
         }
+
+        /// <summary>
+        /// The round the attitude was given in, or -1 when it was there from the start. A row of
+        /// it that waits on a trigger with a delay does not go off before that round plus its
+        /// delay: the Aniripsa's fairies and fires "mueren ... al final de su segundo turno de
+        /// juego" (the class sheet), and their own spells wait on TE with a delay of one.
+        /// </summary>
+        public int RoundAttitudeGiven(int spell)
+            => _attitudeRounds.TryGetValue(spell, out int round) ? round : -1;
 
         public int GradoDeActitud(int hechizo)
             => _gradosDeActitud.TryGetValue(hechizo, out int grado) ? grado : 1;
@@ -388,10 +404,6 @@ namespace Jondo.Unity.World.Fights
         public void QuitarEstado(int estado) => _estados.Remove(estado);
 
         /// <summary>
-        /// Removes a state and the buffs that represented it in the panel. Returning them lets
-        /// the network layer send a <c>jya</c> for each one.
-        /// </summary>
-        /// <summary>
         /// Trims rounds off all the buffs and returns how many have dropped entirely.
         /// </summary>
         /// <remarks>
@@ -419,6 +431,10 @@ namespace Jondo.Unity.World.Fights
             return caidos.Count;
         }
 
+        /// <summary>
+        /// Removes a state and the buffs that represented it in the panel. Returning them lets
+        /// the network layer send a <c>jya</c> for each one.
+        /// </summary>
         public List<Buff> QuitarEstadoConEmbrujos(int estado)
         {
             _estados.Remove(estado);
@@ -564,16 +580,6 @@ namespace Jondo.Unity.World.Fights
         }
 
         /// <summary>
-        /// What the buffs of an effect number MULTIPLY, as a percentage.
-        ///
-        /// There is a family that does not add but multiplies: 1163 is "daños sufridos x#1%" and
-        /// 1159 "curas recibidas x#1%". They have no characteristic in the catalogue —the client
-        /// resolves them by their number—, so the same paths as the rest do not work.
-        ///
-        /// Returns a hundred when there are none, that is "times one". Several chain: two of
-        /// a hundred and ten give a hundred and twenty-one.
-        /// </summary>
-        /// <summary>
         /// The flat "-N de daños recibidos" (105, 265) the bearer holds against a blow of the
         /// given kinds: the rows put with no trigger at all, and the rows whose trigger names
         /// one of the kinds. Those letters are not triggers that fire but CONDITIONS on the
@@ -608,6 +614,16 @@ namespace Jondo.Unity.World.Fights
         /// <summary>"Daños sufridos x#1%", the multiplier of Represalias, Tiro Penetrante and Salto.</summary>
         public const int DanoSufridoPorCiento = 1163;
 
+        /// <summary>
+        /// What the buffs of an effect number MULTIPLY, as a percentage.
+        ///
+        /// There is a family that does not add but multiplies: 1163 is "daños sufridos x#1%" and
+        /// 1159 "curas recibidas x#1%". They have no characteristic in the catalogue —the client
+        /// resolves them by their number—, so the same paths as the rest do not work.
+        ///
+        /// Returns a hundred when there are none, that is "times one". Several chain: two of
+        /// a hundred and ten give a hundred and twenty-one.
+        /// </summary>
         /// <param name="clasesDelGolpe">
         /// The kinds of the blow being read, for the rows registered under a damage kind
         /// (Salto's "1163 under D"): a row with a kind counts only for a blow of that kind.

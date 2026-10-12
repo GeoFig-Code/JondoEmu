@@ -140,7 +140,7 @@ namespace Jondo.Unity.Tests.Sessions
             }
             finally
             {
-                SqliteConnection.ClearAllPools();
+                TestDatabases.ReleasePool(file);
                 try { File.Delete(file); } catch (IOException) { }
             }
         }

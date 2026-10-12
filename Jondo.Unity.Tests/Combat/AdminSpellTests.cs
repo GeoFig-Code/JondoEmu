@@ -48,6 +48,27 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Equal(Jondo.Unity.World.Maps.Zone.WholeMap, mata.Forma);
         }
 
+        /// <summary>
+        /// Every administration spell granted is in the base with its one grade, one AP and the
+        /// effects it does something with: the «[!] Sorts admins» besides Doom de Masas.
+        /// </summary>
+        [Fact]
+        public void Every_administration_spell_is_in_the_data()
+        {
+            Assert.Equal(10, AdminSpells.Granted.Count);
+            Assert.Equal((AdminSpells.DoomDeMasas, AdminSpells.GradoDeDoom), AdminSpells.Granted[0]);
+            if (SpellEffects.GradoDe(AdminSpells.DoomDeMasas, 200).Item2 == 0) return;   // no spell data in the base
+
+            foreach (var (spell, grade) in AdminSpells.Granted)
+            {
+                var (found, levelId, cost) = SpellEffects.GradoDe(spell, 200);
+                Assert.NotEqual(0, levelId);
+                Assert.Equal(grade, found);
+                Assert.Equal(1, cost);
+                Assert.NotEmpty(SpellEffects.De(spell, grade));
+            }
+        }
+
         [Fact]
         public void Solo_se_declara_a_partir_de_administrador()
         {

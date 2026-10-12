@@ -62,10 +62,6 @@ namespace Jondo.Unity.Server.Managers
         private static readonly ConcurrentDictionary<long, long> _pending = new();
         private static int _sweeping;
 
-        /// <summary>For the tests: a monster's aggression, or a map's permission, by hand.</summary>
-        internal static void Declare(int template, Profile profile) => _profiles[template] = profile;
-        internal static void DeclareMap(long mapId, bool allows) => _maps[mapId] = allows;
-
         // ─── The data ───────────────────────────────────────────────────────────────────────
 
         /// <summary>A monster's aggression, from its template, read once.</summary>
@@ -238,7 +234,7 @@ namespace Jondo.Unity.Server.Managers
                 {
                     while (GuildRaidManager.AnyRunning)
                     {
-                        foreach (var session in GameNodeProxy.SesionesVivas.Values.ToList())
+                        foreach (var session in SessionRegistry.All())
                         {
                             if (!session.HasCharacter || !Applies(session.State.MapId)) continue;
                             try { Watch(session); }

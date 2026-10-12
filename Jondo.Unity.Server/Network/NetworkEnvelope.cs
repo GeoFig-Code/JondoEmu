@@ -287,6 +287,17 @@ namespace Jondo.Unity.Server.Network
                         Array.Copy(fullFrame, pos, innerBytes, 0, len);
                         break;
                     }
+                    else if (fieldNum == 2 && wireType == 2)
+                    {
+                        // What the client sends: { 2: { 1: the Any, 2: the request id } }, the Any
+                        // in field 1 as in a push.
+                        uint len = ReadVarInt(fullFrame, ref pos);
+                        if (len > (uint)(fullFrame.Length - pos)) return null;
+                        innerBytes = new byte[len];
+                        Array.Copy(fullFrame, pos, innerBytes, 0, len);
+                        isServer = true;
+                        break;
+                    }
                     else
                     {
                         SkipField(fullFrame, wireType, ref pos);
@@ -422,25 +433,6 @@ namespace Jondo.Unity.Server.Network
             }
         }
 
-        public static bool ContainsSequence(byte[] source, byte[] target)
-        {
-            if (source.Length < target.Length) return false;
-            for (int i = 0; i <= source.Length - target.Length; i++)
-            {
-                bool match = true;
-                for (int j = 0; j < target.Length; j++)
-                {
-                    if (source[i + j] != target[j])
-                    {
-                        match = false;
-                        break;
-                    }
-                }
-                if (match) return true;
-            }
-            return false;
-        }
-
         public static byte[] ConvertHexStringToByteArray(string hex)
         {
             hex = hex.Replace("-", "").Replace(" ", "");
@@ -450,146 +442,6 @@ namespace Jondo.Unity.Server.Network
                 raw[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
             }
             return raw;
-        }
-
-        public static string ResolvePacketPath(string filename)
-        {
-            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, filename);
-            if (File.Exists(path)) return path;
-
-            path = Path.Combine(Directory.GetCurrentDirectory(), filename);
-            if (File.Exists(path)) return path;
-
-            string parentDir = Directory.GetParent(Directory.GetCurrentDirectory())?.FullName ?? "";
-            if (!string.IsNullOrEmpty(parentDir))
-            {
-                path = Path.Combine(parentDir, filename);
-                if (File.Exists(path)) return path;
-            }
-
-            path = Paths.Resolve(filename);
-            if (File.Exists(path)) return path;
-
-            return filename;
-        }
-
-        public static byte[]? ExtractAnyPayloadByType361010(byte[] packet,string expectedTypeUrl)
-        {
-            try
-            {
-                var root = ProtoMessage.Parse(packet);
-
-                return FindAnyPayloadRecursive361010(
-                    root,
-                    expectedTypeUrl,
-                    0
-                );
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(
-                    $"[Game Node] Any extraction error: {ex.Message}"
-                );
-
-                return null;
-            }
-        }
-
-        private static byte[]? FindAnyPayloadRecursive361010(
-            ProtoMessage message,
-            string expectedTypeUrl,
-            int depth)
-        {
-            // Guard against runaway recursion
-            if (depth > 8)
-                return null;
-
-            /*
-             * First checks whether THIS message is directly a google.protobuf.Any:
-             *
-             * field1 = type_url
-             * field2 = value
-             */
-
-            var typeField =
-                message.Fields.FirstOrDefault(
-                    f => f.FieldNumber == 1 &&
-                         f.WireType == 2
-                );
-
-            var valueField =
-                message.Fields.FirstOrDefault(
-                    f => f.FieldNumber == 2 &&
-                         f.WireType == 2
-                );
-
-            if (typeField != null &&
-                valueField != null)
-            {
-                try
-                {
-                    string typeUrl =
-                        Encoding.UTF8.GetString(
-                            typeField.BytesValue
-                        );
-
-                    if (typeUrl == expectedTypeUrl)
-                    {
-                        Console.WriteLine(
-                            $"[Game Node] Found Any {typeUrl}, " +
-                            $"inner={valueField.BytesValue.Length} B"
-                        );
-
-                        return valueField.BytesValue;
-                    }
-                }
-                catch
-                {
-                    // This field1 simply was not a string.
-                }
-            }
-
-            /*
-             * Otherwise go down into every length-delimited
-             * protobuf field.
-             */
-
-            foreach (
-                var field in message.Fields.Where(
-                    f => f.WireType == 2 &&
-                         f.BytesValue != null &&
-                         f.BytesValue.Length > 0
-                )
-            )
-            {
-                try
-                {
-                    var child =
-                        ProtoMessage.Parse(
-                            field.BytesValue
-                        );
-
-                    var found =
-                        FindAnyPayloadRecursive361010(
-                            child,
-                            expectedTypeUrl,
-                            depth + 1
-                        );
-
-                    if (found != null)
-                        return found;
-                }
-                catch
-                {
-                    /*
-                     * Expected:
-                     * some wire type 2 fields are strings
-                     * or arbitrary bytes, not protobuf.
-                     */
-                }
-            }
-
-            return null;
         }
     }
 }

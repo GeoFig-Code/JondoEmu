@@ -46,11 +46,6 @@ namespace Jondo.Unity.Server.Managers
         private static volatile AchievementCatalogue? _book;
         private static readonly object _loadLock = new object();
 
-        /// <summary>Ankama's catalogue. Null until <see cref="Load"/> has run.</summary>
-        public static AchievementCatalogue? Book => _book;
-
-        public static bool Ready => _book != null && _book.Ready;
-
         /// <summary>This character's badges. Null before entering the world.</summary>
         public static AchievementLog? Log => SessionContext.State.Achievements;
 

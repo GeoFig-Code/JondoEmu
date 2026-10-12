@@ -23,7 +23,7 @@ namespace Jondo.Unity.Server
         public static bool Counting => _counting != 0;
 
         /// <summary>How many characters are in the world now.</summary>
-        public static int PlayersInside => GameNodeProxy.SesionesVivas.Values.Count(s => s.HasCharacter);
+        public static int PlayersInside => SessionRegistry.All().Count(s => s.HasCharacter);
 
         /// <summary>Starts the countdown; the server restarts when it ends. A second call changes nothing.</summary>
         public static void Begin(int seconds)
@@ -56,7 +56,7 @@ namespace Jondo.Unity.Server
         /// <summary>Tells every player in the world how long is left.</summary>
         public static async Task AnnounceAsync(int seconds)
         {
-            foreach (var session in GameNodeProxy.SesionesVivas.Values.ToList())
+            foreach (var session in SessionRegistry.All())
             {
                 if (!session.HasCharacter) continue;
                 string text = CommandTexts.Get(session.State.Language, "server.restart", seconds);

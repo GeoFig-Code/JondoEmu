@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using Jondo.Unity.Server.Handlers;
@@ -215,25 +215,20 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
-        /// The alteration the oracle sets on being activated (lzs): the capture's «Oráculo de saber»
-        /// starts and ends where it says, with its two hours. The two detail blocks it
-        /// carries there are not reproduced -only one of the five oracles is measured-, so
-        /// the fields that do go are compared.
+        /// The oracle's alteration and how long it has: the whole lzs, against the capture, is in
+        /// AlterationTests.The_oracle_is_set_as_captured.
         /// </summary>
         [Fact]
         public void The_oracle_puts_its_alteration_for_two_hours()
         {
             Assert.Equal(859, GuildOracles.Of(1).Alteration);
-
-            // The capture's lzs starts the same -«0a31 088d81fef9853410db06»- and ends with the
-            // same «28e0dab4fd8534»: what goes in between is its two detail blocks, which are not
-            // reproduced. What does go, goes where it goes.
-            string lzs = Hex(GuildProtocol.BuildAlteration(859, 1788304392333, 1788311580000));
-            Assert.Equal("0a13088d81fef9853410db06200228e0dab4fd8534", lzs);
-            Assert.Contains("088d81fef9853410db06", lzs);        // from, and alteration 859
-            Assert.Contains("28e0dab4fd8534", lzs);              // until, two hours later
             Assert.Equal(2, GuildOracles.HoursActive);
             Assert.Equal(24, GuildOracles.HoursToActivate);
+
+            // Its two hours are its own data's: 2833, 120 minutes.
+            var oracle = AlterationCatalogue.Of(859);
+            if (oracle != null)
+                Assert.Equal(GuildOracles.HoursActive * 60L, oracle.Effects.Single(e => e.Effect == AlterationCatalogue.Expiry).Value);
         }
 
         /// <summary>The contribution (jle): ten thousand kamas and the three left, from the capture.</summary>
@@ -294,7 +289,7 @@ namespace Jondo.Unity.Tests.World
             finally
             {
                 GuildStore.ConnectionStringOverride = null;
-                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+                TestDatabases.ReleasePool(file);
                 try { File.Delete(file); } catch (IOException) { }
             }
         }
@@ -327,7 +322,7 @@ namespace Jondo.Unity.Tests.World
             finally
             {
                 GuildStore.ConnectionStringOverride = null;
-                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+                TestDatabases.ReleasePool(file);
                 try { File.Delete(file); } catch (IOException) { }
             }
         }
@@ -372,7 +367,7 @@ namespace Jondo.Unity.Tests.World
             finally
             {
                 GuildStore.ConnectionStringOverride = null;
-                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+                TestDatabases.ReleasePool(file);
                 try { File.Delete(file); } catch (IOException) { }
             }
         }

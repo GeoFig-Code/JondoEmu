@@ -27,7 +27,6 @@ namespace Jondo.Unity.Server.Handlers
     /// </summary>
     public static class MerkasakoHandler
     {
-        /// <summary>The furniture arriving while placement mode is open.</summary>
         /// <summary>
         /// The button and the H key, which is a different message from changing the decor:
         ///

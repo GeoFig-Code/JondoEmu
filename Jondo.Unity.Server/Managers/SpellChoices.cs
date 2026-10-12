@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Microsoft.Data.Sqlite;
 using Jondo.Unity.Server.Network;
@@ -157,11 +157,12 @@ namespace Jondo.Unity.Server.Managers
             if (BarStore.Count > 0)
             {
                 var alreadyOpen = new HashSet<int>();
+                var learned = LearnedSpells.OfSession();
                 if (BarLevel > 0)
-                    foreach (var spell in SpellTable.KnownFor(breed, BarLevel, ChosenStore)) alreadyOpen.Add(spell.PairId);
+                    foreach (var spell in SpellTable.KnownFor(breed, BarLevel, ChosenStore, learned)) alreadyOpen.Add(spell.PairId);
 
                 var onTheBar = new HashSet<int>(BarStore.Values);
-                foreach (var spell in SpellTable.KnownFor(breed, level, ChosenStore))
+                foreach (var spell in SpellTable.KnownFor(breed, level, ChosenStore, learned))
                 {
                     if (alreadyOpen.Contains(spell.PairId) || onTheBar.Contains(spell.SpellId)) continue;
                     int slot = FirstFreeSlot();
@@ -172,6 +173,25 @@ namespace Jondo.Unity.Server.Managers
             }
 
             SaveBarLevel(level);
+        }
+
+        /// <summary>
+        /// Puts on the bar, in the first free slot, a spell just learnt from a scroll -- the one of its
+        /// pair the character can cast. A bar never written is filled whole when it is drawn, so only a
+        /// saved one needs it.
+        /// </summary>
+        public static void PlaceLearned(int breed, int level, int spellId)
+        {
+            if (BarStore.Count == 0) return;
+            var pair = SpellTable.PairOf(spellId);
+            foreach (var spell in SpellTable.KnownFor(breed, level, ChosenStore, LearnedSpells.OfSession()))
+            {
+                bool isIt = spell.SpellId == spellId || (pair != null && pair.Holds(spell.SpellId));
+                if (!isIt || BarStore.ContainsValue(spell.SpellId)) continue;
+                int slot = FirstFreeSlot();
+                if (slot >= 0) PutInBar(slot, spell.SpellId);
+                return;
+            }
         }
 
         /// <summary>The level the bar has been given its spells up to, in the session and the base.</summary>

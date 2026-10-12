@@ -52,7 +52,6 @@ namespace Jondo.Unity.Server.Managers
         private static IReadOnlyDictionary<(long MapId, int CellId), InteractiveTeleport> _byCell =
             new Dictionary<(long, int), InteractiveTeleport>();
 
-        public static int Count => _byElement.Count;
         public static IEnumerable<InteractiveTeleport> All => _byElement.Values;
 
         public static void Initialize()
@@ -281,6 +280,11 @@ namespace Jondo.Unity.Server.Managers
                 if (element.Id == elementId) return true;
             foreach (var element in Bins.On(mapId))
                 if (element.Id == elementId) return true;
+            // The Temple of Alliances' door: 3.6 offers it with skill 184 and only to whoever carries
+            // the gem, where the 2.68 route has it as a plain passage (114). Left active, its cell
+            // would also let anybody walk in without the gem.
+            if (mapId == Handlers.AllianceHandler.TempleMap && elementId == Handlers.AllianceHandler.TempleDoor)
+                return true;
             return false;
         }
 
@@ -463,16 +467,6 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// The floor passages (<see cref="FloorPassages"/>): cells that move whoever stops on
-        /// them, with no element.
-        /// </summary>
-        /// <remarks>
-        /// Only in the index by cell, which is what WorldMoveHandler asks when a walk ends; not by
-        /// element nor by map, so nothing is declared to the client for them. A cell that already
-        /// has an element's passage keeps it: the element is what the map shows. And one leading to
-        /// a map the world does not have is left out, as Validate leaves out an element's.
-        /// </remarks>
-        /// <summary>
         /// The guild raids' lifts and floor passages, read off the client's maps (GuildRaidPassages):
         /// the world's data has no route between those floors. A route the data already has wins.
         /// </summary>
@@ -495,6 +489,16 @@ namespace Jondo.Unity.Server.Managers
             if (added > 0) Console.WriteLine($"[Teleports] {added} guild raid lift(s) and passage(s) between floors.");
         }
 
+        /// <summary>
+        /// The floor passages (<see cref="FloorPassages"/>): cells that move whoever stops on
+        /// them, with no element.
+        /// </summary>
+        /// <remarks>
+        /// Only in the index by cell, which is what WorldMoveHandler asks when a walk ends; not by
+        /// element nor by map, so nothing is declared to the client for them. A cell that already
+        /// has an element's passage keeps it: the element is what the map shows. And one leading to
+        /// a map the world does not have is left out, as Validate leaves out an element's.
+        /// </remarks>
         private static void AddFloorPassages(Dictionary<(long, int), InteractiveTeleport> byCell)
         {
             int added = 0;

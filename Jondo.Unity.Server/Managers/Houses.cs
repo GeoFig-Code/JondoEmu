@@ -206,8 +206,6 @@ namespace Jondo.Unity.Server.Managers
         private static readonly Dictionary<(long MapId, int ElementId), int> _houseIds = new();
         private static readonly Dictionary<int, Door> _byHouseId = new();
 
-        public static int Count => _byElement.Count;
-        public static int InteriorCount => _exits.Count;
         public static IEnumerable<long> Interiors => _exits.Keys;
 
         public static void Initialize()
@@ -380,16 +378,6 @@ namespace Jondo.Unity.Server.Managers
                 if (ChestGraphics.Contains(element.Gfx)) chests.Add(element);
             }
             return chests;
-        }
-
-        /// <summary>Whether this element is a chest of this interior.</summary>
-        public static bool IsChest(long interiorMapId, int elementId)
-        {
-            foreach (var chest in ChestsIn(interiorMapId))
-            {
-                if (chest.Id == elementId) return true;
-            }
-            return false;
         }
 
         private static List<long> SortedKeys(Dictionary<long, List<Door>> source)

@@ -62,17 +62,6 @@ namespace Jondo.Unity.Server.Handlers
         private const int NotHighEnough = InfoMessages.LevelTooLow;
 
         /// <summary>
-        /// The player has answered the guardian of a dungeon. Try to let them in.
-        /// </summary>
-        /// <remarks>
-        /// Returns true when the player went in, so the caller knows the conversation ended in a
-        /// map change and there is nothing more to say.
-        ///
-        /// Called on <em>any</em> reply, which is the same simplification the quest handover makes
-        /// and for the same reason: nothing in the captured data marks which reply is the yes. The
-        /// guardian's own tree, once somebody writes one, is where that belongs.
-        /// </remarks>
-        /// <summary>
         /// What the guardian of this map should offer, on top of whatever else it says.
         /// </summary>
         /// <remarks>
@@ -109,6 +98,17 @@ namespace Jondo.Unity.Server.Handlers
             return false;
         }
 
+        /// <summary>
+        /// The player has answered the guardian of a dungeon. Try to let them in.
+        /// </summary>
+        /// <remarks>
+        /// Returns true when the player went in, so the caller knows the conversation ended in a
+        /// map change and there is nothing more to say.
+        ///
+        /// Called on <em>any</em> reply, which is the same simplification the quest handover makes
+        /// and for the same reason: nothing in the captured data marks which reply is the yes. The
+        /// guardian's own tree, once somebody writes one, is where that belongs.
+        /// </remarks>
         public static async Task<bool> AtTheDoorAsync(NetworkStream stream, long mapId, long reply = 0)
         {
             var dungeon = DungeonManager.AtEntrance(mapId);

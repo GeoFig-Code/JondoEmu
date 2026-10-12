@@ -48,7 +48,6 @@ namespace Jondo.Unity.Server.Handlers
         private const int MaximumCost = 1000;
         private const int CostPerStep = 10;
 
-        /// <summary>The map of the zaap open right now, to charge from the right place.</summary>
         /// <summary>
         /// The client has clicked the zaap. He is answered that the element is in use and sent the list of
         /// destinations.
@@ -132,6 +131,18 @@ namespace Jondo.Unity.Server.Handlers
                 target = Anomalies.ArrivalMap;
                 cost = anomaly.MapId == from ? 0 : CostBetween(from, anomaly.MapId);
                 what = $"anomaly «{anomaly.Name}» (subarea {anomaly.SubAreaId})";
+            }
+            else if (kind == PrismProtocol.DestinationKind)
+            {
+                // One of the alliance's prisms, from the list a prism of its own gave (PrismHandler).
+                if (!PrismHandler.IsDestination(SessionContext.State.CharacterId, chosen))
+                {
+                    Console.WriteLine($"[Prism] The client asks to travel to {chosen}, which holds no prism of his.");
+                    return;
+                }
+                target = chosen;
+                cost = CostBetween(from, target);
+                what = $"prism on map {target}";
             }
             else if (kind == Zaapis.Kind)
             {
@@ -274,7 +285,7 @@ namespace Jondo.Unity.Server.Handlers
             return salida;
         }
 
-        private static long CostBetween(long from, long to)
+        internal static long CostBetween(long from, long to)
         {
             var a = MapManager.GetMapInfo(from);
             var b = MapManager.GetMapInfo(to);

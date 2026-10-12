@@ -399,6 +399,16 @@ namespace Jondo.Unity.Server.Network
             return jobs.Build();
         }
 
+        /// <summary>Which information message an lqn carries, or zero.</summary>
+        private static int MessageOf(byte[] lqn)
+        {
+            foreach (var field in ProtoMessage.Parse(lqn).Fields)
+            {
+                if (field.FieldNumber == 2 && field.WireType == 0) return (int)field.VarIntValue;
+            }
+            return 0;
+        }
+
         /// <summary>
         /// The messages of the capture we rebuild from the database instead of replaying, and what
         /// goes out in their place. Null means "replay it as it is".
@@ -416,17 +426,7 @@ namespace Jondo.Unity.Server.Network
         /// captured account, and since the inventory comes from the database those items do not
         /// exist: the client was left with a bar full of slots it cannot resolve.
         /// </summary>
-        /// <summary>Which information message an lqn carries, or zero.</summary>
-        private static int MessageOf(byte[] lqn)
-        {
-            foreach (var field in ProtoMessage.Parse(lqn).Fields)
-            {
-                if (field.FieldNumber == 2 && field.WireType == 0) return (int)field.VarIntValue;
-            }
-            return 0;
-        }
-
-        private static byte[]? Rebuilt(byte[] frame, string built, DatabaseManager.DbCharacter character)
+        internal static byte[]? Rebuilt(byte[] frame, string built, DatabaseManager.DbCharacter character)
         {
             if (ConnectionProtocol.ReadPayload(frame, Op.Kva) != null)
             {
@@ -451,6 +451,15 @@ namespace Jondo.Unity.Server.Network
             if (ConnectionProtocol.ReadPayload(frame, Op.Isd) != null)
             {
                 return ConnectionProtocol.Push(Op.Isd, Handlers.ArtisanHandler.BuildSettings(SessionContext.State));
+            }
+
+            // The alterations. The captured lzp was the capturer's -- 763, 764 and 766, and the
+            // «Misión» 102 with its one victory left -- and every character entered the world with
+            // them. This character's own, from the base: none until something sets one.
+            if (ConnectionProtocol.ReadPayload(frame, Op.Lzp) != null)
+            {
+                return ConnectionProtocol.Push(Op.Lzp,
+                    AlterationProtocol.BuildList(Managers.Alterations.Of(character.Id), DateTime.UtcNow));
             }
 
             if (ConnectionProtocol.ReadPayload(frame, Op.Hms) != null)
@@ -673,59 +682,6 @@ namespace Jondo.Unity.Server.Network
             }
         }
 
-        private static byte[]? Read(string path, string what)
-        {
-            try
-            {
-                if (!File.Exists(path))
-                {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"[World] Missing the block for {what}: {Path.GetFileName(path)}. " +
-                                      "Generate it with extraer_world.py.");
-                    Console.ResetColor();
-                    return null;
-                }
-
-                byte[] data = File.ReadAllBytes(path);
-                Console.WriteLine($"[World] Block for {what}: {data.Length} bytes.");
-                return data;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[World] Could not read {Path.GetFileName(path)}: {ex.Message}");
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Splits a block into the messages it holds, WITHOUT their length prefix.
-        ///
-        /// The prefix is left out on purpose: the rewriter would take it for part of the message,
-        /// and it has to be recomputed anyway because swapping the identity changes the size.
-        /// </summary>
-        private static IEnumerable<byte[]> Frames(byte[] block)
-        {
-            int p = 0;
-            while (p < block.Length)
-            {
-                int length = 0, shift = 0, start = p;
-                while (p < block.Length)
-                {
-                    byte b = block[p++];
-                    length |= (b & 0x7F) << shift;
-                    if ((b & 0x80) == 0) break;
-                    shift += 7;
-                }
-
-                if (length <= 0 || p + length > block.Length) yield break;
-
-                var message = new byte[length];
-                Array.Copy(block, p, message, 0, length);
-                p += length;
-                yield return message;
-            }
-        }
-
         /// <summary>
         /// Block 1. The kva of the capture is swapped for one built from the database: it is the
         /// message that tells the client which character it is playing, and with the captured one
@@ -798,6 +754,15 @@ namespace Jondo.Unity.Server.Network
                 await EnviarAsync(stream, Handlers.GuildHandler.MembersFrame(members));
                 Console.WriteLine($"[World] Guild sent for {character.Name}: {guild.Name} ({members.Count} members).");
             }
+
+            // The alliance, if he has one: its ranks and belonging (mbz), the silent kind.
+            await Handlers.AllianceHandler.OnWorldEntryAsync(stream, character.Id);
+
+            // The world's prisms, for the world map (ife): everybody gets them, alliance or not.
+            await Handlers.PrismHandler.OnWorldEntryAsync(stream);
+
+            // What happened to his tax collectors while he was away (hkx).
+            await Handlers.TaxCollectorHandler.OnWorldEntryAsync(stream, character.Id);
 
             // Back on a dream's map: the dream again, or out of it when there is none to go back to.
             await Handlers.DreamHandler.OnWorldEntryAsync(stream);

@@ -45,9 +45,6 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>"Consultar": the skill of every artisans' book.</summary>
         public const int BookSkill = 170;
 
-        public static int Count => _byGfx.Count;
-        public static int BookMaps => _bookJobs.Count;
-
         public static void Initialize()
         {
             _byGfx.Clear();
@@ -127,9 +124,5 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The jobs whose directory the book of this map opens.</summary>
         public static IReadOnlyList<int> BookJobsOn(long mapId)
             => _bookJobs.TryGetValue(mapId, out var jobs) ? jobs : Array.Empty<int>();
-
-        /// <summary>For tests: a station graphic declared by hand.</summary>
-        internal static void Declare(int gfx, int type, params int[] skills)
-            => _byGfx[gfx] = new Station { Gfx = gfx, Type = type, Skills = skills, Source = "test" };
     }
 }

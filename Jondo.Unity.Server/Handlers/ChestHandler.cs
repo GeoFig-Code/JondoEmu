@@ -41,16 +41,6 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>The chest that is open, so as not to serve a kcr with the chest closed.</summary>
         public static bool IsOpen => SessionContext.State.IsChestOpen;
 
-        /// <summary>Is the element he clicked this map's chest?</summary>
-        public static bool IsChest(long mapId, int elementId)
-        {
-            var chest = Merkasako.ChestOf(mapId);
-            return chest.Id != 0 && chest.Id == elementId;
-        }
-
-        public static Task OpenAsync(NetworkStream stream, int elementId)
-            => OpenAsync(stream, elementId, Merkasako.ChestSkill);
-
         public static async Task OpenAsync(NetworkStream? stream, int elementId, int skillId)
         {
             SessionContext.State.IsChestOpen = true;

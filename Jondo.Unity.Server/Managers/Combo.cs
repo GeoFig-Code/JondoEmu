@@ -110,12 +110,6 @@ namespace Jondo.Unity.Server.Managers
             return _levelByState.OrderBy(pair => pair.Value).Select(pair => pair.Key).ToList();
         }
 
-        /// <summary>Drops the cached ladder. Only tests need this.</summary>
-        internal static void Forget()
-        {
-            lock (_lock) { _levelByState = null; _percentByLevel = null; _gradeByLevel = null; }
-        }
-
         private static void Build()
         {
             lock (_lock)
@@ -215,6 +209,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The effect that makes a bomb grow.</summary>
         private const int ComboSize = 1060;
 
+        /// <summary>A bomb with no size buff: 100 percent.</summary>
+        public const int BaseSize = 100;
+
         /// <summary>A bomb size, as a percentage. A hundred is the size it was summoned at.</summary>
         /// <remarks>
         /// DERIVED, not tabulated. Every grade of 20500 carries a 1060 next to its 1027 -- 5, 10,
@@ -244,9 +241,6 @@ namespace Jondo.Unity.Server.Managers
         /// Without the ceiling it would not run high, it would run absurd: every 1060 kept would
         /// put a rung-15 bomb at 760% of its size.
         /// </remarks>
-        /// <summary>A bomb with no size buff: 100 percent.</summary>
-        public const int BaseSize = 100;
-
         public static int SizeOf(Fighter who, int round)
         {
             if (who == null) return BaseSize;

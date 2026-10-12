@@ -37,9 +37,6 @@ namespace Jondo.Unity.Server.Managers
             return _spells!.Contains(spell);
         }
 
-        /// <summary>How many spells the players' side holds.</summary>
-        public static int Count { get { Load(); return _spells!.Count; } }
-
         private static void Load()
         {
             if (_spells != null) return;

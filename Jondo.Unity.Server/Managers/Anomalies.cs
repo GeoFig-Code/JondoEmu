@@ -89,7 +89,6 @@ namespace Jondo.Unity.Server.Managers
         /// </remarks>
         public static long ArrivalMap { get { Ensure(); return _arrivalMap; } }
 
-        public static int Count { get { Ensure(); return _all.Count; } }
         public static IReadOnlyList<Anomaly> All { get { Ensure(); return _all; } }
 
         /// <summary>

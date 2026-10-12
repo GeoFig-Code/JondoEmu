@@ -33,7 +33,7 @@ namespace Jondo.Unity.Tests.World
             foreach (var session in _sessions) SessionRegistry.Unregister(session);
             GuildRaidBoard.Forget();
             GuildStore.ConnectionStringOverride = null;
-            SqliteConnection.ClearAllPools();
+            TestDatabases.ReleasePool(_file);
             try { File.Delete(_file); } catch (IOException) { }
         }
 

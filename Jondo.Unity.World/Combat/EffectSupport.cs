@@ -212,7 +212,10 @@ namespace Jondo.Unity.World.Combat
         /// <summary>Heal a percentage of maximum life.</summary>
         public const int HealPercent = 1109;
 
-        /// <summary>Kill outright.</summary>
+        /// <summary>
+        /// Kill outright. It is also a summon's countdown: on being born one of these is hung on it
+        /// with its round, and when that round comes, the summon is undone.
+        /// </summary>
         public const int Kill = 141;
 
         /// <summary>Damage effects run from 91 to 100 and carry their element in the catalogue.</summary>

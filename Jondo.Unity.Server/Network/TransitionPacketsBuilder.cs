@@ -11,7 +11,6 @@ namespace Jondo.Unity.Server.Network
         // GROUP 1: Empty / Default Payload Messages (12 packets)
         // ==========================================
 
-        public static byte[] BuildLxsMessage() => BuildEmptyMessage(Op.Uri(Op.Lxs));
         public static byte[] BuildKltMessage() => BuildEmptyMessage("type.ankama.com/klt");
         public static byte[] BuildKlpMessage() => BuildEmptyMessage(Op.Uri(Op.Klp));
 

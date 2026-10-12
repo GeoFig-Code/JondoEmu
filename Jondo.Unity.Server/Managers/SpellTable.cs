@@ -13,7 +13,8 @@ namespace Jondo.Unity.Server.Managers
     ///
     /// Spells do not go loose: they go in PAIRS of base and variant, and the character carries ONE of
     /// each pair, the one he has chosen. There are 22 pairs per breed plus 13 common ones —weapon mastery,
-    /// zanahowia, the scroll summons— that do not depend on the breed.
+    /// zanahowia, the scroll summons— that do not depend on the breed, and that a character only has
+    /// once a scroll has taught them (<see cref="LearnedSpells"/>).
     ///
     /// That was read from the capture's hms, which is what settled the matter: a level 154 sacrier
     /// received 36 spells, not the 44 his breed has recorded, and the 22 missing ones were
@@ -46,7 +47,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Each breed's pairs, in the order the client declares them.</summary>
         private static readonly Dictionary<int, List<Pair>> _pairsByBreed = new Dictionary<int, List<Pair>>();
 
-        /// <summary>The common ones, which everyone carries.</summary>
+        /// <summary>The common ones, which a scroll teaches.</summary>
         private static readonly List<Pair> _common = new List<Pair>();
 
         /// <summary>spell id -> (grade -> level it asks for).</summary>
@@ -64,7 +65,6 @@ namespace Jondo.Unity.Server.Managers
         private static readonly object _lock = new object();
 
         public static bool IsLoaded { get { Ensure(); return _pairsByBreed.Count > 0; } }
-        public static int PairCount { get { Ensure(); return _pairsById.Count; } }
 
         /// <summary>
         /// Reads the spell tables, once per run. Kept as a separate call so the server pays for
@@ -231,36 +231,60 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A spell the character has, with the grade his level unlocks.</summary>
         public readonly struct KnownSpell
         {
-            public KnownSpell(int pairId, int spellId, int grade)
+            public KnownSpell(int pairId, int spellId, int grade, bool special = false)
             {
-                PairId = pairId; SpellId = spellId; Grade = grade;
+                PairId = pairId; SpellId = spellId; Grade = grade; Special = special;
             }
 
             public int PairId { get; }
             public int SpellId { get; }
             public int Grade { get; }
+
+            /// <summary>A special spell, learnt and not of the class: the hms carries it with origin 2.</summary>
+            public bool Special { get; }
         }
 
         /// <summary>
         /// The character's spells: one per pair, at the highest grade his level reaches.
         ///
-        /// First those of his breed and then the common ones, which is the order of the capture's hms.
+        /// First those of his breed and then the special ones, which is the order of the capture's hms.
         /// A pair of which no grade is reached does not travel: that is what makes a level 50's panel
         /// shorter than a level 200's.
         /// </summary>
-        public static List<KnownSpell> KnownFor(int breed, int level, IReadOnlyDictionary<int, int>? chosen = null)
+        /// <param name="learned">
+        /// The special spells learnt (<see cref="LearnedSpells"/>): a common pair goes when either of
+        /// its two is there, and a learnt spell of no pair -- Captura de Almas -- goes on its own. Null
+        /// gives every common pair, which is what the koliseo's bots carry.
+        /// </param>
+        public static List<KnownSpell> KnownFor(int breed, int level, IReadOnlyDictionary<int, int>? chosen = null,
+                                                IReadOnlyCollection<int>? learned = null)
         {
             Ensure();
             var known = new List<KnownSpell>();
 
             _pairsByBreed.TryGetValue(breed, out var own);
-            foreach (var pair in own ?? new List<Pair>()) Add(known, pair, level, chosen);
-            foreach (var pair in _common) Add(known, pair, level, chosen);
+            foreach (var pair in own ?? new List<Pair>()) Add(known, pair, level, chosen, special: false);
+            foreach (var pair in _common)
+            {
+                if (learned == null || learned.Contains(pair.Base) || learned.Contains(pair.Variant))
+                    Add(known, pair, level, chosen, special: true);
+            }
+            if (learned != null)
+            {
+                foreach (int spell in learned.OrderBy(s => s))
+                {
+                    if (PairOf(spell) != null) continue;
+                    int grade = HighestGrade(spell, level);
+                    // Its pair id is its own, negated: it has no pair, and must not share one.
+                    if (grade > 0) known.Add(new KnownSpell(-spell, spell, grade, special: true));
+                }
+            }
 
             return known;
         }
 
-        private static void Add(List<KnownSpell> into, Pair pair, int level, IReadOnlyDictionary<int, int>? chosen)
+        private static void Add(List<KnownSpell> into, Pair pair, int level, IReadOnlyDictionary<int, int>? chosen,
+                                bool special)
         {
             // What is chosen rules, and if nothing is chosen the base goes. If the level does not yet reach
             // the chosen one —the variant always asks for more— the other one travels: the pair is open and the
@@ -277,7 +301,24 @@ namespace Jondo.Unity.Server.Managers
                 wanted = wanted == pair.Base ? pair.Variant : pair.Base;
                 grade = HighestGrade(wanted, level);
             }
-            if (grade > 0) into.Add(new KnownSpell(pair.Id, wanted, grade));
+            if (grade > 0) into.Add(new KnownSpell(pair.Id, wanted, grade, special));
+        }
+
+        /// <summary>The common pairs, the special spells' -- the ones a scroll teaches.</summary>
+        public static IReadOnlyList<Pair> CommonPairs
+        {
+            get
+            {
+                Ensure();
+                return _common;
+            }
+        }
+
+        /// <summary>The common pair a spell belongs to, or null if it is in none.</summary>
+        public static Pair? CommonPairOf(int spellId)
+        {
+            Ensure();
+            return _common.FirstOrDefault(pair => pair.Holds(spellId));
         }
 
         /// <summary>The classes with spells of their own: every breed but the common spells' one.</summary>

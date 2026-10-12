@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace Jondo.Unity.Server.Managers
 {
@@ -16,9 +16,6 @@ namespace Jondo.Unity.Server.Managers
             public List<(int Slot, int Spell)> Bar { get; } = new();
         }
 
-        public static Layout Current(int breed, int level)
-            => Current(breed, level, 0);
-
         /// <summary>
         /// The in-fight bar, with the administration spells if the account is one.
         /// </summary>
@@ -33,12 +30,13 @@ namespace Jondo.Unity.Server.Managers
             SpellChoices.PlaceNewlyUnlocked(breed, level);
 
             var conocidos = new List<SpellTable.KnownSpell>(
-                SpellTable.KnownFor(breed, level, SpellChoices.Chosen));
+                SpellTable.KnownFor(breed, level, SpellChoices.Chosen,
+                                    LearnedSpells.For(Network.SessionContext.State.CharacterId, accountId)));
 
             if (AdminSpells.Para(accountId))
             {
-                conocidos.Add(new SpellTable.KnownSpell(
-                    AdminSpells.DoomDeMasas, AdminSpells.DoomDeMasas, AdminSpells.GradoDeDoom));
+                foreach (var (spell, grade) in AdminSpells.Granted)
+                    conocidos.Add(new SpellTable.KnownSpell(spell, spell, grade));
             }
 
             return Build(conocidos, SpellChoices.Bar);

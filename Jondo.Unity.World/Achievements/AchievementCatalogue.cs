@@ -211,8 +211,6 @@ namespace Jondo.Unity.World.Achievements
 
         public Achievement? Of(int id) => _byId.TryGetValue(id, out var a) ? a : null;
 
-        public AchievementCategory? CategoryOf(int id) => _categories.TryGetValue(id, out var c) ? c : null;
-
         public IReadOnlyCollection<AchievementCategory> Categories => _categories.Values;
 
         /// <summary>The achievements of one category, in the order the category lists them.</summary>

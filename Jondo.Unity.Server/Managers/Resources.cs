@@ -98,7 +98,6 @@ namespace Jondo.Unity.Server.Managers
         private static readonly ConcurrentDictionary<(long, int), bool> _busy = new();
 
         public static int Count => _byElement.Count;
-        public static int MapCount => _byMap.Count;
 
         public static void Initialize()
         {

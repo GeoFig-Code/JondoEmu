@@ -102,11 +102,21 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Each subzone's level, which is what the zaap list shows per destination.</summary>
         private static readonly Dictionary<int, int> _subAreaLevels = new Dictionary<int, int>();
 
+        /// <summary>
+        /// Each subzone's area, the "areaId" of its data: what an item's «Po» asks about. The
+        /// table's own AreaId column is empty.
+        /// </summary>
+        private static readonly Dictionary<int, int> _subAreaAreas = new Dictionary<int, int>();
+
+        /// <summary>
+        /// The subzones a prism can hold: «capturable» in their data, and not a conquest village,
+        /// which is fought over in its own way.
+        /// </summary>
+        private static readonly HashSet<int> _capturable = new HashSet<int>();
+
         /// <summary>Maps whose zaap has to be stated by hand because it is not recognised by the drawing.</summary>
         private static readonly Dictionary<long, int> _overrides = new Dictionary<long, int>();
 
-        public static int MapCount => _byMap.Count;
-        public static int WaypointCount => _ordered.Count;
         public static IReadOnlyList<Waypoint> Waypoints => _ordered;
         public static IEnumerable<long> MapIds => _byMap.Keys;
 
@@ -117,6 +127,8 @@ namespace Jondo.Unity.Server.Managers
             _waypoints.Clear();
             _ordered.Clear();
             _subAreaLevels.Clear();
+            _subAreaAreas.Clear();
+            _capturable.Clear();
 
             LoadWaypoints();
             LoadElements();
@@ -235,6 +247,18 @@ namespace Jondo.Unity.Server.Managers
                         {
                             _subAreaLevels[reader.GetInt32(0)] = value;
                         }
+                        if (doc.RootElement.TryGetProperty("areaId", out var area) &&
+                            area.TryGetInt32(out int areaId))
+                        {
+                            _subAreaAreas[reader.GetInt32(0)] = areaId;
+                        }
+                        if (doc.RootElement.TryGetProperty("capturable", out var capturable)
+                            && capturable.TryGetInt32(out int canBeTaken) && canBeTaken != 0
+                            && !(doc.RootElement.TryGetProperty("isConquestVillage", out var village)
+                                 && village.TryGetInt32(out int isVillage) && isVillage != 0))
+                        {
+                            _capturable.Add(reader.GetInt32(0));
+                        }
                     }
                     catch { }
                 }
@@ -273,11 +297,15 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
+        /// <summary>Whether a prism can hold this subzone.</summary>
+        public static bool IsCapturable(int subAreaId) => _capturable.Contains(subAreaId);
+
         public static int LevelOfSubArea(int subAreaId)
             => _subAreaLevels.TryGetValue(subAreaId, out int level) ? level : 0;
 
-        /// <summary>Does this map have a zaap?</summary>
-        public static bool HasZaap(long mapId) => _waypoints.ContainsKey(mapId);
+        /// <summary>The area a subzone belongs to, or -1 when it is not known: 45 is Incarnam.</summary>
+        public static int AreaOfSubArea(int subAreaId)
+            => _subAreaAreas.TryGetValue(subAreaId, out int area) ? area : -1;
 
         public static Waypoint? WaypointOf(long mapId)
             => _waypoints.TryGetValue(mapId, out var waypoint) ? waypoint : null;
@@ -388,17 +416,6 @@ namespace Jondo.Unity.Server.Managers
             => _measuredTypes.TryGetValue(gfx, out int type) ? type : -1;
 
         /// <summary>
-        /// The elements of a map that open the zaap list. One at most.
-        ///
-        /// Almost always it is the one recognised by the drawing. For the maps where that drawing does not
-        /// appear —today only the Temple of alliances— the element is stated by hand in
-        /// zaap_overrides.json, with the reasoning written inside.
-        ///
-        /// Before, on those maps ALL the elements were declared as a zaap so that the player would not
-        /// be locked in. It worked, but it turned the temple's doors into zaaps, which is
-        /// a lie: each element has its own thing and not everything is travelling.
-        /// </summary>
-        /// <summary>
         /// EVERYTHING on this map, without filtering by what it is.
         ///
         /// The accessors up here look for one concrete thing —the zaap, the haven bag one— and that
@@ -410,6 +427,17 @@ namespace Jondo.Unity.Server.Managers
                 ? found
                 : (IReadOnlyList<Element>)Array.Empty<Element>();
 
+        /// <summary>
+        /// The elements of a map that open the zaap list. One at most.
+        ///
+        /// Almost always it is the one recognised by the drawing. For the maps where that drawing does not
+        /// appear —today only the Temple of alliances— the element is stated by hand in
+        /// zaap_overrides.json, with the reasoning written inside.
+        ///
+        /// Before, on those maps ALL the elements were declared as a zaap so that the player would not
+        /// be locked in. It worked, but it turned the temple's doors into zaaps, which is
+        /// a lie: each element has its own thing and not everything is travelling.
+        /// </summary>
         public static List<Element> ZaapElements(long mapId)
         {
             var salida = new List<Element>();

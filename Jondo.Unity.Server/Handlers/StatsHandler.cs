@@ -471,6 +471,10 @@ namespace Jondo.Unity.Server.Handlers
                 }
             }
             bonus += GetSetBonus(statId);
+
+            // And what the alterations add -- a candy's wisdom, the Trool potion's initiative --,
+            // which the bonus slots' items already brought in through the cache above.
+            bonus += (int)Math.Clamp(Managers.Alterations.BonusOf(GameState.CharacterId, statId), int.MinValue, int.MaxValue);
             return bonus;
         }
 
@@ -571,7 +575,5 @@ namespace Jondo.Unity.Server.Handlers
             }
             return 0;
         }
-
-        private static void LogDebug(string msg) => Program.LogDebug(msg);
     }
 }

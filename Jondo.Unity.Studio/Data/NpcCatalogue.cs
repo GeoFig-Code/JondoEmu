@@ -15,12 +15,12 @@ namespace Jondo.Unity.Studio.Data
 
         public string Name { get; init; } = "";
 
-        /// <summary>How many lines its template declares, and how many replies.</summary>
         /// <summary>
         /// Its appearance, as <c>{bones|skins|colours|scales}</c>. What the client draws it from.
         /// </summary>
         public string Look { get; init; } = "";
 
+        /// <summary>How many lines its template declares, and how many replies.</summary>
         public int Messages { get; init; }
 
         public int Replies { get; init; }

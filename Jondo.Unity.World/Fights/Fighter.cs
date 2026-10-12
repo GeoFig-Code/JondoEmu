@@ -47,6 +47,15 @@ namespace Jondo.Unity.World.Fights
         public int LookBoneId { get; set; }
         public string Look { get; set; } = "";
 
+        /// <summary>
+        /// A tax collector's names, as the ids of the client's TaxCollectorFirstnames and
+        /// TaxCollectorNames; zero for every other fighter. A tax collector is fought as a monster
+        /// whose block says who it is by its names (f3 { f1 { f1 first, f2 last, f3 monster } })
+        /// instead of by its grade, measured in «atacar a recaudador y perder».
+        /// </summary>
+        public int TaxCollectorFirstName { get; set; }
+        public int TaxCollectorLastName { get; set; }
+
         // Combat Stats
         public int MaxHP { get; set; }
         public int CurrentHP { get; set; }
@@ -348,30 +357,6 @@ namespace Jondo.Unity.World.Fights
         public bool LeHanPegado { get; set; }
 
         /// <summary>
-        /// Temporary bonus to the base damage of a specific spell, together with the round it
-        /// expires on. Frozen Arrow, for instance, leaves +4 base damage for 3 turns, and recasting
-        /// it refreshes the deadline instead of stacking again (max stack 1).
-        /// </summary>
-        public Dictionary<int, (int Bonus, int ExpiresRound)> SpellDamageBuffs { get; }
-            = new Dictionary<int, (int, int)>();
-
-        public void ApplySpellDamageBuff(int spellId, int bonus, int duration, int currentRound)
-        {
-            SpellDamageBuffs[spellId] = (bonus, currentRound + duration);
-        }
-
-        public int GetSpellDamageBonus(int spellId, int currentRound)
-        {
-            if (!SpellDamageBuffs.TryGetValue(spellId, out var b)) return 0;
-            if (currentRound >= b.ExpiresRound)
-            {
-                SpellDamageBuffs.Remove(spellId);
-                return 0;
-            }
-            return b.Bonus;
-        }
-
-        /// <summary>
         /// The points for a new turn: the maximum plus whatever the live buffs say. A buff of
         /// points changes the current ones the moment it lands, and from then on it is the
         /// turn start that carries it -- "+1 PA durante 3 turnos" is one more on each of those
@@ -396,7 +381,11 @@ namespace Jondo.Unity.World.Fights
         /// displacement. Without this memory the effect has nowhere to send anyone back to, and sending
         /// them to some random place would be worse than doing nothing.
         /// </remarks>
-        public int CasillaAnterior { get; private set; } = -1;
+        /// <para>
+        /// Settable from outside only to put it back as it was: the bots' plans play their moves on
+        /// the fighters themselves and take them back (MonsterTactics.Simulation).
+        /// </para>
+        public int CasillaAnterior { get; set; } = -1;
 
         /// <summary>
         /// A monster's behaviour spell -- its grade's startingSpellId -- cast when the fight

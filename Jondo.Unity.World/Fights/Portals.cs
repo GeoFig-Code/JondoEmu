@@ -100,8 +100,6 @@ namespace Jondo.Unity.World.Fights
 
         public Portal ById(int id) => _portals.FirstOrDefault(p => p.Id == id);
 
-        public IEnumerable<Portal> Of(long owner) => _portals.Where(p => p.Owner == owner);
-
         /// <summary>The portal a new one of this owner pushes out, or null while he keeps fewer than four.</summary>
         public Portal Displaced(long owner)
         {

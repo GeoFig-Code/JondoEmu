@@ -165,44 +165,6 @@ namespace Jondo.Unity.Server
         }
 
         /// <summary>
-        /// A frame with a made-up length does not reserve memory.
-        ///
-        /// Five bytes «FF FF FF FF 07» asked for a 2 GB array before reading a single byte of
-        /// content, and eight connections were enough to bring the server down without
-        /// authenticating. It is tested with the largest varint that fits and with one that never
-        /// ends.
-        /// </summary>
-        /// <summary>
-        /// A malformed protobuf neither blows up nor takes the memory.
-        ///
-        /// What goes into ProtoMessage.Parse comes from the socket, so it can be wrong on purpose. A
-        /// field with a length larger than what is left asked for the array anyway -- up to 4 GB with
-        /// five bytes -- and an unused wire type threw an exception nobody caught, in the middle of the
-        /// routing.
-        /// </summary>
-        /// <summary>
-        /// Passwords are hashed, and the old ones are still accepted.
-        ///
-        /// They were stored as typed and the comparison was done by the SQL itself. What is checked
-        /// here is what keeps the change from locking anybody out: a password written in clear still
-        /// works ONCE, and that once it warns that it has to be rewritten.
-        /// </summary>
-        /// <summary>
-        /// No password can be taken from the log.
-        ///
-        /// The log goes to the console, to logs\emulator_console.log and to the buffer that serves
-        /// /api/registro. The passwords for signing in and for creating an account went through it in
-        /// clear.
-        /// </summary>
-        /// <summary>
-        /// The fight lock belongs to each session, not to all of them.
-        ///
-        /// It was a static SemaphoreSlim in FightHandler, one for the eight connections, and it is held
-        /// during the write to the socket: one slow client left everybody else unable to move a piece in
-        /// their own fight. It is checked that two sessions can hold it at the same time, which is
-        /// exactly what did not happen before.
-        /// </summary>
-        /// <summary>
         /// Item uids are handed out for the whole server, not per character.
         ///
         /// This was a real loss of items, checked on a copy of the database. The uid is unique across
@@ -248,46 +210,6 @@ namespace Jondo.Unity.Server
                     $"up to {enUso}. The next item saved will overwrite one that exists.");
         }
 
-        /// <summary>
-        /// The fight sheet carries the same characteristics, in the same order and in the same slot as
-        /// the real server's.
-        ///
-        /// The list below is NOT chosen: it is the 53 entries of the jxb of
-        /// «combate contra 4 poutchs nivel 25», in their exact order. And the slot matters as much as
-        /// the number: the client reads each characteristic from a specific place, and put in the other
-        /// one it reads zero.
-        ///
-        /// This caught two things at once. The first: we sent characteristic 84 -- push damage -- which
-        /// the real server does NOT send in any of its 53 entries, and right at the position where the
-        /// elemental damages start. The second: the five resistances went in the slot of invested points
-        /// when the real one sends them in the equipment's.
-        ///
-        /// Both are of the kind that give no error: the game goes on, the panel shows numbers, and the
-        /// only thing that looks odd is the damage preview showing a ridiculous figure.
-        /// </summary>
-        /// <summary>
-        /// The content layers merge the way they are supposed to, whatever order they load in.
-        ///
-        /// These four rules are the whole contract, and every domain built on top of the store
-        /// inherits them. Getting any of them wrong is the kind of bug that shows up as "my edit
-        /// disappeared" weeks later, with no way to tell whether it was ever saved.
-        /// </summary>
-        /// <summary>
-        /// Push damage, against the samples that measured it.
-        ///
-        /// They are the anchors from the 401 captures, and each one pins a different term of the
-        /// formula:
-        ///
-        ///   level 200 with nothing      33 per cell, that is 132 divided by four
-        ///   level 165, two cells        57, which is floor(2 × 114.5 / 4) and which no fixed constant
-        ///                               can give: it is what anchors the level term
-        ///   level 200 with 100 of 84    58, and 68, 78 and 88 as the mask adds 40, 80 or 120
-        ///   561 of 84 against 30        331 for two cells, which is what proves that the
-        ///                               resistance is subtracted INSIDE the quarter: outside it gives 316
-        ///
-        /// If somebody moves the 32, or takes the resistance out of the parentheses, or rounds per cell
-        /// instead of at the end, one of these four fails and the server does not start.
-        /// </summary>
         /// <summary>
         /// The Jondo Coin pays by bands of 25 levels, and the item that represents it exists.
         ///

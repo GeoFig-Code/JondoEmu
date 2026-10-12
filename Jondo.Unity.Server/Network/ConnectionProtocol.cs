@@ -186,14 +186,6 @@ namespace Jondo.Unity.Server.Network
         // ─── Game server: welcome burst ─────────────────────────────────────────
 
         /// <summary>
-        /// The burst the real server sends as soon as the client presents the ticket, in the
-        /// same order as the capture. It ends with the character list.
-        ///
-        /// kvc and krv were deliberately not copied from the capture: there they are client
-        /// messages, and the previous version of this emulator sent them back to the client
-        /// by mistake.
-        /// </summary>
-        /// <summary>
         /// The character list as it actually travels: three kqp, the list, and the gift catalogue.
         /// </summary>
         /// <remarks>
@@ -226,6 +218,14 @@ namespace Jondo.Unity.Server.Network
                 Push(Op.Jtg, BuildGiftCatalogue()),
             };
 
+        /// <summary>
+        /// The burst the real server sends as soon as the client presents the ticket, in the
+        /// same order as the capture. It ends with the character list.
+        ///
+        /// kvc and krv were deliberately not copied from the capture: there they are client
+        /// messages, and the previous version of this emulator sent them back to the client
+        /// by mistake.
+        /// </summary>
         /// <param name="withList">
         /// Whether the character list closes the burst. It does on an ordinary login; when a
         /// character of the account is still in a fight the real burst stops at the krs, the
@@ -322,16 +322,10 @@ namespace Jondo.Unity.Server.Network
             { 3, 7, 13, 20, 23, 105, 124, 125, 126, 136, 143, 145, 150 };
 
         /// <summary>
-        /// The game server's greeting, with the same values as the capture.
+        /// The game server's greeting, the frame that carries, among other things, what the account
+        /// is entitled to. The same values as the capture:
         ///
         ///   f1: 30   f2: 1   f3: 1   f6: language   f7: 200
-        ///
-        /// Without f5. We were sending an f5 = 2 that is in none of the three startup captures, and
-        /// the language went in English when the client starts in Spanish. They are the only two
-        /// differences that remained between our welcome burst and the real one.
-        /// </summary>
-        /// <summary>
-        /// The frame that carries, among other things, what the account is entitled to.
         /// </summary>
         /// <remarks>
         /// Field 5 is deliberately NOT written, and the reason is worth keeping because it was
@@ -659,14 +653,18 @@ namespace Jondo.Unity.Server.Network
                 ids = fallback;
             }
 
-            // What the equipment adds, which travels in field 7 of each entry.
+            // What the equipment adds, which travels in field 7 of each entry, and what the
+            // alterations add, in field 5: the larva race's kub carries «Influencia de Jibejan»'s
+            // +50 initiative there while it lasts, and drops it in the one after it is lost.
             var fromEquipment = Managers.Equipment.Bonuses();
+            var fromAlterations = Managers.Alterations.Bonuses(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
 
             foreach (int id in ids)
             {
                 long value = primary.TryGetValue(id, out long spent) ? spent : ValueOf(id, level);
                 fromEquipment.TryGetValue(id, out long equipped);
                 scrolled.TryGetValue(id, out long fromScrolls);
+                fromAlterations.TryGetValue(id, out long altered);
 
                 switch (WorldEntry.ContainerOf(id))
                 {
@@ -674,7 +672,7 @@ namespace Jondo.Unity.Server.Network
                         // Action and movement points: f1 is the base, f5 whatever adds to it.
                         body.Msg(11, Pb.New()
                             .Var(1, id)
-                            .Msg(5, Pb.New().Var(1, value).VarIfNotZero(5, equipped)));
+                            .Msg(5, Pb.New().Var(1, value).VarIfNotZero(5, equipped + altered)));
                         break;
 
                     case 2:
@@ -682,7 +680,7 @@ namespace Jondo.Unity.Server.Network
                         break;
 
                     default:
-                        AddStat(body, id, value, equipped, fromScrolls);
+                        AddStat(body, id, value, equipped, fromScrolls, altered);
                         break;
                 }
             }
@@ -732,21 +730,24 @@ namespace Jondo.Unity.Server.Network
             Pb.New().Var(2, 2).Msg(3, Pb.New().Var(3, 500)).Var(5, 1).Build();
 
         /// <summary>
-        /// One characteristic: f2 the base, f3 what the scrolls gave, f7 what the equipment adds.
+        /// One characteristic: f2 the base, f3 what the scrolls gave, f5 what the alterations add, f7
+        /// what the equipment adds.
         /// </summary>
         /// <remarks>
         /// f3 is MEASURED: every scrolled character in the captures carries its scrolls there --
         /// <c>f4 { f2: 398, f3: 100, f7: 499 }</c> is a real strength -- and a characteristic the
         /// player never scrolled leaves it out, as proto3 does with a zero.
         /// </remarks>
-        private static void AddStat(Pb body, int id, long value, long fromEquipment = 0, long fromScrolls = 0)
+        private static void AddStat(Pb body, int id, long value, long fromEquipment = 0, long fromScrolls = 0,
+                                    long fromAlterations = 0)
         {
             // Characteristic 0 is life, and it is the one entry of the real message that carries
             // no id at all: proto3 leaves the field out when the value is zero, and zero is its
             // id. Writing Var(1, 0) here would put a field the real one does not have.
             var entry = Pb.New();
             if (id != 0) entry.Var(1, id);
-            entry.Msg(4, Pb.New().VarIfNotZero(2, value).VarIfNotZero(3, fromScrolls).VarIfNotZero(7, fromEquipment));
+            entry.Msg(4, Pb.New().VarIfNotZero(2, value).VarIfNotZero(3, fromScrolls)
+                                 .VarIfNotZero(5, fromAlterations).VarIfNotZero(7, fromEquipment));
             body.Msg(11, entry);
         }
 
@@ -914,6 +915,11 @@ namespace Jondo.Unity.Server.Network
             }
 
             AddNpcs(jss, mapId);
+
+            // The alliance tax collector standing here, if any: an actor of kind 6; and the
+            // prism, of kind 2.
+            Handlers.TaxCollectorHandler.AddToMap(jss, mapId);
+            Handlers.PrismHandler.AddToMap(jss, mapId);
 
             // Behind the actors, which is where the capture puts it.
             var where = MapManager.GetMapInfo(mapId);
@@ -1166,22 +1172,6 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
-        /// What only whoever carries the quest sees: the trail, the spyglass, the sign.
-        ///
-        /// It goes apart from the registry on purpose. The registry belongs to the world and is the same for everyone —the
-        /// zaap is there for anyone—, and this belongs to ONE player: the trail appears on taking the
-        /// quest and goes away on meeting its objective. Putting it in the registry would have made the
-        /// first false.
-        ///
-        /// Being able to ask per player here is not new: <see cref="Declare"/> already looks at the
-        /// profession level of whoever looks at the map to decide whether a resource is offered to him or
-        /// drawn in red. This jss is built once per player and per arrival on the map.
-        ///
-        /// The skill goes in f4 and without state, like everything that is not a resource. 114 is
-        /// «Utiliser», the same one the client uses for the anomaly vestige, and of it the
-        /// captures say the client answers with its iwo all the same.
-        /// </summary>
-        /// <summary>
         /// This map's signs and books, declared as pressable.
         /// </summary>
         /// <remarks>
@@ -1213,6 +1203,22 @@ namespace Jondo.Unity.Server.Network
             }
         }
 
+        /// <summary>
+        /// What only whoever carries the quest sees: the trail, the spyglass, the sign.
+        ///
+        /// It goes apart from the registry on purpose. The registry belongs to the world and is the same for everyone —the
+        /// zaap is there for anyone—, and this belongs to ONE player: the trail appears on taking the
+        /// quest and goes away on meeting its objective. Putting it in the registry would have made the
+        /// first false.
+        ///
+        /// Being able to ask per player here is not new: <see cref="Declare"/> already looks at the
+        /// profession level of whoever looks at the map to decide whether a resource is offered to him or
+        /// drawn in red. This jss is built once per player and per arrival on the map.
+        ///
+        /// The skill goes in f4 and without state, like everything that is not a resource. 114 is
+        /// «Utiliser», the same one the client uses for the anomaly vestige, and of it the
+        /// captures say the client answers with its iwo all the same.
+        /// </summary>
         private static void AddQuestElements(Pb jss, long mapId)
         {
             foreach (var binding in Managers.Quests.Bindings.OnMap(mapId))
@@ -1362,10 +1368,6 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
-        /// Level of a spawned monster: the one the spawner rolled, or failing that the one its
-        /// grade declares.
-        /// </summary>
-        /// <summary>
         /// The groups a dungeon room shows by team size, behind the leader in the same f2:
         ///
         ///   f3 { f1 (repeated): member { f1: id, f2: level, f4: grade }   f2: team size }
@@ -1393,6 +1395,10 @@ namespace Jondo.Unity.Server.Network
             }
         }
 
+        /// <summary>
+        /// Level of a spawned monster: the one the spawner rolled, or failing that the one its
+        /// grade declares.
+        /// </summary>
         private static long LevelOf(Managers.MobSpawnManager.MobMember member)
         {
             if (member.Level > 0) return member.Level;
@@ -1467,17 +1473,8 @@ namespace Jondo.Unity.Server.Network
         // ─── World: spells ──────────────────────────────────────────────────────
 
         /// <summary>
-        /// The spells the character has (hms), each at the grade its level has opened.
-        ///
-        ///   f1 (repeated) { f1: grade, f3: spell id, f4: 1 }
-        ///
-        /// The captured one belongs to a level 154 Sacrieur, which is why a level 50 Cra was
-        /// holding somebody else's spells. Both the list and the grades come from the client's own
-        /// data through <see cref="SpellTable"/>; only the breed and the level are ours.
-        /// </summary>
-        /// <summary>
         /// Where the spell comes from: 1 the class ones, 2 the ones that are not —melee,
-        /// item ones, mount ones—.
+        /// item ones, mount ones, the special ones a scroll teaches—.
         /// </summary>
         private const int OrigenQueNoEsDeClase = 2;
 
@@ -1496,15 +1493,28 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         private const int GradoDelCuerpoACuerpo = 1;
 
+        /// <summary>
+        /// The spells the character has (hms), each at the grade its level has opened.
+        ///
+        ///   f1 (repeated) { f1: grade, f3: spell id, f4: 1 }
+        ///
+        /// The captured one belongs to a level 154 Sacrieur, which is why a level 50 Cra was
+        /// holding somebody else's spells. Both the list and the grades come from the client's own
+        /// data through <see cref="SpellTable"/>; only the breed and the level are ours.
+        /// </summary>
         public static byte[] BuildSpellList(int breed, int level, long accountId = 0)
         {
             var hms = Pb.New();
 
             hms.Msg(1, Pb.New().Var(1, GradoDelCuerpoACuerpo).Var(4, OrigenQueNoEsDeClase));
 
-            foreach (var spell in SpellTable.KnownFor(breed, level, Managers.SpellChoices.Chosen))
+            // The class's with origin 1, and the special ones learnt from scrolls with the 2 of the
+            // melee: the level 200 of the captures carries his ten that way, after his 22.
+            var learned = Managers.LearnedSpells.For(Jondo.Unity.Server.Network.SessionContext.State.CharacterId, accountId);
+            foreach (var spell in SpellTable.KnownFor(breed, level, Managers.SpellChoices.Chosen, learned))
             {
-                hms.Msg(1, Pb.New().Var(1, spell.Grade).Var(3, spell.SpellId).Var(4, 1));
+                hms.Msg(1, Pb.New().Var(1, spell.Grade).Var(3, spell.SpellId)
+                                   .Var(4, spell.Special ? OrigenQueNoEsDeClase : 1));
             }
 
             // And the administration ones, which go after and only for whoever is one. The role is checked
@@ -1512,10 +1522,8 @@ namespace Jondo.Unity.Server.Network
             // in, with nothing stored in the session going stale.
             if (Managers.AdminSpells.Para(accountId))
             {
-                hms.Msg(1, Pb.New()
-                    .Var(1, Managers.AdminSpells.GradoDeDoom)
-                    .Var(3, Managers.AdminSpells.DoomDeMasas)
-                    .Var(4, 1));
+                foreach (var (spell, grade) in Managers.AdminSpells.Granted)
+                    hms.Msg(1, Pb.New().Var(1, grade).Var(3, spell).Var(4, 1));
             }
 
             // The loose f2 at the end, which is the same kind of oversight the spell bar
@@ -2495,6 +2503,15 @@ namespace Jondo.Unity.Server.Network
             if (guild != null)
             {
                 humanoidBody.Msg(5, Pb.New().Msg(4, GuildProtocol.GuildBlock(guild)));
+            }
+
+            // The alliance, right behind the guild: f5 { f5 { f2 alliance } }, as the jsn that
+            // redraws the character on joining «A B S I N T O» carries it. It is what puts the
+            // alliance's tag by his name.
+            var alliance = Managers.AllianceStore.AllianceOf(characterId);
+            if (alliance != null)
+            {
+                humanoidBody.Msg(5, Pb.New().Msg(5, Pb.New().Msg(2, AllianceProtocol.Block(alliance))));
             }
 
             var (title, ornament) = Managers.Wardrobe.Of(characterId);

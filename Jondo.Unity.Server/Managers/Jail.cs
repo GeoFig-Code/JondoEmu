@@ -59,6 +59,13 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The sentences' clock. Held here so the timer outlives the method that starts it.</summary>
         private static Timer? _clock;
 
+        /// <summary>
+        /// One tick at a time. The clock fires every five seconds whatever the last tick is doing,
+        /// and a tick held up -- a prisoner's session busy, a slow socket -- had the next one
+        /// releasing the same prisoner again behind it.
+        /// </summary>
+        private static int _ticking;
+
         /// <summary>How long to wait for a session's turn before giving up on it this time.</summary>
         private static readonly TimeSpan TurnWait = TimeSpan.FromSeconds(5);
 
@@ -103,8 +110,10 @@ namespace Jondo.Unity.Server.Managers
 
             _clock ??= new Timer(_ =>
             {
+                if (Interlocked.Exchange(ref _ticking, 1) != 0) return;
                 try { TickAsync().GetAwaiter().GetResult(); }
                 catch (Exception ex) { Console.WriteLine($"[Jail] The clock failed: {ex.Message}"); }
+                finally { Interlocked.Exchange(ref _ticking, 0); }
             }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
         }
 
@@ -293,6 +302,8 @@ namespace Jondo.Unity.Server.Managers
             {
                 var refused = await InTurnAsync(session, async () =>
                 {
+                    // Looked at again inside his turn: somebody may have let him out meanwhile.
+                    if (!_prisoners.ContainsKey(characterId)) return Refusal.NotIn;
                     if (session.State.IsInFight) return Refusal.InFight;
                     Forget(characterId);
                     await EscortAsync(session.Stream!, sentence.ReturnMapId, sentence.ReturnCellId);

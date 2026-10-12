@@ -92,8 +92,6 @@ namespace Jondo.Unity.Server.Managers
         /// </remarks>
         private static readonly ConcurrentDictionary<long, int> _lastMode = new();
 
-        public static int Pending => _offers.Count;
-
         /// <summary>Opens an offer for the two teams already matched.</summary>
         public static Offer Open(int mode, int teamSize, IReadOnlyList<long> blue,
                                  IReadOnlyList<long> red)
@@ -120,8 +118,6 @@ namespace Jondo.Unity.Server.Managers
             => _of.TryGetValue(characterId, out long id) && _offers.TryGetValue(id, out var offer)
                 ? offer
                 : null;
-
-        public static Offer? ById(long id) => _offers.TryGetValue(id, out var offer) ? offer : null;
 
         /// <summary>
         /// Records a yes. Returns true when EVERYONE has already said yes, which is when the

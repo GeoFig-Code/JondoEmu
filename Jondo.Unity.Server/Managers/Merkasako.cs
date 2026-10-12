@@ -47,9 +47,6 @@ namespace Jondo.Unity.Server.Managers
         private static readonly HashSet<long> _maps = new HashSet<long>();
         private static readonly HashSet<long> _furniture = new HashSet<long>();
 
-        public static int ThemeCount => _themes.Count;
-        public static int FurnitureCount => _furniture.Count;
-
         public static void Initialize()
         {
             _themes.Clear();

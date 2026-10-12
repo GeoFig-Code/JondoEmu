@@ -48,15 +48,5 @@ namespace Jondo.Unity.Server.Network
             if (string.IsNullOrEmpty(secreto)) return "(empty)";
             return secreto.Length <= 4 ? "***" : secreto.Substring(0, 4) + "***";
         }
-
-        /// <summary>
-        /// Does this text carry something that should not be written? The regression guard uses it to
-        /// look at the real log, not only the code.
-        /// </summary>
-        public static bool Delata(string? texto)
-        {
-            if (string.IsNullOrEmpty(texto)) return false;
-            return EnJson.IsMatch(texto);
-        }
     }
 }

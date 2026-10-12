@@ -221,10 +221,14 @@ namespace Jondo.Unity.Launcher
         ///
         /// The server only accepts it if the token is still in the base under that account's name:
         /// the launcher cannot claim to be whoever it fancies.
+        ///
+        /// It does not make the token the window's session: that was set before asking, one account
+        /// after another, so the window was left with the last stored token whether the server took
+        /// it or not, and its two-second pulse kept presenting a dead one. The window picks its
+        /// session among the accepted ones.
         /// </summary>
         public static bool RememberSession(long accountId, string token)
         {
-            Network.ControlClient.Token = token ?? "";
             var cuerpo = ControlClient.Pedir("recordar-token",
                 new { cuenta = accountId, token }).Cuerpo();
 

@@ -105,6 +105,14 @@ namespace Jondo.Unity.Server.Handlers
         /// </remarks>
         private static void PlanRewards(FightInstance fight)
         {
+            // A tax collector's attackers share its bag; a prism pays nothing, and the defenders of
+            // either win nothing but having saved it.
+            if (fight.DefendingAllianceId != 0)
+            {
+                var shares = TaxCollectorHandler.ShareTheBag(fight);
+                if (shares.Count > 0) _rewards[fight.FightId] = shares.ToDictionary(s => s.Key, s => new Reward { Loot = s.Value });
+                return;
+            }
             if (!fight.Reglas.ReparteBotin || fight.Reglas.PagaElKoliseo) return;
 
             bool won = fight.Azul.Concat(fight.Rojo).Any(f => !f.IsMonster && !f.EsInvocado && fight.HaGanado(f.Id));

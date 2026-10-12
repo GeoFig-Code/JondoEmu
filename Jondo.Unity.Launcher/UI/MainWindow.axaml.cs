@@ -43,6 +43,12 @@ namespace Jondo.Unity.Launcher.UI
             public long ExpiresAtUnix { get; set; }
             public bool Selected { get; set; }
 
+            /// <summary>
+            /// The server refused its stored session: it stays in the team, to be logged in again,
+            /// but nothing is asked or launched with its token.
+            /// </summary>
+            public bool SessionExpired { get; set; }
+
             /// <summary>The character shown in the row, once the server has said so.</summary>
             public LauncherService.Character? Personaje { get; set; }
 
@@ -139,8 +145,19 @@ namespace Jondo.Unity.Launcher.UI
                     RefreshToken = guardada.RefreshToken,
                     ExpiresAtUnix = guardada.ExpiresAtUnix,
                     Selected = guardada.Selected,
+                    SessionExpired = !vivas.Contains(guardada.AccountId),
                 });
             }
+
+            // The window's session: one the server took, a selected one first. With none, the
+            // pulse asks without a token rather than with a dead one -- which it did every two
+            // seconds, and every time the server wrote that it did not know it. Not over a login
+            // made while this was asking, which already set its own.
+            var sesion = _cuentas.Where(a => !a.SessionExpired)
+                                 .OrderByDescending(a => a.Selected)
+                                 .FirstOrDefault();
+            if (sesion != null && Network.ControlClient.Token.Length == 0)
+                Network.ControlClient.Token = sesion.Token;
 
             // If the server has rejected ALL the stored sessions, one has to log in again:
             // the accounts section is shown instead of a team with a button that would fail.
@@ -148,6 +165,14 @@ namespace Jondo.Unity.Launcher.UI
             {
                 _seccion = Seccion.Cuentas;
                 Avisar(_textos.SessionExpiredError);
+            }
+            else
+            {
+                // Some of them: the team plays with the rest, and is told which to log in again.
+                var caducadas = _cuentas.Where(a => a.SessionExpired)
+                                        .Select(a => a.Nickname + " : " + _textos.SessionExpiredError)
+                                        .ToList();
+                if (caducadas.Count > 0) Avisar(string.Join(Environment.NewLine, caducadas));
             }
 
             RefrescarResumen();
@@ -203,6 +228,7 @@ namespace Jondo.Unity.Launcher.UI
         {
             foreach (var cuenta in _cuentas)
             {
+                if (cuenta.SessionExpired) continue;
                 string token = cuenta.Token;
                 var personajes = await Task.Run(() => LauncherService.CharactersOf(token));
                 if (personajes.Count == 0) continue;
@@ -1015,6 +1041,11 @@ namespace Jondo.Unity.Launcher.UI
                     foreach (var cuenta in elegidas)
                     {
                         if (LauncherService.IsActive(cuenta.AccountId)) continue;
+                        if (cuenta.SessionExpired)
+                        {
+                            malos.Add(cuenta.Nickname + " : " + _textos.SessionExpiredError);
+                            continue;
+                        }
                         var resultado = LauncherService.LaunchClient(cuenta.Token);
                         if (!resultado.Success) malos.Add(cuenta.Nickname + " : " + resultado.Message);
                     }

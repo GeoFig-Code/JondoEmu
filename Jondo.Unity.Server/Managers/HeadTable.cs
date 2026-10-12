@@ -134,15 +134,5 @@ namespace Jondo.Unity.Server.Managers
             if (fallback > 0 && _heads.TryGetValue(fallback, out var byDefault)) return byDefault.Skin;
             return 0;
         }
-
-        /// <summary>Whether a head can be picked for that breed and sex when creating a character.</summary>
-        public static bool IsValidAtCreation(int headId, int breedId, int sex)
-        {
-            Ensure();
-            return _heads.TryGetValue(headId, out var head)
-                   && head.Creation
-                   && head.Breed == breedId
-                   && head.Gender == (sex == 1 ? 1 : 0);
-        }
     }
 }

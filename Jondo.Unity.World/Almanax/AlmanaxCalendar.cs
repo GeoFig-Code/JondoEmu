@@ -164,8 +164,6 @@ namespace Jondo.Unity.World.Almanax
         public bool Ready => _byId.Count > 0;
         public int Count => _byId.Count;
 
-        public AlmanaxDay? Of(int id) => _byId.TryGetValue(id, out var day) ? day : null;
-
         /// <summary>Whether a quest is one of the offerings.</summary>
         public bool IsOffering(int questId) => _byQuest.ContainsKey(questId);
 

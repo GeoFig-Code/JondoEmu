@@ -560,17 +560,6 @@ namespace Jondo.Unity.World.Maps
         }
 
         /// <summary>
-        /// Whether a displacement moves AWAY from the place it starts from or towards it. It is what decides with
-        /// which number it travels on the wire: 5 moving away, 6 moving closer.
-        /// </summary>
-        public static bool SeAleja(int desde, int hasta, int centro, int deQuienLanza)
-        {
-            int origen = (MapGeometry.IsValid(centro) && centro != desde) ? centro : deQuienLanza;
-            if (!MapGeometry.IsValid(origen)) return true;
-            return MapGeometry.Distance(origen, hasta) >= MapGeometry.Distance(origen, desde);
-        }
-
-        /// <summary>
         /// The first fighter on the straight line from <paramref name="desde"/> towards
         /// <paramref name="hasta"/>: before the aimed cell (<paramref name="beyond"/> false,
         /// strictly between the two) or past it (true, from the cell after the aimed one to the

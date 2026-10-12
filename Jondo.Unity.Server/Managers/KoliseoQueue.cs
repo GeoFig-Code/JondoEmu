@@ -96,16 +96,6 @@ namespace Jondo.Unity.Server.Managers
             lock (_gate) return FindUnit(characterId, out _, out _) != null;
         }
 
-        /// <summary>The oldest wait in a mode, or null when nobody waits there.</summary>
-        public static TimeSpan? LongestWait(int mode)
-        {
-            lock (_gate)
-            {
-                if (!_byMode.TryGetValue(mode, out var units) || units.Count == 0) return null;
-                return Clock() - units.Min(u => u.Since);
-            }
-        }
-
         /// <summary>Enrols one player. False if he was already waiting, anywhere.</summary>
         public static bool Enrol(long characterId, int mode) => EnrolUnit(new[] { characterId }, mode) > 0;
 

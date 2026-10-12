@@ -57,8 +57,12 @@ namespace Jondo.Unity.Server.Handlers
             // and it still has to be shown.
             if (lectura != null)
             {
-                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                    ConnectionProtocol.Push(Op.Kkt, Pb.New().Var(2, lectura.Document).Build()));
+                // A plain document awaits its close button; one that asks closes as the question does.
+                if (lectura.Asks)
+                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                        ConnectionProtocol.Push(Op.Kkt, Pb.New().Var(2, lectura.Document).Build()));
+                else
+                    await ReadingItemHandler.OpenAsync(stream, lectura.Document);
 
                 // And after it, if it asks, the question. After the document because first one reads
                 // and then decides, which is the order a person does it in.
@@ -143,6 +147,9 @@ namespace Jondo.Unity.Server.Handlers
                     break;
                 case InteractiveActionKind.GuildFounding:
                     await GuildHandler.OpenFoundingAsync(stream, interactive.Element.Id, action.SkillId);
+                    break;
+                case InteractiveActionKind.AllianceFounding:
+                    await AllianceHandler.UseTempleAsync(stream, interactive.Element.Id, action.SkillId);
                     break;
                 case InteractiveActionKind.Marketplace:
                     await MarketplaceHandler.OpenAsync(interactive.Element.Id, action.SkillId);

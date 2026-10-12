@@ -1,4 +1,4 @@
-namespace Jondo.Unity.Server.Managers
+﻿namespace Jondo.Unity.Server.Managers
 {
     /// <summary>
     /// The bits of a spell level's <c>m_flags</c>, the SpellLevels.Flags column: the client's
@@ -17,6 +17,12 @@ namespace Jondo.Unity.Server.Managers
     /// </remarks>
     public static class SpellLevelFlags
     {
+        /// <summary>
+        /// The caster's range adds to the spell's: Casca's 1-6 reaches farther with +6 range, Ira de
+        /// Yopuka's 1-1 and Conquista's 1-6 do not.
+        /// </summary>
+        public const int RangeCanBeBoosted = 1 << 6;
+
         /// <summary>The cell it lands on must hold no portal: Portal, Errancia, Exilio.</summary>
         public const int NeedCellWithoutPortal = 1 << 11;
 

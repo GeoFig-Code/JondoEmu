@@ -46,8 +46,6 @@ namespace Jondo.Unity.Server.Managers
 
         private static readonly Dictionary<int, Look> _byItem = new Dictionary<int, Look>();
 
-        public static int Count => _byItem.Count;
-
         /// <summary>Every mount's look, once each: a dragoturkey of each colour, a seemum, a rhineetle...</summary>
         public static IReadOnlyList<Look> AllLooks
             => _byItem.Values.GroupBy(l => (l.Bones, string.Join(",", l.Colors))).Select(g => g.First()).ToList();

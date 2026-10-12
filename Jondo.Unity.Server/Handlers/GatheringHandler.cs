@@ -155,7 +155,7 @@ namespace Jondo.Unity.Server.Handlers
                     instance, skillId, resource.ElementId, resource.Type, usable: false)));
         }
 
-        /// <summary>La segunda tanda, tres segundos después.</summary>
+        /// <summary>The second batch, three seconds later.</summary>
         private static async Task FinishAsync(GameSession session, NetworkStream stream,
                                               Resources.Resource resource, int skillId,
                                               int instance, int jobLevel)
@@ -165,6 +165,9 @@ namespace Jondo.Unity.Server.Handlers
                 await Task.Delay(Resources.GatherTenths * 100);
 
                 using var _ = SessionContext.Push(session);
+
+                // The session's turn: the player may be moving things in his bag right now.
+                using var turn = await session.EnterTurnAsync();
 
                 // If he has left the map, the resource is released and he is given nothing: the client
                 // no longer has that element on screen and he would get messages from a place where he

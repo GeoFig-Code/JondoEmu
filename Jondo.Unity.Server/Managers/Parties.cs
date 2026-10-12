@@ -64,8 +64,6 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Which party each character is in, whether inside or invited.</summary>
         private static readonly ConcurrentDictionary<long, int> _of = new();
 
-        public static int Count => _parties.Count;
-
         public static Party? Get(int id) => _parties.TryGetValue(id, out var p) ? p : null;
 
         /// <summary>A character's party, whether he is inside or has an open invitation.</summary>

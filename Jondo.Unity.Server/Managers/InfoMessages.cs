@@ -49,10 +49,50 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>«{0} acaba de volver a conectarse al combate.» Goes with <see cref="Warning"/>.</summary>
         public const int BackInTheFight = 184;
 
+        /// <summary>
+        /// «Acción imposible: para poder cambiar de rango, un miembro debe llevar en tu gremio al menos
+        /// {0} horas.» Goes with <see cref="Warning"/>: "080110e40522023234", the hours as "24".
+        /// </summary>
+        public const int RankChangeTooSoon = 740;
+
+        /// <summary>
+        /// «Logro necesario.» Goes with <see cref="Warning"/>: "080110f302", all a real server
+        /// answers an ankla used without the achievement its criterion asks for («intentar usar
+        /// anklas sin logros-rechazado», four times).
+        /// </summary>
+        public const int AchievementNeeded = 371;
+
+        /// <summary>
+        /// «No cumples los requisitos.» Goes with <see cref="Warning"/>. INFERRED: what an item is
+        /// refused with when what fails is neither an achievement nor the characteristics; no
+        /// capture refuses one so.
+        /// </summary>
+        public const int RequirementsNotMet = 1;
+
+        /// <summary>
+        /// «Tus características no te lo permiten.» Goes with <see cref="Warning"/>: "08011013", a
+        /// small agility scroll used past its 25 («intentar usar pergamino agilidad-rechazado por
+        /// tener ya mas base»), and nothing else -- the scroll stays.
+        /// </summary>
+        public const int CharacteristicsForbid = 19;
+
+        /// <summary>
+        /// «Verifica las actitudes que ya conoces e inténtalo de nuevo...» Goes with
+        /// <see cref="Warning"/>: an attitude scroll whose attitude is already known. INFERRED from
+        /// its words; no capture uses one.
+        /// </summary>
+        public const int AttitudeAlreadyKnown = 58;
+
         // ─── The ones the emulator uses, with their text alongside ──────────────
 
         /// <summary>«Has ganado $quantity{0} kamas.»</summary>
         public const int KamasGained = 45;
+
+        /// <summary>
+        /// «El jugador &lt;b&gt;{0}&lt;/b&gt; acaba de unirse al gremio.» Info, the name as its one
+        /// parameter: what whoever invited gets when the invitation is accepted.
+        /// </summary>
+        public const int GuildMemberJoined = 1423;
 
         /// <summary>«Has perdido $quantity{0} kamas.»</summary>
         public const int KamasLost = 46;
@@ -65,6 +105,53 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>«Has conseguido {0} '$item{1}'.»</summary>
         public const int ItemGained = 21;
+
+        /// <summary>«Has recuperado &lt;b&gt;{0}&lt;/b&gt; puntos de vida.» Info, the life healed.</summary>
+        public const int LifeRecovered = 1;
+
+        /// <summary>«Has recuperado &lt;b&gt;{0}&lt;/b&gt; puntos de energía.» Info, the energy given back.</summary>
+        public const int EnergyRecovered = 7;
+
+        /// <summary>
+        /// «Has ganado &lt;b&gt;{0}&lt;/b&gt; puntos de sabiduría / fuerza / suerte / agilidad /
+        /// vitalidad / inteligencia.» Info, one per characteristic in this order, 9 to 14: what a
+        /// scroll gave.
+        /// </summary>
+        public const int WisdomGained = 9;
+        public const int StrengthGained = 10;
+        public const int ChanceGained = 11;
+        public const int AgilityGained = 12;
+        public const int VitalityGained = 13;
+        public const int IntelligenceGained = 14;
+
+        /// <summary>«Ya tienes todos tus puntos de vida» Info: a healing item used with the life full.</summary>
+        public const int LifeAlreadyFull = 225;
+
+        /// <summary>
+        /// «Los puntos de energía ya están al máximo.» Info: "lqn { f2: 253 }" is all the real server
+        /// answers an energy item used with the gauge full, and the item stays («ruta muy larga»).
+        /// </summary>
+        public const int EnergyAlreadyFull = 253;
+
+        /// <summary>
+        /// «Has perdido la alteración «$alteration{0}»» Info: right behind each lzo, with the
+        /// alteration as its one parameter, as the larva race ends the Trool potion's two.
+        /// </summary>
+        public const int AlterationLost = 1665;
+
+        /// <summary>
+        /// «Has ganado {0} XP en el oficio de $job{1}.» Info: a job scroll read. INFERRED from its words.
+        /// </summary>
+        public const int JobExperienceGained = 17;
+
+        /// <summary>«Has aprendido el hechizo $spell{0}.» Info: a spell scroll read. INFERRED from its words.</summary>
+        public const int SpellLearned = 3;
+
+        /// <summary>
+        /// «Ya has aprendido el hechizo $spell{0}.» <see cref="Warning"/>: a scroll of a spell already
+        /// known, and the scroll stays. INFERRED from its words.
+        /// </summary>
+        public const int SpellAlreadyLearned = 628;
 
         /// <summary>«$quantity{2} x {{item,{0},{1}}} ($quantity{3} kamas)», the purchase.</summary>
         public const int Purchase = 252;

@@ -58,6 +58,31 @@ namespace Jondo.Unity.World.Fights
         private readonly object _candadoDelTurno = new object();
 
         /// <summary>
+        /// The fight's turn: one at a time touches it.
+        /// </summary>
+        /// <remarks>
+        /// A fight is shared: a party, a challenge, the koliseo, the defenders of a tax collector
+        /// all act on it from their own connections, and its clocks from the pool's threads. The
+        /// session's own lock (GameSession.UnoCadaVez) only kept ONE connection from trampling
+        /// itself, so two people pressing ready at once started the fight twice, two of a party
+        /// took one placement cell, and a turn clock armed from one session passed the turn while
+        /// the player whose turn it was cast from his. Whoever acts on a fight from outside it --
+        /// what the client sends about the fight, its clocks, somebody joining or leaving it --
+        /// takes this first, after his session's own lock and never before it.
+        ///
+        /// It is not reentrant: it is taken where the work comes in, never inside it.
+        /// </remarks>
+        public SemaphoreSlim Turno { get; } = new SemaphoreSlim(1, 1);
+
+        private int _arrancado;
+
+        /// <summary>
+        /// Whether this is the first call to start the fight for real: the burst that opens it goes
+        /// out once, whoever asks for it second.
+        /// </summary>
+        public bool TryClaimStart() => Interlocked.Exchange(ref _arrancado, 1) == 0;
+
+        /// <summary>
         /// Lets through ONE single confirmation per turn.
         /// </summary>
         /// <remarks>
@@ -170,6 +195,15 @@ namespace Jondo.Unity.World.Fights
 
         /// <summary>The Koliseo mode this fight was matched in, for the ladder; -1 for none.</summary>
         public int KoliseoMode { get; set; } = -1;
+
+        /// <summary>The uuid of the tax collector being attacked, or null when this is not such a fight.</summary>
+        public string TaxCollectorUuid { get; set; }
+
+        /// <summary>
+        /// The alliance whose tax collector or prism is attacked, or zero. Its side takes people
+        /// although it has a monster on it: the members of that alliance who come to defend.
+        /// </summary>
+        public long DefendingAllianceId { get; set; }
 
         public List<int> BluePlacementCells { get; } = new List<int>();
         public List<int> RedPlacementCells { get; } = new List<int>();
@@ -480,10 +514,6 @@ namespace Jondo.Unity.World.Fights
         }
 
         /// <summary>
-        /// Puts a summon in the fight, on the summoner's side, and rebuilds the turn
-        /// order so that it gets to play.
-        /// </summary>
-        /// <summary>
         /// A monster that comes into the fight once it has started -- a wave of the Fin du rêve.
         /// Not a summon: nobody summoned it, it pays like any monster, and it plays its own turn.
         /// </summary>
@@ -494,6 +524,10 @@ namespace Jondo.Unity.World.Fights
             RebuildTurnOrderKeepingCurrent();
         }
 
+        /// <summary>
+        /// Puts a summon in the fight, on the summoner's side, and rebuilds the turn
+        /// order so that it gets to play.
+        /// </summary>
         public void Invocar(Fighter invocado, Fighter dueno)
         {
             invocado.Invocador = dueno.Id;
@@ -581,16 +615,6 @@ namespace Jondo.Unity.World.Fights
             return salida;
         }
 
-        /// <summary>Someone declares himself ready. Returns whether with that everyone is.</summary>
-        /// <remarks>
-        /// It only looked at blue, in both halves. In a challenge that meant the fight
-        /// started as soon as the CHALLENGER pressed ready, without waiting for the other —his side was
-        /// all ready because it was just him— and that the challenged's «ready» was recorded
-        /// nowhere. It is what was seen as «one is already fighting and the other is still in placement».
-        ///
-        /// A monster presses nothing, so for counting only people count; if a
-        /// side has none —the usual case against monsters— that side is ready.
-        /// </remarks>
         /// <summary>
         /// Takes the ready flag back. The real server does it for whoever reconnects during the
         /// placement: the capture shows him pressing ready again before the fight starts.
@@ -601,6 +625,16 @@ namespace Jondo.Unity.World.Fights
             if (f != null) f.IsReady = false;
         }
 
+        /// <summary>Someone declares himself ready. Returns whether with that everyone is.</summary>
+        /// <remarks>
+        /// It only looked at blue, in both halves. In a challenge that meant the fight
+        /// started as soon as the CHALLENGER pressed ready, without waiting for the other —his side was
+        /// all ready because it was just him— and that the challenged's «ready» was recorded
+        /// nowhere. It is what was seen as «one is already fighting and the other is still in placement».
+        ///
+        /// A monster presses nothing, so for counting only people count; if a
+        /// side has none —the usual case against monsters— that side is ready.
+        /// </remarks>
         public bool SetFighterReady(long fighterId)
         {
             var f = Buscar(fighterId);
@@ -702,7 +736,8 @@ namespace Jondo.Unity.World.Fights
         {
             if (State != FightState.Placement) return JoinRefusal.NotInPlacement;
             if (team != Azules && team != Rojos) return JoinRefusal.NoSuchTeam;
-            if (Bando(team).Exists(f => f.IsMonster && !f.EsInvocado)) return JoinRefusal.MonsterTeam;
+            if (DefendingAllianceId == 0 && Bando(team).Exists(f => f.IsMonster && !f.EsInvocado))
+                return JoinRefusal.MonsterTeam;
             if (OptionOn(team, OptionClosed)) return JoinRefusal.Closed;
             if (PeopleIn(team) >= maxPeoplePerTeam) return JoinRefusal.TeamFull;
             if (FreePlacementCell(team) < 0) return JoinRefusal.TeamFull;
@@ -816,15 +851,6 @@ namespace Jondo.Unity.World.Fights
                 f.CellId = newCellId;
             }
         }
-
-        /// <summary>Whether the client has already been told to stop regenerating life.</summary>
-        /// <remarks>
-        /// The lqg + lqt pair is sent only once per fight, which is how it comes out in the capture.
-        /// It went only in the «everyone ready» branch, so a fight that started because the
-        /// placement time ran out —the normal case against monsters if nobody presses— was left without
-        /// it, and the client kept refilling the life bar one by one inside the fight.
-        /// </remarks>
-        public bool RegeneracionApagada { get; set; }
 
         /// <summary>What is laid on the ground of this arena: glyphs, traps and runes.</summary>
         /// <remarks>

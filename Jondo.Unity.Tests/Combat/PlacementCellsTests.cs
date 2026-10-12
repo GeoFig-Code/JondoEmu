@@ -7,24 +7,6 @@ using Xunit;
 namespace Jondo.Unity.Tests.Combat
 {
     /// <summary>
-    /// Where the two teams stand at the start of a fight, and the day five monsters shared one cell.
-    /// </summary>
-    /// <remarks>
-    /// On Astrub map 188744196 the player started a fight and every monster was placed on the same
-    /// red square; aiming a weapon at it hit one of them and left the rest untouched. The server
-    /// said so in its own log: "1 contra 5, 1 casillas azules y 1 rojas."
-    ///
-    /// The arena was fine — 82 fight-walkable cells. The placement was being fed from
-    /// <c>MobSpawnManager.GetInnerWalkableCells</c>, which is a ROLEPLAY filter: it keeps only
-    /// cells whose twelve neighbours within radius 2 are all walkable and that sit away from the
-    /// border, which is what plants a monster group on an open map and not what places two teams
-    /// in an arena. On that arena it passed 2 of the 77 cells.
-    ///
-    /// Its safety net was <c>if none survived, use them all</c> — and two is not none, so the net
-    /// did not fire. Incarnam only ever worked by luck: there the same filter returns zero, the net
-    /// fires, and all 65 cells get used.
-    /// </remarks>
-    /// <summary>
     /// The classes that touch MapManager's static state, in a single collection.
     /// </summary>
     /// <remarks>
@@ -48,6 +30,24 @@ namespace Jondo.Unity.Tests.Combat
     [CollectionDefinition("MapManager")]
     public class MapManagerCollection { }
 
+    /// <summary>
+    /// Where the two teams stand at the start of a fight, and the day five monsters shared one cell.
+    /// </summary>
+    /// <remarks>
+    /// On Astrub map 188744196 the player started a fight and every monster was placed on the same
+    /// red square; aiming a weapon at it hit one of them and left the rest untouched. The server
+    /// said so in its own log: "1 contra 5, 1 casillas azules y 1 rojas."
+    ///
+    /// The arena was fine — 82 fight-walkable cells. The placement was being fed from
+    /// <c>MobSpawnManager.GetInnerWalkableCells</c>, which is a ROLEPLAY filter: it keeps only
+    /// cells whose twelve neighbours within radius 2 are all walkable and that sit away from the
+    /// border, which is what plants a monster group on an open map and not what places two teams
+    /// in an arena. On that arena it passed 2 of the 77 cells.
+    ///
+    /// Its safety net was <c>if none survived, use them all</c> — and two is not none, so the net
+    /// did not fire. Incarnam only ever worked by luck: there the same filter returns zero, the net
+    /// fires, and all 65 cells get used.
+    /// </remarks>
     [Collection("MapManager")]
     public class PlacementCellsTests
     {

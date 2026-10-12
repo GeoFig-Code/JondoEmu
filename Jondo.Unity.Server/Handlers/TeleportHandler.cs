@@ -55,24 +55,31 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Iwn, ConnectionProtocol.BuildElementInUse(
                     elementId, skillId, SessionContext.State.CharacterId)));
-
-            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.Push(Op.Iwi,
-                    ConnectionProtocol.BuildInteractiveUseEnded(elementId, skillId)));
-            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.Push(Op.Iwf,
-                    ConnectionProtocol.BuildElementState(
-                        route.SourceCellId, elementId, state: 0)));
-            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.Push(Op.Iwm,
-                    ConnectionProtocol.BuildElementRedeclared(
-                        Interactives.SkillInstanceOf(elementId), skillId,
-                        elementId, route.InteractiveType, usable: true)));
+            await ReleaseAsync(stream, elementId, skillId, route.SourceCellId, route.InteractiveType);
 
             int landed = await ToMapAsync(stream, route.DestinationMapId, route.DestinationCellId);
             if (landed >= 0)
                 Console.WriteLine($"[Teleport] Element {elementId}: {sourceMapId} -> " +
                                   $"{route.DestinationMapId}, cell {landed}.");
+        }
+
+        /// <summary>
+        /// A passage's use closed before the map changes: the use ended (iwi), the element available
+        /// again (iwf) and declared anew (iwm), so its graphic is still there on coming back.
+        /// </summary>
+        internal static async Task ReleaseAsync(NetworkStream stream, int elementId, int skillId, int cellId, int type)
+        {
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Iwi,
+                    ConnectionProtocol.BuildInteractiveUseEnded(elementId, skillId)));
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Iwf,
+                    ConnectionProtocol.BuildElementState(cellId, elementId, state: 0)));
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Iwm,
+                    ConnectionProtocol.BuildElementRedeclared(
+                        Interactives.SkillInstanceOf(elementId), skillId,
+                        elementId, type, usable: true)));
         }
 
         /// <summary>

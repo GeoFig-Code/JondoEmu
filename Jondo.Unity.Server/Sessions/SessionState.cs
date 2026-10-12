@@ -101,14 +101,6 @@ namespace Jondo.Unity.Server
         /// </summary>
         public Dictionary<int, Managers.JobExperience.Progress> Jobs { get; } = new();
 
-        /// <summary>
-        /// This character's quests: which ones he carries, which step he is on and what he has met.
-        /// </summary>
-        /// <remarks>
-        /// Here and not in a static, for the same reason as the professions and with more cause: a quest is
-        /// checked on every sentence of every dialogue, so a shared dictionary would make
-        /// talking to an NPC move the quest of the one next to you.
-        ///
         /// <summary>The interactives this character has ever used.</summary>
         /// <remarks>
         /// It is filled on entering the world and grows with each use. The NPCs' reply filter
@@ -117,6 +109,14 @@ namespace Jondo.Unity.Server
         /// </remarks>
         public HashSet<int> ElementsUsed { get; set; } = new HashSet<int>();
 
+        /// <summary>
+        /// This character's quests: which ones he carries, which step he is on and what he has met.
+        /// </summary>
+        /// <remarks>
+        /// Here and not in a static, for the same reason as the professions and with more cause: a quest is
+        /// checked on every sentence of every dialogue, so a shared dictionary would make
+        /// talking to an NPC move the quest of the one next to you.
+        ///
         /// It is <c>null</c> until entering the world. <c>Managers.Quests.LoadFrom</c> sets it,
         /// because it needs the catalogue, which is from another project and weighs 3 MB: building it here
         /// would force loading it also in the sessions that never get to play.
@@ -194,6 +194,7 @@ namespace Jondo.Unity.Server
         public int TotalAgility => StatAgility + ScrolledAgility;
 
         // Session-local UI/dialog state. These used to be static fields in handlers.
+        /// <summary>The map of the zaap open right now, to charge from the right place.</summary>
         public long OpenZaapMapId { get; set; }
 
         /// <summary>
@@ -219,6 +220,21 @@ namespace Jondo.Unity.Server
 
         /// <summary>The house chest, bin or guild chest this character has open, if any.</summary>
         public Handlers.StorageHandler.Window? Storage { get; set; }
+
+        /// <summary>The uuid of the tax collector whose equipment this character has open, if any.</summary>
+        public string? TaxCollectorExchange { get; set; }
+
+        /// <summary>
+        /// The choice an item has proposed and not been answered yet (kss, then kso): which item,
+        /// to spend it once a destination is chosen, and which choice.
+        /// </summary>
+        public (long ItemUid, int ChoiceId)? ItemChoice { get; set; }
+
+        /// <summary>
+        /// A document is open -- a book of the bag, a notice on the map --, so the close button's kla
+        /// is its own, answered with the empty kld of «abrir libro el escudo de feca y leerlo».
+        /// </summary>
+        public bool DocumentOpen { get; set; }
 
         /// <summary>
         /// Which map the haven bag was entered from, to go back there with the same key.
@@ -273,6 +289,7 @@ namespace Jondo.Unity.Server
         /// </summary>
         public bool ForgeGod { get; set; }
         public bool IsHavenBagEditing { get; set; }
+        /// <summary>The furniture arriving while placement mode is open.</summary>
         public List<Managers.HavenBagStore.Furniture> PendingHavenBagFurniture { get; }
             = new List<Managers.HavenBagStore.Furniture>();
         public int WardrobeDraftTitle { get; set; }
@@ -341,14 +358,6 @@ namespace Jondo.Unity.Server
             lock (_lock)
             {
                 _inventory.Add(item);
-            }
-        }
-
-        public void ClearInventory()
-        {
-            lock (_lock)
-            {
-                _inventory.Clear();
             }
         }
 

@@ -63,10 +63,6 @@ namespace Jondo.Unity.Server.Managers
         }
 
         private static readonly Dictionary<int, Options> _byNpc = new Dictionary<int, Options>();
-        private static bool _ready;
-
-        /// <summary>How many guardians were recognised. Zero until <see cref="Initialize"/> runs.</summary>
-        public static int Count => _byNpc.Count;
 
         /// <summary>What this guardian can offer. Never null; both ids zero when it is not one.</summary>
         public static Options For(int npcId)
@@ -86,7 +82,6 @@ namespace Jondo.Unity.Server.Managers
         public static void Initialize()
         {
             _byNpc.Clear();
-            _ready = false;
 
             var keyring = TextKeysSaying(KeyringWording);
             var key = TextKeysSaying(KeyWording);
@@ -108,15 +103,11 @@ namespace Jondo.Unity.Server.Managers
                 _byNpc[template.Id] = options;
             }
 
-            _ready = true;
             Console.WriteLine($"[Dungeon] {_byNpc.Count} guardians with a door to open" +
                               (ambiguos > 0
                                   ? $", {ambiguos} of them guard several and the first is taken."
                                   : "."));
         }
-
-        /// <summary>Whether the table has been built. False means every door falls back to silence.</summary>
-        public static bool Ready => _ready;
 
         /// <summary>
         /// One guardian's two replies, picked out of everything it can say. Null when it says neither.

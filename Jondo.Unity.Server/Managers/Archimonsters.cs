@@ -50,15 +50,21 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Maps that already have one, so no map gets a second.</summary>
         private static readonly HashSet<long> _busyMaps = new HashSet<long>();
 
-        public static int Count => _ordinary.Count;
-        public static bool Is(int monsterId) => _ordinary.ContainsKey(monsterId);
+        /// <summary>
+        /// The groups are thinned at loading, but also when a beaten group is replaced and when a map
+        /// is filled on the fly, from the sessions' own threads.
+        /// </summary>
+        private static readonly object _gate = new object();
 
         public static void Initialize(SqliteConnection connection)
         {
-            _ordinary.Clear();
-            _zones.Clear();
-            _placed.Clear();
-            _busyMaps.Clear();
+            lock (_gate)
+            {
+                _ordinary.Clear();
+                _zones.Clear();
+                _placed.Clear();
+                _busyMaps.Clear();
+            }
 
             var raw = new Dictionary<int, string>();
             var command = connection.CreateCommand();
@@ -117,6 +123,11 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static int Thin(long mapId, long groupId, List<int> ids)
         {
+            lock (_gate) return ThinLocked(mapId, groupId, ids);
+        }
+
+        private static int ThinLocked(long mapId, long groupId, List<int> ids)
+        {
             int kept = 0;
 
             for (int i = 0; i < ids.Count; i++)
@@ -158,39 +169,42 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// Lets go of the archmonster a map was holding, so the zone can have it again somewhere
-        /// else. For when the group is beaten.
+        /// Lets go of the archmonster a beaten group was holding, so its zone can have it again
+        /// somewhere else: "one of each per zone" lasts until something kills it.
         /// </summary>
-        public static void Release(long mapId)
+        public static void Release(long mapId, IEnumerable<int> members)
         {
-            var loose = new List<int>();
-            foreach (var pair in _placed)
+            lock (_gate)
             {
-                if (pair.Value == mapId) loose.Add(pair.Key);
+                foreach (int rare in members)
+                {
+                    if (!_placed.TryGetValue(rare, out long where) || where != mapId) continue;
+                    _placed.Remove(rare);
+                    _busyMaps.Remove(mapId);
+                }
             }
-            foreach (int rare in loose) _placed.Remove(rare);
-            _busyMaps.Remove(mapId);
         }
-
-        /// <summary>Is this map free to hold one?</summary>
-        public static bool MapIsFree(long mapId) => !_busyMaps.Contains(mapId);
 
         /// <summary>
-        /// One that belongs in this subarea and is not standing anywhere at the moment, or zero.
-        /// This is what lets a killed archmonster turn up again somewhere else in its own zone.
+        /// A group that comes out in a subarea may bring back one of its archmonsters that is
+        /// standing nowhere -- never placed, or beaten and released --, in the place of the ordinary
+        /// monster it is the rare version of. <see cref="Thin"/> still decides whether it stays.
         /// </summary>
-        public static int FreeInZone(int subAreaId)
+        public static void MayComeBack(int subAreaId, List<int> ids)
         {
-            foreach (var pair in _zones)
+            lock (_gate)
             {
-                if (_placed.ContainsKey(pair.Key)) continue;
-                if (pair.Value.Contains(subAreaId)) return pair.Key;
+                foreach (var pair in _ordinary)
+                {
+                    if (_placed.ContainsKey(pair.Key)) continue;
+                    if (!_zones.TryGetValue(pair.Key, out var zones) || !zones.Contains(subAreaId)) continue;
+                    int i = ids.IndexOf(pair.Value);
+                    if (i < 0) continue;
+                    ids[i] = pair.Key;
+                    return;
+                }
             }
-            return 0;
         }
-
-        public static int OrdinaryVersionOf(int rare)
-            => _ordinary.TryGetValue(rare, out int ordinary) ? ordinary : rare;
 
         /// <summary>
         /// A number that depends only on the group and the monster. Deliberately not Random: the

@@ -163,8 +163,8 @@ disappeared from the map—.
 
 How it ends up:
 
-* `Managers/ActorIds.cs` is the only one handing them out, with the bands and with `EsJugador`/`EsNpc`/
-  `EsMonstruo`. Monsters are requested with `Interlocked`: the spawner of an empty map runs on the
+* `Managers/ActorIds.cs` is the only one handing them out, with the bands and with `EsNpc`.
+  Monsters are requested with `Interlocked`: the spawner of an empty map runs on the
   thread of the player arriving, and two arriving at once did the same `_id--`.
 * At startup, `ReservarMonstruosHasta` moves the cursor below the lowest `MobId` written
   in the database, so the groups spawned on the fly do not tread on the seeded ones. Before they were
@@ -173,7 +173,7 @@ How it ends up:
   `jss` in the test bench. It no longer computes any id: the group's is its `MobId` and the NPC's is
   the one `Managers.Npcs` gave it at startup.
 * The NPCs were read twice, and the ids came out of both reads: `Managers/Npcs.cs` with
-  `ORDER BY MapId, Id` and `DatabaseManager.GetNpcSpawnsForMap` **with no `ORDER BY` at all**. Whether
+  `ORDER BY MapId, Id` and a second reader in `DatabaseManager` **with no `ORDER BY` at all**. Whether
   they matched depended on the plan SQLite chose. Now there is a single list, and on the way the
   `jpv` saves a whole walk over `NpcSpawns` on every map load.
 * Out goes `PatchJpvEnteringPacket` from `Network/GameNodeProxy.cs`, which nobody called and which carried three

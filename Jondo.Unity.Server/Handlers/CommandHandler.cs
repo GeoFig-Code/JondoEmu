@@ -557,7 +557,7 @@ namespace Jondo.Unity.Server.Handlers
             var spells = new Dictionary<int, int>();
             if (!SpellTable.IsLoaded) return spells;
 
-            foreach (var spell in SpellTable.KnownFor(GameState.Breed, level, SpellChoices.Chosen))
+            foreach (var spell in SpellTable.KnownFor(GameState.Breed, level, SpellChoices.Chosen, LearnedSpells.OfSession()))
             {
                 spells[spell.SpellId] = spell.Grade;
             }
@@ -810,20 +810,9 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// Creates an item from the client template, with its real factory effects, persists it,
-        /// updates both in-memory inventory views and immediately pushes it to the client.
+        /// updates both in-memory inventory views, pushes it to the client and says what it handed
+        /// over. Lives in <see cref="Equipment"/>.
         /// </summary>
-        /// <summary>
-        /// Puts an item in the bag and tells the client. Now lives in <see cref="Equipment"/>.
-        /// </summary>
-        /// <remarks>
-        /// Kept as a one-liner rather than replaced everywhere because the quest engine needs the
-        /// same thing and two copies of "give somebody an item" is how the two of them end up
-        /// disagreeing about whether the client gets told.
-        /// </remarks>
-        private static Task<bool> GiveItemAsync(NetworkStream stream, int gid, int quantity)
-            => Equipment.GiveAsync(stream, gid, quantity);
-
-        /// <summary>The same, saying what it handed over. Lives in <see cref="Equipment"/> too.</summary>
         /// <remarks>
         /// PR #22 brought here a whole copy of GiveAsync that only differed in returning the item. Two
         /// copies of «give something to somebody» is how they end up disagreeing about whether the
@@ -1158,12 +1147,9 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>
         /// Inviting somebody to the guild, or sending an application to one.
         ///
-        /// This is a command and not a button because the button IS NOT MEASURED: the guild captures
-        /// are from the side of whoever receives the invitation and of the leader who reads the
-        /// application, so it is known what the server sends -- the jiq and the jma -- and what the
-        /// client answers -- the jiz and the jjn --, but not which message asks for them. The day it
-        /// shows up in a capture, the button calls the same two methods and the command is no longer
-        /// needed.
+        /// Both are the client's own now: a player's menu invites with the jjn and the guild
+        /// directory applies with the jlw (GuildHandler.InviteFromClientAsync and
+        /// ApplyFromClientAsync). The command calls the same methods.
         /// </summary>
         private static async Task GremioAsync(NetworkStream stream, string rest, int channel, long accountId)
         {
@@ -1251,16 +1237,6 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// The notice to the player, on the channel he wrote in so that it shows in the tab he is
-        /// looking at. It is a kti, the capture's chat line.
-        ///
-        /// CAREFUL: this is the EXCEPTION, not the rule. A kti goes out on the general channel and
-        /// everybody reads it. To tell the player something -- «you do not have the level», «you won
-        /// kamas» -- an lqn with its message number goes; see <see cref="Managers.InfoMessages"/>. The
-        /// chat is used here because a command's answer is free text that is not in the client's table,
-        /// and because the player has just written in that same tab and expects the answer there.
-        /// </summary>
-        /// <summary>
         /// A command's answer: an information line only its author sees. The channel and the
         /// account are what the chat line it used to be needed; the information message needs
         /// neither, and they stay so the sixty-odd callers do not all change.
@@ -1308,11 +1284,9 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Coordinates, written however: [-1,0], -1 0, -1,0 or (-1;0). Brackets and separators are
-        /// turned into spaces and what is left has to be two numbers.
-        /// </summary>
-        /// <summary>
-        /// A command's coordinates, as the client sends them.
+        /// A command's coordinates, as the client sends them, written however: [-1,0], -1 0, -1,0
+        /// or (-1;0). Brackets and separators are turned into spaces and what is left has to be two
+        /// numbers.
         /// </summary>
         /// <remarks>
         /// And that is not how the player types them. On typing <c>[0,-8]</c> in the chat, the client

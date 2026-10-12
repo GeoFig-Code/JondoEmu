@@ -194,23 +194,6 @@ namespace Jondo.Unity.Server.Network
         public const int KoliseoPlacementDeciseconds = 592;
 
         /// <summary>
-        /// What accompanies the announcement (kaa).
-        ///
-        ///   f3: 1      f4: 1      f5: ?      f6: the fight type
-        ///
-        /// f3 and f4 are 1 in the thirty-nine openings and f6 repeats the kam's type.
-        ///
-        /// f5 is THE PLACEMENT COUNTDOWN, in tenths of a second. It was worked out with the capture's
-        /// clock: in one it is 445 and twenty-seven-odd seconds later it is 173, that is 272
-        /// units in 27.4 seconds, 9.92 per second. It matches the values seen —442,
-        /// 444, 445, 446, which are the forty-five seconds minus what it took to arrive— and
-        /// the koliseo's 592, which gives its sixty. It goes absent when the fight is already past
-        /// placement.
-        ///
-        /// Here the time the server will really wait before starting on its own is sent,
-        /// so that the client's clock and the server's count the same.
-        /// </summary>
-        /// <summary>
         /// A challenge's kaa: six bytes and NO countdown.
         /// </summary>
         /// <remarks>
@@ -229,6 +212,23 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildFightInProgressSummary(int kind)
             => Pb.New().Var(1, 1).Var(3, 1).Var(4, 1).VarIfNotZero(6, kind).Build();
 
+        /// <summary>
+        /// What accompanies the announcement (kaa).
+        ///
+        ///   f3: 1      f4: 1      f5: ?      f6: the fight type
+        ///
+        /// f3 and f4 are 1 in the thirty-nine openings and f6 repeats the kam's type.
+        ///
+        /// f5 is THE PLACEMENT COUNTDOWN, in tenths of a second. It was worked out with the capture's
+        /// clock: in one it is 445 and twenty-seven-odd seconds later it is 173, that is 272
+        /// units in 27.4 seconds, 9.92 per second. It matches the values seen —442,
+        /// 444, 445, 446, which are the forty-five seconds minus what it took to arrive— and
+        /// the koliseo's 592, which gives its sixty. It goes absent when the fight is already past
+        /// placement.
+        ///
+        /// Here the time the server will really wait before starting on its own is sent,
+        /// so that the client's clock and the server's count the same.
+        /// </summary>
         public static byte[] BuildFightSummary(int kind, int placementDeciseconds)
             => Pb.New()
                 .Var(3, 1)
@@ -308,28 +308,6 @@ namespace Jondo.Unity.Server.Network
             return jxb.Build();
         }
 
-        /// <summary>A fighter's block, which is reused in the jxg and in the jxb.</summary>
-        /// <summary>
-        /// A sheet characteristic, with the value in the slot it belongs to.
-        ///
-        /// Here was the reason the damage preview was not seen. The emulator put
-        /// ALL the characteristics in the same mould, <c>f5 { f1: value }</c>, which is that of the
-        /// action and movement points —that is why those two were drawn right and nothing else—. The
-        /// real server uses three different moulds, and it is seen byte by byte in the capture's jxb:
-        ///
-        ///   monster, all             f2 { f2: value }         and an empty f2 if it is zero
-        ///   player, AP(1) and MP(23) f5 { f1: base, f5: from equipment }
-        ///   player, the rest         f4 { f2: base, f3: 100, f7: from equipment }   f4 empty if zero
-        ///
-        /// The capture character's power travels as <c>2a 07 08 19 22 03 38 96 01</c>, that
-        /// is f5 { f1: 25, f4 { f7: 150 } }; the shape the emulator emitted for that same thing,
-        /// <c>2a 07 08 19 2a 03 08 96 01</c>, does not appear once in the whole capture.
-        ///
-        /// The f3 with the hundred is only carried by the five that are distributed with points —strength,
-        /// vitality, chance, agility and intelligence—, just as it was measured.
-        /// </summary>
-        private static readonly HashSet<int> ConMultiplicadorBase = new HashSet<int> { 10, 11, 13, 14, 15 };
-
         /// <summary>The two that go in the points mould.</summary>
         private const int ActionPoints = 1;
         private const int MovementPoints = 23;
@@ -364,6 +342,26 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         public const int TemporaryLifeMalus = 97;
 
+        /// <summary>
+        /// A sheet characteristic, with the value in the slot it belongs to.
+        ///
+        /// Here was the reason the damage preview was not seen. The emulator put
+        /// ALL the characteristics in the same mould, <c>f5 { f1: value }</c>, which is that of the
+        /// action and movement points —that is why those two were drawn right and nothing else—. The
+        /// real server uses three different moulds, and it is seen byte by byte in the capture's jxb:
+        ///
+        ///   monster, all             f2 { f2: value }         and an empty f2 if it is zero
+        ///   player, AP(1) and MP(23) f5 { f1: base, f5: from equipment }
+        ///   player, the rest         f4 { f2: base, f3: 100, f7: from equipment }   f4 empty if zero
+        ///
+        /// The capture character's power travels as <c>2a 07 08 19 22 03 38 96 01</c>, that
+        /// is f5 { f1: 25, f4 { f7: 150 } }; the shape the emulator emitted for that same thing,
+        /// <c>2a 07 08 19 2a 03 08 96 01</c>, does not appear once in the whole capture.
+        ///
+        /// The f3 with the hundred is only carried by the five that are distributed with points —strength,
+        /// vitality, chance, agility and intelligence—, just as it was measured; and it is not sent,
+        /// see the end of <see cref="SheetEntry"/>.
+        /// </summary>
         /// <param name="delEmbrujo">
         /// THE BUFF SLOT, f8. It is what spells set and remove during the fight, and it
         /// goes SEPARATE from the base and the equipment: the client keeps all three and adds them itself.
@@ -414,6 +412,7 @@ namespace Jondo.Unity.Server.Network
             return entry.Msg(4, valor);
         }
 
+        /// <summary>A fighter's block, which is reused in the jxg and in the jxb.</summary>
         /// <param name="wave">
         /// The wave a monster came in with, in f4 of the fighter (the client's monster info keeps
         /// it there and copies it to the entity's wave). Zero, and absent, for the rest. A fighter
@@ -470,6 +469,13 @@ namespace Jondo.Unity.Server.Network
         /// after —jyy, jxz, jxc, jto, jxb, jwi— is the loading of the fight already started.
         /// </summary>
         public static byte[] BuildFightBegins() => Array.Empty<byte>();
+
+        /// <summary>
+        /// Giving up unlocked, or not, in a Koliseo fight (ltm): <c>f2</c> is what the client
+        /// enables its leave button with; the rest goes empty.
+        /// </summary>
+        public static byte[] BuildSurrenderUnlocked(bool unlocked)
+            => Pb.New().VarIfNotZero(2, unlocked ? 1 : 0).Build();
 
         /// <summary>Which round we are on (jxz). <c>f2</c> is the round number, starting at 1.</summary>
         public static byte[] BuildRound(int round) => Pb.New().Var(2, round).Build();
@@ -715,26 +721,6 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
-        /// A buff placed on someone (jxm), which is what fills the "Efectos" panel.
-        ///
-        ///   f1 { f1 { f1: the effect's die, if it brings one
-        ///             f2: on whom          f3: the buff number, consecutive from one
-        ///             f4: 1                f6 { f2: -1 }
-        ///             f7: the trigger      f8: the effect's identifier (effectUid)
-        ///             f10: the value       f12 { f2: -1, f3: -1 }
-        ///             f13: 1, only those bringing a die
-        ///             f14: the spell that placed it
-        ///             f15: 7 those bringing a die, 2 the rest     f16: 2 }
-        ///        f2: on whom               f3: the effect number }
-        ///
-        /// All this is measured against the level 50 poutch capture and matches the data:
-        /// f8 is exactly the <c>effectUid</c> the spell carries in its EffectsJson —299043
-        /// for Transposición's 950, 220298 for La Sangre de Sacrogrito's 792—, f10 is
-        /// its <c>value</c> and f7 its <c>triggers</c>. And when an effect brings several triggers
-        /// separated by bars, the server sends ONE jxm for each; in the capture nine come out
-        /// in a row for the same effect, with "TB", "D", "TE", "VE", "VM", "PD", "LPU", "DV" and "V".
-        /// </summary>
-        /// <summary>
         /// The buff's FAMILY, which goes in f15 and decides whether the client DRAWS it or not.
         ///
         /// Here was the reason the panel always came out empty with the bytes right. The
@@ -771,6 +757,26 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         public const int HiddenFamily = 7;
 
+        /// <summary>
+        /// A buff placed on someone (jxm), which is what fills the "Efectos" panel.
+        ///
+        ///   f1 { f1 { f1: the effect's die, if it brings one
+        ///             f2: on whom          f3: the buff number, consecutive from one
+        ///             f4: 1                f6 { f2: -1 }
+        ///             f7: the trigger      f8: the effect's identifier (effectUid)
+        ///             f10: the value       f12 { f2: -1, f3: -1 }
+        ///             f13: 1, only those bringing a die
+        ///             f14: the spell that placed it
+        ///             f15: 7 those bringing a die, 2 the rest     f16: 2 }
+        ///        f2: on whom               f3: the effect number }
+        ///
+        /// All this is measured against the level 50 poutch capture and matches the data:
+        /// f8 is exactly the <c>effectUid</c> the spell carries in its EffectsJson —299043
+        /// for Transposición's 950, 220298 for La Sangre de Sacrogrito's 792—, f10 is
+        /// its <c>value</c> and f7 its <c>triggers</c>. And when an effect brings several triggers
+        /// separated by bars, the server sends ONE jxm for each; in the capture nine come out
+        /// in a row for the same effect, with "TB", "D", "TE", "VE", "VM", "PD", "LPU", "DV" and "V".
+        /// </summary>
         /// <param name="grado">
         /// The grade of the spell that places it. It was nailed to one; measured against the 1,297 jxm of the
         /// Cra captures, the field is the grade and it matches in all 1,297.
@@ -1350,10 +1356,6 @@ namespace Jondo.Unity.Server.Network
         /// It is the same sheet that goes inside the jxg and the jxb, alone here. It is used to update the
         /// movement and action points as they are spent.
         /// </summary>
-        /// <summary>The two characteristics that go in the points mould, and only them.</summary>
-        private const int PuntosDeAccion = 1;
-        private const int PuntosDeMovimiento = 23;
-
         public static byte[] BuildFighterSheet(long fighterId,
                                                IEnumerable<(int Characteristic, long Base,
                                                             long Gear, long Buff)> sheet,
@@ -1724,6 +1726,10 @@ namespace Jondo.Unity.Server.Network
         /// <summary>"Invoca un doble del lanzador".</summary>
         public const int InvocaUnDoble = 180;
 
+        /// <summary>The two numbers a displacement travels with.</summary>
+        public const int Alejarse = 5;
+        public const int Acercarse = 6;
+
         /// <summary>
         /// Someone is moved without walking (jwe with f14 at the effect's number):
         ///
@@ -1734,10 +1740,6 @@ namespace Jondo.Unity.Server.Network
         /// engine code: it is the catalogue's effect number as is, the same 5 as
         /// "Empuja #1 casilla".
         /// </summary>
-        /// <summary>The two numbers a displacement travels with.</summary>
-        public const int Alejarse = 5;
-        public const int Acercarse = 6;
-
         public static byte[] BuildDisplacement(long author, int efecto, long quien,
                                                int desde, int hasta)
             => Pb.New()
@@ -1907,16 +1909,6 @@ namespace Jondo.Unity.Server.Network
         /// <summary>The fight is over (kuf). It goes empty.</summary>
         public static byte[] BuildFightOver() => Array.Empty<byte>();
 
-        /// <summary>
-        /// How it ended (jyg), one per fighter.
-        ///
-        ///   f2 (repeated) { f3 { f1: who, f3: 1 if alive }, f4: the result }
-        ///
-        /// The real one carries quite a lot more inside —the level, the experience, the account— and of that
-        /// only the wrapper is deciphered, so here goes the minimum with which the client can
-        /// close the fight and return the player to the map. The rewards panel will stay poor
-        /// until it is measured whole.
-        /// </summary>
         /// <summary>What one takes from the fight.</summary>
         public sealed class Spoils
         {
@@ -2143,6 +2135,16 @@ namespace Jondo.Unity.Server.Network
                 .VarIfNotZero(3, level));
 
         /// <summary>
+        /// Which tax collector it is: <c>f1 { f1: first name, f2: last name, f3: the monster }</c>,
+        /// the other case of the same oneof. {35, 109, 3859} in «atacar a recaudador y perder».
+        /// </summary>
+        public static Pb TaxCollectorIdentity(int firstName, int lastName, int monsterId)
+            => Pb.New().Msg(1, Pb.New()
+                .Var(1, firstName)
+                .Var(2, lastName)
+                .Var(3, monsterId));
+
+        /// <summary>
         /// Who the player is: the breed, his name and little else.
         ///
         ///   f2 { f1: the breed, f3: ?, f4 { f1: 100, f2: 3, f5: 200 } }
@@ -2162,23 +2164,6 @@ namespace Jondo.Unity.Server.Network
                 .Var(4, Nobody)
                 .Str(7, name ?? "")
                 .Msg(8, Pb.New().Var(1, 1));
-
-        /// <summary>
-        /// The characteristics the real server sends in the placement sheet, in their
-        /// order. Almost all go at zero there: what matters in this phase is that the slot exists.
-        /// </summary>
-        public static readonly int[] PlacementSheet =
-        {
-            1,   // PA
-            23,  // PM
-            27,  // AP dodge
-            28,  // MP dodge
-            33,  // resistencia tierra
-            34,  // resistencia fuego
-            35,  // resistencia agua
-            36,  // resistencia aire
-            37,  // resistencia neutral
-        };
 
         /// <summary>
         /// Who fights (jzu).
@@ -2286,13 +2271,6 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
-        /// Ready acknowledged (kah).
-        ///
-        ///   f1: who        f3: 1
-        ///
-        /// f2 does not appear in any of the captures.
-        /// </summary>
-        /// <summary>
         /// The challenge offered (hqc): who challenges, whom, and the id.
         /// </summary>
         /// <remarks>
@@ -2324,20 +2302,18 @@ namespace Jondo.Unity.Server.Network
             return hpv.Var(4, targetId).Build();
         }
 
+        /// <summary>
+        /// Ready acknowledged (kah).
+        ///
+        ///   f1: who        f3: 1
+        ///
+        /// f2 does not appear in any of the captures.
+        /// </summary>
         public static byte[] BuildReadyAck(long fighterId, bool ready = true)
             => Pb.New().Var(1, fighterId).Var(3, ready ? 1 : 0).Build();
 
         // ─── The spell bar ──────────────────────────────────────────────────────
 
-        /// <summary>
-        /// The spells one fights with (jyy).
-        ///
-        ///   f3: who        f4: who (the same)
-        ///   f6 (repeated) { f1: the grade, f3: the spell, f4: 1 }
-        ///
-        /// f3 and f4 carry the same fighter in the captures; what separates them is not known,
-        /// because they have never been seen different.
-        /// </summary>
         /// <summary>The spell's origin: 1 the class ones, 2 the ones that are not —melee—.</summary>
         private const int OrigenQueNoEsDeClase = 2;
         private const int GradoDelCuerpoACuerpo = 1;
@@ -2374,6 +2350,15 @@ namespace Jondo.Unity.Server.Network
         /// <summary>The origin of a summon's spell in its jyy: 6 in all 24 summon bars of the captures.</summary>
         private const int OrigenDeInvocado = 6;
 
+        /// <summary>
+        /// The spells one fights with (jyy).
+        ///
+        ///   f3: who        f4: who (the same)
+        ///   f6 (repeated) { f1: the grade, f3: the spell, f4: 1 }
+        ///
+        /// f3 and f4 carry the same fighter in the captures; what separates them is not known,
+        /// because they have never been seen different.
+        /// </summary>
         public static byte[] BuildSpellBar(long fighterId, IEnumerable<(int Spell, int Grade)> spells,
                                            IEnumerable<(int Slot, int Spell)> bar, bool conArma = true)
         {

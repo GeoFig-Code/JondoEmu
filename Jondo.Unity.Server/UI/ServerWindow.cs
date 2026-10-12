@@ -51,9 +51,6 @@ namespace Jondo.Unity.Server.UI
 
         private readonly float _escala;
         private int E(int px) => (int)Math.Round(px * _escala);
-        private Font Letra(float cuerpo, FontStyle estilo = FontStyle.Regular)
-            => new Font(LauncherTheme.TitleFamily, cuerpo * _escala, estilo);
-        private Font Mono(float cuerpo) => new Font(LauncherTheme.MonoFamily, cuerpo * _escala);
 
         /// <summary>
         /// A panel that does not flicker on repainting.
@@ -314,11 +311,11 @@ namespace Jondo.Unity.Server.UI
             // managed to enter a map: between one and the other there are a few seconds of loading, and
             // with a stuck client the difference stays there and is seen.
             Cifra_(t => t.StatPlayers, LauncherTheme.OnlineGreen,
-                   () => $"{Network.GameNodeProxy.SesionesVivas.Count}/{Contract.ClientesEnTotal}");
+                   () => $"{Network.SessionRegistry.Count}/{Contract.ClientesEnTotal}");
             Cifra_(t => t.StatInWorld, LauncherTheme.DotGreen, () =>
             {
                 int dentro = 0;
-                foreach (var s in Network.GameNodeProxy.SesionesVivas.Values) if (s.IsInWorld) dentro++;
+                foreach (var s in Network.SessionRegistry.All()) if (s.IsInWorld) dentro++;
                 return dentro.ToString();
             });
             Cifra_(t => t.StatFights, LauncherTheme.Red,
@@ -326,7 +323,7 @@ namespace Jondo.Unity.Server.UI
             Cifra_(t => t.StatMaps, LauncherTheme.LogHaapi, () =>
             {
                 var mapas = new HashSet<long>();
-                foreach (var s in Network.GameNodeProxy.SesionesVivas.Values)
+                foreach (var s in Network.SessionRegistry.All())
                 {
                     if (s.IsInWorld) mapas.Add(s.MapId);
                 }
@@ -555,12 +552,6 @@ namespace Jondo.Unity.Server.UI
         // ─── The background ─────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Composes the background: the photo cropped as a background-size: cover would.
-        ///
-        /// It is composed ONCE per size and kept, instead of scaling the image on each
-        /// repaint. It is what the launcher does and it is what keeps the window from stuttering.
-        /// </summary>
-        /// <summary>
         /// The background without the watermark and flipped, so that Nox ends up behind the log.
         ///
         /// The drawing brings Nox on the left, which is exactly where the figures column goes: he was
@@ -603,6 +594,12 @@ namespace Jondo.Unity.Server.UI
             }
         }
 
+        /// <summary>
+        /// Composes the background: the photo cropped as a background-size: cover would.
+        ///
+        /// It is composed ONCE per size and kept, instead of scaling the image on each
+        /// repaint. It is what the launcher does and it is what keeps the window from stuttering.
+        /// </summary>
         private void ComponerFondo()
         {
             int ancho = Math.Max(1, ClientSize.Width);
@@ -890,7 +887,7 @@ namespace Jondo.Unity.Server.UI
 
         private bool Confirmar()
         {
-            int dentro = Network.GameNodeProxy.SesionesVivas.Count;
+            int dentro = Network.SessionRegistry.Count;
             string aviso = dentro > 0
                 ? string.Format(_textos.StopServerWithPlayers, dentro)
                 : _textos.StopServerConfirm;

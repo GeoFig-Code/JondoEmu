@@ -15,7 +15,6 @@ namespace Jondo.Unity.Server
         public static readonly int gamePort = 5555;
         public static readonly int gameNodePort = 5556;
 
-        private static readonly object LogLock = new object();
 
         /// <summary>
         /// The server. No windows: since the launcher is another executable, not a single
@@ -68,6 +67,16 @@ namespace Jondo.Unity.Server
             Console.WriteLine("                         JONDO — SERVER                              ");
             Console.WriteLine("======================================================================");
             Console.ResetColor();
+
+            // A task let go without being awaited -- a clock, a background release, a send -- that
+            // fails takes its exception with it, and some twenty of them are started that way. They
+            // reach the log here instead of vanishing.
+            TaskScheduler.UnobservedTaskException += (_, e) =>
+            {
+                Console.WriteLine($"[!] A background task failed: {e.Exception.GetBaseException().Message}");
+                LogDebug(e.Exception.ToString());
+                e.SetObserved();
+            };
 
             // 0. Resolved data paths. Everything the emulator needs now lives inside its own
             //    folder; the root is derived from the assembly location, not hardcoded.
@@ -228,8 +237,10 @@ namespace Jondo.Unity.Server
             var koliseo = new System.Threading.Timer(
                 _ =>
                 {
+                    if (Interlocked.Exchange(ref _koliseoTicking, 1) != 0) return;
                     try { Handlers.KoliseoHandler.TickAsync().GetAwaiter().GetResult(); }
                     catch (Exception ex) { Console.WriteLine($"[Koliseo] The queue tick failed: {ex.Message}"); }
+                    finally { Interlocked.Exchange(ref _koliseoTicking, 0); }
                 },
                 null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
@@ -272,10 +283,6 @@ namespace Jondo.Unity.Server
         private static int _servicesStopped;
 
         /// <summary>
-        /// Requests a graceful shutdown of the emulator. The launcher window calls it when closing.
-        /// It is idempotent: it does not matter how many times it is called.
-        /// </summary>
-        /// <summary>
         /// Shuts down like <see cref="RequestShutdown"/> and starts the server again, which is how
         /// the settings saved from the window take effect.
         /// </summary>
@@ -286,6 +293,12 @@ namespace Jondo.Unity.Server
         }
 
         private static int _restartRequested;
+
+        /// <summary>
+        /// One Koliseo tick at a time: the timer fires every five seconds whatever the last tick is
+        /// doing, and each one held a pool thread blocked behind the one before.
+        /// </summary>
+        private static int _koliseoTicking;
 
         /// <summary>The argument a restarted run gets: the process id of the run it replaces.</summary>
         private const string RestartAfter = "--restart-after";
@@ -323,6 +336,10 @@ namespace Jondo.Unity.Server
             catch (InvalidOperationException) { }
         }
 
+        /// <summary>
+        /// Requests a graceful shutdown of the emulator. The launcher window calls it when closing.
+        /// It is idempotent: it does not matter how many times it is called.
+        /// </summary>
         public static void RequestShutdown(string reason)
         {
             if (Interlocked.Exchange(ref _shutdownRequested, 1) != 0) return;

@@ -588,9 +588,6 @@ namespace Jondo.Unity.Server.Managers
             GuildRaidStore.Save(raid);
         }
 
-        /// <summary>Records the raid's new state and saves it.</summary>
-        internal static void Save(Raid raid) => GuildRaidStore.Save(raid);
-
         internal static string NameOf(long characterId)
             => DatabaseManager.GetCharacterById(characterId)?.Name ?? "";
     }

@@ -40,8 +40,6 @@ namespace Jondo.Unity.Server.Network
         private static readonly ConcurrentDictionary<Guid, GameSession> _sessions
             = new ConcurrentDictionary<Guid, GameSession>();
 
-        public static int ConnectedCount => _sessions.Count;
-
         private static readonly object SessionGate = new object();
 
         public static bool Register(GameSession session)
@@ -94,12 +92,76 @@ namespace Jondo.Unity.Server.Network
             return false;
         }
 
+        /// <summary>
+        /// Closes this account's other game sessions and waits for them to be gone. Returns how many
+        /// there were.
+        /// </summary>
+        /// <remarks>
+        /// One account plays from one connection. Nothing kept a second one out: only the launcher
+        /// counted launches, and a client that came back before its old socket was noticed dead --
+        /// or one not started from the launcher -- had the same character in the world twice, two
+        /// states in memory that each saved over the other, and an item sold from one still in the
+        /// bag of the other. The newer one is the one that stays, as on Ankama's servers: refusing it
+        /// would lock a player out until a half-open socket timed out. And it waits for the old one's
+        /// way out -- which saves the character -- before the new one reads anything.
+        /// </remarks>
+        public static async Task<int> CloseOthersOfAsync(GameSession session, TimeSpan wait)
+        {
+            if (session.AccountId <= 0) return 0;
+            var others = _sessions.Values.Where(s => s.Id != session.Id && s.AccountId == session.AccountId).ToList();
+            foreach (var other in others)
+            {
+                try { other.Stream?.Dispose(); } catch { }
+            }
+
+            var until = DateTime.UtcNow + wait;
+            while (others.Any(o => _sessions.ContainsKey(o.Id)) && DateTime.UtcNow < until)
+                await Task.Delay(50);
+            return others.Count;
+        }
+
+        /// <summary>
+        /// Every connected game session, as a snapshot. The one registry of who is connected: the
+        /// game node used to keep a second one (SesionesVivas) that the window, the restart and the
+        /// monsters' sweep read, and a failed broadcast took a session out of this one only, so the
+        /// two told different stories.
+        /// </summary>
+        public static IReadOnlyList<GameSession> All() => _sessions.Values.ToArray();
+
+        /// <summary>How many game sessions are connected.</summary>
+        public static int Count => _sessions.Count;
+
         public static bool TryGet(Guid sessionId, out GameSession? session)
             => _sessions.TryGetValue(sessionId, out session);
 
         /// <summary>Every session with a character in the world, whatever the map.</summary>
         public static IReadOnlyList<GameSession> InWorld()
             => _sessions.Values.Where(s => s.IsInWorld && s.CharacterId != 0).ToList();
+
+        /// <summary>
+        /// One packet for every character in the world, whatever the map: what the world map
+        /// shows to all, such as a prism placed or gone. Returns how many got it.
+        /// </summary>
+        public static async Task<int> BroadcastAsync(byte[] packet)
+        {
+            int told = 0;
+            foreach (var target in InWorld())
+            {
+                try
+                {
+                    await target.SendAsync(packet);
+                    told++;
+                }
+                catch (Exception ex)
+                {
+                    // Not taken out of the registry: a failed send is not a closed connection, and
+                    // taking it out left a player still playing unreachable -- no whispers, no guild
+                    // notices -- until he reconnected. His connection's own way out unregisters him.
+                    Program.LogDebug($"[Sessions] Send to {target.Id} failed: {ex.Message}");
+                }
+            }
+            return told;
+        }
 
         public static GameSession? FindByCharacter(long characterId)
             => _sessions.Values.FirstOrDefault(s => s.CharacterId == characterId);
@@ -185,7 +247,9 @@ namespace Jondo.Unity.Server.Network
                 }
                 catch (Exception ex)
                 {
-                    Unregister(target);
+                    // Not taken out of the registry: a failed send is not a closed connection, and
+                    // taking it out left a player still playing unreachable -- no whispers, no guild
+                    // notices -- until he reconnected. His connection's own way out unregisters him.
                     Program.LogDebug($"[Sessions] Send to {target.Id} failed: {ex.Message}");
                     return false;
                 }
@@ -268,7 +332,9 @@ namespace Jondo.Unity.Server.Network
                 }
                 catch (Exception ex)
                 {
-                    Unregister(target);
+                    // Not taken out of the registry: a failed send is not a closed connection, and
+                    // taking it out left a player still playing unreachable -- no whispers, no guild
+                    // notices -- until he reconnected. His connection's own way out unregisters him.
                     Program.LogDebug($"[Sessions] Send to {target.Id} failed: {ex.Message}");
                     return false;
                 }

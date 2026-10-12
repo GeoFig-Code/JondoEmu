@@ -122,7 +122,6 @@ namespace Jondo.Unity.Studio.Data
             return all;
         }
 
-        /// <summary>The groups Ankama put on one map.</summary>
         /// <summary>Monster id to the drawing it uses, so a group can be given a face.</summary>
         public Dictionary<int, int> GfxByMonster()
         {
@@ -135,6 +134,7 @@ namespace Jondo.Unity.Studio.Data
             return map;
         }
 
+        /// <summary>The groups Ankama put on one map.</summary>
         public List<MeasuredGroup> GroupsOn(long mapId)
         {
             var groups = new List<MeasuredGroup>();

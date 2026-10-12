@@ -124,8 +124,20 @@ namespace Jondo.Unity.Server.Network
                 .Var(2, id)
                 .Msg(5, Pb.New().Var(1, monster).VarIfNotZero(2, grade));
 
+        /// <summary>
+        /// A tax collector on its team: { f2: its fighter id, f3 { f1: first name, f2: last name } },
+        /// the one member of the defenders' kae in «atacar a recaudador y perder» ({-1, {35, 109}}).
+        /// </summary>
+        public static Pb TaxCollectorOnTeam(long id, int firstName, int lastName)
+            => Pb.New()
+                .Var(2, id)
+                .Msg(3, Pb.New().Var(1, firstName).Var(2, lastName));
+
         /// <summary>The kind of side a team is: people (0, left out) or monsters (1).</summary>
         public const int MonsterSide = 1;
+
+        /// <summary>A tax collector's side: the kae's f2 = 3 of the attack capture.</summary>
+        public const int TaxCollectorSide = 3;
 
         /// <summary>
         /// A team (the f1 of kae, and each f3 of hpy):
@@ -140,6 +152,10 @@ namespace Jondo.Unity.Server.Network
         /// carries f6 = 1 without f2 (S, frame 9); the attackers' side carries neither.
         /// </summary>
         public static Pb Team(int team, long leader, bool monsters, IEnumerable<Pb>? members)
+            => Team(team, leader, monsters ? MonsterSide : 0, members);
+
+        /// <summary>The same, with the kind of side given as the f2 itself.</summary>
+        public static Pb Team(int team, long leader, int sideKind, IEnumerable<Pb>? members)
         {
             var list = Pb.New();
             if (members != null)
@@ -148,7 +164,7 @@ namespace Jondo.Unity.Server.Network
             }
 
             return Pb.New()
-                .VarIfNotZero(2, monsters ? MonsterSide : 0)
+                .VarIfNotZero(2, sideKind)
                 .Var(3, leader)
                 .Var(4, 1)
                 .Msg(5, list)

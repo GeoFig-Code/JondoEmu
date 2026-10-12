@@ -69,6 +69,16 @@ namespace Jondo.Unity.Launcher.Network
         public static string Token { get; set; } = "";
 
         /// <summary>
+        /// No server at all: every request comes back as silence, as with the server down.
+        /// </summary>
+        /// <remarks>
+        /// For the tests that open the window. Opening it asks for the status, the stored sessions
+        /// and their characters, and those tests asked whatever server was running on the machine
+        /// -- with the player's own stored sessions, which it then logged as unknown.
+        /// </remarks>
+        internal static bool Offline { get; set; }
+
+        /// <summary>
         /// Which server one talks to.
         ///
         /// It comes from the preferences, not from a literal: by default this same machine —playing
@@ -124,6 +134,7 @@ namespace Jondo.Unity.Launcher.Network
 
         private static Respuesta Intentar(string verbo, object? cuerpo)
         {
+            if (Offline) return new Respuesta(false, 0, "");
             try
             {
                 string json = ConElToken(cuerpo);

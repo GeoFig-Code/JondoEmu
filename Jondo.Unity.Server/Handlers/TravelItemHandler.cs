@@ -1,0 +1,200 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+using Jondo.Unity.Protocol;
+using Jondo.Unity.Server.Managers;
+using Jondo.Unity.Server.Network;
+
+namespace Jondo.Unity.Server.Handlers
+{
+    /// <summary>
+    /// The items that take whoever uses them somewhere: the recall potion, the city, class and
+    /// quest potions, the home potion and the anklas.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Measured in the captures that use one: «utilizar pocima de recuerdo», «utilizar pocima
+    /// otomai», «pocima de meriana», «utilizar pocima de hogar» and the anklas of Anutropía and
+    /// Sramvil. A potion that goes to a map answers the iuu with the map change (jru, lqu) and then
+    /// spends itself (ivj or ium, iun); the client asks for the map (jrh) and gets it as from any
+    /// other teleport.
+    /// </para>
+    /// <para>
+    /// By effect: 600 the save point; 826 and 1155 a map reference of the client's data (189 is
+    /// Bonta, 282 Brakmar); 830 at 5 one's own house, entered with the house's jqw; 3008 a choice of
+    /// destinations, which only spends the ankla once one is chosen. Not yet: 830 at 1 (the house
+    /// shared with the guild) and 4054 (the guild hall), which Jondo does not have; and the items
+    /// that also do something else -- start a quest, give an item --, left to whoever does that.
+    /// </para>
+    /// </remarks>
+    public static class TravelItemHandler
+    {
+        public const int RecallEffect = 600;
+        public const int MapReferenceEffect = 826;
+        public const int OtherMapReferenceEffect = 1155;
+        public const int HouseEffect = 830;
+        public const int ChoiceEffect = 3008;
+
+        /// <summary>Effect 830's value for one's own house; 1 is the guild's.</summary>
+        public const int OwnHouse = 5;
+
+        /// <summary>
+        /// Effects that say something of the item and do nothing on use: 981 bound to the character,
+        /// 983 exchangeable, 2818 no cooperative crafting. They do not make a potion more than a potion.
+        /// </summary>
+        private static readonly HashSet<int> Markers = new() { 981, 983, 2818 };
+
+        /// <summary>
+        /// The travel an item makes, if it is a travel item and nothing else: its travel effect, or
+        /// null.
+        /// </summary>
+        internal static DatabaseManager.ItemEffectData TravelOf(IReadOnlyList<DatabaseManager.ItemEffectData> effects)
+        {
+            var travel = effects.FirstOrDefault(e => e.EffectId is RecallEffect or MapReferenceEffect
+                or OtherMapReferenceEffect or ChoiceEffect || (e.EffectId == HouseEffect && e.Value == OwnHouse));
+            if (travel == null) return null;
+            return effects.All(e => ReferenceEquals(e, travel) || Markers.Contains(e.EffectId)) ? travel : null;
+        }
+
+        /// <summary>
+        /// A travel item used: false when the item is no such thing, so the caller tries the rest.
+        /// </summary>
+        public static async Task<bool> TryUseAsync(NetworkStream stream, Equipment.Item item)
+        {
+            var effects = DatabaseManager.GetItemEffectsData(DatabaseManager.GetItemTemplatePossibleEffects(item.Template));
+            var travel = TravelOf(effects);
+            if (travel == null) return false;
+
+            var me = SessionContext.State;
+            if (me.IsInFight || me.FightId != 0) return true;
+            if (!await ItemUseHandler.CriterionHoldsAsync(stream, item)) return true;
+
+            switch (travel.EffectId)
+            {
+                case RecallEffect:
+                {
+                    var (map, cell) = FightHandler.SavePointOf(me.CharacterId);
+                    await GoAsync(stream, item.Uid, map, cell);
+                    break;
+                }
+                case MapReferenceEffect:
+                case OtherMapReferenceEffect:
+                    if (TravelData.TryMapReference(travel.Value, out long mapId, out int cellId))
+                        await GoAsync(stream, item.Uid, mapId, cellId);
+                    else
+                        Console.WriteLine($"[Travel] Item {item.Template}: map reference {travel.Value} is not in the data.");
+                    break;
+                case HouseEffect:
+                    await HomeAsync(stream, item);
+                    break;
+                case ChoiceEffect:
+                    await ProposeAsync(stream, item, travel.Value);
+                    break;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// To a map, and the item spent once there: the capture's order, the jru first and the ivj
+        /// after. Nothing is spent when the map change does not happen (a prisoner, a closed raid floor,
+        /// a map the client does not have).
+        /// </summary>
+        private static async Task GoAsync(NetworkStream stream, long itemUid, long mapId, int cellId)
+        {
+            long from = SessionContext.State.MapId;
+            int landed = await TeleportHandler.ToMapAsync(stream, mapId, cellId);
+            if (landed < 0) return;
+            await ItemUseHandler.SpendOneAsync(stream, itemUid);
+            Console.WriteLine($"[Travel] {SessionContext.State.CharacterName}: {from} -> {mapId}, cell {landed}.");
+        }
+
+        // ─── Home ───────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The home potion: into one's own house, as the capture does it -- the item's use (hpp, hpq),
+        /// the potion spent, then the house's jqw. Without a house of one's own it is refused.
+        /// </summary>
+        private static async Task HomeAsync(NetworkStream stream, Equipment.Item item)
+        {
+            var me = SessionContext.State;
+            Houses.Door? door = null;
+            foreach (var house in HouseStore.OwnedBy(SessionContext.Current.AccountId))
+            {
+                if (Houses.TryGetDoor(house.MapId, house.ElementId, out var found) && found.InteriorMapId != 0
+                    && MapManager.GetMapInfo(found.InteriorMapId) != null)
+                {
+                    door = found;
+                    break;
+                }
+            }
+            if (door == null)
+            {
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, InfoMessages.RequirementsNotMet)));
+                Console.WriteLine($"[Travel] {me.CharacterName} has no house to go home to.");
+                return;
+            }
+            if (await Jail.KeepsInAsync(stream)) return;
+
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Hpp,
+                TravelProtocol.BuildDelayedUse(item.Template, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), me.CharacterId)));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Hpq, TravelProtocol.BuildDelayFinished(me.CharacterId)));
+            if (!await ItemUseHandler.SpendOneAsync(stream, item.Uid)) return;
+            await HouseHandler.GoHomeAsync(stream, door.Value);
+        }
+
+        // ─── The anklas' choice ─────────────────────────────────────────────────
+
+        /// <summary>
+        /// An ankla: its choice of destinations (kss). Nothing is spent until one is chosen.
+        /// </summary>
+        private static async Task ProposeAsync(NetworkStream stream, Equipment.Item item, int choiceId)
+        {
+            var choice = TravelData.ChoiceOf(choiceId);
+            if (choice == null || choice.Options.Count == 0)
+            {
+                Console.WriteLine($"[Travel] Item {item.Template}: choice {choiceId} is not in the data.");
+                return;
+            }
+            SessionContext.State.ItemChoice = (item.Uid, choice.Id);
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Kss, TravelProtocol.BuildChoice(choice)));
+        }
+
+        /// <summary>
+        /// The option chosen (kso { f1: its place }): to its map reference, the ankla spent there;
+        /// «No teletransportarse» keeps it. A kso with no choice pending is let go.
+        /// </summary>
+        public static async Task ChooseAsync(NetworkStream stream, byte[] frame)
+        {
+            var me = SessionContext.State;
+            var pending = me.ItemChoice;
+            me.ItemChoice = null;
+            if (pending == null) return;
+
+            byte[] kso = ConnectionProtocol.ReadPayload(frame, Op.Kso);
+            int place = 0;
+            if (kso != null)
+                foreach (var field in ProtoMessage.Parse(kso).Fields)
+                    if (field.FieldNumber == 1 && field.WireType == 0) place = (int)field.VarIntValue;
+
+            var choice = TravelData.ChoiceOf(pending.Value.ChoiceId);
+            if (choice == null || place < 0 || place >= choice.Options.Count) return;
+            var option = choice.Options[place];
+            if (option.RewardType != TravelData.GoToMapReference) return;
+
+            if (Equipment.ByUid(pending.Value.ItemUid) is not { Quantity: > 0 }) return;
+            if (!int.TryParse(option.RewardValue, out int reference) ||
+                !TravelData.TryMapReference(reference, out long mapId, out int cellId))
+            {
+                Console.WriteLine($"[Travel] Choice {choice.Id}, option {option.Id}: no map reference «{option.RewardValue}».");
+                return;
+            }
+            await GoAsync(stream, pending.Value.ItemUid, mapId, cellId);
+        }
+
+        private static Task WriteAsync(NetworkStream stream, byte[] frame)
+            => Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, frame);
+    }
+}

@@ -61,8 +61,6 @@ namespace Jondo.Unity.Server.Managers
 
         private static readonly Dictionary<int, Shop> _byNpc = new Dictionary<int, Shop>();
 
-        public static int Count => _byNpc.Count;
-
         public static void Initialize()
         {
             _byNpc.Clear();

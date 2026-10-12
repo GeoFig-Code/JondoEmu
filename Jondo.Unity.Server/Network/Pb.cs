@@ -19,8 +19,6 @@ namespace Jondo.Unity.Server.Network
 
         public static Pb New() => new Pb();
 
-        public int Length => (int)_ms.Length;
-
         /// <summary>Variable-length integer (wire type 0).</summary>
         public Pb Var(int field, long value)
         {

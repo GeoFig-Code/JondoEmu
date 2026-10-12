@@ -41,7 +41,6 @@ namespace Jondo.Unity.Server.Managers
         private static readonly Dictionary<long, List<Interactives.Element>> _byMap = new();
 
         public static int Count { get; private set; }
-        public static int MapCount => _byMap.Count;
 
         public static void Initialize()
         {

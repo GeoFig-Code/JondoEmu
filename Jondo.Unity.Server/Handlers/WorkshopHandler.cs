@@ -805,10 +805,14 @@ namespace Jondo.Unity.Server.Handlers
         // ─── Shared ─────────────────────────────────────────────────────────────────────────
 
         /// <summary>Experience for a job, its level-up if there is one, and the save.</summary>
-        public static async Task GiveJobExperienceAsync(NetworkStream stream, int jobId, long amount)
+        /// <param name="bonus">
+        /// Whether the Almanax's job bonus applies: it does to what is earned working, not to a job
+        /// scroll's fixed figure.
+        /// </param>
+        public static async Task GiveJobExperienceAsync(NetworkStream stream, int jobId, long amount, bool bonus = true)
         {
             if (amount <= 0) return;
-            amount = Managers.Almanax.WithBonus(Managers.Almanax.BonusType.JobExperience, amount);
+            if (bonus) amount = Managers.Almanax.WithBonus(Managers.Almanax.BonusType.JobExperience, amount);
             bool up = SessionContext.State.AddJobExperience(jobId, amount, out long total, out int level);
             DatabaseManager.SaveJobExperience(SessionContext.State.CharacterId, jobId, total);
             if (up) await SendLevelUpAsync(stream, jobId, level);

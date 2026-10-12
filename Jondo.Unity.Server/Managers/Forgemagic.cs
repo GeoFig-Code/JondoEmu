@@ -131,8 +131,6 @@ namespace Jondo.Unity.Server.Managers
 
         private static readonly Dictionary<int, EffectInfo> _effects = new Dictionary<int, EffectInfo>();
 
-        public static int EffectCount => _effects.Count;
-
         public static void Initialize()
         {
             _effects.Clear();

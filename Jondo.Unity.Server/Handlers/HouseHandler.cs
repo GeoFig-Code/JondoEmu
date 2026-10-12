@@ -176,11 +176,22 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>Through the door, once it is open: the part of entering after the iwn.</summary>
-        private static async Task GoInsideAsync(NetworkStream? stream, Houses.Door door)
+        private static Task GoInsideAsync(NetworkStream? stream, Houses.Door door)
+            => GoInsideAsync(stream, door, SessionContext.State.MapId, SessionContext.State.CellId);
+
+        /// <summary>
+        /// Into one's own house from wherever one is, as the home potion takes him: the capture
+        /// «utilizar pocima de hogar» goes in with the same jqw as the door. Leaving goes out
+        /// through the street door, not back to where the potion was drunk.
+        /// </summary>
+        internal static Task GoHomeAsync(NetworkStream? stream, Houses.Door door)
+            => GoInsideAsync(stream, door, door.MapId, door.Cell);
+
+        private static async Task GoInsideAsync(NetworkStream? stream, Houses.Door door, long wayBackMap, int wayBackCell)
         {
             long mapaQueDeja = SessionContext.State.MapId;
-            SessionContext.State.HouseEntryMapId = mapaQueDeja;
-            SessionContext.State.HouseEntryCell = SessionContext.State.CellId;
+            SessionContext.State.HouseEntryMapId = wayBackMap;
+            SessionContext.State.HouseEntryCell = wayBackCell;
             SessionContext.State.HouseEntryElementId = door.ElementId;
             SessionContext.State.MapId = door.InteriorMapId;
 

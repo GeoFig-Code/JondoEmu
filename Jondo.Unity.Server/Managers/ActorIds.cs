@@ -75,16 +75,6 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The id that goes to the NPC who is number <paramref name="posicion"/> on the map.</summary>
         public static long NpcDelMapa(int posicion) => PrimerNpc - posicion;
 
-        public static bool EsJugador(long id) => id > 0;
-
         public static bool EsNpc(long id) => id <= PrimerNpc && id >= UltimoNpc;
-
-        public static bool EsMonstruo(long id) => id <= PrimerMonstruo;
-
-        /// <summary>
-        /// Leaves the handing out as freshly started. It belongs to the test bench: nobody on the server
-        /// must call it, because it would hand out again numbers that already have an owner.
-        /// </summary>
-        public static void ReiniciarParaPruebas() => Interlocked.Exchange(ref _monstruo, PrimerMonstruo + 1);
     }
 }

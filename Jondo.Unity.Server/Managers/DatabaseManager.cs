@@ -1590,11 +1590,6 @@ namespace Jondo.Unity.Server
         }
 
         /// <summary>
-        /// Stores the LAUNCHER's session. It is a token separate from the game's on purpose: the game's is
-        /// rotated by the client every time it starts, and if they were the same, opening a client would
-        /// leave the launcher without a session for the next time.
-        /// </summary>
-        /// <summary>
         /// Until when an account is subscribed, as it travels. Empty string if there is nothing.
         /// </summary>
         /// <remarks>
@@ -1623,27 +1618,11 @@ namespace Jondo.Unity.Server
             }
         }
 
-        /// <summary>Changes an account's subscription date. Returns whether it wrote anything.</summary>
-        public static bool SetSubscriptionEnd(long accountId, string endDate)
-        {
-            if (accountId <= 0) return false;
-            try
-            {
-                using var connection = new SqliteConnection(AuthConnectionString);
-                connection.Open();
-                var command = connection.CreateCommand();
-                command.CommandText = "UPDATE Accounts SET SubscriptionEnd = $hasta WHERE Id = $id;";
-                command.Parameters.AddWithValue("$hasta", endDate);
-                command.Parameters.AddWithValue("$id", accountId);
-                return command.ExecuteNonQuery() > 0;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[DatabaseManager] Could not write the subscription of {accountId}: {ex.Message}");
-                return false;
-            }
-        }
-
+        /// <summary>
+        /// Stores the LAUNCHER's session. It is a token separate from the game's on purpose: the game's is
+        /// rotated by the client every time it starts, and if they were the same, opening a client would
+        /// leave the launcher without a session for the next time.
+        /// </summary>
         public static void SetLauncherToken(long accountId, string token)
         {
             try
@@ -1712,30 +1691,6 @@ namespace Jondo.Unity.Server
                 Console.WriteLine($"[DatabaseManager] Could not save the token of account " +
                                   $"{accountId}: {ex.Message}");
             }
-        }
-
-        /// <summary>
-        /// Whether that token belongs to some account. NOBODY CALLS IT.
-        /// </summary>
-        /// <remarks>
-        /// It is written down because a public method that validates credentials and is not used reads as
-        /// if it were the door one comes in through, and it is not: whoever resolves a token is
-        /// ClientLaunchRegistry.ResolveToken, which looks in three places and not this one. If it stays
-        /// unused, delete it.
-        /// </remarks>
-        public static bool ValidateGameToken(string token)
-        {
-            using var connection = new SqliteConnection(AuthConnectionString);
-            connection.Open();
-
-            var command = connection.CreateCommand();
-            command.CommandText = @"
-                SELECT COUNT(*)
-                FROM Accounts
-                WHERE GameToken = $token;
-            ";
-            command.Parameters.AddWithValue("$token", token);
-            return (long)command.ExecuteScalar() > 0;
         }
 
         public static DbAccount? GetAccountById(long accountId)
@@ -2153,7 +2108,6 @@ namespace Jondo.Unity.Server
             }
         }
 
-        /// <summary>Records when a character last entered the world.</summary>
         /// <summary>When and from where he connected the PREVIOUS time. Null the first time.</summary>
         public sealed class LastVisit
         {
@@ -2220,6 +2174,7 @@ namespace Jondo.Unity.Server
             catch (Exception) { }
         }
 
+        /// <summary>Records when a character last entered the world.</summary>
         public static void TouchLastConnection(long characterId, string ip = "")
         {
             try
@@ -2242,7 +2197,6 @@ namespace Jondo.Unity.Server
             }
         }
 
-        /// <summary>Checks that a character really does belong to the account asking for it.</summary>
         /// <summary>Notes that this character has used that interactive. Repeating does no harm.</summary>
         public static void RememberElement(long characterId, int elementId)
         {
@@ -2388,6 +2342,7 @@ namespace Jondo.Unity.Server
             }
         }
 
+        /// <summary>Checks that a character really does belong to the account asking for it.</summary>
         public static bool CharacterBelongsToAccount(long characterId, long accountId)
         {
             if (characterId <= 0 || accountId <= 0) return false;
@@ -2841,6 +2796,9 @@ namespace Jondo.Unity.Server
         /// (chance), all four with die 5, which is "from 1 to 5". It is given the maximum, which is what a
         /// brand-new item should carry.
         /// </summary>
+        /// <summary>«Gana x#2 #3» with the item rolled: a box's, a candy's.</summary>
+        private const int GainsOneItem = 193;
+
         private static string EffectsOfTemplate(SqliteConnection connection, int gid)
         {
             try
@@ -2883,8 +2841,24 @@ namespace Jondo.Unity.Server
                         continue;
                     }
 
+                    // The compound ones the captures show whole keep their three numbers: a job
+                    // scroll's job is in the third, and a single number lost it (EffectFields.TravelsWhole).
+                    if (Managers.EffectFields.TravelsWhole(id))
+                    {
+                        salida.Add($"[{id},{value},{diceNum},{diceSide}]");
+                        continue;
+                    }
+
                     // The brand-new value: the die's top if there is one, and if not, the fixed one.
                     int fijo = value != 0 ? value : (diceSide != 0 ? diceSide : diceNum);
+
+                    // «Gana x#2 #3» rolled (193): the item in the first number and the one it gives in
+                    // the third, «f6 { f1: the item, f3: 1 }» in the eight captured.
+                    if (id == GainsOneItem)
+                    {
+                        salida.Add($"[{id},{fijo},0,1]");
+                        continue;
+                    }
                     salida.Add($"[{id},{fijo},0,0]");
                 }
                 return salida.Count > 0 ? "[" + string.Join(",", salida) + "]" : "[]";
@@ -2893,10 +2867,6 @@ namespace Jondo.Unity.Server
             return "[]";
         }
 
-        /// <summary>
-        /// Looks up an item template and rolls its factory effects at their maximum value.
-        /// Returning false distinguishes a real effect-less item from an unknown template id.
-        /// </summary>
         /// <summary>
         /// The level needed to wear an item. Zero if it is not known.
         /// </summary>
@@ -2936,6 +2906,10 @@ namespace Jondo.Unity.Server
             }
         }
 
+        /// <summary>
+        /// Looks up an item template and rolls its factory effects at their maximum value.
+        /// Returning false distinguishes a real effect-less item from an unknown template id.
+        /// </summary>
         public static bool TryGetItemTemplateEffects(int gid, out string effects)
         {
             effects = "[]";
@@ -3087,7 +3061,6 @@ namespace Jondo.Unity.Server
             return command.ExecuteNonQuery() > 0;
         }
 
-        /// <summary>Reads an item template's realWeight (pods) from the ItemTemplates Data JSON.</summary>
         /// <summary>
         /// What an item weighs, in pods. It is asked once per template and that is it.
         ///
@@ -3104,6 +3077,7 @@ namespace Jondo.Unity.Server
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, int> _pesoPorPlantilla
             = new System.Collections.Concurrent.ConcurrentDictionary<int, int>();
 
+        /// <summary>Reads an item template's realWeight (pods) from the ItemTemplates Data JSON.</summary>
         public static int GetItemRealWeight(int gid)
         {
             if (_pesoPorPlantilla.TryGetValue(gid, out int guardado)) return guardado;
@@ -3132,17 +3106,6 @@ namespace Jondo.Unity.Server
             }
             catch (Exception) { }
             return 0;
-        }
-
-        public static void ClearInventory(long characterId)
-        {
-            using var connection = new SqliteConnection(WorldConnectionString);
-            connection.Open();
-
-            var command = connection.CreateCommand();
-            command.CommandText = "DELETE FROM CharacterItems WHERE CharacterId = $charId;";
-            command.Parameters.AddWithValue("$charId", characterId);
-            command.ExecuteNonQuery();
         }
 
         public static void SeedInventory(long characterId, List<PlayerItem> items)
@@ -3199,65 +3162,6 @@ namespace Jondo.Unity.Server
             return bytes;
         }
 
-        public static void GiveAllLevel200Items(long characterId)
-        {
-            using var connection = new SqliteConnection(WorldConnectionString);
-            connection.Open();
-
-            // First check if already given
-            var checkCmd = connection.CreateCommand();
-            checkCmd.CommandText = "SELECT COUNT(*) FROM CharacterItems WHERE CharacterId = $id AND ItemGid = 21081;"; // Examples
-            checkCmd.Parameters.AddWithValue("$id", characterId);
-            long count = (long)checkCmd.ExecuteScalar();
-            if (count > 0) return;
-
-            Console.WriteLine($"[SQLite] Giving all level 200 items to Character {characterId}...");
-
-            var cmd = connection.CreateCommand();
-            cmd.CommandText = "SELECT Id, PossibleEffects FROM ItemTemplates WHERE Level = 200;";
-            var itemsToAdd = new List<(int id, string effects)>();
-
-            using (var reader = cmd.ExecuteReader())
-            {
-                while (reader.Read())
-                {
-                    int id = reader.GetInt32(0);
-                    string effects = reader.IsDBNull(1) ? "[]" : reader.GetString(1);
-                    itemsToAdd.Add((id, effects));
-                }
-            }
-
-            using var transaction = connection.BeginTransaction();
-            try
-            {
-                var insertCmd = connection.CreateCommand();
-                insertCmd.Transaction = transaction;
-                insertCmd.CommandText = @"
-                    INSERT INTO CharacterItems (CharacterId, ItemGid, Position, Quantity, Effects)
-                    VALUES ($charId, $gid, 63, 1, $effects);
-                ";
-                insertCmd.Parameters.Add("$charId", SqliteType.Integer);
-                insertCmd.Parameters.Add("$gid", SqliteType.Integer);
-                insertCmd.Parameters.Add("$effects", SqliteType.Text);
-
-                foreach (var item in itemsToAdd)
-                {
-                    insertCmd.Parameters["$charId"].Value = characterId;
-                    insertCmd.Parameters["$gid"].Value = item.id;
-                    insertCmd.Parameters["$effects"].Value = item.effects;
-                    insertCmd.ExecuteNonQuery();
-                }
-
-                transaction.Commit();
-                Console.WriteLine($"[SQLite] Successfully added {itemsToAdd.Count} level 200 items.");
-            }
-            catch (Exception ex)
-            {
-                transaction.Rollback();
-                Console.WriteLine($"[SQLite] Error adding level 200 items: {ex.Message}");
-            }
-        }
-
         public static byte[] ReconstructActorDetails(byte[] lookBytes, string name)
         {
             try
@@ -3310,77 +3214,6 @@ namespace Jondo.Unity.Server
             }
         }
 
-        public class NpcSpawn
-        {
-            public int Id { get; set; }
-            public long MapId { get; set; }
-            public int NpcId { get; set; }
-            public int CellId { get; set; }
-            public int Orientation { get; set; }
-            public int BoneId { get; set; }
-            public string Look { get; set; } = "";
-        }
-
-        public static List<NpcSpawn> GetNpcSpawnsForMap(long mapId)
-        {
-            var spawns = new List<NpcSpawn>();
-            try
-            {
-                using (var connection = new SqliteConnection(WorldConnectionString))
-                {
-                    connection.Open();
-                    var command = connection.CreateCommand();
-                    command.CommandText = "SELECT Id, MapId, NpcId, CellId, Orientation, BoneId, Look FROM NpcSpawns WHERE MapId = $mapId;";
-                    command.Parameters.AddWithValue("$mapId", mapId);
-                    using (var reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            spawns.Add(new NpcSpawn
-                            {
-                                Id = reader.GetInt32(0),
-                                MapId = reader.GetInt64(1),
-                                NpcId = reader.GetInt32(2),
-                                CellId = reader.GetInt32(3),
-                                Orientation = reader.GetInt32(4),
-                                BoneId = reader.GetInt32(5),
-                                Look = reader.IsDBNull(6) ? "" : reader.GetString(6)
-                            });
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[-] Error fetching NPC spawns for map {mapId}: {ex.Message}");
-            }
-            return spawns;
-        }
-
-        public static string GetNpcTemplateLook(int npcId)
-        {
-            try
-            {
-                using (var connection = new SqliteConnection(WorldConnectionString))
-                {
-                    connection.Open();
-                    var command = connection.CreateCommand();
-                    command.CommandText = "SELECT Look FROM NpcTemplates WHERE Id = $npcId;";
-                    command.Parameters.AddWithValue("$npcId", npcId);
-                    var val = command.ExecuteScalar();
-                    if (val != null && val != DBNull.Value)
-                    {
-                        return val.ToString() ?? "";
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[-] Error fetching NPC template look for NPC {npcId}: {ex.Message}");
-            }
-            return "";
-        }
-
         public static List<long> GetItemTemplatePossibleEffects(int itemId)
         {
             var rids = new List<long>();
@@ -3415,6 +3248,74 @@ namespace Jondo.Unity.Server
                 Console.WriteLine($"[-] Error parsing ItemTemplate {itemId} for possibleEffects: {ex.Message}");
             }
             return rids;
+        }
+
+        /// <summary>
+        /// What an item asks of whoever uses it, in the client's criterion language: the template's
+        /// "criterions" -- «Ox=10&amp;(SL&gt;40&amp;SL&lt;61)» for the 60 tax collector potion. Empty when it
+        /// asks nothing.
+        /// </summary>
+        public static string GetItemTemplateCriterion(int itemId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT Data FROM ItemTemplates WHERE Id = $itemId;";
+                command.Parameters.AddWithValue("$itemId", itemId);
+                var data = command.ExecuteScalar();
+                if (data == null || data == DBNull.Value) return "";
+                using var doc = System.Text.Json.JsonDocument.Parse(data.ToString()!);
+                return doc.RootElement.TryGetProperty("criterions", out var criterion)
+                       && criterion.ValueKind == System.Text.Json.JsonValueKind.String
+                    ? criterion.GetString() ?? ""
+                    : "";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[-] Error reading the criterion of ItemTemplate {itemId}: {ex.Message}");
+                return "";
+            }
+        }
+
+        /// <summary>An item template's type -- 173 «Pergamino de actitud», 76 «Pergamino de característica» --, or 0.</summary>
+        public static int GetItemTemplateType(int itemId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT Type FROM ItemTemplates WHERE Id = $itemId;";
+                command.Parameters.AddWithValue("$itemId", itemId);
+                return command.ExecuteScalar() is long type ? (int)type : 0;
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>Every item template of one type: the spell scrolls are type 75.</summary>
+        public static List<int> ItemTemplatesOfType(int type)
+        {
+            var ids = new List<int>();
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT Id FROM ItemTemplates WHERE Type = $type ORDER BY Id;";
+                command.Parameters.AddWithValue("$type", type);
+                using var reader = command.ExecuteReader();
+                while (reader.Read()) ids.Add(reader.GetInt32(0));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] Could not list the items of type {type}: {ex.Message}");
+            }
+            return ids;
         }
 
         public class ItemEffectData
@@ -4066,56 +3967,6 @@ namespace Jondo.Unity.Server
         /// <summary>The category of the effects that describe the weapon, not the character.</summary>
         private const int WeaponEffectCategory = Jondo.Unity.World.Combat.EffectSupport.WeaponCategory;
 
-        // ─── The ones that STEAL points ────────────────────────────────────────
-
-        private static Dictionary<int, int>? _roboDePuntos;
-
-        /// <summary>
-        /// Which characteristic a steal effect steals, or zero if it steals nothing.
-        ///
-        /// They are a family apart and that is why room is made for them: the four -- 77 and 441 for
-        /// movement points, 84 and 440 for action points -- carry <c>Characteristic = 0</c> and
-        /// <c>Category = 2</c> in the table, so both filters of the general catalogue ate them and they never
-        /// reached the engine. The result on screen was that Flecha Inmovilizadora, instead of taking a
-        /// movement point off the piwi, hung on it a buff literally called "Roba 1 PM" that did nothing.
-        ///
-        /// Which one they steal is said by their own description, which is where the catalogue already takes
-        /// the others' sign from: "Roba #1 a #2 PM" against "Roba #1 a #2 PA". There is no hand-written list.
-        /// </summary>
-        public static int RoboDePuntos(int effectId)
-        {
-            if (_roboDePuntos == null)
-            {
-                var mapa = new Dictionary<int, int>();
-                try
-                {
-                    using var conn = new SqliteConnection(WorldConnectionString);
-                    conn.Open();
-                    using var cmd = conn.CreateCommand();
-                    cmd.CommandText = "SELECT Id, Description FROM Effects " +
-                                      "WHERE Description LIKE 'Roba %';";
-                    using var rd = cmd.ExecuteReader();
-                    while (rd.Read())
-                    {
-                        string texto = rd.IsDBNull(1) ? "" : rd.GetString(1).TrimEnd();
-                        if (texto.EndsWith("PM", StringComparison.Ordinal))
-                            mapa[rd.GetInt32(0)] = MovementPointsCharacteristic;
-                        else if (texto.EndsWith("PA", StringComparison.Ordinal))
-                            mapa[rd.GetInt32(0)] = ActionPointsCharacteristic;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Program.LogDebug($"[DatabaseManager] Could not read the point steals: {ex.Message}");
-                }
-                _roboDePuntos = mapa;
-            }
-            return _roboDePuntos.TryGetValue(effectId, out int cual) ? cual : 0;
-        }
-
-        private const int ActionPointsCharacteristic = 1;
-        private const int MovementPointsCharacteristic = 23;
-
         // ─── The ones that MULTIPLY ────────────────────────────────────────────
 
         private static HashSet<int>? _multiplicadores;
@@ -4212,6 +4063,12 @@ namespace Jondo.Unity.Server
             return _effectCharacteristics.TryGetValue(effectId, out int c) ? c : 0;
         }
 
+        /// <summary>«#1 a #2 de daños del mejor elemento», a weapon damage line like 96 to 100.</summary>
+        private const int BestElementDamage = 2822;
+
+        /// <summary>«#1 a #2 de daños del peor elemento».</summary>
+        private const int WorstElementDamage = 2832;
+
         /// <summary>
         /// The equipped weapon, expressed as if it were a spell, so that a weapon hit goes down
         /// the same path as a regular cast.
@@ -4220,12 +4077,6 @@ namespace Jondo.Unity.Server
         /// that particular instance. Effects 91-95 (steal) and 96-100 (damage) carry their element
         /// in the client's own effect table, so no hand-written mapping is needed.
         /// </summary>
-        /// <summary>«#1 a #2 de daños del mejor elemento», a weapon damage line like 96 to 100.</summary>
-        private const int BestElementDamage = 2822;
-
-        /// <summary>«#1 a #2 de daños del peor elemento».</summary>
-        private const int WorstElementDamage = 2832;
-
         public static SpellCombatData? GetEquippedWeaponAsSpell(long characterId)
         {
             const int WeaponSlot = 1;
@@ -4481,10 +4332,6 @@ namespace Jondo.Unity.Server
             return drops;
         }
 
-        /// <summary>
-        /// Puts an item into the inventory. If one of the same kind is already loose in the bag,
-        /// it adds to that stack instead of creating another entry. Returns the resulting item.
-        /// </summary>
         /// <summary>Stores a profession's experience. It is called on every gathering.</summary>
         public static void SaveJobExperience(long characterId, int jobId, long experience)
         {
@@ -4965,25 +4812,6 @@ namespace Jondo.Unity.Server
             }
         }
 
-        /// <summary>The map the database says for a character. Only for diagnostics.</summary>
-        public static long MapOf(long characterId)
-        {
-            try
-            {
-                using var connection = new SqliteConnection(WorldConnectionString);
-                connection.Open();
-                using var command = connection.CreateCommand();
-                command.CommandText = "SELECT MapId FROM Characters WHERE Id = $c;";
-                command.Parameters.AddWithValue("$c", characterId);
-                object? valor = command.ExecuteScalar();
-                return valor == null ? 0 : Convert.ToInt64(valor);
-            }
-            catch (Exception)
-            {
-                return -1;
-            }
-        }
-
         /// <summary>
         /// The next free uid. One for the WHOLE server, and atomic.
         ///
@@ -5432,6 +5260,10 @@ namespace Jondo.Unity.Server
             return new PlayerItem { Uid = uid, ItemId = gid, Quantity = 1, Position = 63, RawEffects = effects };
         }
 
+        /// <summary>
+        /// Puts an item into the inventory. If one of the same kind is already loose in the bag,
+        /// it adds to that stack instead of creating another entry. Returns the resulting item.
+        /// </summary>
         public static PlayerItem AddItemToInventory(long characterId, int itemGid, int quantity)
         {
             var inventory = LoadInventory(characterId);
@@ -5915,8 +5747,6 @@ namespace Jondo.Unity.Server
         public int MaxRange { get; set; } = 1;
         public int BaseDamageMin { get; set; } = 5;
         public int BaseDamageMax { get; set; } = 10;
-        public int BaseDamage => (BaseDamageMin + BaseDamageMax) / 2;
-        public int EffectUid { get; set; } = 41870;
         public int Element { get; set; } = 0; // 0=Neutral, 1=Earth, 2=Fire, 3=Water, 4=Air
 
         /// <summary>
@@ -5950,7 +5780,6 @@ namespace Jondo.Unity.Server
 
         public int CriticalDamageMin { get; set; }
         public int CriticalDamageMax { get; set; }
-        public bool HasCriticalDamage => CriticalDamageMin > 0 || CriticalDamageMax > 0;
 
         /// <summary>Cells of displacement: positive pushes, negative pulls. 0 = does not move.</summary>
         public int PushDistance { get; set; }

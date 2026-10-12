@@ -54,9 +54,6 @@ namespace Jondo.Unity.Server.Managers
         private static readonly Dictionary<int, Placement> _placements =
             new Dictionary<int, Placement>();
 
-        /// <summary>The ones no longer seeded because another has taken their catalogue.</summary>
-        public static IReadOnlyCollection<int> Absorbed => _absorbed;
-
         public static IReadOnlyList<Merge> All => _merges;
 
         public static int Count => _merges.Count;

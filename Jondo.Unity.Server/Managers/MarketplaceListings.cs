@@ -128,8 +128,6 @@ namespace Jondo.Unity.Server.Managers
         private static bool _loaded;
         private static bool _schema;
 
-        public static int Count { get { lock (Gate) { Load(); return _listings.Count; } } }
-
         /// <summary>Creates the tables and reads what is on sale. At start, and again for tests.</summary>
         public static void Initialize()
         {

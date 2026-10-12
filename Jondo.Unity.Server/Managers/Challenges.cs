@@ -339,10 +339,6 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The challenges each monster carries: monster → its own.</summary>
         private static readonly Dictionary<int, List<Challenge>> _byMonster = new();
 
-        public static int Count => _byId.Count;
-        public static int OfferableCount => _offerable.Count;
-        public static int WithMonsterCount => _byMonster.Count;
-
         /// <summary>
         /// Leaves in the offer ONLY what can be watched, and gives a percentage to whatever lacks one.
         ///

@@ -1,4 +1,4 @@
-High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** written in C# (**.NET 10**), with decoupled modular projects, a SQLite data layer, a combat engine driven entirely by client data — PvM, duels and Koliseo — a cross-platform launcher and a world editor.
+﻿High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** written in C# (**.NET 10**), with decoupled modular projects, a SQLite data layer, a combat engine driven entirely by client data — PvM, duels and Koliseo — a cross-platform launcher and a world editor.
 
 > ⚠️ **Runs against Dofus 3 clients 3.6.10.11 and 3.6.10.10.** The live game is on 3.6.11.12, so the
 > official launcher does not provide a client that works here — [Step 2](#step-2--get-the-361011-client)
@@ -20,7 +20,7 @@ High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** writte
 
 &nbsp;
 
-- 🌍 &nbsp;**World** &nbsp;— &nbsp;[Connection and authentication](#-connection-and-authentication) · [World and movement](#%EF%B8%8F-world-and-movement) · [Travel](#-travel) · [Houses, bins and haven bags](#%EF%B8%8F-houses-bins-and-haven-bags) · [Banks and marketplaces](#-banks-and-marketplaces) · [Social](#-social) · [Guilds and raids](#%EF%B8%8F-guilds-and-raids)
+- 🌍 &nbsp;**World** &nbsp;— &nbsp;[Connection and authentication](#-connection-and-authentication) · [World and movement](#%EF%B8%8F-world-and-movement) · [Travel](#-travel) · [Houses, bins and haven bags](#%EF%B8%8F-houses-bins-and-haven-bags) · [Banks and marketplaces](#-banks-and-marketplaces) · [Social](#-social) · [Guilds and raids](#%EF%B8%8F-guilds-and-raids) · [Alliances](#-alliances)
 
 - 🎒 &nbsp;**Character** &nbsp;— &nbsp;[Character and inventory](#-character-and-inventory) · [Appearances](#-appearances) · [Professions](#%EF%B8%8F-professions)
 
@@ -297,7 +297,12 @@ Built with **Avalonia**, the same toolkit as the Studio.
   the creation captures show; the ones learned — an achievement's reward — are announced (`khi`)
   and kept
 - ✅ Smileys over the head for the whole map (`hov` → `hoc`) and the mood smiley (`hor` → `hns`)
-- ❌ Emotes learned from an item: consumables are not used yet
+- ✅ Emotes learned from an item: the attitude scrolls (type 173, effect 10) and potions (type 214,
+  effect 2823) teach theirs as a reward does (`khi`) and are spent; one already known stays, with
+  *Verifica las actitudes que ya conoces e inténtalo de nuevo...* (inferred). The tools and Dofus
+  that carry effect 10 give it while worn and are not used up
+- ✅ A character of an administrator's account has every attitude of the game, by the server owner's
+  rule; the role is read from the base at each character load
 - ❌ The invitation popup's *Details* button (`imd` → `ilb`), the dedicated member-gone message (`inc`) and party search
 
 ### ⚜️ Guilds and raids
@@ -329,18 +334,26 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The tabs this server keeps nothing for yet — the missions themselves, the paged list, the
   collectors' — answered empty as a new guild's are (`jfv`, `jeu`, `jga`, `jgr`, `jfw`, `hvx`), and
   the week's reset (`jew` → `jez`, Tuesday 05:00 UTC, in all five captures)
-- ✅ Leave from the window (`jho`) or with `.gremio salir`; kick with `.gremio expulsar`
+- ✅ Leave or expel from the window (`jho`: one's own id leaves, a member's expels him, with right 13
+  «Excluir a un miembro»), or with `.gremio salir` and `.gremio expulsar`
 - ✅ Ranks — open, rename, set rights, create (`jcs`, `jct`, `jck`, `jcv`), each answered with the
   whole `jco`. Rights are stored as they arrive. `.gremio rango <personaje> <n>` assigns one
 - ✅ Member notes (`jjj` → `jgz`), the guild log (`jim` → `jil`: founding and every join), the
   directory profile the leader writes (`jcc` → `jci`: description, level range, tags and title) and
   the directory search (`jjm` → `jme` + `jiv`: every guild with its leader, size and emblem)
-- ✅ Applications and invitations both ways — apply, list, read one, accept
+- ✅ Applications and invitations from the client's window and menus — applying from the directory
+  (`jlw`: the guild gets `jma` and the list `jly`, the applicant his pending application `jme`),
+  rewriting it (`jmo`), seeing it on opening the directory (`jlu` → `jme`), withdrawing it (`jlv` →
+  `jmi`); the guild's list (`jlx`/`jml` → `jmf`), accepting or refusing one (`jlt` → `jly`, and the
+  applicant's `jmp`), and inviting from a player's menu (`jjn` → `jiq` and `jin` 1; on joining,
+  `lqn` 1423 and `jin` 3), with right 6 «Gestionar las candidaturas e invitaciones»
 - ✅ Contributions — 10,000 kamas buy 10 guild kamas, 10 tokens and 100 activity points, five a week,
   the week turning on Tuesday, once the guild has a tier
 - ✅ The oracle shop, five oracles, priced by how many accounts the guild has
-- ❌ The client's own requests for applying, inviting, kicking and assigning a rank are not
-  handled; `.gremio` stands in
+- ✅ A member's rank from the members window (`jgv` → `jgz`): the leader gives any, right 26 «Atribuir
+  rangos inferiores al mío» gives ranks below one's own to members below one; a member has to have
+  been in the guild a day (`lqn` 740 with "24", measured); giving the leader's rank hands the guild
+  over, the old leader taking the other's rank (not measured)
 - ✅ The guild chest, in the banks — see [Banks and marketplaces](#-banks-and-marketplaces)
 - ❌ The missions of the *Encargos* tab — the twelve a week, their progress, rerolls and the
   milestones' acknowledgments — and the *Casas* tab
@@ -487,6 +500,95 @@ prices, durations, team sizes, goals and rewards come from its data (`datos/guil
 - ❌ The entry map and the positions of machines and chests are not taken from captures: the lowest
   map of each floor and the walkable cell nearest the middle are used
 
+### 🔱 Alliances
+
+Since the alliance rework an alliance is made of characters, not guilds: in the one capture with an
+alliance, a character joins «A B S I N T O» by himself and leaves it while his guild stays as it was.
+Its frames are read off the client's alliance classes and checked byte for byte against that capture;
+what no capture shows is read in the client's own code -- the windows that send each request, and its
+handlers, decompiled in the Ghidra project.
+
+- ✅ Founding: the Temple of Alliances' blue door (element 481519 on map 115083777, [13,35]) lets in a
+  character of level 50 carrying an alliance gem (*Alianzalogema*, item 14290), and refuses the rest
+  with the client's own line, as in the capture. Inside, the book on the lectern (element 530184 on
+  115081731) opens the client's founding editor. Its `mdk` spends the gem, and the editor's own
+  refusals come back with the codes its handler words: a bad or taken name or tag, already in an
+  alliance, requirements unmet
+- ✅ Gremia sells the alliance gem for one kama: nothing in the client's data gives it
+- ✅ The four ranks an alliance is born with, from the client's data, named by the key
+  `alliance.rank.N.name` the client translates into each player's language (*General de alianza* with
+  every right, *Teniente*, *Aspirante*, *Bisoño*), and its eighteen rights (`datos/alliances_3.6.10.11.json`)
+- ✅ The alliance block travels in every map actor (`f5 { f5 { f2 alliance } }`), so the tag shows
+  by the name to everyone, and the membership comes with you into the world (`mbz`, the silent one)
+- ✅ The directory (`mba` / `mde` → `mag`, `mcv`), with the name search and the paging; an
+  alliance's card from it (`mck` → `mcl`); joining one with open recruitment (`mac`): the ranks,
+  belonging, the sheet, the chat line, the banner emote, the message and the bulletin, in the
+  capture's order
+- ✅ The alliance window's sheet (`mcf` → `mcx`): the card and the member list with class, level,
+  rank, achievement points, sex and online state. The others see you join (`mbv`), leave (`mby`),
+  change rank, connect and disconnect
+- ✅ Ranks and rights from the window: creating a rank under another (`mbj`), renaming it and its icon
+  (`mbd`), removing it with its members sent to another (`mbk`), reordering (`mbn`), its rights
+  (`mbl`) and a member's rank (`mbo`) -- each with the right it takes and only on ranks below one's
+  own; the leader giving his own rank hands the alliance over
+- ✅ Applications: applying from an alliance's card (`mai`), rewriting (`mae`) or withdrawing it
+  (`mau`), the list paged as the window asks (`mah` → `maz`), the notification to whoever manages
+  them (`mad`), and accepting or refusing (`maf`, the applicant told with `maq`)
+- ✅ Invitations from a player's menu (`mbr`): the invited gets the client's popup (`mbs`), whoever
+  invites waits with a cancel button (`mbq`), and accepting, refusing or cancelling (`mbu`) closes both
+- ✅ The recruitment card (`mas` → `mar`, saved with `lzy`): recruitment, minimum level,
+  description, title, tags and languages, shown in the directory
+- ✅ The alliance message (`mcs` → `mcm`) and the bulletin (`mdg` → `mcr`), with who wrote them
+  and when, refused (`mdf` / `mco`) without the right
+- ✅ The alliance's name and tag or emblem changed with its potions (14291, 14292, 28330): the editor
+  opens in its mode (`mce`), the potion goes once the change is made (`mcn`), and every member sees
+  the alliance anew
+- ✅ The alliance chat channel reaches the members connected, and the guild channel now reaches the
+  guild's; «Un miembro de tu alianza está en línea» for whoever asks for it (`mdj` / `mda`)
+- ✅ Tax collectors, which belong to the alliance in this version. A tax collector potion (27635,
+  27905-27912, 14553, one per band of subarea levels; Gremia sells them at their 100 kamas) places one
+  where its user stands, if its criterion holds -- the alliance right to place one and the subarea's
+  level -- on a map that is fought on, one per map and per subarea for an alliance; it stands in its
+  alliance's colours with its symbol (the client's emblem symbols) and its random names, and the
+  alliance hears of it (`hjq`). Byte for byte with the captures: the map actor, talking to it (`ion`:
+  its pods, prospecting, worth, the alliance's count) and the attack (`hkc`, a fight of type 5 against
+  the monster *Recaudador* by its names, its side of kind 3)
+- ✅ A tax collector gathers: every fight won against monsters on its map rolls their loot once more
+  for it at its prospecting, up to its pods. Collecting it from its menu (`kbu`, with the alliance
+  right) gives all it carried and takes it away (`kdc`, `hjt`, `hlc`); beating it shares its bag among
+  the attackers, and its owner is told it fell (`hjw`). What it wore goes to its owner's bank, and an
+  owner who was away is told at his next entry what was collected or beaten (`hkx`)
+- ✅ Its window, from its menu: «Consultar» (`hkt` → `hkb`) shows it read-only, «Modificar» (`ker`)
+  opens it as an exchange beside the bag when standing by it (`kds`). Its seven slots take the tax
+  collector items (types 273-280: tunic, plate, banner, daggers, saddlebags, chests, horseshoes) with
+  the storages' `kcr`, each change told with its sheet anew (`hkh`); its six spells -- any of the forty
+  of type 25 -- are set, emptied and moved between slots (`hle`, `hjx`, `hke` → `hki`). It fights with
+  those spells and what its items add, and its chests and saddlebags raise its prospecting and pods.
+  Gremia sells the seven tax collector resources its items are crafted from
+- ✅ The alliance's default tax collector, the personalization tab (`hjy` → `hlb`): its six spells
+  set, emptied and moved (`hko`, `hli`, `hkw` → `hlh`), with the right to configure it; each new tax
+  collector starts with them, as every tax collector of an alliance in the captures has the same six
+- ✅ Defending: when one is attacked its alliance gets the chat line and the popup (`hld`); the fights
+  tab of the alliance window lists its fights (`meq` → `mdu`, kept up to date with `meh`, `mdx`, `meu`,
+  `met`, `mdv`), and a free slot among the defenders takes a member into the fight on its side,
+  from wherever he stands, while its placement lasts (`mer`; `mea` to leave). The alliance's sheet
+  lists its tax collectors and prisms
+- ✅ Prisms: an alliance prism (27913-27921, 14293; Gremia sells them at one kama) holds a capturable
+  subarea for its alliance, one per subarea, with the right to place one and the subarea's level;
+  it stands on its map (kind 2, as in the captures) and every player's world map lists it (`ife` at
+  world entry, `ifa`, `iew`). Its menu's teleport lists the alliance's prisms; attacking it (`iez`)
+  is a fight of type 9 its alliance hears of (`iex`) and defends as a tax collector, and beaten it
+  is gone (`iev`)
+- ❌ Not yet: the top tax collectors (`hks`), the prism modules and talk, the AvA, conquests and
+  nuggets. Inferred and unmeasured: the prism fight's type, its look's skin (no client data gives it,
+  so the prism stands without its symbol), the prism teleport's window, the alliance fights list's
+  fighter blocks, and every frame of the tax collector's window, read off the client with no capture
+- ✅ The *Pócima del templo de las alianzas* (14447), one more travel item: to map reference 167,
+  115081729, the temple's square (see Character and inventory)
+- ❌ Not measured: the book's skill (the guild altar's *Utilizar* is used), the rights of the three
+  lower ranks at founding (they start with none), the meaning of the card's f2 and f4 (`mcl`), and
+  the recruitment types beyond 1, open
+
 ### 🎒 Character and inventory
 
 - ✅ **21,748 item templates** and **66,294 item effects** — spawning, equipping, bags, destruction, persistence
@@ -494,8 +596,76 @@ prices, durations, team sizes, goals and rewards come from its data (`datos/guil
 - ✅ Boxes open with a double click (`iuu`): an item whose effect 222 says *¿Qué hay ahí dentro?*
   draws from its group of the client's random drops (`datos/random_drop_groups_*.json`, 314
   groups) by weight — the chances its window shows — or gives all of a group that lists every item
-  at -1; one box is spent and each item arrives with its chat line. ❌ Other item uses (potions,
-  scrolls, books) are not handled yet
+  at -1; one box is spent and each item arrives with its chat line
+- ✅ Travel items, by their effect: the recall potion (600) to the save point; the city, class and
+  quest potions (826, 1155) to the client's map reference they carry — Bonta's and Brakmar's squares,
+  Otomai's 28049408 and Meriana's 134403, as their captures land —; the home potion (830 at 5) into
+  one's own house through its door's `jqw`, after the item's use (`hpp`, `hpq`); and the anklas
+  (3008), whose choice of dungeons (`kss`) spends the ankla only once one is picked (`kso`),
+  *No teletransportarse* keeping it. The item's criterion is judged first: without the achievement an
+  ankla asks for it answers *Logro necesario* as the real server does, and *No cumples los
+  requisitos* otherwise (inferred); `Po!45` keeps them all out of Incarnam. Map references and
+  choices come from `datos/travel_*.json` (`tools/extract_travel.py`)
+- ✅ Life and energy back with a double click — breads, meats, fish, potions, beers (effects 110 and
+  139, 318 items): the amount is the item's figure or a roll between its two, never past what is
+  missing. The kub writes the life lost anew and a `ktz` restarts the client's regeneration counter
+  from there (read off the client: `eet.xaz`, and `eet.xbf` resetting `hl`), with *Has recuperado
+  {0} puntos de vida / energía*. With the gauge full the item stays and the real server's *Los
+  puntos de energía ya están al máximo.* answers, byte for byte; *Ya tienes todos tus puntos de
+  vida* for life
+- ✅ Characteristic scrolls and the breads that raise one for good (effects 606–611): each within
+  the bound its criterion and its description set — the small scroll under 25 points from scrolls,
+  the medium 50, the large 80, the powerful 100, the breads in steps of five or ten —, never past
+  100. Refused with the real server's *Tus características no te lo permiten.*; *Has ganado {0}
+  puntos de …* for each characteristic. Every character on this server is born with 100 in each, so
+  a scroll only does something to whoever has fewer
+- ✅ Books and documents (effect 620, 163 items): the document opens (`kkt`) and the book stays; the
+  close button gets the empty `kld` — byte for byte «abrir libro el escudo de feca y leerlo». The
+  notices on the map close the same way
+- ✅ Experience scrolls (effect 605): 200, 2,000 or 20,000 experience at the scroll's own figure,
+  with the level-up as any reward has it
+- ✅ Job scrolls (effect 614, 34 of them): a hundred points of their job at the scroll's own figure,
+  with the job's level-up and *Has ganado {0} XP en el oficio de …*; the recobotín boxes give theirs
+  (190 to 500) besides what they hold. A made item keeps the three numbers of its compound effects —
+  a job scroll's job, a bag's count, a soul stone's monster and grade —, which it used to squash into
+  one: the baker's scroll now reaches the bag byte for byte as in the house chest's capture
+- ✅ Alterations, the client's own window of them: kept per character in the base, listed on
+  entering the world (`lzh` → `lzp`) and again at the end of every fight with their counts brought
+  down, set with `lzs` and lost with `lzo` and *Has perdido la alteración* — the Trool fair's potion,
+  its larva race, the guild's oracle, the gladiators and the duels, byte for byte. Each lasts what its
+  own data says (`datos/alterations_*.json`, `tools/extract_alterations.py`): so many fights (811), so
+  many victories (817), or minutes (2833) ending on a date that runs on while disconnected and is
+  looked at with the heartbeat. Their characteristics go into the sheet (`kub`, field 5, where the
+  captured +50 initiative sits) and into fights. The world entry used to replay the capturer's four
+  alterations to everybody; it lists each character's own now. The guild oracle and the raid's key
+  fragments are kept with them, the fragments lost when the raid closes
+- ✅ Items that set an alteration (2892, and 2893 taking one away): the Trool potion, dragobones,
+  pills, the uchronic elixirs, the brandades, a mercenary's chew — 88 items, refused while their
+  own alteration is on (`HA!`)
+- ✅ Candies: their boost food goes to its bonus slot (21, `iua`), adds its characteristics to the
+  sheet and to fights, and counts its fights down at the end of each one (`iuj`, then `ium` at zero),
+  as the captured blessing in slot 22 does. Blessings go to slots 22 and 23 the same way. By the
+  server owner's rule a candy's effect has no bound but two never add up: a new candy takes the place
+  of whatever another left, boost food or *Golosina* alteration — its own criterion (`PO!`, `HA!`)
+  keeps the same one from being eaten twice — 92 items. Bags of candies and the other 302 items that
+  only give items put them in the bag
+- ✅ Spell scrolls (effect 604, 13 of them): the special spell is learnt for good — Llamita,
+  Liberación, Fulminación de Grunob, the Arakna and Chaferloko summons, Zanahowia, Captura de Almas,
+  Martillo de Moon, Bumerán Pérfido, Dominio del Arma, Manticolmillo, Kaniburbuja, Dominio de
+  Invocaciones —, the spell list and the bar go again with it on the first free slot, *Has aprendido
+  el hechizo*. The scroll names its pair in its criterion (`PT!24006&PT!350`), which the server now
+  judges, and *Ya has aprendido el hechizo* keeps the scroll of one already known. The special spells
+  are no longer everybody's: a character has the ones he learnt, as in the captures — the one just
+  created has none, the account's level 200 has ten and not Bumerán, Manticolmillo or Kaniburbuja —,
+  and they travel in the spell list with the origin 2 the real server gives them. Administrators have
+  them all; the koliseo's bots too
+- ❌ The guild hall potion (4054) and the guild house one (830 at 1), which wait for guild halls and
+  houses shared with a guild; the items that do something else besides (start a quest, give an
+  item and mount, transform); the pets' croquettes (2864)
+- ❌ The bonus slots that change the look — a mutation (20), a roleplay transformation (26), a
+  follower (27) — and the creature an alteration makes follow you (148, the Trool potion's
+  dragoturkey): the alteration is set, the creature is not drawn. The perlequines' boost food, which
+  lasts minutes instead of fights, is not placed either
 - ✅ **520 mounts** with their look, swapped and unequipped correctly
 <img width="2560" height="1500" alt="image" src="https://github.com/user-attachments/assets/375da573-ab61-4bf0-83fd-6f2a8f872cde" />
 <img width="2560" height="1506" alt="image" src="https://github.com/user-attachments/assets/581b105c-9569-4f54-ab77-01e122b8ce06" />
@@ -518,7 +688,10 @@ prices, durations, team sizes, goals and rewards come from its data (`datos/guil
   the ticks earned — after a defeat, from half the maximum (characteristic 97 in the `kub`)
 - ✅ Energy, out of the gauge of 10,000 (characteristics 29 and 47), kept per character and spent by
   lost fights against monsters; it never drops below 1, so nobody becomes a ghost
-- ❌ Energy coming back — with rest or consumables; no capture measures the rate
+- ✅ Energy coming back: with consumables (above), and with time, a point a second, connected or not,
+  by the server owner's choice — no capture measures the real rate
+- ✅ Life coming back in roleplay at two points a second: the rate the real server hands out in 135
+  of the 143 captured `ktz`, stopped on the way into a fight and started again on the way out
 - ✅ Commands — `.teleport [x,y]` or `.teleport <map id>`, `.kamas`, `.shop`, `.size`, `.level`, `.item`, `.itemset`, `.receta`, `.sueno`, `.gremio`; they answer with an information line only their author sees
 - ✅ The administrator's window, on **F10** in the client: items, a character's level, characteristics and kamas, teleports, NPCs and monsters spawned and removed, and the jail — see **[Admin window (F10)](#-admin-window-f10)**
 - ✅ Monsters at their size: groups on the map and fighters carry the look's colours, scale and skins as the official server sends them, so Conde Kontatrás is as tall as a person and not a doll
@@ -844,7 +1017,114 @@ Ranked PvP through a queue. Open the window, pick a format, get matched, fight, 
 - ✅ **The JondoBots' tactics read their spells as the fight will apply them**, row by row: which cells each row covers (lines, crosses, circles) from where the bot would stand, whom it touches there by the engine's own reading of its mask — sides, a template such as the Forjalanza's lance, states, class — and what it does to each: the blows summed per enemy (a kill and a weak enemy worth more), heals to a wounded ally, each point of a characteristic by what it is (an AP is a spell, a hundred of an element a few percent of every blow; points taken only up to the ones the enemy has), a summon once, toward the enemy and only within the fight's summon limit, and the sub-spells a row casts, followed. Poisons and hooks count a little less. A buff that raises the coming blow goes first when it is worth half of it; a ranged bot ends its turn out of the enemy's sight and not stuck to him; defence is worth twice as much under half the life. Every fighter in between blocks its sight, as a pillar does. A trap is worth its own spell on whoever steps on it — only the rows whose zone takes his cell in — times the odds he walks there: best on his way to the bot, then next to it, less anywhere else he can reach, less again for each trap of its side already out, and never two on one cell nor a summon on one of its own. Going invisible is worth a twentieth of the life kept out of reach, half as much again under half the life; the Sram's double goes out as a summon does. A poison or a hook bites once a turn for as long as it lasts, each turn a little less sure. An invisible enemy is not aimed at where he stands: the bot knows only where it last saw him — where he went invisible, then each cell he casts from — and throws its blows there on a guess. What it replaced read every positive number of a spell as a buff — every state became five thousand points — and threw the Forjalanza's lance on the cells next to it, behind itself on its first turn
 - ✅ Enrolling (`lsm`), with the format carried as the client's own enum
 - ✅ The queue state (`lsx`) pushed back, which paints *searching* in the window
+- ✅ **A JondoBot plans its whole turn.** It no longer takes the best blow per AP again and again: it
+  looks for the sequence of casts worth most in total (a beam of six lines, eight casts deep, never
+  worse than the old greedy turn, two seconds at most), each cast played on a copy of the fight — the
+  AP and MP spent, where it ends, the life taken, the states laid, the buffs it gives itself, the
+  creature it summons, the enemy pulled or pushed, the leaps — so a state is worth the blows that read
+  it, +2 AP the cast it buys, and the whole AP is spent. The end of the turn counts what the next turn
+  threatens: its best blow then, cooldowns included (Ira de Yopuka's, with the base damage it has
+  grown), and the odds the enemy is still in reach — near certain when the turn left him with no MP
+  for his own (Influencia, Duelo Yopukil), so the turn before the big blow pins him down. It follows
+  the plan step by step, checking each against the fight as it really stands, and plans again when
+  something changed
+- ✅ What its spells are worth, read better: a melee spell's range is no longer lengthened by the bot's
+  +6 (Ira de Yopuka was cast from seven cells away); a blow on an invulnerable enemy is worth nothing,
+  and nothing is aimed at one it made invulnerable; Vitalidad's +20 % is a fifth of its life, worth more
+  the less it has left; shields, «daños sufridos x%» (vulnerability on the enemy, protection on its
+  side), power and damage buffs by the turns they last, a dispel by the enemy's buffs it takes off,
+  damage of the best and worst element and life stolen with it, a push into something by the engine's
+  own crash damage, erosion, revealing the invisible. The Yopuka's strategist (Conquista) hands back
+  its side's blows — half of each blow taken, all of it to everybody within two cells —, so it is
+  summoned next to the enemy and then struck with zone blows that take both
+- ✅ **The Xelor plays its telefrags.** The copy of the fight a plan is played on teleports as the
+  engine does — the swap onto somebody is a telefrag, one per spell, with the enemy's and the ally's
+  Telefrag states and the +2 AP once per spell and turn —, reads each spell's targets where everybody
+  stood, and what states he carried, as it began (Golpe de Xelor's blow lands on the enemy it sends
+  across), and plays what waits on the end of the turn (Rebobinamiento cast on itself takes the Xelor
+  back to where its turn began). A plan tries every way of casting a spell that moves somebody, and
+  summons the Cómplice or Syncro where one of its teleports will throw the enemy: summoned there, then
+  Perturbación, Engranaje or Recuerdo, and the two swap. Aguja on an enemy is worth the blow its hook
+  will deal when he loses his Telefrag — near certain when he holds it. Ending the turn within the
+  enemy's reach costs what his coming turn can deal, more the less life the bot has. A test plays every
+  Xelor spell on the copy and in the engine and compares where everybody ends up
+- 🟡 Two gaps of the copy, on purpose: Arenas del Tiempo's bounce to the nearest entity, and El Tiempo
+  Vuela's teleport «en el siguiente turno», which waits on the copy while the engine plays it at once
+- ✅ **The other classes' states.** The bots' tests and diagnostics now start the fight as the fight
+  does, their attitudes cast (the class passive puts the Pandawa sober, the Zobal in his mask), and the
+  copy plays the attitudes' hooks too. A spell that switches the bot's own state is tried even when it
+  is worth nothing alone, by what the best cast after it gains: the **Pandawa** gets drunk (Comilona)
+  low on life to cast Fermentación and back to sober with Resaca, picks the enemy up and throws him
+  (Karcham, then Propulsión or Cascada, whose blows reach «the one carried as the spell began»); the
+  **Zobal** puts on the mask his spells ask for, and only one — the copy follows sub-spells four deep,
+  where the old mask is taken off. The **Tymador**'s Detonador has the bomb cast its own explosion,
+  worth what its combo has grown; the **Sadida** turns its tree into a doll (405, «mata al objetivo y
+  lo sustituye»). The **Hipermago** combines elements and spends them, the **Uginak** builds its rage and
+  spends it on Amaine, the **Zurcarák** draws and plays its cards, on the same machinery
+- ✅ Fixed in the fight itself on the way: a state that keeps its bearer from casting (`preventsSpellCast`:
+  Portador, Silencioso, Helado, Agrietado, Bomba) now does, for monsters and JondoBots — carrying, a
+  Pandawa may only throw; a mask naming several templates (`F3112,F3113,…`) takes any of them, where it
+  took none; and the summons of the fight and of the bots' copy are made by one rule (grade, level,
+  resistances, life, characteristics)
+- ✅ **The Steamer's turrets.** The copy evolves a turret as the engine does — Evolución goes through the
+  turret back to the Steamer, who casts the evolution at it (1017, «at the parent's caster»): the copy now
+  resolves every sub-cast by the engine's own table (who casts the child, at whom, how many), where it
+  used to aim them all at the candidate and put the turret's states on the Steamer. A creature put down
+  on the copy casts its behaviour spell as it comes out, as in the fight, so a new turret destroys the
+  one of its kind already out, and the copy kills (141). The end of a plan counts what the bot's
+  creatures will do for the next two turns: their own blows with their own spells (the Arponera hits
+  harder at II and III) and what they give it as their turns begin (the evolved Arponera's +20 damage
+  on every blow of the Steamer's, the Guardiana's vitality). So a Steamer puts down its Arponera and
+  evolves it in the same turn, or evolves the one it has, before striking
+- ✅ **The turrets' specials at III.** Emboscada, Buceo, Socorrismo and Salvamento mark their target and
+  have every turret of theirs at III cast its special at whoever carries the mark — three sub-casts
+  down. The weighing now follows sub-casts as deep as the copy of the fight (four), and what a cast puts
+  is on for what it casts after, as the engine resolves a sub-cast (and off for its own rows): with the
+  Arponera at III, Emboscada is worth its Armada too, on the copy and in the weighing
+- ✅ A summon is worth more for standing on the board the longer it lasts (its life against 1,500): a
+  315-life spider was worth as much as a turret, and with what summons deal now counted at a plan's end
+  every class opened its turn with Invocación de Arakna
+- ✅ **The Tymador's bomb walls.** The copy raises them as the fight does — a function of where the bombs
+  stand (BombWalls) —, and they hit there: on whoever stands where a wall is raised, on whoever is pushed
+  into one (the push stops on it, once a turn), with half the combo of the bombs holding it up. The end
+  of a plan counts what they will deal the enemy who begins his turn inside one. Setting off a walled
+  bomb sets off the whole wall. A bomb is also weighed on the cells that wall the enemy in — in line
+  with one of its kind already out, beyond him —, so with a bomb out the Tymador lays the next one on
+  the far side of the enemy
+- ✅ **The Selatrop's portals.** A JondoBot's class spell aimed at a portal now goes through the network
+  in the fight, as a player's does: it comes out of the way out, lands where the bot's aim leads from
+  there, on whoever stands there, with the network's bonus and the «R» of its masks (Mofa steals,
+  Ridículo takes MP) — it used to fall on the portal. The tactics see the portals: each spell is
+  weighed at every portal that is on, where it would land and with its bonus; the copy of the fight
+  plays it so and lays portals on a network of its own. Portal goes once a turn, so a first portal is
+  for the next turn: the end of a plan counts the bonus the bot's portals promise its coming blows,
+  the further from the enemy the more. So a Selatrop lays a portal when it has the AP, and strikes
+  through its network when it has one
+- ✅ **Walking and pushing through the portals.** The bot's walk sees the network: a step onto a portal
+  that is on comes out of its way out, for the one MP of the step, and the walk goes on from there —
+  in the fight as two walks, up to the portal and on from the way out. In the copy of the fight a push
+  or a pull that meets a portal goes through it and slides what it has left from the way out; Exilio's
+  Teleportal sends its target through; Estela leaves a portal where the caster stood and jumps (the
+  teleport moved nobody: it looked for somebody on the empty cell); Estupor lays a portal under each
+  and swaps them. The two portals crossed go off for the turn, and one somebody walks off comes back
+  on, as the fight refreshes its network
+- ✅ **Striking through the network.** A blow through the portals lands at the way out plus the vector
+  from the caster to the way in, so the one cell it lands on the enemy from is the way in plus the way
+  out less him: those cells are tried as well, not only the six nearest — the Selatrop struck straight,
+  turn after turn, with its network out (Koliseo, 12/10/2026). A portal is laid where a blow through
+  one of the bot's own can come out on the enemy (the cells it is tried on are ordered by that, not by
+  the shortest walk, which laid them all by the bot); and the bonus a network promises the next turn
+  counts a way in within the bot's walk and a way out within a blow of the enemy, or the next portal
+  laid by him with one of the bot's at hand — it was counted from its portal furthest from the enemy,
+  wherever that was
+- ✅ Planning time: a zone round the caster as wide as its walk (the Tymador's Último Aliento, nine
+  cells) is weighed from the three nearest cells, not from every one it can reach — his plan went from
+  1.5 s to under half a second
+- 🟡 Of the 836 class spells, 152 are never used nor worth anything in six duels per class and per
+  variant: mostly spells for allies (a Koliseo against a JondoBot is one against one) and spells that
+  wait on what the duel never brings (the Hipermago's runes spread, a Sadida doll replaced)
 - ✅ Leaving the queue (`lsi`, read from the client): the window's button takes out the party that enrolled together, and each window goes back to *search a fight* (`lsx` with reason 3). On the JondoBot card it withdraws the drawn fight without a sanction
+- ✅ Giving up a fight against JondoBots: in an arena fight the client greys its leave button out until the server unlocks giving up (`ltm` with f2, read from the client's surrender service — `EndTurnWidgetUI.OnUnlockSurrender`); it is unlocked from the start for the only person of a Koliseo fight against JondoBots, and the `kme` it then sends is the ordinary abandonment. With other people in it the abandonment would reach nobody but whoever leaves, so it stays locked
 - ✅ Matchmaking by rating: the oldest in the queue is served first, the closest ratings are taken, and the two sides are split so their average ratings are as even as can be. The rating window starts at 150 points and widens 10 a second of waiting; the queue is looked at again every 5 seconds
 - ✅ Levels kept apart: nobody faces, or fights beside, someone more than 20 levels away — however long the wait — unless both are placed and within 100 rating points, the ladder saying they are even. A party enrolled together is one unit: never split, always one side, exempt from its own gaps
 - ✅ Everybody re-checked as still connected before anyone loses their place in the queue
@@ -893,6 +1173,7 @@ with how many spells each touches, is [`docs/effect-coverage.txt`](docs/effect-c
 - ✅ Class passives — each class casts its own initial spell before the first turn (*La Astucia del Tymador*, *El Alcance de Ocra*, *La Sombra de Sram*, *El Escudo de Feca*…), kept in `content/fights/class_passives.json`. The initial spells of a character's own choices go with it
 - ✅ Hooked spells fire on every trigger — turn start, turn end, when hit, on death and per step walked — from their original caster, chained spells included, inside one sequence of the bearer's; a hooked row with a delay waits that many rounds (Furor's decay fires at the end of the turn after the cast, and hooks the grade it falls to); every chained cast is announced once per grade before the first thing it does — on the cell it was aimed at and without the f8 of a cast somebody made, as 18,526 chained casts of the captures go —, and a 406 after the rows it takes, with an f5 when its row carries the bit 4 of its flags (17 of 17)
 - ❌ The hooks themselves go out, in the real server, as hidden rows of their own — one per trigger, "jxm 1160 'D'" and "'XD'" on Resonancia's target — that come off with a jya; this server keeps its hooks off the panel. A jxm's state trigger goes out bare, `EON`/`EOFF`/`EK` as in all 581 of the captures
+- ✅ A summon's own spell held as an attitude counts its delayed rows from the round the summon appears, as a hooked spell does: the Aniripsa's fairies and fires, whose 141 waits on TE with a delay of one, die at the end of their second turn ("mueren ... al final de su segundo turno de juego", the class sheet) — read as a second wait, the kill was put off to the next round's first turn and they died before their second one
 - ✅ Delayed effects — a `delay` in the catalogue is a hidden row with trigger `Y` that fires at the first turn of its round (the survival beacon's lifetime, Paso de Cacería's +1 MP)
 - ✅ Points and rows across turns — a turn starts with the maximum plus the live point buffs; an expired row falls at the start of its caster's turn
 - ✅ AP and MP removal against dodge — rolled point by point with the game's own odds, `(points left / maximum) × (retira + 2) / (esquiva + 2) × ½`, between 10% and 90%; *retira* and *esquiva* are a tenth of wisdom plus the gear (410–413, 160–163) and the live rows, monsters carry their grade's `paDodge`/`pmDodge`. What is dodged goes out as `jwe 308/309`, what lands as a `-N PA/PM` row (168/169)
@@ -1913,6 +2194,13 @@ its cross, to close it.
 It started as [JimmyMtl's item window](https://github.com/Keka-Bron/JondoEmu/pull/49) and grew
 into five tabs.
 
+An administrator's characters also carry the spells Ankama keeps for its team, straight from the
+client's data and declared only to them (the role is read from the base): *Doom de Masas*, which
+kills every enemy and gives the AP back, and the whole «[!] Sorts admins» set — *Alterabuso* (+AP,
++MP, +range), *Doom* on one target, *Superposicionamiento*, *Pasaturnonoob Infinito*, *Mindslaver*,
+*Invulnerabilidad Infinita*, *Furor de Soon*, *Desembrujo* and *Papirotazo*. They have every attitude
+of the game too.
+
 <img width="2050" height="1426" alt="image" src="https://github.com/user-attachments/assets/e126bd4c-00ef-4266-ab2a-10c57cd872fa" />
 
 ### What it needs
@@ -2162,13 +2450,11 @@ The three executables:
 Shared:
 * **`Jondo.Unity.Contract`** — paths, settings and the shared palette
 * **`Jondo.Unity.Contract.WinForms`** — the Windows Forms shell of the server window
-* **`Jondo.Unity.Core`** — networking infrastructure and TCP servers
-* **`Jondo.Unity.Auth`** — authentication and HAAPI handlers
+* **`Jondo.Unity.Core`** — the file lookup (`Paths`): `datos/`, then `bases/`, then the root
 * **`Jondo.Unity.Protocol`** — message definitions and the generated `Op` layer
 * **`Jondo.Unity.World`** — world logic, `FightInstance`, the fight rulebooks (`FightRules`), buffs and states (`Buff`), area shapes and displacement (`Zone`), isometric geometry (`MapGeometry`), the criterion evaluator (`Criterion`), raids and the kanojedo content
 * **`Jondo.Unity.Sprites`** — draws a character or an NPC out of the client's own bones, skins and atlases. Shared by the Studio and the launcher
 * **`Jondo.Unity.Cytrus`** — reads Ankama's Cytrus manifests and plans the bundle requests; the launcher's texture-pack download uses it
-* **`Jondo.Unity.Parser`** — capture parsing
 * **`Jondo.Unity.Tests`** — the xUnit tests, and the gate on publishing
 
 The protocol toolchain, which the emulator does not depend on:

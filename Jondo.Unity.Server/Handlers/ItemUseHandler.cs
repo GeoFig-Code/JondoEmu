@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Jondo.Unity.Server.Managers;
@@ -20,7 +20,13 @@ namespace Jondo.Unity.Server.Handlers
     /// each item that arrives, as the gathering and the shops hand them over, with "Has
     /// conseguido {0} '$item{1}'" (info 21).
     ///
-    /// Other uses -- potions, scrolls, books -- are still not handled, and are logged.
+    /// The travel items (<see cref="TravelItemHandler"/>), the ones that give back life or energy
+    /// (<see cref="RecoveryItemHandler"/>), the characteristic scrolls (<see cref="ScrollItemHandler"/>),
+    /// the books (<see cref="ReadingItemHandler"/>), the attitudes (<see cref="AttitudeItemHandler"/>)
+    /// the experience scrolls (<see cref="ExperienceItemHandler"/>), the candies, dragobones and
+    /// elixirs (<see cref="BonusItemHandler"/>) and the spell scrolls (<see cref="SpellItemHandler"/>)
+    /// are handled too. Other uses -- the pets' croquettes, a few with mixed effects -- are still not
+    /// handled, and are logged.
     /// </summary>
     public static class ItemUseHandler
     {
@@ -37,6 +43,39 @@ namespace Jondo.Unity.Server.Handlers
             var item = Equipment.ByUid(uid);
             if (item == null || item.Quantity <= 0) return;
 
+            // The alliance's potions: changing its name or its emblem opens the editor.
+            if (await AllianceHandler.TryUsePotionAsync(stream, item)) return;
+
+            // A tax collector potion: one of the alliance's tax collectors where the user stands.
+            if (await TaxCollectorHandler.TryPlaceAsync(stream, item)) return;
+
+            // An alliance prism: the subarea held by the alliance, the prism where the user stands.
+            if (await PrismHandler.TryPlaceAsync(stream, item)) return;
+
+            // A travel item: the recall potion, a city's, one's home, an ankla's choice.
+            if (await TravelItemHandler.TryUseAsync(stream, item)) return;
+
+            // Bread, meat, fish, a potion or a beer: life or energy back.
+            if (await RecoveryItemHandler.TryUseAsync(stream, item)) return;
+
+            // A scroll, or a bread that raises a characteristic for good, within its bound.
+            if (await ScrollItemHandler.TryUseAsync(stream, item)) return;
+
+            // A book: its document opens, and the book stays.
+            if (await ReadingItemHandler.TryReadAsync(stream, item)) return;
+
+            // An attitude scroll or potion: the attitude learnt.
+            if (await AttitudeItemHandler.TryUseAsync(stream, item)) return;
+
+            // An experience scroll, the character's or a job's.
+            if (await ExperienceItemHandler.TryUseAsync(stream, item)) return;
+
+            // A candy, a dragobone, an elixir: an alteration, or a boost food in its slot.
+            if (await BonusItemHandler.TryUseAsync(stream, item)) return;
+
+            // A spell scroll: a special spell learnt.
+            if (await SpellItemHandler.TryUseAsync(stream, item)) return;
+
             if (LootBoxes.BoxOf(item.Template) is not { } box)
             {
                 Console.WriteLine($"[Items] Using item {item.Template} (uid {uid}) is not handled yet.");
@@ -44,12 +83,7 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             long character = SessionContext.State.CharacterId;
-            int left = item.Quantity - 1;
-            if (!DatabaseManager.DestroyCharacterItem(character, uid, 1)) return;
-            Equipment.Remove(uid, 1);
-            await WriteAsync(stream, left > 0
-                ? ConnectionProtocol.Push(Op.Ivj, ConnectionProtocol.BuildItemQuantity(uid, left))
-                : ConnectionProtocol.Push(Op.Ium, ConnectionProtocol.BuildItemGone(uid)));
+            if (!await SpendOneAsync(stream, uid)) return;
 
             var given = LootBoxes.Open(box.Group, box.Draws, Random.Shared);
             foreach (var (gid, quantity) in given)
@@ -59,12 +93,74 @@ namespace Jondo.Unity.Server.Handlers
                     ConnectionProtocol.BuildSystemMessage(InfoMessages.ItemGained, quantity.ToString(), gid.ToString())));
             }
 
+            // The recobotín boxes give a job's experience besides: 614 beside their 222, the farmer's
+            // or the alchemist's, 190 to 500 points.
+            foreach (var effect in DatabaseManager.GetItemEffectsData(DatabaseManager.GetItemTemplatePossibleEffects(item.Template)))
+            {
+                if (effect.EffectId != ExperienceItemHandler.JobExperienceEffect || effect.DiceSide <= 0 || effect.Value <= 0) continue;
+                if (!JobManager.TryGet(effect.DiceSide, out _)) continue;
+                await WorkshopHandler.GiveJobExperienceAsync(stream, effect.DiceSide, effect.Value, bonus: false);
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildSystemMessage(InfoMessages.JobExperienceGained, effect.Value.ToString(),
+                                                          effect.DiceSide.ToString())));
+            }
+
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Iun,
                 ConnectionProtocol.BuildPods(0, 1000 + 5L * SessionContext.State.TotalStrength)));
 
             Console.WriteLine($"[Items] {character} opens a {item.Template} (group {box.Group.Id}): " +
                               string.Join(", ", given.ConvertAll(g => $"{g.Quantity} x {g.ItemId}")) + ".");
         }
+
+        /// <summary>
+        /// One of a stack spent, as the captures' item uses tell it: the stack's new total (ivj), or
+        /// its leaving (ium) when it was the last, and then the bag's weight (iun). Returns false if
+        /// there was nothing to spend.
+        /// </summary>
+        /// <remarks>
+        /// The weight is not decoration. Without it -- the prism and the tax collector spent their
+        /// item with the ium alone -- the client took the item out of its inventory and the open bag
+        /// kept drawing it until it was closed and opened again. Destroying an item, which never
+        /// had that trouble, sends the same two.
+        /// </remarks>
+        internal static async Task<bool> SpendOneAsync(NetworkStream stream, long uid, bool weigh = true)
+        {
+            var item = Equipment.ByUid(uid);
+            if (item == null || item.Quantity <= 0) return false;
+            int left = item.Quantity - 1;
+            if (!DatabaseManager.DestroyCharacterItem(SessionContext.State.CharacterId, uid, 1)) return false;
+            Equipment.Remove(uid, 1);
+            await WriteAsync(stream, left > 0
+                ? ConnectionProtocol.Push(Op.Ivj, ConnectionProtocol.BuildItemQuantity(uid, left))
+                : ConnectionProtocol.Push(Op.Ium, ConnectionProtocol.BuildItemGone(uid)));
+            if (weigh) await WeighAsync(stream);
+            return true;
+        }
+
+        /// <summary>
+        /// Whether the user meets the item's criterion; when not, he is told why -- «Logro necesario»
+        /// for an achievement, «Tus características no te lo permiten.» for the characteristics, as
+        /// the real server answers an ankla and a scroll, «No cumples los requisitos.» otherwise --
+        /// and nothing is spent (<see cref="ItemCriteria.RefusalOf"/>).
+        /// </summary>
+        internal static async Task<bool> CriterionHoldsAsync(NetworkStream stream, Equipment.Item item)
+        {
+            string criterion = DatabaseManager.GetItemTemplateCriterion(item.Template);
+            if (ItemCriteria.Holds(criterion)) return true;
+
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, ItemCriteria.RefusalOf(criterion))));
+            Console.WriteLine($"[Items] {SessionContext.State.CharacterName} cannot use item {item.Template}: «{criterion}».");
+            return false;
+        }
+
+        /// <summary>
+        /// The bag's weight (iun), for whoever spent with <c>weigh: false</c> to put something in
+        /// between, as the Trool fair's potion does: ium, its kub, then the iun.
+        /// </summary>
+        internal static Task WeighAsync(NetworkStream stream)
+            => WriteAsync(stream, ConnectionProtocol.Push(Op.Iun,
+                ConnectionProtocol.BuildPods(0, 1000 + 5L * SessionContext.State.TotalStrength)));
 
         private static Task WriteAsync(NetworkStream stream, byte[] frame)
             => Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, frame);

@@ -455,24 +455,6 @@ namespace Jondo.Unity.Server.Network
         /// <summary>Activated (jkx): f1 the article.</summary>
         public static byte[] BuildOracleActivated(int oracle) => Pb.New().Var(1, oracle).Build();
 
-        /// <summary>
-        /// An alteration set (lzs): f1 { f1 from, f2 which, f4 2, f5 until } in milliseconds.
-        /// </summary>
-        /// <remarks>
-        /// The capture's «Oráculo de saber» one also carries two f3 blocks with the detail of
-        /// what it does -effects 2833 and 2867-. They are not reproduced: of the five oracles only
-        /// that one is measured, and copying its effects onto the other four would be inventing them. The client
-        /// draws the icon and the time with what goes here.
-        /// </remarks>
-        public static byte[] BuildAlteration(int alteration, long fromMs, long toMs)
-            => Pb.New()
-                .Msg(1, Pb.New()
-                    .Var(1, fromMs)
-                    .Var(2, alteration)
-                    .Var(4, 2)
-                    .Var(5, toMs))
-                .Build();
-
         // ─── Contributing ───────────────────────────────────────────────────────
 
         /// <summary>The contribution made (jle): f1 the kamas given, f2 the ones left.</summary>
@@ -520,25 +502,74 @@ namespace Jondo.Unity.Server.Network
             return jmf.Build();
         }
 
-        /// <summary>A single application (jly): f1 1, f2 the application, f3 whom it is shown to.</summary>
-        public static byte[] BuildApplication(GuildStore.Application application, string name, int level,
-                                              long accountId, string nick, string tag, long toCharacter)
+        /// <summary>
+        /// An application leaves the list (jly): f1 1, f2 the application, f3 who dealt with it.
+        /// Measured in «comprar gremialogema-crear gremio-valorar candidatura-rechazarla»: the leader
+        /// refuses with the jlt and the real server answers at once with this, naming the leader.
+        /// </summary>
+        public static byte[] BuildApplicationGone(GuildStore.Application application, string name, int level,
+                                                  long accountId, string nick, string tag, long dealtWithBy)
+            => BuildApplicationMoved(ApplicationGone, application, name, level, accountId, nick, tag, dealtWithBy);
+
+        /// <summary>The jly with any of its three moves: an application that comes, goes or is rewritten.</summary>
+        public static byte[] BuildApplicationMoved(int move, GuildStore.Application application, string name, int level,
+                                                   long accountId, string nick, string tag, long by)
             => Pb.New()
-                .Var(1, 1)
+                .VarIfNotZero(1, move)
                 .Msg(2, ApplicationBlock(application, name, level, accountId, nick, tag))
-                .Var(3, toCharacter)
+                .Var(3, by)
                 .Build();
+
+        /// <summary>
+        /// The jly's f1: the client's enum has three values, and 1 is the one measured, on a refusal.
+        /// 0 for a new one and 2 for a rewritten one are INFERRED from the alliance's twin, the mbb,
+        /// whose three are measured in that order.
+        /// </summary>
+        public const int ApplicationNew = 0;
+        public const int ApplicationGone = 1;
+        public const int ApplicationRewritten = 2;
+
+        /// <summary>
+        /// One's own pending application (jme), what the guild directory shows under "my pending
+        /// application": f1 { f1 the guild's block, f2 the application }. Empty when there is none,
+        /// which is the jme every capture answers the directory's jlu with. The client's handler
+        /// reads only f1 (fft.begr).
+        /// </summary>
+        public static byte[] BuildOwnApplication(GuildStore.Guild guild, GuildStore.Application application, string name,
+                                                 int level, long accountId, string nick, string tag)
+            => Pb.New()
+                .Msg(1, Pb.New()
+                    .Msg(1, GuildBlock(guild))
+                    .Msg(2, ApplicationBlock(application, name, level, accountId, nick, tag)))
+                .Build();
+
+        /// <summary>
+        /// One's application answered (jmp): f1 the guild's block, f2 whether it was accepted. The
+        /// client says "ui.guild.applyAccepted" or "applyRejected" with a link to the guild (its id
+        /// and its name, f2 and f3 of the block) and takes the pending application away.
+        /// </summary>
+        public static byte[] BuildApplicationAnswered(GuildStore.Guild guild, bool accepted)
+            => Pb.New().Msg(1, GuildBlock(guild)).VarIfNotZero(2, accepted ? 1 : 0).Build();
+
+        /// <summary>
+        /// One's own application withdrawn (jmi): f2 whether it was. The client's handler reads only
+        /// f2 and, when it is false, warns that an application cannot be withdrawn so soon
+        /// (ui.guild.applyDeleteDelay).
+        /// </summary>
+        public static byte[] BuildApplicationWithdrawn(bool withdrawn)
+            => Pb.New().VarIfNotZero(2, withdrawn ? 1 : 0).Build();
 
         /// <summary>«Someone has sent an application» (jma): f1 his character, f2 his name.</summary>
         public static byte[] BuildApplicationArrived(long characterId, string name)
             => Pb.New().Var(1, characterId).Str(2, name).Build();
 
         /// <summary>
-        /// How an application or an invitation is going (jin): f1 the name, f2 a number that has not
-        /// been reconstructed, f3 the state. Measured: 1 on accepting it and 3 when the other joins, with the
-        /// member's joining stamp falling exactly in the second jin.
+        /// How an invitation is going (jin): f1 the invited one's name, f2 a number that has not been
+        /// reconstructed, f3 the state. Measured in «...-invitar a gremio»: the jjn, a jin at 1 at
+        /// once, and when the other accepts the lqn 1423 and a jin at 3, the member's joining stamp
+        /// falling exactly in the second.
         /// </summary>
-        public const int StatusAccepted = 1;
+        public const int StatusInvited = 1;
         public const int StatusJoined = 3;
 
         public static byte[] BuildApplicationStatus(string name, long number, int status)

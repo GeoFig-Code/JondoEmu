@@ -182,7 +182,7 @@ connection-server protocol from wrapped `type.ankama.com/...` game messages. Whe
 game-phase TCP connection arrives, `HandleBoundGameSessionAsync`:
 
 1. creates `new GameSession(stream)`;
-2. registers it in `SessionRegistry` and `GameNodeProxy.SesionesVivas`;
+2. registers it in `SessionRegistry`, the one registry of who is connected;
 3. binds it to `SessionContext`;
 4. passes both the session and its owning stream to the game dispatcher;
 5. saves, broadcasts departure and unregisters it from a `finally` block.
@@ -193,6 +193,13 @@ before calling the shared dispatcher.
 Inside `HandleGameNodeSessionAsync`, every loop iteration pushes the explicit session again before
 examining that packet. This prevents a real socket from falling through to the shared socketless
 fallback. The session/stream pair is validated when the dispatcher starts.
+
+Each packet is also served holding the session's turn (`GameSession.UnoCadaVez`), given back before
+the next packet is awaited: what runs beside the loop on the same character -- a gathering that
+finishes, the jail, the monsters' aggression, the control API, the fight clocks -- takes the same turn.
+A fight shared by several sessions has its own on top (`FightInstance.Turno`), always taken after the
+session's. Writes give up a client that has not read for 30 seconds and close its socket, and an
+account that comes in again closes its older connection first.
 
 This detail fixed the most serious multi-client failure: port 5555 previously called the dispatcher
 without creating a `GameSession`. Both clients therefore used `Suelta`, and the last character

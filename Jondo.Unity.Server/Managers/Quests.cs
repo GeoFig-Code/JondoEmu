@@ -50,8 +50,6 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Ankama's catalogue. Null until <see cref="Load"/> has run.</summary>
         public static QuestCatalogue? Book => _book;
 
-        public static bool Ready => _book != null && _book.Ready;
-
         /// <summary>This character's log. Null before entering the world.</summary>
         public static QuestLog? Log => SessionContext.State.Quests;
 
@@ -942,18 +940,6 @@ namespace Jondo.Unity.Server.Managers
             if (log == null) return;
 
             var move = log.Tick(questId, objectiveId, amount);
-            if (move.Nothing) return;
-
-            await AfterMoveAsync(stream, questId, move);
-        }
-
-        /// <summary>Finishes the step in hand outright and sends what that changed.</summary>
-        public static async Task FinishStepAsync(NetworkStream stream, int questId)
-        {
-            var log = Log;
-            if (log == null) return;
-
-            var move = log.FinishStep(questId);
             if (move.Nothing) return;
 
             await AfterMoveAsync(stream, questId, move);

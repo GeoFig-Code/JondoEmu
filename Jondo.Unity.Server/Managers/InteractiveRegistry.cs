@@ -43,6 +43,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The altar of the Guild Temple, which opens the founding editor.</summary>
         GuildFounding,
 
+        /// <summary>The Temple of Alliances' door, which opens the alliance founding editor.</summary>
+        AllianceFounding,
+
         /// <summary>A marketplace counter: it opens the marketplace to buy (kdw).</summary>
         Marketplace,
 
@@ -288,6 +291,23 @@ namespace Jondo.Unity.Server.Managers
                 if (altar.Id != Handlers.GuildHandler.FoundingAltar) continue;
                 Register(Handlers.GuildHandler.FoundingMap, altar, Handlers.GuildHandler.FoundingType,
                          InteractiveActionKind.GuildFounding, Handlers.GuildHandler.FoundingSkill);
+            }
+
+            // The Temple of Alliances' blue door, 481519: the capture "ir a templo alianza-intentar
+            // entrar sin alianzagema" presses it -- iwo {18601, 481519} → iwn {1, 481519, f4 184} --
+            // and is told who may enter. And the book of the room it lets into, which founds. See
+            // AllianceHandler.UseTempleAsync.
+            foreach (var (map, element, skill) in new[]
+                     {
+                         (Handlers.AllianceHandler.TempleMap, Handlers.AllianceHandler.TempleDoor, Handlers.AllianceHandler.TempleDoorSkill),
+                         (Handlers.AllianceHandler.InnerRoom, Handlers.AllianceHandler.FoundingBook, Handlers.AllianceHandler.FoundingBookSkill),
+                     })
+            {
+                foreach (var found in Interactives.ElementsOf(map))
+                {
+                    if (found.Id != element) continue;
+                    Register(map, found, Interactives.TypeOfGfx(found.Gfx), InteractiveActionKind.AllianceFounding, skill);
+                }
             }
 
             // The passages between maps. Houses have already gone through above with their jqw protocol;

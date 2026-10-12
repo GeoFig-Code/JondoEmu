@@ -216,6 +216,51 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Equal(0, target.CurrentHP);
         }
 
+        /// <summary>
+        /// State 76, "Incurable", turns every heal away, the immediate ones and the delayed ones
+        /// that come due while it lasts.
+        /// </summary>
+        [Fact]
+        public void An_incurable_target_is_not_healed()
+        {
+            var fight = new FightInstance(1, 1);
+            var caster = Fighter(1, 100, 1000, 1000);
+            var target = Fighter(2, 101, 500, 1000);
+            fight.AddPlayer(caster);
+            fight.AddPlayer(target);
+            target.Buffs.PonerEstado(Incurable);
+
+            var outcomes = EffectEngine.ResolveEffects(
+                fight, caster, 100, 1, target, EffectEngine.AlLanzar, 1,
+                new[] { FixedHeal(100, 100) });
+
+            Assert.Empty(outcomes);
+            Assert.Equal(500, target.CurrentHP);
+
+            var delayed = new SpellEffect
+            {
+                EffectId = EffectSupport.FireHeal,
+                EffectUid = 3,
+                DiceNum = 40,
+                DiceSide = 40,
+                Delay = 1,
+                Triggers = EffectEngine.AlLanzar,
+                Element = 2,
+            };
+            EffectEngine.ResolveEffects(fight, caster, 100, 1, target, EffectEngine.AlLanzar, 1, new[] { delayed });
+
+            Assert.Equal(0, Assert.Single(EffectEngine.ActivateDelayedHealing(fight, 2)).Healed);
+            Assert.Equal(500, target.CurrentHP);
+
+            target.Buffs.QuitarEstado(Incurable);
+            Assert.Equal(100, Assert.Single(EffectEngine.ResolveEffects(
+                fight, caster, 100, 1, target, EffectEngine.AlLanzar, 1,
+                new[] { FixedHeal(100, 100) })).Cura);
+        }
+
+        /// <summary>The client's state 76, flagged incurable in datos/spell_states.json.</summary>
+        private const int Incurable = 76;
+
         private static Fighter Fighter(long id, int cell, int currentHp, int maxHp)
             => new Fighter { Id = id, CellId = cell, CurrentHP = currentHp, MaxHP = maxHp };
 

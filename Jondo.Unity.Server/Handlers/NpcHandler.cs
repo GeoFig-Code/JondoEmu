@@ -69,16 +69,6 @@ namespace Jondo.Unity.Server.Handlers
         public static bool IsDialogueOpen => SessionContext.State.OpenDialogueNpcId != 0;
 
         /// <summary>
-        /// Where bought items are numbered from.
-        ///
-        /// Each thing that makes items has its band: 900,000,000 the test inventory, 950,000,000 the haven
-        /// bag lottery and 960,000,000 the gifted appearances. That last band is DELETED whole by
-        /// dotar_apariencias.py every time it is run again, so what is bought cannot fall there or it
-        /// would disappear without warning.
-        /// </summary>
-        private const long FirstUid = 970000000L;
-
-        /// <summary>
         /// What the kamas mountain gives.
         ///
         /// The figure is not in any client data nor in the NPC's template: it is a server constant. In the
@@ -110,6 +100,10 @@ namespace Jondo.Unity.Server.Handlers
                 else if (field.FieldNumber == 2) mapId = field.VarIntValue;
                 else if (field.FieldNumber == 3) contextualId = field.VarIntValue;
             }
+
+            // An alliance's tax collector is talked to with the same iov (action 3, as in «atacar a
+            // recaudador y perder») and answers with its own ion.
+            if (action == Npcs.Talk && await TaxCollectorHandler.TalkAsync(stream, mapId, contextualId)) return;
 
             var npc = Npcs.Find(mapId, contextualId);
             if (npc == null)
@@ -158,16 +152,6 @@ namespace Jondo.Unity.Server.Handlers
             Console.WriteLine($"[NPC] Shop of {npc.NpcId}: {catalogue.Count} items, " +
                               $"{kbd.Length} bytes, paid in {moneda}.");
         }
-
-        /// <summary>
-        /// «Hasta luego.» (See you.), the farewell given to whoever carries no answer.
-        ///
-        /// It is not a made-up number: it is the MOST USED answer of the whole game, 62 of the 6,467 NPCs
-        /// carry it, and its text in the client's catalogue is exactly «Hasta luego.». It was chosen for
-        /// that and not for what it says: an answer id the client can resolve to a text is needed, and
-        /// this one is, in all five languages.
-        /// </summary>
-        private const long RespuestaDeDespedida = 7846;
 
         /// <summary>
         /// The dialogue window and its first question.
@@ -758,7 +742,6 @@ namespace Jondo.Unity.Server.Handlers
                 ? new[] { plantilla.Replies[^1] }
                 : Array.Empty<long>();
 
-        /// <summary>There stops being an open conversation.</summary>
         /// <summary>
         /// What an answer buys: charges the kamas and gives the item.
         /// </summary>
@@ -805,6 +788,7 @@ namespace Jondo.Unity.Server.Handlers
                               $"{choice.BuysPrice} kamas; {GameState.Kamas} left.");
         }
 
+        /// <summary>There stops being an open conversation.</summary>
         private static void CerrarConversacion()
         {
             SessionContext.State.OpenDialogueNpcId = 0;

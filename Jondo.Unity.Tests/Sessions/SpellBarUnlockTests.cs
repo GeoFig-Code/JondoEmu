@@ -1,4 +1,4 @@
-using System.Linq;
+﻿using System.Linq;
 using Jondo.Unity.Server.Managers;
 using Jondo.Unity.Server.Network;
 using Xunit;
@@ -14,6 +14,9 @@ namespace Jondo.Unity.Tests.Sessions
     {
         private const int Yopuka = 8;
 
+        /// <summary>A character who has read no spell scroll: his class's spells and none of the special ones.</summary>
+        private static readonly int[] NoScrolls = System.Array.Empty<int>();
+
         [Fact]
         public void A_level_up_places_the_spells_it_opens_and_not_the_ones_taken_off()
         {
@@ -21,7 +24,7 @@ namespace Jondo.Unity.Tests.Sessions
             var session = GameSession.SinSocket();
             using (SessionContext.Push(session))
             {
-                var at50 = SpellTable.KnownFor(Yopuka, 50).Select(k => k.SpellId).ToList();
+                var at50 = SpellTable.KnownFor(Yopuka, 50, null, NoScrolls).Select(k => k.SpellId).ToList();
                 int slot = 1;
                 foreach (int spell in at50) SpellChoices.PutInBar(slot++, spell);
                 int takenOff = at50[0];
@@ -30,7 +33,7 @@ namespace Jondo.Unity.Tests.Sessions
 
                 SpellChoices.PlaceNewlyUnlocked(Yopuka, 100);
 
-                var opened = SpellTable.KnownFor(Yopuka, 100).Select(k => k.SpellId).Except(at50).ToList();
+                var opened = SpellTable.KnownFor(Yopuka, 100, null, NoScrolls).Select(k => k.SpellId).Except(at50).ToList();
                 Assert.NotEmpty(opened);
                 Assert.All(opened, spell => Assert.Contains(spell, SpellChoices.Bar.Values));
                 Assert.DoesNotContain(takenOff, SpellChoices.Bar.Values);
@@ -49,7 +52,7 @@ namespace Jondo.Unity.Tests.Sessions
             var session = GameSession.SinSocket();
             using (SessionContext.Push(session))
             {
-                var known = SpellTable.KnownFor(Yopuka, 200).Select(k => k.SpellId).ToList();
+                var known = SpellTable.KnownFor(Yopuka, 200, null, NoScrolls).Select(k => k.SpellId).ToList();
                 SpellChoices.PutInBar(1, known[0]);
 
                 SpellChoices.PlaceNewlyUnlocked(Yopuka, 200);
@@ -71,7 +74,7 @@ namespace Jondo.Unity.Tests.Sessions
             var session = GameSession.SinSocket();
             using (SessionContext.Push(session))
             {
-                var at50 = SpellTable.KnownFor(Yopuka, 50).Select(k => k.SpellId).ToList();
+                var at50 = SpellTable.KnownFor(Yopuka, 50, null, NoScrolls).Select(k => k.SpellId).ToList();
                 int slot = 1;
                 foreach (int spell in at50) SpellChoices.PutInBar(slot++, spell);
                 session.State.SpellBarLevel = 1000;
@@ -81,7 +84,7 @@ namespace Jondo.Unity.Tests.Sessions
                 Assert.Equal(at50.Count, SpellChoices.Bar.Count);
 
                 SpellChoices.PlaceNewlyUnlocked(Yopuka, 100);
-                var opened = SpellTable.KnownFor(Yopuka, 100).Select(k => k.SpellId).Except(at50).ToList();
+                var opened = SpellTable.KnownFor(Yopuka, 100, null, NoScrolls).Select(k => k.SpellId).Except(at50).ToList();
                 Assert.NotEmpty(opened);
                 Assert.All(opened, spell => Assert.Contains(spell, SpellChoices.Bar.Values));
             }

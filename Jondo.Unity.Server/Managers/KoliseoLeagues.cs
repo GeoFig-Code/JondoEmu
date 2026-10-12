@@ -70,13 +70,6 @@ namespace Jondo.Unity.Server.Managers
             return leagues;
         }
 
-        /// <summary>The league with that id, or null.</summary>
-        public static League? ById(int id)
-        {
-            foreach (var league in All) if (league.Id == id) return league;
-            return null;
-        }
-
         /// <summary>Where a league sits from the bottom, 0 for Bronze 1; -1 for none.</summary>
         public static int Rank(int leagueId)
         {
@@ -119,12 +112,6 @@ namespace Jondo.Unity.Server.Managers
             for (int i = at - 1; i >= 0; i--)
                 if (rating >= all[i].Low) return all[i].Id;
             return all[0].Id;
-        }
-
-        /// <summary>For tests: read the file again.</summary>
-        internal static void Reload()
-        {
-            lock (Gate) _all = null;
         }
     }
 }

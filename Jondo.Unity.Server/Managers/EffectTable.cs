@@ -35,8 +35,6 @@ namespace Jondo.Unity.Server.Managers
         private static volatile bool _loaded;
         private static readonly object _lock = new object();
 
-        public static int Count { get { Ensure(); return _byId.Count; } }
-
         /// <summary>
         /// Reads the effects, once per run. Kept as a separate call so the server pays for the
         /// query at boot, with its log line, and not on the first item somebody equips.

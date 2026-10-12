@@ -129,12 +129,6 @@ namespace Jondo.Unity.Server.Managers
             return false;
         }
 
-        /// <summary>For the tests: read the file again.</summary>
-        internal static void Forget()
-        {
-            lock (_lock) _states = null;
-        }
-
         private static void Load()
         {
             lock (_lock)

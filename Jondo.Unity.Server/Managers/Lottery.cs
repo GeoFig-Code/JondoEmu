@@ -37,10 +37,9 @@ namespace Jondo.Unity.Server.Managers
 
         public const int Skill = 184;
 
-        /// <summary>Where the items that come out are numbered from, so as not to step on anyone's.</summary>
-        private const long FirstUid = 950000000L;
-
-        private static readonly Random _rand = new Random();
+        /// <summary>The shared die: several fights and sessions draw from it at once, and a plain
+        /// Random used from two threads breaks for good and draws zeros.</summary>
+        private static readonly Random _rand = Random.Shared;
 
         /// <summary>A prize: which effect and between which values, all above what exists.</summary>
         private readonly record struct Prize(int Effect, int Min, int Max);
@@ -84,12 +83,6 @@ namespace Jondo.Unity.Server.Managers
 
         public static Interactives.Element Of(long mapId)
             => Merkasako.IsHavenBag(mapId) ? Interactives.ElementByGfx(mapId, Gfx) : default;
-
-        public static bool Is(long mapId, int elementId)
-        {
-            var machine = Of(mapId);
-            return machine.Id != 0 && machine.Id == elementId;
-        }
 
         /// <summary>
         /// One roll. Returns the item already written to the database and to the inventory, or null

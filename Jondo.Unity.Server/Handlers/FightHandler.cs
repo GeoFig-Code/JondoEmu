@@ -25,11 +25,6 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>How many fights are open right now. The server window draws it.</summary>
         public static int CombatesEnCurso => _activeFights.Count;
 
-        /// <summary>Turn duration in tenths of a second, exactly as it travels in jut.f1 and jyf.f2.</summary>
-        public const int TurnDurationDeciseconds = 300;
-        /// <summary>The same duration in milliseconds, for the server-side timer.</summary>
-        private const int TurnDurationMs = TurnDurationDeciseconds * 100;
-
         public static void RegisterHandlers()
         {
             Program.LogDebug("[FightHandler] Combat handlers registered for jxx, jyk, jyz, jza, jwb, hoy.");
@@ -133,6 +128,11 @@ namespace Jondo.Unity.Server.Handlers
             // The Santuario's guardians are fought by four players at most.
             Managers.GuildRaidGuardians.OnFightCreated(fight);
 
+            // A tax collector or a prism attacked: the fight learns whose it is, and its fighter
+            // what it is.
+            TaxCollectorHandler.OnFightCreated(fight);
+            PrismHandler.OnFightCreated(fight);
+
             _activeFights[fightId] = fight;
             Program.LogDebug($"[FightHandler] Fight #{fightId} created on map {mapId}:");
             Program.LogDebug($"  Team 0 (Players): {fight.Azul.Count} fighters (Leader ID: {fight.ChallengerLeaderId})");
@@ -229,8 +229,8 @@ namespace Jondo.Unity.Server.Handlers
                 catch (OperationCanceledException) { return; }
                 catch (ObjectDisposedException) { return; }
 
-                // The same lock the turn clock and what comes from the client use. Without it, pressing
-                // «ready» right as the deadline ran out started the fight twice.
+                // The same locks the turn clock and what comes from the client use. Without them,
+                // pressing «ready» right as the deadline ran out started the fight twice.
                 var turno = MiTurno();
                 await turno.WaitAsync();
                 try
@@ -239,13 +239,16 @@ namespace Jondo.Unity.Server.Handlers
                     // session no longer has a fight to find.
                     var f = FightById(currentFightId);
                     if (f == null || f.FightId != currentFightId) return;
-                    if (f.State != Jondo.Unity.World.Fights.FightState.Placement) return;
+                    await InTurnAsync(f, async () =>
+                    {
+                        if (f.State != Jondo.Unity.World.Fights.FightState.Placement) return;
 
-                    Program.LogDebug($"[Fight] Placement time ran out for fight #{currentFightId}.");
-                    if (GetCurrentFight() == f) await HandleTurnReady(stream, Array.Empty<byte>());
+                        Program.LogDebug($"[Fight] Placement time ran out for fight #{currentFightId}.");
+                        if (GetCurrentFight() == f) await HandleTurnReady(stream, Array.Empty<byte>());
 
-                    // Whoever came in later and has not pressed ready is not waited for either.
-                    await StartWhoeverIsLeftAsync(f);
+                        // Whoever came in later and has not pressed ready is not waited for either.
+                        await StartWhoeverIsLeftAsync(f);
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -357,22 +360,6 @@ namespace Jondo.Unity.Server.Handlers
             return fight.State == Jondo.Unity.World.Fights.FightState.Placement ? fight : null;
         }
 
-        /// <summary>
-        /// The fight's placement, as the real server sends it.
-        ///
-        ///   jxg   one per fighter
-        ///   kba   the blue cells and the red ones
-        ///   jzu   who is on each team
-        ///   jwq   empty
-        ///   jrk   the map where the fight takes place
-        ///
-        /// It is measured from the fifteen fight captures; the shapes and their byte-by-byte check
-        /// against the capture live in <see cref="Network.FightProtocol"/>.
-        ///
-        /// During placement the enemy side travels entirely as -1: the real server does not hand out
-        /// identifiers to the monsters until the fight really starts. Here it is done the same even
-        /// though they already exist inside, because it is what the client expects to see.
-        /// </summary>
         /// <summary>
         /// Sets up the fight of an accepted challenge: one player on each side.
         /// </summary>
@@ -611,8 +598,7 @@ namespace Jondo.Unity.Server.Handlers
                 return Network.FightProtocol.FighterBlock(
                     fighter.CellId, FacingOf(fight, fighter), fighter.Id, FullSheetOf(fighter),
                     MonsterLook(fighter),
-                    Network.FightProtocol.MonsterIdentity(fighter.GradeIndex + 1, fighter.MonsterId,
-                                                          fighter.Level),
+                    IdentityOf(fighter),
                     isMonster: true, wave: fighter.Wave, alive: fighter.IsAlive);
             }
 
@@ -837,6 +823,22 @@ namespace Jondo.Unity.Server.Handlers
         private static int MaxLifeAtFightEntry(FightInstance fight)
             => fight.Buscar(GameState.CharacterId)?.MaxHP ?? StatsHandler.GetPlayerMaxHp();
 
+        /// <summary>
+        /// The fight's placement, as the real server sends it.
+        ///
+        ///   jxg   one per fighter
+        ///   kba   the blue cells and the red ones
+        ///   jzu   who is on each team
+        ///   jwq   empty
+        ///   jrk   the map where the fight takes place
+        ///
+        /// It is measured from the fifteen fight captures; the shapes and their byte-by-byte check
+        /// against the capture live in <see cref="Network.FightProtocol"/>.
+        ///
+        /// During placement the enemy side travels entirely as -1: the real server does not hand out
+        /// identifiers to the monsters until the fight really starts. Here it is done the same even
+        /// though they already exist inside, because it is what the client expects to see.
+        /// </summary>
         public static async Task SendPreparationAsync(NetworkStream stream, FightInstance fight)
         {
             fight.MarkPrepared(GameState.CharacterId);
@@ -874,7 +876,7 @@ namespace Jondo.Unity.Server.Handlers
             // A challenge is announced differently, and this is measured in «enviar desafio y el otro
             // acepta»: its kam arrives «f3=challenged f5=id f6=challenger», WITHOUT a type and without
             // a list of monsters, because there are none in front.
-            var monsters = fight.Reglas.EnfrenteHayMonstruos
+            var monsters = fight.Reglas.EnfrenteHayMonstruos && fight.TaxCollectorUuid == null
                 ? fight.Rojo.ConvertAll(f => (long)f.MonsterId)
                 : new List<long>();
             // The f6 is who OPENED the fight, whoever receives it: the follower of the follow
@@ -918,8 +920,7 @@ namespace Jondo.Unity.Server.Handlers
                         ? Network.FightProtocol.BuildFighter(
                               fighter.CellId, FacingOf(fight, fighter), fighter.Id,
                               PlacementSheetOf(fighter), MonsterLook(fighter),
-                              Network.FightProtocol.MonsterIdentity(fighter.GradeIndex + 1,
-                                                                    fighter.MonsterId, fighter.Level),
+                              IdentityOf(fighter),
                               isMonster: true)
                         : BuildPlayerAppearance(fight, fighter)));
             }
@@ -942,8 +943,7 @@ namespace Jondo.Unity.Server.Handlers
                     Network.FightProtocol.BuildFighter(
                         fighter.CellId, FacingOf(fight, fighter), fighter.Id, PlacementSheetOf(fighter),
                         MonsterLook(fighter),
-                        Network.FightProtocol.MonsterIdentity(fighter.GradeIndex + 1,
-                                                              fighter.MonsterId, fighter.Level),
+                        IdentityOf(fighter),
                         isMonster: true)));
             }
 
@@ -1101,22 +1101,6 @@ namespace Jondo.Unity.Server.Handlers
         private const int DanoFijoCaracteristica = 16;
         private const int DanoCriticoCaracteristica = 86;
 
-        /// <summary>
-        /// The TOTAL of a characteristic: what the fighter already carries -- base, scrolls and
-        /// equipment, worked out when he was set up -- plus whatever the spells have put on him while
-        /// the fight lasts.
-        ///
-        /// Buffs drop by themselves when their round comes, so the bonus is withdrawn without doing
-        /// anything else, and since they live in the fight's fighter and not in the character, nothing
-        /// stays stuck on going back to roleplay.
-        /// </summary>
-        /// <summary>
-        /// What a characteristic is worth RIGHT NOW, buffs included, to send it on its own.
-        ///
-        /// The points go apart -- they are what he has left to play this turn -- and the rest comes from
-        /// what the sheet has plus whatever has been put on top, which is exactly the same count the
-        /// full sheet at the start of the fight does.
-        /// </summary>
         /// <summary>A characteristic ready to go into a jxw, with its three slots.</summary>
         private static (int Characteristic, long Base, long Gear, long Buff) Refresco(
             Fighter ficha, int caracteristica, int ronda, bool enSuTurno = true)
@@ -1125,6 +1109,13 @@ namespace Jondo.Unity.Server.Handlers
             return (caracteristica, suBase, suEquipo, suEmbrujo);
         }
 
+        /// <summary>
+        /// What a characteristic is worth RIGHT NOW, buffs included, to send it on its own.
+        ///
+        /// The points go apart -- they are what he has left to play this turn -- and the rest comes from
+        /// what the sheet has plus whatever has been put on top, which is exactly the same count the
+        /// full sheet at the start of the fight does.
+        /// </summary>
         private static (long Base, long Equipo, long Embrujo) HuecosDeFicha(Fighter ficha,
                                                                             int caracteristica,
                                                                             int ronda,
@@ -1178,6 +1169,15 @@ namespace Jondo.Unity.Server.Handlers
         private static int PercentageOf(Fighter fighter, int characteristic, int round)
             => Math.Max(0, 100 + ConBonos(fighter, characteristic, fighter.Otra(characteristic), round));
 
+        /// <summary>
+        /// The TOTAL of a characteristic: what the fighter already carries -- base, scrolls and
+        /// equipment, worked out when he was set up -- plus whatever the spells have put on him while
+        /// the fight lasts.
+        ///
+        /// Buffs drop by themselves when their round comes, so the bonus is withdrawn without doing
+        /// anything else, and since they live in the fight's fighter and not in the character, nothing
+        /// stays stuck on going back to roleplay.
+        /// </summary>
         private static int ConBonos(Fighter quien, int caracteristica, int loQueYaTiene, int ronda)
         {
             if (caracteristica <= 0) return loQueYaTiene;
@@ -1196,9 +1196,6 @@ namespace Jondo.Unity.Server.Handlers
             };
 
         /// <summary>
-        /// The critical roll: a number from zero to ninety-nine against the percentage.
-        /// </summary>
-        /// <summary>
         /// A number from 0 to 100 with decimals, for loot chances.
         ///
         /// It comes from the same Random as everything else and with the same lock. Drop percentages
@@ -1210,6 +1207,9 @@ namespace Jondo.Unity.Server.Handlers
             lock (_dado) return _dado.NextDouble() * 100.0;
         }
 
+        /// <summary>
+        /// The critical roll: a number from zero to ninety-nine against the percentage.
+        /// </summary>
         private static bool TirarCritico(int porciento)
         {
             if (porciento <= 0) return false;
@@ -1362,16 +1362,6 @@ namespace Jondo.Unity.Server.Handlers
         private const int AlcanceCaracteristica = 19;
         private const int LifeCharacteristic = 0;
 
-        /// <summary>
-        /// The sheet with the real values, which is the one that goes in the jxb.
-        ///
-        /// The placement one carries thirty-six characteristics and this one fifty-three: the
-        /// elementals, damages, critical, range, power and resistances are added, and initiative is
-        /// taken out, since it only travels during placement.
-        ///
-        /// Here go the ones the client draws in the panel and the carousel. The ones not known are sent
-        /// as zero, which is how those of a monster that really has them at zero travel.
-        /// </summary>
         /// <summary>
         /// The rest of the character's sheet: what plays no part in any of the server's calculations but
         /// the client draws, and which went ALL at zero.
@@ -1552,7 +1542,6 @@ namespace Jondo.Unity.Server.Handlers
             return ficha;
         }
 
-        /// <summary>A monster's look: the same block it carries on the map.</summary>
         /// <summary>
         /// A monster's look in a fight: the whole of it when its look string is known -- colours,
         /// bones, scale, skins, as on the map (ConnectionProtocol.MonsterLook) and as the real
@@ -1562,7 +1551,18 @@ namespace Jondo.Unity.Server.Handlers
         private static byte[] MonsterLook(Fighter fighter)
             => string.IsNullOrEmpty(fighter.Look)
                 ? Network.Pb.New().Var(2, 3).VarIfNotZero(3, fighter.LookBoneId).Build()
-                : ConnectionProtocol.MonsterLook(fighter.Look).Build();
+                : ConnectionProtocol.MonsterLook(fighter.Look,
+                      ServerSettings.Current.Hardcore && fighter.TaxCollectorFirstName == 0).Build();
+
+        /// <summary>
+        /// Who a monster-side fighter is: a tax collector by its names, any other monster by its
+        /// grade, its template and its level.
+        /// </summary>
+        private static Network.Pb IdentityOf(Fighter fighter)
+            => fighter.TaxCollectorFirstName > 0
+                ? Network.FightProtocol.TaxCollectorIdentity(fighter.TaxCollectorFirstName,
+                                                             fighter.TaxCollectorLastName, fighter.MonsterId)
+                : Network.FightProtocol.MonsterIdentity(fighter.GradeIndex + 1, fighter.MonsterId, fighter.Level);
 
         /// <summary>The normal look the fighter had on entering this fight.</summary>
         private static byte[] NormalFightLook(Fighter fighter)
@@ -1789,19 +1789,23 @@ namespace Jondo.Unity.Server.Handlers
 
         public static async Task HandleFightMessageAsync(NetworkStream stream, byte[] payload, string payloadStr)
         {
-            // The same lock the turn clock uses: while what the client sends is being served, the
-            // clock cannot push its burst in between, and the other way round. It belongs to this
-            // session, so a stuck client only gets itself stuck.
-            var turno = MiTurno();
-            await turno.WaitAsync();
-            try
-            {
-                await AtenderAlClienteAsync(stream, payload, payloadStr);
-            }
-            finally
-            {
-                turno.Release();
-            }
+            // The packet loop already holds this session's turn; the fight's keeps every other
+            // connection and the fight's clocks off the fight meanwhile (FightInstance.Turno).
+            var fight = GetCurrentFight();
+            if (fight == null) await AtenderAlClienteAsync(stream, payload, payloadStr);
+            else await InTurnAsync(fight, () => AtenderAlClienteAsync(stream, payload, payloadStr));
+        }
+
+        /// <summary>
+        /// Runs <paramref name="action"/> as the only one touching <paramref name="fight"/>. Taken
+        /// where the work comes in -- a packet, a clock, somebody joining or leaving from outside --
+        /// and never inside it: the lock is not reentrant.
+        /// </summary>
+        internal static async Task InTurnAsync(FightInstance fight, Func<Task> action)
+        {
+            await fight.Turno.WaitAsync();
+            try { await action(); }
+            finally { fight.Turno.Release(); }
         }
 
         private static async Task AtenderAlClienteAsync(NetworkStream stream, byte[] payload, string payloadStr)
@@ -1825,8 +1829,7 @@ namespace Jondo.Unity.Server.Handlers
             // sends, not the client. The rest of the fight will come in here as it is deciphered.
             // Safety net for the pending end: if anything else arrives before the acknowledgement,
             // it is shown right away. That way a client that does not acknowledge does not leave the
-            // fight hanging forever, and no timer writing to the socket on its own is needed, which
-            // would interleave with what this same thread writes.
+            // fight hanging forever, and no extra timer is needed for it.
             // And the jwz that answers the jxh of the end is what normally ends it: it comes once
             // the client has played the blows that ended the fight (see CheckFightOverAsync).
             var fight = GetCurrentFight();
@@ -2378,7 +2381,7 @@ namespace Jondo.Unity.Server.Handlers
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ijq,
                 Network.FightProtocol.BuildMapReady()));
 
-            var monsters = fight.Reglas.EnfrenteHayMonstruos
+            var monsters = fight.Reglas.EnfrenteHayMonstruos && fight.TaxCollectorUuid == null
                 ? fight.Rojo.ConvertAll(f => (long)f.MonsterId)
                 : new List<long>();
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kam,
@@ -2401,8 +2404,7 @@ namespace Jondo.Unity.Server.Handlers
                         ? Network.FightProtocol.BuildFighter(
                               fighter.CellId, FacingOf(fight, fighter), fighter.Id,
                               PlacementSheetOf(fighter), MonsterLook(fighter),
-                              Network.FightProtocol.MonsterIdentity(fighter.GradeIndex + 1,
-                                                                    fighter.MonsterId, fighter.Level),
+                              IdentityOf(fighter),
                               isMonster: true)
                         : BuildPlayerAppearance(fight, fighter)));
             }
@@ -2569,8 +2571,18 @@ namespace Jondo.Unity.Server.Handlers
             var alongWith = ReadyAlongWith(fight, GameState.CharacterId);
             bool allReady = fight.SetFighterReady(GameState.CharacterId);
 
-            // No lqg + lqt here any more. See ApagarLaRegeneracionAsync for what that pair
-            // turned out to be and why sending it at fight start was the regeneration itself.
+            // No lqg + lqt here any more. That pair used to go out at every fight start as "the
+            // switch that stops the client from regenerating life". Measured across the 400
+            // captures it is the opposite of a fight switch: 203 lqg, every one followed by its lqt,
+            // and only THREE anywhere near the messages that open a fight. Where they cluster is
+            // behind look changes -- lxc, lwz, the emotes -- and behind world events: the footprint
+            // of a regeneration being RE-EVALUATED, an empty "regen ends" and an empty "regen
+            // begins at the default rate", which is what a server does when you sit down or stand
+            // up. So sending it at fight start was starting the roleplay regeneration inside the
+            // fight: the damage landed on the client's own bar and the bar climbed back one point at
+            // a time towards the WORLD maximum ("2400/2386", above a maximum the erosion had already
+            // lowered). The real server sends nothing at fight start. What the pair means is still an
+            // inference; that it does not belong at fight start is measured.
 
             // Acknowledged, which is the only thing the real server answers to ready.
             //
@@ -2604,12 +2616,18 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static async Task StartFightAsync(FightInstance fight)
         {
-            // The fight part, only once.
-            fight.StartFight();
+            // Once per fight. SetFighterReady has usually started the fight part already, and two
+            // readies at the same instant asked for this twice: the opening burst went out twice.
+            if (!fight.TryClaimStart()) return;
+            if (fight.State != Jondo.Unity.World.Fights.FightState.Ongoing) fight.StartFight();
             fight.CancelPlacementTimer();
 
             // The placement is over: the swords go from the map (hpr). Nobody joins any more.
             await SwordsGoneAsync(fight);
+
+            // And a defended fight's alliance sees it go from waiting to fighting.
+            await AllianceFights.StartedAsync(fight);
+            await TaxCollectorHandler.FightStartedAsync(fight);
 
             // And the whole burst to each one from his own context. It is sent whole and separately,
             // instead of splitting «this to everybody and this to whoever», because the order the
@@ -2618,31 +2636,6 @@ namespace Jondo.Unity.Server.Handlers
             // out of its own sequence.
             await ACadaUnoAsync(fight, sesion => ArrancarParaUnoAsync(sesion.Stream, fight));
         }
-
-        /// <summary>
-        /// The lqg + lqt pair. NOT SENT ANY MORE, and kept only so that nobody puts it back.
-        /// </summary>
-        /// <remarks>
-        /// This used to go out at every fight start as "the switch that stops the client from
-        /// regenerating life". Measured across the 400 captures it is the opposite of a fight
-        /// switch: 203 lqg, every one followed by its lqt, and only THREE anywhere near the
-        /// messages that open a fight. Where they actually cluster is behind look changes -- lxc,
-        /// lwz, the emotes -- and behind world events; once, mid-fight, behind the turn start of
-        /// a summon. That is the footprint of a regeneration being RE-EVALUATED: an empty "regen
-        /// ends" followed by an empty "regen begins at the default rate", which is what a server
-        /// does when you sit down or stand up.
-        ///
-        /// So sending the pair at fight start was starting the roleplay regeneration inside the
-        /// fight. And that was the whole self-life mystery: the damage DID land on the client's
-        /// own bar -- the erosion off the maximum proved it was reading the hit -- and then the
-        /// bar climbed back one point at a time towards the WORLD maximum, which is why it read
-        /// "2400/2386", above a maximum the erosion had already lowered. The real server sends
-        /// nothing at fight start; its client stops regenerating on its own.
-        ///
-        /// What the pair means is still an inference; that it does not belong at fight start is
-        /// measured.
-        /// </remarks>
-        private static Task ApagarLaRegeneracionAsync(FightInstance fight) => Task.CompletedTask;
 
         /// <summary>The starting burst, as ONE of the people in the fight sees it.</summary>
         private static async Task ArrancarParaUnoAsync(NetworkStream stream, FightInstance fight)
@@ -2740,12 +2733,36 @@ namespace Jondo.Unity.Server.Handlers
             Program.LogDebug($"[Fight] Fight #{fight.FightId} starts: " +
                              $"{everyone.Count} fighters, first {fight.CurrentFighter?.Id}.");
 
+            // In an arena fight the client greys its leave button out until the server unlocks
+            // giving up, and nothing did: against JondoBots there was no way out but losing. The
+            // kme it then sends is the one AbandonAsync already answers.
+            if (CanGiveUpAtOnce(fight, me))
+            {
+                await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ltm,
+                    Network.FightProtocol.BuildSurrenderUnlocked(true)));
+                Program.LogDebug($"[Koliseo] {me} may give up fight #{fight.FightId}.");
+            }
+
             await CascadaDePasivosAsync(stream, fight);
 
             await AskToConfirmAsync(stream, fight);
         }
 
         private const int FirstRound = 1;
+
+        /// <summary>
+        /// Whether giving up is open from the first turn: a Koliseo fight where this character is
+        /// the only person, everybody else a JondoBot or a summon. With somebody else in it the
+        /// abandonment would reach nobody but whoever leaves (see AbandonAsync).
+        /// </summary>
+        internal static bool CanGiveUpAtOnce(FightInstance fight, long characterId)
+        {
+            if (fight == null || fight.KoliseoMode < 0) return false;
+            var people = fight.Azul.Concat(fight.Rojo)
+                              .Where(f => f != null && !f.EsInvocado && !f.IsBot && !f.IsMonster)
+                              .ToList();
+            return people.Count == 1 && people[0].Id == characterId;
+        }
 
 
         /// <summary>
@@ -2772,28 +2789,6 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// The client has confirmed (jwz). Now the turn is given to whoever is next.
-        /// </summary>
-        /// <summary>
-        /// The player's turn clock, and the lock that keeps it from writing over anybody.
-        ///
-        /// The turn NEVER ended: the client draws the countdown the jzc tells it, reaches zero and keeps
-        /// counting into the negatives, because on the server's side there was nobody to take the turn
-        /// away. There was a timer -- StartTurnTimer --, but it hung from a handler nobody calls, from
-        /// 3.6.4.3's fight code, and on top of that it sent opcodes that do not exist in this version.
-        ///
-        /// The deadline is the SAME one that travels in the jzc, not a separate constant: there was one
-        /// of 300 tenths living alongside the 400 actually sent, and it would have cut the turn ten
-        /// seconds before what the client shows.
-        ///
-        /// The delicate part is that this writes to the socket from another thread. NetworkMessage
-        /// splits each frame into TWO writes -- first the length, then the body -- with no lock, so two
-        /// writers do not interleave message with message, but one's length with another's body, and
-        /// the client loses the stream's synchronisation forever. That is why the clock and everything
-        /// that comes from the client go through the same lock: while one writes its burst, the other
-        /// waits.
-        /// </summary>
-        /// <summary>
         /// The turn of the session being served right now.
         ///
         /// It is ASKED for once and kept in a variable in each place that uses it, never called twice.
@@ -2815,6 +2810,23 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static void PararElReloj(FightInstance? fight) => fight?.CancelTurnTimer();
 
+        /// <summary>
+        /// The player's turn clock, and the lock that keeps it from writing over anybody.
+        ///
+        /// The turn NEVER ended: the client draws the countdown the jzc tells it, reaches zero and keeps
+        /// counting into the negatives, because on the server's side there was nobody to take the turn
+        /// away. There was a timer -- StartTurnTimer --, but it hung from a handler nobody calls, from
+        /// 3.6.4.3's fight code, and on top of that it sent opcodes that do not exist in this version.
+        ///
+        /// The deadline is the SAME one that travels in the jzc, not a separate constant: there was one
+        /// of 300 tenths living alongside the 400 actually sent, and it would have cut the turn ten
+        /// seconds before what the client shows.
+        ///
+        /// It acts from a pool thread, so it takes the same locks as what comes from the client: the
+        /// session's that armed it and the fight's (FightInstance.Turno). Under the session's alone a
+        /// clock armed from one player's session passed the turn while the player whose turn it was
+        /// cast from his own.
+        /// </summary>
         private static void ArrancarElReloj(NetworkStream stream, FightInstance fight,
                                             Fighter quien, int decimas)
         {
@@ -2844,15 +2856,18 @@ namespace Jondo.Unity.Server.Handlers
                 await turno.WaitAsync();
                 try
                 {
-                    // Everything may have changed while it waited: the fight may have ended, the turn may
-                    // already be someone else's, or we may be in another round.
-                    var ahora = GetCurrentFight();
-                    if (ahora == null || ahora.FightId != deQueCombate) return;
-                    if (ahora.State != Jondo.Unity.World.Fights.FightState.Ongoing) return;
-                    if (ahora.CurrentFighter?.Id != deQuien || fight.RoundNumber != ronda) return;
+                    await InTurnAsync(fight, async () =>
+                    {
+                        // Everything may have changed while it waited: the fight may have ended, the
+                        // turn may already be someone else's, or we may be in another round.
+                        var ahora = GetCurrentFight();
+                        if (ahora == null || ahora.FightId != deQueCombate) return;
+                        if (ahora.State != Jondo.Unity.World.Fights.FightState.Ongoing) return;
+                        if (ahora.CurrentFighter?.Id != deQuien || fight.RoundNumber != ronda) return;
 
-                    Program.LogDebug($"[Fight] {deQuien} ran out of time; the turn is passed.");
-                    await PassTurnAsync(stream);
+                        Program.LogDebug($"[Fight] {deQuien} ran out of time; the turn is passed.");
+                        await PassTurnAsync(stream);
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -2865,6 +2880,9 @@ namespace Jondo.Unity.Server.Handlers
             });
         }
 
+        /// <summary>
+        /// The client has confirmed (jwz). Now the turn is given to whoever is next.
+        /// </summary>
         public static async Task ConfirmAsync(NetworkStream stream)
         {
             var fight = GetCurrentFight();
@@ -3557,19 +3575,6 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Fires whatever is put on the ground under a fighter.
-        /// </summary>
-        /// <remarks>
-        /// A single path for the four families -- aura glyph, turn-start glyph, trap and rune --,
-        /// because the only thing that tells them apart is the moment, and the moment is this
-        /// parameter. What they do is always the same: cast the spell they carry inside, with its
-        /// grade, on behalf of whoever put it there.
-        ///
-        /// The trap is spent when it fires; the glyph stays until it expires. And sweeping happens at
-        /// the end, not during the walk, because firing a glyph can move whoever stepped on it and leave
-        /// him on top of another.
-        /// </remarks>
-        /// <summary>
         /// The glyphs whose time is up at this turn start go, each with its jwe 310: the ones of
         /// the fighter starting it once their round has come -- or of the summon of his that never
         /// plays -- and those of a caster who is gone. Not the bomb walls, which are the bombs'
@@ -3628,6 +3633,19 @@ namespace Jondo.Unity.Server.Handlers
             }
         }
 
+        /// <summary>
+        /// Fires whatever is put on the ground under a fighter.
+        /// </summary>
+        /// <remarks>
+        /// A single path for the four families -- aura glyph, turn-start glyph, trap and rune --,
+        /// because the only thing that tells them apart is the moment, and the moment is this
+        /// parameter. What they do is always the same: cast the spell they carry inside, with its
+        /// grade, on behalf of whoever put it there.
+        ///
+        /// The trap is spent when it fires; the glyph stays until it expires. And sweeping happens at
+        /// the end, not during the walk, because firing a glyph can move whoever stepped on it and leave
+        /// him on top of another.
+        /// </remarks>
         private static async Task DispararLosGlifosAsync(NetworkStream stream, FightInstance fight,
                                                          Fighter quien, bool alPisar,
                                                          bool byDisplacement = false,
@@ -4352,8 +4370,6 @@ namespace Jondo.Unity.Server.Handlers
                 CellId = celda,
                 IsMonster = true,
                 MonsterId = plantilla,
-                GradeIndex = receta.Grado,
-                Level = receta.Nivel,
                 SummonCost = receta.SummonCost,
                 Look = receta.Look,
 
@@ -4367,40 +4383,16 @@ namespace Jondo.Unity.Server.Handlers
                 // string names between its braces, not what that number points at.
                 LookBoneId = receta.PlantillaDelAspecto,
                 HechizoPropio = receta.HechizoPropio,
-                MaxAP = receta.PuntosDeAccion,
-                CurrentAP = receta.PuntosDeAccion,
-                MaxMP = receta.PuntosDeMovimiento,
-                CurrentMP = receta.PuntosDeMovimiento,
-                NeutralResPct = receta.ResistenciaNeutral,
-                EarthResPct = receta.ResistenciaTierra,
-                FireResPct = receta.ResistenciaFuego,
-                WaterResPct = receta.ResistenciaAgua,
-                AirResPct = receta.ResistenciaAire,
             };
             invocado.Otras[Fighter.CaracteristicaDeErosion] = Fighter.ErosionBase;
-            invocado.MaxHP = Managers.Summons.VidaDelInvocado(receta.Vida, quienInvoca.StatLevel,
-                                                              receta.VidaFija);
 
-            // And its characteristics, which it went without: every summon hit with its spells'
-            // bare dice. See Summons.CaracteristicaDelInvocado.
-            invocado.Strength = Managers.Summons.CaracteristicaDelInvocado(receta.Fuerza, receta.BonusFuerza, quienInvoca.StatLevel);
-            invocado.Intelligence = Managers.Summons.CaracteristicaDelInvocado(receta.Inteligencia, receta.BonusInteligencia, quienInvoca.StatLevel);
-            invocado.Chance = Managers.Summons.CaracteristicaDelInvocado(receta.Suerte, receta.BonusSuerte, quienInvoca.StatLevel);
-            invocado.Agility = Managers.Summons.CaracteristicaDelInvocado(receta.Agilidad, receta.BonusAgilidad, quienInvoca.StatLevel);
-            invocado.Power = Managers.Summons.PotenciaDelInvocado(receta.BonusDeDanos);
-            invocado.CurrentHP = invocado.MaxHP;
-
-            // Does it get a turn? Only if its spell has something to do at its start. The Survival
-            // Beacon has -- it heals itself -- and the Tactical one does not, it only reacts to what
-            // happens around it; that is why in the captures the first plays and the second does
-            // not appear even once in the carousel.
-            // Whether it plays is the template's flag, not a guess from its spell: see
-            // Summon.Juega. The old reading -- "only if its spell has something to do at turn
-            // start" -- happened to fit the two beacons and nothing else: a Tymobot has nothing
-            // to do at turn start and plays, controlled by its owner.
-            invocado.JuegaTurno = receta.Juega;
-            invocado.HechizosDeInvocado = receta.Hechizos;
-            invocado.TemplateAllowsTackle = receta.AllowsTackle;
+            // Its grade, points, resistances, life and characteristics, which it went without:
+            // every summon hit with its spells' bare dice. See Summons.Characteristics.
+            // And whether it gets a turn, and with what: the Survival Beacon plays -- it heals
+            // itself -- and the Tactical one does not, it only reacts to what happens around it;
+            // that is why in the captures the first plays and the second does not appear even once
+            // in the carousel.
+            Managers.Summons.Characteristics(invocado, receta, quienInvoca);
 
             fight.Invocar(invocado, quienInvoca);
 
@@ -4446,7 +4438,8 @@ namespace Jondo.Unity.Server.Handlers
             }
             else if (receta.HechizoPropio != 0)
             {
-                invocado.Buffs.Actitudes.Add(receta.HechizoPropio);
+                // From this round: what it waits on with a delay counts its turns from here.
+                invocado.Buffs.PonerActitud(receta.HechizoPropio, givenInRound: fight.RoundNumber);
                 await AplicarEfectosAsync(stream, fight, invocado, receta.HechizoPropio,
                                           receta.GradoDelHechizoPropio,
                                           invocado, Managers.EffectEngine.AlLanzar, celda, armar: false);
@@ -5083,7 +5076,6 @@ namespace Jondo.Unity.Server.Handlers
             }
         }
 
-        /// <summary>Everybody in the fight, on both sides.</summary>
         /// <summary>Everybody in the fight. It lives in the fight itself since the sides have names.</summary>
         private static IEnumerable<Fighter> TodosLosCombatientes(FightInstance fight) => fight.Todos;
 
@@ -5318,10 +5310,6 @@ namespace Jondo.Unity.Server.Handlers
                 : (BasePlayerSummonLimit, fighter.Otra(CaracteristicaDeInvocaciones));
 
         /// <summary>
-        /// Returns the simultaneous summon capacity. Player equipment is already stored in
-        /// Otras[26] by RellenarLaFicha, so reading StatsHandler again would count it twice.
-        /// </summary>
-        /// <summary>
         /// Whether one more of this template fits the caster's summon limit: the check the summon
         /// itself goes through, asked beforehand by the tactics.
         /// </summary>
@@ -5333,6 +5321,10 @@ namespace Jondo.Unity.Server.Handlers
             return !(limit > 0 && recipe.SummonCost > 0 && UsedSummonCapacity(fight, caster) + recipe.SummonCost > limit);
         }
 
+        /// <summary>
+        /// Returns the simultaneous summon capacity. Player equipment is already stored in
+        /// Otras[26] by RellenarLaFicha, so reading StatsHandler again would count it twice.
+        /// </summary>
         internal static int SummonLimitFor(Fighter fighter, int round)
         {
             int innate = fighter.IsMonster ? 0 : BasePlayerSummonLimit;
@@ -5487,24 +5479,6 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Whether a spell has something to do at the start of the turn: an effect with a "TB" trigger,
-        /// or a 792 hook whose chained grade has one.
-        /// </summary>
-        private static bool TieneAlgoQueHacerAlEmpezar(int hechizo, int grado)
-        {
-            if (hechizo == 0) return false;
-            foreach (var efecto in Managers.SpellEffects.De(hechizo, Math.Max(1, grado)))
-            {
-                foreach (var d in efecto.Disparadores())
-                {
-                    if (string.Equals(d, Managers.EffectEngine.AlEmpezarElTurno,
-                                      StringComparison.OrdinalIgnoreCase)) return true;
-                }
-            }
-            return false;
-        }
-
-        /// <summary>
         /// The cell a summon fits in: the one asked for, and if it is taken, the nearest free
         /// neighbour.
         /// </summary>
@@ -5525,14 +5499,6 @@ namespace Jondo.Unity.Server.Handlers
             return -1;
         }
 
-        /// <summary>Who takes the hit: the living enemy on that cell, if there is one.</summary>
-        /// <summary>
-        /// Telling the client that somebody has lost AP or MP, so that the little floating number
-        /// appears over him as with life.
-        ///
-        /// Only when they are TAKEN: if the effect gives points, the measured message is a different one
-        /// and it is not tied to a specific case, so nothing is sent rather than sending the wrong one.
-        /// </summary>
         /// <summary>
         /// Refreshing the life the player is missing.
         ///
@@ -5744,7 +5710,7 @@ namespace Jondo.Unity.Server.Handlers
                                                       IReadOnlyList<Managers.SpellEffect> tirada = null,
                                                       int rondaDelEnganche = -1,
                                                       bool armar = true, bool soloAlObjetivo = false,
-                                                      bool conducta = false)
+                                                      bool conducta = false, bool delayHoldsBackOnly = false)
         {
             if (hechizo == 0) return;
 
@@ -5769,7 +5735,8 @@ namespace Jondo.Unity.Server.Handlers
                                                                  critico: critico,
                                                                  efectosSorteados: tirada,
                                                                  rondaDelEnganche: rondaDelEnganche,
-                                                                 armar: armar, soloAlObjetivo: soloAlObjetivo);
+                                                                 armar: armar, soloAlObjetivo: soloAlObjetivo,
+                                                                 delayHoldsBackOnly: delayHoldsBackOnly);
             }
             catch (Exception ex)
             {
@@ -6840,7 +6807,14 @@ namespace Jondo.Unity.Server.Handlers
                 // named by the hook itself. The one exception is an initial spell of the character's
                 // own choices, held at his grade of the choice (see Buffs.GradoDeActitud).
                 int grado = quien.Buffs.GradoDeActitud(actitud);
-                await AplicarEfectosAsync(stream, fight, quien, actitud, grado, quien, disparador, quien.CellId, armar: false);
+
+                // One given during the fight -- a summon's own spell -- holds its delayed rows back
+                // from the round it was given in, as a hooked spell does: the fairy's "141 under
+                // TE, delay 1" kills her at the end of her SECOND turn. Read as a second wait, it
+                // was put off to the next round's first turn and she died before her second one.
+                int givenIn = quien.Buffs.RoundAttitudeGiven(actitud);
+                await AplicarEfectosAsync(stream, fight, quien, actitud, grado, quien, disparador, quien.CellId, armar: false,
+                                          rondaDelEnganche: givenIn, delayHoldsBackOnly: givenIn >= 0);
 
                 // And the grades the attitude chains, on their own. It is needed because a chained
                 // grade can bring effects with ITS own trigger: Amarillo Ocre's grade 3 is cast at the
@@ -6853,7 +6827,8 @@ namespace Jondo.Unity.Server.Handlers
                     if (efecto.DiceNum <= 0) continue;
                     await AplicarEfectosAsync(stream, fight, quien, efecto.DiceNum,
                                               efecto.DiceSide > 0 ? efecto.DiceSide : 1,
-                                              quien, disparador, quien.CellId, armar: false);
+                                              quien, disparador, quien.CellId, armar: false,
+                                              rondaDelEnganche: givenIn, delayHoldsBackOnly: givenIn >= 0);
                 }
             }
 
@@ -7579,7 +7554,10 @@ namespace Jondo.Unity.Server.Handlers
             // left and the hit was three hundred, ten are stolen.
             if (aplicado > 0 && Managers.EffectEngine.EsRoboDeVida(efecto.EffectId))
             {
-                int curado = Math.Min(aplicado / 2, Math.Max(0, caster.MaxHP - caster.CurrentHP));
+                // An incurable caster steals and gains nothing.
+                int curado = Managers.SpellStates.IsIncurable(caster)
+                    ? 0
+                    : Math.Min(aplicado / 2, Math.Max(0, caster.MaxHP - caster.CurrentHP));
                 if (curado > 0)
                 {
                     caster.CurrentHP += curado;
@@ -7947,13 +7925,6 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// A monster's turn: it gets closer and hits until it runs out of points.
-        ///
-        /// It is not much of an intelligence -- it goes for the nearest living enemy, gets next to him
-        /// spending MP and casts whatever it can pay for with the AP it has -- but it does what it has
-        /// to and respects the points, which is what the client checks.
-        /// </summary>
-        /// <summary>
         /// A monster's turn: <see cref="Managers.MonsterTactics"/> decides, this sends. While there
         /// is something worth doing it walks where it has to and casts; then it places itself.
         /// </summary>
@@ -7963,12 +7934,35 @@ namespace Jondo.Unity.Server.Handlers
             var spells = TacticsOf(monster);
             var board = BoardOf(fight);
 
+            // A JondoBot plans its whole turn (MonsterTactics.PlanTurn) and follows the plan, each
+            // step checked against the fight as it really stands; a monster takes the best thing at
+            // each step, as it always has.
+            List<Managers.MonsterTactics.Action>? plan = null;
+            int planned = 0;
+            bool Allowed(Managers.MonsterTactics.Spell s) => Managers.SpellCriteria.Allows(monster, s.Id, s.Grade);
+
             for (int step = 0; step < TopeDeLanzamientosPorTurno; step++)
             {
                 // Only the spells whose level allows it as he stands now: Kontatrás's Jaquemart
                 // asks for Invulnerable (HS=56) and Multicuenta for its absence (HS!56).
-                var usable = spells.FindAll(s => Managers.SpellCriteria.Allows(monster, s.Id, s.Grade));
-                var action = Managers.MonsterTactics.Next(board, monster, usable);
+                var usable = spells.FindAll(Allowed);
+                Managers.MonsterTactics.Action? action;
+                if (monster.IsBot)
+                {
+                    action = plan != null && planned < plan.Count
+                        ? Managers.MonsterTactics.Revalidate(board, monster, plan[planned])
+                        : null;
+                    if (action == null || !Allowed(action.Spell))
+                    {
+                        plan = Managers.MonsterTactics.PlanTurn(board, monster, spells, Allowed);
+                        planned = 0;
+                        action = plan.Count > 0 ? plan[0] : null;
+                        Program.LogDebug($"[AI] {monster.Id} plans: " +
+                                         string.Join(", ", plan.Select(a => $"{a.Spell.Id}@{a.TargetCell}")) + ".");
+                    }
+                    planned++;
+                }
+                else action = Managers.MonsterTactics.Next(board, monster, usable);
                 if (action == null) break;
 
                 if (action.Path.Count > 1 && !await MonsterWalkAsync(stream, fight, monster, new List<int>(action.Path)))
@@ -7981,12 +7975,19 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     Program.LogDebug($"[AI] {monster.Id} stopped at {monster.CellId} with {monster.CurrentAP} AP " +
                                      $"instead of casting {action.Spell.Id} from {action.From}; thinking again.");
+                    // A JondoBot plans its turn again from where it is: the rest of the plan was
+                    // for the cell it did not reach -- a portal walked into takes it elsewhere,
+                    // and its next step, taken as it was, skipped the cast that was not made.
+                    plan = null;
                     continue;
                 }
 
                 Program.LogDebug($"[AI] {monster.Id} casts {action.Spell.Id} at {action.Target.Id} " +
                                  $"(cell {action.TargetCell}) from {monster.CellId}, score {action.Score:0.0}.");
                 await MonsterCastAsync(stream, fight, monster, action.Spell, action.Target, action.TargetCell);
+                // What the cast changed -- a creature summoned, someone pushed or dead -- is on the
+                // board the next step is weighed on.
+                board = BoardOf(fight);
                 // Dead of its own blow, or the blow that emptied a side: the turn ends there, as
                 // in the Dopeul's defeat, with no step taken after it.
                 if (!monster.IsAlive || !fight.SigueVivo(FightInstance.Azules) || !fight.SigueVivo(FightInstance.Rojos))
@@ -8030,6 +8031,15 @@ namespace Jondo.Unity.Server.Handlers
                 // An invisible enemy where he was last seen, not where he is.
                 Hidden = Managers.MonsterTactics.IsInvisible,
                 LastSeen = fighter => fighter.LastSeenCell,
+                // The round, which the buffs and the base damage a spell has grown are read by.
+                Round = fight.RoundNumber,
+                // The telefrags of the spell under way, which the «T» of the masks reads.
+                Telefrags = () => fight.Telefrags,
+                // And what each fighter casts, for what the bot's summons will do on their turn.
+                SpellsOf = TacticsOf,
+                // The portals a spell may go through, and the flag a cast through them raises.
+                Portals = () => fight.Portales,
+                ThroughPortal = on => fight.CastThroughPortal = on,
                 // The traps of the side whose turn it is.
                 Trapped = cell => OwnTraps(fight).Any(g => g.Cubre(cell)),
                 TrapsOut = () => OwnTraps(fight).Count(),
@@ -8140,6 +8150,10 @@ namespace Jondo.Unity.Server.Handlers
                     Buff = buff,
                     Summons = summons,
                     NeedsFreeCell = limits.NeedFreeCell,
+                    RangeBoostable = (limits.Flags & Managers.SpellLevelFlags.RangeCanBeBoosted) != 0,
+                    ThroughPortals = (limits.Flags & Managers.SpellLevelFlags.PortalProjectionForbidden) == 0
+                                     && !Managers.SpellEffects.De(spell, grade).Any(e => e.EffectId == Managers.EffectEngine.DesactivaUnPortal),
+                    Interval = limits.Intervalo,
                     Utility = !damages && heal == 0 && removal == 0 && buff == 0 && !summons && mechanics
                         ? 25 + monster.Level / 10.0 : 0,
                     UtilityOnEnemies = mechanicsOnEnemies,
@@ -8165,6 +8179,27 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static async Task<bool> MonsterWalkAsync(NetworkStream stream, FightInstance fight, Fighter monster,
                                                          List<int> planned)
+        {
+            // A walk through a portal is two walks, as a player's would be: up to the portal, where
+            // the network takes him on, and on from its way out (MonsterTactics.Routes). The next
+            // leg only if he came out where the plan said.
+            var legs = new List<List<int>> { new List<int> { planned[0] } };
+            for (int i = 1; i < planned.Count; i++)
+            {
+                if (Jondo.Unity.World.Maps.MapGeometry.Distance(planned[i - 1], planned[i]) > 1) legs.Add(new List<int>());
+                legs[legs.Count - 1].Add(planned[i]);
+            }
+            foreach (var leg in legs)
+            {
+                if (leg[0] != monster.CellId) break;
+                if (leg.Count > 1 && !await MonsterWalkLegAsync(stream, fight, monster, leg)) return false;
+            }
+            return true;
+        }
+
+        /// <summary>One straight walk of a monster's: the walk itself, then what lies on the ground it crossed.</summary>
+        private static async Task<bool> MonsterWalkLegAsync(NetworkStream stream, FightInstance fight, Fighter monster,
+                                                            List<int> planned)
         {
             // The same walk as a player's, tackles and all: the real server holds its monsters
             // as it holds people (the collector and the Dopeul are tackled in their captures).
@@ -8219,6 +8254,21 @@ namespace Jondo.Unity.Server.Handlers
             // character's with its buffs, and what modifies the spell. It was never rolled, and a
             // JondoBot with 30 % of critical hits never landed one.
             bool critico = false;
+
+            // Aimed at a portal that is on, a class spell goes through the network as a player's
+            // does (CastAsync): it comes out of the way out and lands where the bot's aim leads from
+            // there, on whoever stands THERE, grown by the network. Cast here, it fell on the portal.
+            var proyeccion = Managers.PlayerSpells.Contains(spell) && chosen.Rows.Count > 0
+                ? Projection(fight, monster, aim, Managers.SpellEffects.De(spell, monsterGrade),
+                             LimitesDeGrado(spell, monsterGrade).Flags)
+                : null;
+            if (proyeccion is { } alOtroLado)
+            {
+                Program.LogDebug($"[Portal] {monster.Id} casts {spell} at the portal on {aim}: through " +
+                                 $"{string.Join(", ", alOtroLado.Chain.Select(p => p.Id))}, it lands on {alOtroLado.Cell}.");
+                aim = alOtroLado.Cell;
+            }
+
             if (Managers.PlayerSpells.Contains(spell) && chosen.Rows.Count > 0)
             {
                 objetivo = VictimAt(fight, monster, aim);
@@ -8241,7 +8291,8 @@ namespace Jondo.Unity.Server.Handlers
                 Network.FightProtocol.BuildAction(
                     monster.Id, Network.FightProtocol.Cast,
                     Network.FightProtocol.CastAt(monster.Id, objetivo?.Id ?? 0, aim,
-                                                 spell, spellLevel, critical: critico),
+                                                 spell, spellLevel, critical: critico,
+                                                 portals: proyeccion?.Chain.Select(p => p.Id).ToList()),
                     Network.FightProtocol.CastDetail)));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildAction(monster.Id,
@@ -8258,18 +8309,36 @@ namespace Jondo.Unity.Server.Handlers
             }
             else
             {
-                tirada = await BoostsFirstAsync(stream, fight, monster, spell, monsterGrade, objetivo,
-                                                aim, critico, tirada);
-                await HurtAsync(stream, fight, monster, spell, monsterGrade, objetivo,
-                                aim, critico, tirada: tirada);
+                // Through a portal the cast says so to its masks' R and r, and its damage and
+                // healing grow with the network it crossed -- as a player's (CastAsync).
+                fight.CastThroughPortal = proyeccion != null;
+                fight.PortalBonusPercent = proyeccion is { } porElPortal ? PortalNetwork.BonusPercent(porElPortal.Chain) : 0;
+                fight.ProjectedFrom = proyeccion is { } throughThePortals ? throughThePortals.Chain[throughThePortals.Chain.Count - 1].Cell : -1;
+                try
+                {
+                    tirada = await BoostsFirstAsync(stream, fight, monster, spell, monsterGrade, objetivo,
+                                                    aim, critico, tirada);
+                    await HurtAsync(stream, fight, monster, spell, monsterGrade, objetivo,
+                                    aim, critico, tirada: tirada);
 
-                // And its effects, the same as when the player casts. This was missing: the monster's
-                // turn only worked out damage, so the penalties its spells leave -- the range Picoteo
-                // takes, for instance -- were neither applied nor announced, and nothing put by a
-                // creature ever appeared on the player's panel.
-                await AplicarEfectosAsync(stream, fight, monster, spell, monsterGrade, objetivo,
-                                          Managers.EffectEngine.AlLanzar, aim, critico,
-                                          tirada: tirada);
+                    // And its effects, the same as when the player casts. This was missing: the monster's
+                    // turn only worked out damage, so the penalties its spells leave -- the range Picoteo
+                    // takes, for instance -- were neither applied nor announced, and nothing put by a
+                    // creature ever appeared on the player's panel.
+                    await AplicarEfectosAsync(stream, fight, monster, spell, monsterGrade, objetivo,
+                                              Managers.EffectEngine.AlLanzar, aim, critico,
+                                              tirada: tirada);
+                }
+                finally
+                {
+                    fight.CastThroughPortal = false;
+                    fight.PortalBonusPercent = 0;
+                    fight.ProjectedFrom = -1;
+                }
+
+                // Cast through a portal (PST): the Selatrop's passive gives its +2% after every one.
+                if (proyeccion != null && monster.IsAlive)
+                    await DispararAsync(stream, fight, monster, Managers.EffectEngine.AlProyectarPorUnPortal);
             }
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
@@ -8380,20 +8449,6 @@ namespace Jondo.Unity.Server.Handlers
         private const int TopeDeLanzamientosPorTurno = 20;
 
         /// <summary>
-        /// How many cells there are from one to the other.
-        ///
-        /// This used <see cref="Diamond"/>, which is MIRRORED with respect to the client's grid: for even
-        /// rows it flips the y axis, and for odd ones it also shifts the x. With those coordinates, the
-        /// "four cells next to it" that came out were not the ones next to it, and that is why a piwi
-        /// could be seen walking over another: it is not that it did not check whether the cell was
-        /// taken -- it does --, it checked the wrong cell.
-        ///
-        /// The right grid is <see cref="MapGeometry"/>'s, which is what the fight uses for range, line of
-        /// sight and pushes.
-        /// </summary>
-        private static int CellDistance(int from, int to) => MapGeometry.Distance(from, to);
-
-        /// <summary>
         /// Whether a cell can be stepped on IN A FIGHT. The arena's list rules, not the walking one: the
         /// outer ring of a fight map is not walkable even if it is outside a fight.
         /// </summary>
@@ -8410,18 +8465,6 @@ namespace Jondo.Unity.Server.Handlers
             foreach (var f in fight.Rojo) if (f.IsAlive && f.CellId == cell) return true;
             return false;
         }
-
-        /// <summary>
-        /// Is anybody left standing on both sides? If not, it is over.
-        ///
-        ///   kuf   it is over
-        ///   jyg   how each one ended up
-        ///   and back to the surface map
-        /// </summary>
-        /// <summary>
-        /// The ending waiting for the client to acknowledge the last sequence, and the action number it
-        /// expects. While it is set, the end-of-fight screen is up in the air.
-        /// </summary>
 
         /// <summary>
         /// The client has acknowledged a sequence (jti). If the fight was waiting for exactly this one,
@@ -8628,6 +8671,26 @@ namespace Jondo.Unity.Server.Handlers
             // a kmu -- the count of fights one less, the group back or its replacement.
             foreach (var sesion in gente) await BackOnTheMapAsync(sesion);
             await FightOffTheMapAsync(fight);
+
+            await FightOverForTheWorldAsync(fight, azulGana);
+        }
+
+        /// <summary>
+        /// What a fight's end decides outside it: a tax collector's or a prism's fight decides
+        /// them, and any other fight won on a map with a tax collector gives it something to carry.
+        /// </summary>
+        internal static async Task FightOverForTheWorldAsync(FightInstance fight, bool attackersWon)
+        {
+            var defence = await AllianceFights.CloseAsync(fight);
+            if (defence == null)
+            {
+                if (attackersWon && fight.Reglas.ReparteBotin) TaxCollectorHandler.Gather(fight);
+                return;
+            }
+            if (defence.Kind == Network.TaxCollectorProtocol.FightOfPrism)
+                await PrismHandler.FightEndedAsync(fight, attackersWon);
+            else
+                await TaxCollectorHandler.FightEndedAsync(fight, attackersWon);
         }
 
         /// <summary>A line of the results list.</summary>
@@ -8867,6 +8930,11 @@ namespace Jondo.Unity.Server.Handlers
                     })));
             }
 
+            // The alterations and the bonus slots, one fight on: the whole list with the counts
+            // brought down (lzp), the slots' items (iuj, or ium when spent), and the lzo with its
+            // «Has perdido la alteración» for each spent -- the larva race's order, before the kub.
+            await AlterationHandler.AfterFightAsync(stream, gane);
+
             Program.LogDebug($"[Fight] Share: {xpGained} experience (total {GameState.Experience}, " +
                              $"level {GameState.CharacterLevel}), {kamas} kamas and {loot.Count} kind(s) of item.");
 
@@ -9048,22 +9116,6 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private const int MaxLevelWithPoints = StatsHandler.MaxLevelWithStats;
 
-        /// <summary>
-        /// The grade of a spell the character has open: what it costs and its identifier.
-        ///
-        /// It comes from SpellLevels, which is where the client itself takes it from to draw the number on
-        /// the icon; if the spell is not there, the ordinary cost is charged and there is no identifier.
-        ///
-        /// BOTH are needed. The cost, to subtract the action points; and the SpellLevels.Id, because the
-        /// cast's jwe carries it next to the spell's and without it the client does not know what it is
-        /// drawing. They go together in the same query so that they cannot come from different rows.
-        /// </summary>
-        private static (int Cost, int LevelId, int Grade) GradeOf(int spellId, int level)
-        {
-            var todo = LimitesDe(spellId, level);
-            return (todo.Cost, todo.LevelId, todo.Grade);
-        }
-
         /// <summary>What a spell costs and what limits it, all from the same row.</summary>
         public readonly record struct LimitesDelHechizo(
             int Cost, int LevelId, int Grade,
@@ -9197,19 +9249,19 @@ namespace Jondo.Unity.Server.Handlers
             = new System.Collections.Concurrent.ConcurrentDictionary<(int, int), LimitesDelHechizo>();
 
         /// <summary>
-        /// The player passes the turn (jxy, empty), or his time runs out.
-        ///
-        ///   jyt   the turn is over
-        ///   jto / jxc / jwi   the closing block
-        ///   jxh   and on to the next one
-        /// </summary>
-        /// <summary>
         /// Whether a fighter keeps what he leaves of his turns: a character does. In the captures
         /// only a character's jyt carries an f1; monsters, summons and a JondoBot play theirs at once.
         /// </summary>
         internal static bool KeepsTurnTime(Fighter fighter)
             => fighter != null && !fighter.IsMonster && !fighter.EsInvocado && !fighter.IsBot;
 
+        /// <summary>
+        /// The player passes the turn (jxy, empty), or his time runs out.
+        ///
+        ///   jyt   the turn is over
+        ///   jto / jxc / jwi   the closing block
+        ///   jxh   and on to the next one
+        /// </summary>
         public static async Task PassTurnAsync(NetworkStream stream)
         {
             var fight = GetCurrentFight();
@@ -9854,6 +9906,10 @@ namespace Jondo.Unity.Server.Handlers
         // With the loot that is a server where nothing drops and nobody understands why. It was
         // removed and now both rolls come from the same place, with its lock.
 
+        /// <summary>Raises a quantity by the percentage the challenges have given.</summary>
+        private static long ConElExtra(long cuanto, int extra)
+            => extra <= 0 ? cuanto : cuanto + cuanto * extra / 100;
+
         /// <summary>
         /// Rolls the loot of every defeated monster and puts it into the inventory.
         ///
@@ -9865,10 +9921,6 @@ namespace Jondo.Unity.Server.Handlers
         /// the character's prospecting divided by 100, but prospecting from the gear is not being
         /// computed, so the base percentage is used (equivalent to 100 prospecting).
         /// </summary>
-        /// <summary>Raises a quantity by the percentage the challenges have given.</summary>
-        private static long ConElExtra(long cuanto, int extra)
-            => extra <= 0 ? cuanto : cuanto + cuanto * extra / 100;
-
         private static Dictionary<int, int> RollFightLoot(FightInstance fight, int extra,
                                                           out List<PlayerItem> caidos)
         {

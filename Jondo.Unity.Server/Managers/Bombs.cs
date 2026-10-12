@@ -63,11 +63,6 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The spell thrown when the target cell is already taken, or zero.</summary>
         public static int OnTarget(int template) => Of(template)?.OnTarget ?? 0;
 
-        internal static void Forget()
-        {
-            lock (_lock) { _all = null; }
-        }
-
         private static void Load()
         {
             lock (_lock)

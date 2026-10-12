@@ -248,8 +248,6 @@ namespace Jondo.Unity.Server.Managers
             return null;
         }
 
-        public static bool Holds(Place place, long uid) => Find(place, uid) != null;
-
         private static HavenBagStore.StoredItem Read(SqliteDataReader reader) => new HavenBagStore.StoredItem
         {
             Uid = reader.GetInt64(0),

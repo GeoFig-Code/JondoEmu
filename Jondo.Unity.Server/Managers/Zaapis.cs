@@ -65,9 +65,6 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public const int Teleporter = 1;
 
-        /// <summary>The zone level that accompanies each destination in the list.</summary>
-        private const int Level = 10;
-
         /// <summary>A network: a city's.</summary>
         public sealed class Network
         {
@@ -85,9 +82,6 @@ namespace Jondo.Unity.Server.Managers
 
         private static readonly Dictionary<int, Network> _byGfx = new();
         private static readonly Dictionary<long, Network> _byMap = new();
-
-        public static int Count => _byMap.Count;
-        public static IReadOnlyDictionary<int, Network> Networks => _byGfx;
 
         /// <summary>
         /// Loads the networks and works out which maps have a zaapi.

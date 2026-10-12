@@ -13,11 +13,6 @@ namespace Jondo.Unity.Server.Network
     /// </summary>
     public static class ClientLaunchRegistry
     {
-        /// <summary>
-        /// Clients ONE same address can have open at once. Eight, which is what fits
-        /// in a Dofus party. It is NOT the server's capacity: that is Contract.ClientesEnTotal.
-        /// </summary>
-        public const int MaximumClients = Jondo.Unity.Launcher.Contract.ClientesPorIp;
         public sealed class Launch
         {
             public int InstanceId { get; init; }
@@ -188,7 +183,6 @@ namespace Jondo.Unity.Server.Network
         public static bool TryGetByAccount(long accountId, out Launch? launch)
             => ByAccount.TryGetValue(accountId, out launch);
 
-        public static bool IsActive(long accountId) => ByAccount.ContainsKey(accountId);
         public static int ActiveCount => ByAccount.Count;
 
         public static void Remove(Launch launch)

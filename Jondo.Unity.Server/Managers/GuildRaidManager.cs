@@ -349,12 +349,9 @@ namespace Jondo.Unity.Server.Managers
         public static async Task GiveFragmentAsync(RaidInstance raid, int fragment, IEnumerable<long> to)
         {
             if (!FragmentAlterations.TryGetValue(fragment, out int alteration)) return;
-            byte[] frame = ConnectionProtocol.Push(Jondo.Unity.Protocol.Op.Lzs, GuildProtocol.BuildAlteration(alteration,
-                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), raid.EndsUtc.ToUnixTimeMilliseconds()));
             foreach (long id in to)
             {
-                var session = SessionRegistry.FindByCharacter(id);
-                if (session != null) await session.SendAsync(frame);
+                await Handlers.AlterationHandler.GainForAsync(id, alteration, raid.EndsUtc.ToUnixTimeMilliseconds());
             }
             if (!raid.FoundFragment(fragment) || raid.Fragments.Count < FragmentAlterations.Count) return;
 
@@ -626,6 +623,8 @@ namespace Jondo.Unity.Server.Managers
 
             foreach (long member in raid.Members.ToList())
             {
+                // The key's fragments were the raid's, and go with it.
+                await Handlers.AlterationHandler.LoseForAsync(member, FragmentAlterations.Values);
                 await SendHomeAsync(member);
             }
 

@@ -47,5 +47,20 @@ namespace Jondo.Unity.Tests
         /// </summary>
         [ModuleInitializer]
         internal static void DefaultSettings() => Jondo.Unity.Server.ServerSettings.UseForTests(new Jondo.Unity.Server.ServerSettings());
+
+        /// <summary>
+        /// Lets go of the pooled connections of one temp database, so its file can be deleted.
+        /// </summary>
+        /// <remarks>
+        /// Only that database's pool, never <c>SqliteConnection.ClearAllPools</c>: the collections
+        /// run in parallel, and emptying every pool disposed the connection another collection was
+        /// opening at that very moment -- "Cannot access a disposed object: SQLitePCL.sqlite3" in
+        /// GuildStore.EnsureTables, a different guild test each time, once in a dozen runs.
+        /// </remarks>
+        internal static void ReleasePool(string file)
+        {
+            using var connection = new SqliteConnection($"Data Source={file}");
+            SqliteConnection.ClearPool(connection);
+        }
     }
 }

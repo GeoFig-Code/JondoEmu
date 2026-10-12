@@ -36,7 +36,7 @@ namespace Jondo.Unity.Tests.World
             GuildRaidManager.Forget();
             GuildRaidBoard.Forget();
             GuildStore.ConnectionStringOverride = null;
-            SqliteConnection.ClearAllPools();
+            TestDatabases.ReleasePool(_file);
             try { File.Delete(_file); } catch (IOException) { }
         }
 

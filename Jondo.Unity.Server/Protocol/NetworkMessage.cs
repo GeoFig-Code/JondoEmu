@@ -75,41 +75,6 @@ namespace Jondo.Protocol
             return payload;
         }
 
-        public static async Task WriteFrameAsync(Stream stream, IMessage message)
-        {
-            int size = message.CalculateSize();
-            
-            using var ms = new MemoryStream();
-            var codedStream = new CodedOutputStream(ms);
-            
-            // Write length as VarInt
-            codedStream.WriteUInt32((uint)size);
-            
-            // Write message payload
-            message.WriteTo(codedStream);
-            codedStream.Flush();
-            
-            byte[] buf = ms.ToArray();
-
-            // Log packet
-            try
-            {
-                int pos = 0;
-                uint len = Jondo.Unity.Server.Network.NetworkEnvelope.ReadVarInt(buf, ref pos);
-                byte[] payload = new byte[len];
-                Array.Copy(buf, pos, payload, 0, len);
-                string? typeUrl = Jondo.Unity.Server.Network.NetworkEnvelope.GetMessageTypeUrl(payload);
-                if (typeUrl != null)
-                {
-                    LogTrafficEnriched("Server -> Client", typeUrl, payload);
-                }
-                Jondo.Unity.Server.Network.GameServerProxy.LogTraffic("S->C", payload, payload.Length);
-            }
-            catch { }
-            
-            await WriteSerializedAsync(stream, buf);
-        }
-
         public static async Task WriteFrameAsync(Stream stream, byte[] payload)
         {
             using var ms = new MemoryStream();
@@ -166,7 +131,24 @@ namespace Jondo.Protocol
             Interlocked.Add(ref _bytesDentro, bytes);
         }
 
-        private static async Task WriteSerializedAsync(Stream stream, byte[] frame)
+        /// <summary>
+        /// How long one write may wait on a client that does not read before its socket is given up.
+        /// </summary>
+        /// <remarks>
+        /// A write had no limit. A client that stops reading -- frozen, suspended, gone without the
+        /// socket noticing -- fills its send buffer and every write to it waited for ever, holding
+        /// whoever wrote: the fight broadcast goes to each fighter in turn, so one such client froze
+        /// the fight for everybody in it, with the turn of whoever acted still held. Thirty seconds
+        /// is far above a client loading a map, and when it runs out the socket is closed: the
+        /// session ends as if the client had gone, and the fight goes on without him and lets him
+        /// back in (FightHandler.ResumeForOneAsync).
+        /// </remarks>
+        public static readonly TimeSpan WriteTimeout = TimeSpan.FromSeconds(30);
+
+        private static Task WriteSerializedAsync(Stream stream, byte[] frame)
+            => WriteSerializedAsync(stream, frame, WriteTimeout);
+
+        internal static async Task WriteSerializedAsync(Stream stream, byte[] frame, TimeSpan timeout)
         {
             var gate = WriteLocks.GetValue(stream, _ => new SemaphoreSlim(1, 1));
             await gate.WaitAsync();
@@ -183,9 +165,18 @@ namespace Jondo.Protocol
                 // make that true: one silent check per write, and the first failure is logged.
                 if (DeadStreams.TryGetValue(stream, out _)) return;
 
+                using var limit = new CancellationTokenSource(timeout);
                 try
                 {
-                    await stream.WriteAsync(frame, 0, frame.Length);
+                    await stream.WriteAsync(frame.AsMemory(), limit.Token);
+                }
+                catch (OperationCanceledException) when (limit.IsCancellationRequested)
+                {
+                    DeadStreams.AddOrUpdate(stream, new object());
+                    Jondo.Unity.Server.Program.LogDebug(
+                        $"[Net] A client has not read for {timeout.TotalSeconds:0} s; its socket is closed.");
+                    try { stream.Dispose(); } catch { }
+                    return;
                 }
                 catch (Exception ex) when (ex is IOException or ObjectDisposedException
                                            or System.Net.Sockets.SocketException
@@ -324,7 +315,7 @@ namespace Jondo.Protocol
                 case Op.Lry: return ("World Loading", "Interfaces", "QuestListMessage (Active quest list and journal)");
                 case "icb": return ("World Loading", "Character", "CharacterStatsListMessage (Combat state and base stats)");
                 case Op.Irm: return ("World Loading", "Character", "MapActorsListMessage (Initial NPC and mob spawns of the map)");
-                case Op.Hke: return ("World Loading", "Interfaces", "ServerWelcomeMessage (Welcome message and news of the day)");
+                case Op.Hke: return ("Alliance", "TaxCollector", "TaxCollectorSpellMove (A tax collector's spell moved to another slot)");
                 case "kfr": return ("World Loading", "Character", "EmoteListMessage (Unlocked emotes and animations)");
                 case Op.Ipv: return ("World Loading", "Map", "MapComplementaryInformationsData (Cell interactives)");
                 case "ipu": return ("World Loading", "Map", "MapInteractiveElements (Active doors and triggers)");

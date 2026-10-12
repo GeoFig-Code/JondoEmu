@@ -445,6 +445,14 @@ namespace Jondo.Unity.Sprites
             return "";
         }
 
+        /// <summary>Counts a reference being followed, and whether it carried a colour.</summary>
+        private static Action<bool>? Following;
+
+
+
+        /// <summary>TEMPORARY DIAGNOSTIC: referenced name, depth, whether it was resolved.</summary>
+        public static Action<string, int, bool>? RefWatch;
+
         /// <summary>
         /// Walks one part's display list, emitting triangles and carrying the tint down.
         /// </summary>
@@ -464,14 +472,6 @@ namespace Jondo.Unity.Sprites
         /// A part with no display list at all is the common case in bone bundles — every symbol is
         /// one quad — and its chunks are simply drawn.
         /// </remarks>
-        /// <summary>Counts a reference being followed, and whether it carried a colour.</summary>
-        private static Action<bool>? Following;
-
-
-
-        /// <summary>TEMPORARY DIAGNOSTIC: referenced name, depth, whether it was resolved.</summary>
-        public static Action<string, int, bool>? RefWatch;
-
         private static void Walk(List<Piece> into, AssetTypeValueField mesh, AssetTypeValueField part,
                                  Placed piece, Sheet from, List<Wardrobe> wardrobe, int tint,
                                  NpcLook look, int depth)
@@ -962,7 +962,7 @@ namespace Jondo.Unity.Sprites
         /// at (96,65,44) and this way it comes out at (192,130,87), which is the tan the look asks for.
         /// </remarks>
         private static int Tenir(int gris, int color)
-            => gris < 128
+            => gris < GrisNeutro
                 ? 2 * gris * color / 255
                 : 255 - 2 * (255 - gris) * (255 - color) / 255;
 

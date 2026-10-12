@@ -85,6 +85,9 @@ namespace Jondo.Unity.World.Emotes
         public bool Ready => _byId.Count > 0;
         public int Count => _byId.Count;
 
+        /// <summary>Every attitude of the catalogue, by id.</summary>
+        public IEnumerable<int> Ids => _byId.Keys;
+
         public Emote? Of(int id) => _byId.TryGetValue(id, out var emote) ? emote : null;
 
         private static string Text(JsonElement row, string name)

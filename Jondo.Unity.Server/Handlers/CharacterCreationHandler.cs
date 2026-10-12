@@ -101,7 +101,9 @@ namespace Jondo.Unity.Server.Handlers
             Console.WriteLine($"[Characters] Suggested name: {name}");
         }
 
-        private static readonly Random _rand = new Random();
+        /// <summary>The shared die: several fights and sessions draw from it at once, and a plain
+        /// Random used from two threads breaks for good and draws zeros.</summary>
+        private static readonly Random _rand = Random.Shared;
         private static readonly string[] Start = { "Ka", "Bro", "Zel", "Mir", "Tan", "Ork", "Fli",
                                                    "Nol", "Sar", "Dju", "Wen", "Pyr", "Gob", "Ily" };
         private static readonly string[] Middle = { "ra", "de", "lo", "ni", "sa", "tu", "ve", "mi",

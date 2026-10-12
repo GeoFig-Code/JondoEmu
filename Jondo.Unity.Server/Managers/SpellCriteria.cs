@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Jondo.Unity.World.Fights;
 using Microsoft.Data.Sqlite;
@@ -33,10 +33,34 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>Whether the caster, as he stands now, may cast this spell at this grade.</summary>
+        /// <remarks>
+        /// A state that keeps its bearer from casting (<c>preventsSpellCast</c>: Portador,
+        /// Silencioso, Helado, Agrietado, Bomba) lets through only the spells whose condition
+        /// asks for it. It is the Pandawa's rule, in his class sheet: carrying somebody «ya no
+        /// puede utilizar sus hechizos, excepto los que le permiten lanzar a la entidad» -- the
+        /// throws, all of them <c>HS=3</c>. The flag was read and applied nowhere: a carrying
+        /// JondoBot cast whatever it liked, and a silenced monster too.
+        /// </remarks>
         public static bool Allows(Fighter caster, int spell, int grade)
         {
             string criterion = Of(spell, grade);
-            return criterion.Length == 0 || Holds(criterion, caster.Buffs.TieneEstado);
+            if (criterion.Length > 0 && !Holds(criterion, caster.Buffs.TieneEstado)) return false;
+            foreach (int state in caster.Buffs.Estados)
+                if (SpellStates.Of(state)?.PreventsSpellCast == true && !Requires(criterion, state)) return false;
+            return true;
+        }
+
+        /// <summary>Whether a condition asks for the state itself (<c>HS=n</c>).</summary>
+        internal static bool Requires(string criterion, int state)
+        {
+            string asked = "HS=" + state;
+            for (int at = criterion.IndexOf(asked, StringComparison.Ordinal); at >= 0;
+                 at = criterion.IndexOf(asked, at + 1, StringComparison.Ordinal))
+            {
+                int end = at + asked.Length;
+                if (end >= criterion.Length || !char.IsDigit(criterion[end])) return true;
+            }
+            return false;
         }
 
         /// <summary>The spell and grade a <c>SpellLevels.Id</c> names; (0, 0) when none.</summary>

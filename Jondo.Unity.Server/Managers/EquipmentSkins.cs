@@ -25,8 +25,6 @@ namespace Jondo.Unity.Server.Managers
         private static volatile bool _loaded;
         private static readonly object _lock = new object();
 
-        public static int Count { get { EnsureLoaded(); return _skins.Count; } }
-
         /// <summary>
         /// Reads the file, once per run. Kept as a separate call so the server can pay for it at
         /// boot, with its log line, rather than on whoever builds the first look.

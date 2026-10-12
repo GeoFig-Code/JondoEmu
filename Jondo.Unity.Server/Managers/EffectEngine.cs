@@ -754,41 +754,6 @@ namespace Jondo.Unity.Server.Managers
                 PastThePortal = LeftPastThePortal(push),
             };
         }
-        /// <summary>«Teleports to the target cell». 425 spells carry it.</summary>
-        /// <remarks>
-        /// It is not a push of many cells: it does not travel the path, so it neither crashes nor does
-        /// collision damage, and it does not care whether something is in the way. It only cares about the
-        /// destination cell, which has to be free and walkable.
-        /// </remarks>
-        /// <summary>«N% of the level as a shield» (234 spells) and «N% of HP as a shield» (167).</summary>
-        /// <remarks>
-        /// The percentage goes in the DIE, not in the value: Caparazón carries diceNum 150 and Soldagüino 200 on
-        /// the level; Bendición Maravillosa carries 10 and Coraza de Dopeul 20 on the life. The value is zero in
-        /// the six that were read.
-        ///
-        /// The shield is not life and is not healed: that is why it lives in the fighter's own bag and not in
-        /// CurrentHP.
-        /// </remarks>
-        /// <summary>«Gives back N AP» (163 spells). The number goes in the die, the mask is «C».</summary>
-        /// <remarks>
-        /// Doom and Matanza carry it, which cost 1 AP and give it back, so they can be chained. It is not an AP
-        /// boost with a duration: it is an immediate refund, and that is why it does not go through the buff.
-        /// </remarks>
-        /// <summary>
-        /// What is put on the ground: aura glyph, turn-start glyph, trap and rune.
-        /// </summary>
-        /// <remarks>
-        /// 623 spells among the four, and all four with THE SAME measured shape:
-        ///
-        ///   diceNum   the spell it casts when it fires
-        ///   diceSide  its grade
-        ///   value     the colour in RGB -- the Avispero carries 16777215, pure white --
-        ///   duration  the rounds; -1 means it does not drop by itself
-        ///   zoneDescr the footprint around the aimed cell
-        ///
-        /// The only thing that changes is when they fire, so they go by a single road with four triggers
-        /// instead of by four roads with the same body.
-        /// </remarks>
         /// <summary>What a sub-cast's child spell aims at.</summary>
         private enum Apunta
         {
@@ -923,12 +888,6 @@ namespace Jondo.Unity.Server.Managers
             [2017] = new(true,  Apunta.AlLanzadorPadre,    true),
         };
 
-        /// <summary>
-        /// The mark that hooks a sub-cast's child on its target when the child has rows waiting on
-        /// a trigger: Morsagüino's Refresgüino, cast on each enemy, holds only an "H" row -- when
-        /// healed -- and left nothing on anybody, so it was never hooked and the heal that makes
-        /// him vulnerable did nothing. Null when the child waits on nothing.
-        /// </summary>
         /// <summary>Whether a row waits on anything but the cast.</summary>
         private static bool EsperaUnDisparador(SpellEffect efecto)
             => efecto.Disparadores().Any(d => !string.Equals(d, AlLanzar, StringComparison.OrdinalIgnoreCase));
@@ -978,6 +937,12 @@ namespace Jondo.Unity.Server.Managers
              : fila.Duration > 0 ? ronda + fila.Duration
              : deConducta ? -1 : ronda + 1;
 
+        /// <summary>
+        /// The mark that hooks a sub-cast's child on its target when the child has rows waiting on
+        /// a trigger: Morsagüino's Refresgüino, cast on each enemy, holds only an "H" row -- when
+        /// healed -- and left nothing on anybody, so it was never hooked and the heal that makes
+        /// him vulnerable did nothing. Null when the child waits on nothing.
+        /// </summary>
         private static Outcome MarcaDeEnganche(Fighter lanzaElHijo, Fighter sobre, SpellEffect subcast)
         {
             if (sobre == null || subcast.DiceNum <= 0) return null;
@@ -1086,6 +1051,7 @@ namespace Jondo.Unity.Server.Managers
             bool suyo = quien.TeamId == desde.TeamId;
             bool esInvocado = quien.EsInvocado, esMonstruo = quien.IsMonster && !esInvocado, esJugador = !quien.IsMonster && !esInvocado;
             bool hayLado = false, loNombra = false;
+            bool hayPlantilla = false, esDeLaPlantilla = false;
             var trozos = (mascara ?? "").Split(',').Select(t => t.Trim()).ToList();
 
             // A scene's sides are Def and Atq; its "a" and "A" name nobody (see AQuien).
@@ -1114,13 +1080,17 @@ namespace Jondo.Unity.Server.Managers
                 {
                     switch (t[0])
                     {
-                        case 'F': if (!quien.IsMonster || quien.MonsterId != n) return false; break;
+                        // Several F are several templates, any of them, as AQuien reads them: the
+                        // Tymador's "a,P,F3112,F3113,F3114,F5161" is any of his bombs. Read as all
+                        // of them at once, no fighter ever met it.
+                        case 'F': hayPlantilla = true; esDeLaPlantilla |= quien.IsMonster && quien.MonsterId == n; break;
                         case 'f': if (quien.IsMonster && quien.MonsterId == n) return false; break;
                         case 'E': if (!quien.Buffs.TieneEstado(n)) return false; break;
                         case 'e': if (quien.Buffs.TieneEstado(n)) return false; break;
                     }
                 }
             }
+            if (hayPlantilla && !esDeLaPlantilla) return false;
             return !hayLado || loNombra;
         }
 
@@ -1129,6 +1099,31 @@ namespace Jondo.Unity.Server.Managers
             => Familia.TryGetValue(efecto, out var fila)
                 ? (fila.LanzaElCandidato, fila.Apunta.ToString())
                 : (false, "");
+
+        /// <summary>
+        /// How a row of the «make another spell be cast» family resolves, for whoever plays it out
+        /// of the fight (the bots' copy of it, MonsterTactics.Simulation): who casts the child, at
+        /// whom, and how many candidates it takes -- the same table the cast reads.
+        /// </summary>
+        internal readonly record struct SubCastRule(bool ByTheCandidate, bool ByTheOrigin, SubCastAim Aim, bool CappedByValue);
+
+        /// <summary>Whom a sub-cast's child is aimed at: see <see cref="Apunta"/>.</summary>
+        internal enum SubCastAim { Candidate, ParentCaster, ParentCell, Nearest, Origin }
+
+        /// <summary>The rule of a sub-cast row, or the plain one (the caster, at the candidate) when it has none.</summary>
+        internal static SubCastRule SubCastOf(int efecto)
+            => Familia.TryGetValue(efecto, out var fila)
+                ? new SubCastRule(fila.LanzaElCandidato, fila.LanzaElOrigen,
+                                  fila.Apunta switch
+                                  {
+                                      Apunta.AlLanzadorPadre => SubCastAim.ParentCaster,
+                                      Apunta.ALaCasillaDelPadre => SubCastAim.ParentCell,
+                                      Apunta.AlMasCercano => SubCastAim.Nearest,
+                                      Apunta.AlOrigen => SubCastAim.Origin,
+                                      _ => SubCastAim.Candidate,
+                                  },
+                                  fila.TopePorValor)
+                : new SubCastRule(false, false, SubCastAim.Candidate, false);
 
         /// <summary>
         /// 3793: a marker, not an effect. There is nothing to apply.
@@ -1167,6 +1162,21 @@ namespace Jondo.Unity.Server.Managers
         public static bool EsMarcadorDeGuion(int efecto)
             => efecto == MarcadorDeGuion || efecto == MarcadorDeGuionInmediato;
 
+        /// <summary>
+        /// What is put on the ground: aura glyph, turn-start glyph, trap and rune.
+        /// </summary>
+        /// <remarks>
+        /// 623 spells among the four, and all four with THE SAME measured shape:
+        ///
+        ///   diceNum   the spell it casts when it fires
+        ///   diceSide  its grade
+        ///   value     the colour in RGB -- the Avispero carries 16777215, pure white --
+        ///   duration  the rounds; -1 means it does not drop by itself
+        ///   zoneDescr the footprint around the aimed cell
+        ///
+        /// The only thing that changes is when they fire, so they go by a single road with four triggers
+        /// instead of by four roads with the same body.
+        /// </remarks>
         private const int GlifoDeAura = 1091;
         private const int GlifoDeInicioDeTurno = 401;
 
@@ -1202,8 +1212,13 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>
         /// «Devuelve #1 PA» (120): the points in the bearer's hand, told as the real server tells
         /// them -- the AP sheet, then "jwe 120 f20{f1=N f2=who}" in the caster's name: 117 of them
-        /// in 35 captures, Neutral's at frame 11 of "usar neutral en portales".
+        /// in 35 captures, Neutral's at frame 11 of "usar neutral en portales". 163 spells carry
+        /// it; the number goes in the die and the mask is «C».
         /// </summary>
+        /// <remarks>
+        /// Doom and Matanza carry it, which cost 1 AP and give it back, so they can be chained. It is not an AP
+        /// boost with a duration: it is an immediate refund, and that is why it does not go through the buff.
+        /// </remarks>
         internal const int DevuelvePA = 120;
 
         /// <summary>«Effect duration: -N» (167 spells). It cuts rounds off the buffs.</summary>
@@ -1247,8 +1262,21 @@ namespace Jondo.Unity.Server.Managers
         private const int CuraPorElDanoOcasionado = 2973;
         private const int CuraPorElDanoSufrido = 2020;
 
+        /// <summary>«N% of the level as a shield» (234 spells) and «N% of HP as a shield» (167).</summary>
+        /// <remarks>
+        /// The percentage goes in the DIE, not in the value: Caparazón carries diceNum 150 and Soldagüino 200 on
+        /// the level; Bendición Maravillosa carries 10 and Coraza de Dopeul 20 on the life. The value is zero in
+        /// the six that were read.
+        ///
+        /// The shield is not life and is not healed: that is why it lives in the fighter's own bag and not in
+        /// CurrentHP.
+        /// </remarks>
         private const int EscudoPorNivel = 1020;
         private const int EscudoPorVida = 1039;
+
+        /// <summary>The two shields, as the tactics weigh them: a share of the level, a share of the life.</summary>
+        internal const int ShieldPerLevel = EscudoPorNivel;
+        internal const int ShieldPerLife = EscudoPorVida;
 
         /// <summary>
         /// 1040, the row the client draws for a shield: "#1 de escudo". Both 1020 and 1039 go
@@ -1359,6 +1387,12 @@ namespace Jondo.Unity.Server.Managers
         /// </remarks>
         private const int TransfiereVida = 90;
 
+        /// <summary>«Teleports to the target cell». 425 spells carry it.</summary>
+        /// <remarks>
+        /// It is not a push of many cells: it does not travel the path, so it neither crashes nor does
+        /// collision damage, and it does not care whether something is in the way. It only cares about the
+        /// destination cell, which has to be free and walkable.
+        /// </remarks>
         private const int Teletransportar = 4;
 
         /// <summary>
@@ -1521,9 +1555,6 @@ namespace Jondo.Unity.Server.Managers
 
         private const int QuitarEfectosDeHechizo = EffectSupport.RemoveSpellEffects;
         private const int CambiarApariencia = EffectSupport.ChangeLook;
-
-        /// <summary>"Summons: #1". The creature's template travels in the die.</summary>
-        public const int Invocar = EffectSupport.Summon;
 
         /// <summary>
         /// The effects that place something ON A CELL instead of on somebody: a summon, a trap, a glyph. Their
@@ -1690,6 +1721,16 @@ namespace Jondo.Unity.Server.Managers
 
         private const int HealsCharacteristic = 49;
 
+        /// <summary>The fighter's own points for one of the four elemental characteristics.</summary>
+        private static int StatOf(Fighter quien, int caracteristica) => caracteristica switch
+        {
+            10 => quien.Strength,
+            13 => quien.Chance,
+            14 => quien.Agility,
+            15 => quien.Intelligence,
+            _ => quien.Otra(caracteristica),
+        };
+
         /// <summary>
         /// Which characteristic scales an elemental effect, by the element the effect declares.
         /// </summary>
@@ -1704,16 +1745,6 @@ namespace Jondo.Unity.Server.Managers
         /// five that are not. Best-element (5) is never asked here: the heal branch turns it into
         /// the caster's best element first (3002).
         /// </remarks>
-        /// <summary>The fighter's own points for one of the four elemental characteristics.</summary>
-        private static int StatOf(Fighter quien, int caracteristica) => caracteristica switch
-        {
-            10 => quien.Strength,
-            13 => quien.Chance,
-            14 => quien.Agility,
-            15 => quien.Intelligence,
-            _ => quien.Otra(caracteristica),
-        };
-
         internal static int CharacteristicOfElement(int element) => element switch
         {
             1 => 10,   // tierra, fuerza
@@ -1810,7 +1841,6 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>"Heal: #1% of maximum HP". The die is the percentage.</summary>
         private const int CuraPorcentual = EffectSupport.HealPercent;
 
-        /// <summary>The two characteristic numbers of the points.</summary>
         /// <summary>
         /// The effects that STEAL life: they hit and heal the caster for half.
         ///
@@ -1839,23 +1869,12 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>"Sin efecto adicional": the sheet's marker for a grade that does nothing more.</summary>
         internal const int SinEfectoAdicional = 666;
 
+        /// <summary>The two characteristic numbers of the points.</summary>
         private const int PuntosDeAccion = 1;
         private const int PuntosDeMovimiento = 23;
 
-        /// <summary>
-        /// "Kills the target". It is a summon's countdown: on being born one of these is hung on it with its
-        /// round, and when it comes, it is undone.
-        /// </summary>
-        public const int MatarAlObjetivo = EffectSupport.Kill;
-
         /// <summary>How many chained spells are allowed before suspecting a loop.</summary>
         private const int HondoMaximo = 6;
-
-        /// <summary>
-        /// The grade an attitude's hook lives in. It is always the first: the others are named by the hook itself
-        /// by their number, so there is no need to ask anybody which one is due.
-        /// </summary>
-        public const int GradoDelEnganche = 1;
 
         /// <summary>The "right now" trigger.</summary>
         public const string AlLanzar = "I";
@@ -2067,6 +2086,10 @@ namespace Jondo.Unity.Server.Managers
         /// For a trigger fired off a hooked spell, the round the hook was put in: a hooked row
         /// with a delay does not go off before that round plus its delay. Negative at a cast.
         /// </param>
+        /// <param name="delayHoldsBackOnly">
+        /// The delay only held the trigger back: gone off, the row does what it does at once,
+        /// for a class spell too. An attitude given during the fight (a summon's own spell).
+        /// </param>
         public static List<Outcome> Resolver(FightInstance combate, Fighter quienLanza,
                                                   int hechizo, int grado, Fighter objetivo,
                                                   string disparador, int ronda, int hondo = 0,
@@ -2076,7 +2099,8 @@ namespace Jondo.Unity.Server.Managers
                                                   HashSet<long> bombasYaEstalladas = null,
                                                   IReadOnlyList<SpellEffect> efectosSorteados = null,
                                                   int rondaDelEnganche = -1,
-                                                  bool armar = true, bool soloAlObjetivo = false)
+                                                  bool armar = true, bool soloAlObjetivo = false,
+                                                  bool delayHoldsBackOnly = false)
         {
             if (hondo > HondoMaximo) return new List<Outcome>();
             if (!armar) combate.SinArmar++;
@@ -2094,7 +2118,8 @@ namespace Jondo.Unity.Server.Managers
                                   bombasYaEstalladas: bombasYaEstalladas,
                                   yaSorteado: efectosSorteados != null,
                                   rondaDelEnganche: rondaDelEnganche,
-                                  soloAlObjetivo: soloAlObjetivo);
+                                  soloAlObjetivo: soloAlObjetivo,
+                                  delayHoldsBackOnly: delayHoldsBackOnly);
             }
             finally
             {
@@ -2123,7 +2148,8 @@ namespace Jondo.Unity.Server.Managers
             bool critical = false, int nearestChainBudget = -1,
             Fighter animationCaster = null,
             HashSet<long> bombasYaEstalladas = null,
-            bool yaSorteado = false, int rondaDelEnganche = -1, bool soloAlObjetivo = false)
+            bool yaSorteado = false, int rondaDelEnganche = -1, bool soloAlObjetivo = false,
+            bool delayHoldsBackOnly = false)
         {
             var fuera = new List<Outcome>();
             bombasYaEstalladas ??= new HashSet<long>();
@@ -2339,7 +2365,7 @@ namespace Jondo.Unity.Server.Managers
                 // back, and is not a second wait. Klim's "952 under PPD, delay 2" is "not before
                 // turn 3", not "two turns after the push".
                 if (efecto.Delay > 0 && !string.Equals(trigger, AlLanzar, StringComparison.OrdinalIgnoreCase)
-                    && !PlayerSpells.Contains(spell))
+                    && (!PlayerSpells.Contains(spell) || delayHoldsBackOnly))
                 {
                     efecto = efecto.Copia();
                     efecto.Delay = 0;
@@ -3380,15 +3406,15 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
+        /// <summary>Whether the caster meets the conditions a row puts on him (its starred letters).</summary>
+        internal static bool CasterMeets(Fighter caster, SpellEffect row) => CasterQualifies(caster, row.TargetMask, null);
+
         /// <summary>
         /// Whom a row would reach if <paramref name="caster"/> stood on <paramref name="from"/> and
         /// aimed at <paramref name="aim"/>: this engine's own reading of its mask and its zone
         /// (<see cref="AQuien"/>), for the tactics to weigh a cast before making it. Nothing is
         /// moved or changed; everybody else is where he stands.
         /// </summary>
-        /// <summary>Whether the caster meets the conditions a row puts on him (its starred letters).</summary>
-        internal static bool CasterMeets(Fighter caster, SpellEffect row) => CasterQualifies(caster, row.TargetMask, null);
-
         internal static List<Fighter> ReachOf(FightInstance fight, Fighter caster, SpellEffect row, int from, int aim)
         {
             var cells = new Dictionary<Fighter, int>();
@@ -3474,17 +3500,6 @@ namespace Jondo.Unity.Server.Managers
                 if (!quien.IsAlive && !(includeDeadTarget && quien == objetivo)) continue;
                 if (dentro.Contains(CeldaDe(quien))) yield return quien;
             }
-        }
-
-        /// <summary>Whether somebody is in an effect's zone.</summary>
-        private static bool EstaEnLaZona(Fighter quien, FightInstance combate, Fighter objetivo,
-                                         SpellEffect efecto, int celdaApuntada)
-        {
-            foreach (var otro in EnLaZona(combate, quien, objetivo, efecto, celdaApuntada))
-            {
-                if (otro == quien) return true;
-            }
-            return false;
         }
 
         private static IEnumerable<Fighter> Todos(FightInstance combate)
@@ -4145,15 +4160,22 @@ namespace Jondo.Unity.Server.Managers
                 || efecto.EffectId == SimetricoRespectoAlLanzador
                 || efecto.EffectId == Simetrico)
             {
+                // 1104 moves THE CASTER, whomever its row reaches: «teletransporta al lanzador
+                // simétricamente con respecto al objetivo», in all of its spells -- Teletransportación,
+                // Péndulo, Proyección, Hoja Astral, Éxodo... The row's mask names the target, the
+                // pivot. Read as the target moving across its own cell it went nowhere, and the
+                // Xelor's Teletransportación did nothing. Cast on a cell (mask C), the cell is the pivot.
+                var quienSeMueve = efecto.EffectId == SimetricoRespectoAlObjetivo ? quienLanza : sobre;
                 int pivote = efecto.EffectId switch
                 {
                     SimetricoRespectoAlLanzador => quienLanza.CellId,
-                    SimetricoRespectoAlObjetivo => celdaApuntada >= 0 ? celdaApuntada : sobre.CellId,
+                    SimetricoRespectoAlObjetivo => sobre != quienLanza ? sobre.CellId
+                                                 : celdaApuntada >= 0 ? celdaApuntada : sobre.CellId,
                     _ => celdaApuntada >= 0 ? celdaApuntada : quienLanza.CellId,
                 };
 
-                int alOtroLado = Jondo.Unity.World.Maps.MapGeometry.Reflejar(sobre.CellId, pivote);
-                return TeletransportarConTelefrag(combate, quienLanza, sobre, alOtroLado, hechizo, grado, efecto);
+                int alOtroLado = Jondo.Unity.World.Maps.MapGeometry.Reflejar(quienSeMueve.CellId, pivote);
+                return TeletransportarConTelefrag(combate, quienLanza, quienSeMueve, alOtroLado, hechizo, grado, efecto);
             }
 
             // Back to a cell the fighter stood on: before his last move (1100), when his turn
@@ -4973,7 +4995,8 @@ namespace Jondo.Unity.Server.Managers
                 };
             }
 
-            int applied = Math.Min(points, Math.Max(0, target.MaxHP - target.CurrentHP));
+            // An incurable state (76 "Incurable", Aurora, the bosses' phases...) turns every heal away.
+            int applied = SpellStates.IsIncurable(target) ? 0 : Math.Min(points, Math.Max(0, target.MaxHP - target.CurrentHP));
             if (applied <= 0) return null;
 
             target.CurrentHP += applied;
@@ -5000,7 +5023,7 @@ namespace Jondo.Unity.Server.Managers
                 foreach (var pending in target.Buffs.TakeDueHealing(round))
                 {
                     int healed = 0;
-                    if (target.IsAlive)
+                    if (target.IsAlive && !SpellStates.IsIncurable(target))
                     {
                         healed = Math.Min(pending.PendingHealPoints,
                                           Math.Max(0, target.MaxHP - target.CurrentHP));
@@ -5119,21 +5142,6 @@ namespace Jondo.Unity.Server.Managers
             return criticos.Count > 0 ? criticos : SpellEffects.De(hechizo, grado);
         }
 
-        /// <summary>
-        /// The draw of the effects that go by chance, and it returns THE ONES THAT DO NOT COME OUT.
-        ///
-        /// An effect can carry a probability in its <c>random</c> field, and those that carry one are grouped by
-        /// their <c>group</c> field. There are two ways, and they are told apart by what they add up to:
-        ///
-        ///   add up to 100  -> it is a draw: ONE comes out, with each one's weight. It is what
-        ///                     Invocación de Arakna does, which carries two 181 effects -- template 246
-        ///                     at eighty per cent and 2630, the big Arakna, at twenty --. Without this
-        ///                     both came out at once, which is what was happening.
-        ///   do not add up to 100 -> each goes on its own and happens with its own probability.
-        ///
-        /// Counted over the whole database: there are 1,335 spell levels with effects of this kind, and in
-        /// 1,129 of their groups the sum is exactly a hundred.
-        /// </summary>
         /// <summary>
         /// The rows of a cast to resolve before its blows: the immediate ones written ahead of
         /// its first damage row that raise this very spell's base damage, directly ("+N de

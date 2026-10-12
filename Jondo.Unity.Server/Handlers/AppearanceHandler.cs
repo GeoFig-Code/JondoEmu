@@ -195,15 +195,6 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Saving: this is where the look goes out to the world. The title and the ornament are saved
-        /// with the same button, so this calls their part as well.
-        /// </summary>
-        public static async Task SaveAsync(NetworkStream stream, byte[] frame, long accountId)
-        {
-            await WardrobeHandler.SaveAsync(stream, frame, accountId);
-        }
-
-        /// <summary>
         /// An identifier for the garment worn. The window does not send an inventory uid -- it sends
         /// the template number --, so one is composed with the variant inside so as not to lose it.
         /// </summary>

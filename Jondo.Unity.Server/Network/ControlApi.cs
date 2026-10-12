@@ -655,11 +655,6 @@ namespace Jondo.Unity.Server.Network
             return Bien(new { bien = true });
         }
 
-        /// <summary>Reason codes. They are codes, not sentences: the launcher supplies the language.</summary>
-        public const string MotivoSesionCaducada = "sesion-caducada";
-        public const string MotivoCuentaYaAbierta = "cuenta-ya-abierta";
-        public const string MotivoTopeDeClientes = "tope-de-clientes";
-
         // ─── Reading the body without ceremony ──────────────────────────────────────────────
 
         private static string Texto(string json, string campo)

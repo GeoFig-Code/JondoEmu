@@ -150,14 +150,7 @@ namespace Jondo.Unity.Server.Handlers
             var members = GuildStore.Members(guild.Id);
             await WriteAsync(stream, MembersFrame(members));
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jhh, GuildProtocol.BuildGuildInfo(guild, members.Count)));
-
-            var character = DatabaseManager.GetCharacterById(founderCharacterId);
-            if (character != null)
-            {
-                await WriteAsync(stream, ConnectionProtocol.Push(Op.Jsn, ConnectionProtocol.BuildActorRefreshed(
-                    character, SessionContext.State.CellId, SessionContext.State.Orientation,
-                    SessionContext.Current.AccountId)));
-            }
+            await RedrawAsync(stream, founderCharacterId);
 
             Console.WriteLine($"[Guild] {SessionContext.State.CharacterName} founds «{name}» " +
                               "and spends their guildalogem.");
@@ -506,28 +499,88 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// A member's rank, through the command: there is no capture of the request the client changes
-        /// it with. Returns the error's key, or null if it was changed.
+        /// A member's rank from the members window (jgv): f2 the member, f4 the rank. Read off the client
+        /// (GuildMemberRightsUI.OnModifyRank, ffr.beet), which never fills the f3. Measured in
+        /// «...-intentar asignar rango a otro»: "10a282acfea8052001", rank 1 to a member who had just
+        /// joined, refused with the lqn 740 and its "24" -- a member has to have been in the guild a day.
         /// </summary>
-        public static async Task<string> SetMemberRankAsync(long leaderCharacterId, string targetName, int rankId)
+        public static async Task AssignRankAsync(NetworkStream stream, byte[] frame)
         {
-            var guild = GuildStore.GuildOf(leaderCharacterId);
-            if (guild == null) return "guild.noguild";
-            if (GuildStore.RankOf(leaderCharacterId) != GuildStore.RankLeader) return "guild.rank.notleader";
-            if (GuildStore.Ranks(guild.Id).Find(r => r.Id == rankId) == null) return "guild.rank.norank";
+            byte[] jgv = ConnectionProtocol.ReadPayload(frame, Op.Jgv);
+            if (jgv == null) return;
+            string error = await SetMemberRankAsync(SessionContext.State.CharacterId, FieldValue(jgv, 2), (int)FieldValue(jgv, 4));
+            if (error == "guild.rank.toosoon")
+            {
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(
+                    Managers.InfoMessages.Warning, Managers.InfoMessages.RankChangeTooSoon,
+                    GuildStore.RankChangeMinimumHours.ToString())));
+            }
+        }
 
+        /// <summary>A member's rank by his name, from the command. Returns the error's key, or null.</summary>
+        public static async Task<string> SetMemberRankAsync(long assignerCharacterId, string targetName, int rankId)
+        {
+            var guild = GuildStore.GuildOf(assignerCharacterId);
+            if (guild == null) return "guild.noguild";
             foreach (var member in GuildStore.Members(guild.Id))
             {
                 var character = DatabaseManager.GetCharacterById(member.CharacterId);
-                if (character == null || !string.Equals(character.Name, targetName, System.StringComparison.OrdinalIgnoreCase)) continue;
-                if (member.CharacterId == leaderCharacterId) return "guild.rank.self";
+                if (character != null && string.Equals(character.Name, targetName, System.StringComparison.OrdinalIgnoreCase))
+                    return await SetMemberRankAsync(assignerCharacterId, member.CharacterId, rankId);
+            }
+            return "guild.kick.notmember";
+        }
 
-                var updated = GuildStore.SetRank(member.CharacterId, rankId);
-                await TellEveryoneAsync(guild, ConnectionProtocol.Push(Op.Jgz, MemberUpdated(updated, character)));
-                return null;
+        /// <summary>
+        /// A member's rank, from the window or from the command. Returns the error's key, or null if it
+        /// was changed and everybody has the entry brought up to date (jgz).
+        /// </summary>
+        /// <remarks>
+        /// The leader gives any rank; anybody else needs right 26 of the client's data, "Atribuir
+        /// rangos inferiores al mío", and only gives ranks below his own to members below him. And a
+        /// member who joined less than a day ago keeps his rank, as the real server answered.
+        ///
+        /// Giving the leader's rank hands the guild over: the guild has one leader, so the one who
+        /// was takes the rank the other one had. That swap is NOT measured -- the capture's attempt
+        /// was refused before it -- and is the choice that loses nobody's rank.
+        /// </remarks>
+        public static async Task<string> SetMemberRankAsync(long assignerCharacterId, long targetCharacterId, int rankId)
+        {
+            var guild = GuildStore.GuildOf(assignerCharacterId);
+            if (guild == null) return "guild.noguild";
+            var ranks = GuildStore.Ranks(guild.Id);
+            var rank = ranks.Find(r => r.Id == rankId);
+            if (rank == null) return "guild.rank.norank";
+
+            var members = GuildStore.Members(guild.Id);
+            var assigner = members.Find(m => m.CharacterId == assignerCharacterId);
+            var target = members.Find(m => m.CharacterId == targetCharacterId);
+            if (assigner == null || target == null) return "guild.kick.notmember";
+            if (target.CharacterId == assigner.CharacterId) return "guild.rank.self";
+
+            if (assigner.Rank != GuildStore.RankLeader)
+            {
+                int own = ranks.Find(r => r.Id == assigner.Rank)?.Order ?? int.MaxValue;
+                int theirs = ranks.Find(r => r.Id == target.Rank)?.Order ?? int.MaxValue;
+                if (!GuildStore.HasRight(assignerCharacterId, GuildStore.AssignRanksRight)
+                    || rank.Order <= own || theirs <= own)
+                    return "guild.rank.noright";
             }
 
-            return "guild.kick.notmember";
+            long since = System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - target.JoinedUtcMs;
+            if (since < GuildStore.RankChangeMinimumHours * 3_600_000L) return "guild.rank.toosoon";
+
+            var changed = new List<GuildStore.Member> { GuildStore.SetRank(target.CharacterId, rankId) };
+            if (rankId == GuildStore.RankLeader && assigner.Rank == GuildStore.RankLeader)
+                changed.Add(GuildStore.SetRank(assigner.CharacterId, target.Rank));
+
+            foreach (var member in changed)
+            {
+                var character = DatabaseManager.GetCharacterById(member.CharacterId);
+                if (character != null)
+                    await TellEveryoneAsync(guild, ConnectionProtocol.Push(Op.Jgz, MemberUpdated(member, character)));
+            }
+            return null;
         }
 
         // ─── The note, the log and the directory ────────────────────────────────
@@ -538,6 +591,26 @@ namespace Jondo.Unity.Server.Handlers
                                                 character.Breed, Achievements.PointsOf(member.CharacterId),
                                                 GuildStore.ContributedBy(member.CharacterId),
                                                 SessionRegistry.FindByCharacter(member.CharacterId) != null);
+
+        /// <summary>
+        /// A line said on the guild channel (2) by a member: to the other members connected. It went
+        /// back only to whoever said it. Returns how many heard it.
+        /// </summary>
+        public static async Task<int> SayAsync(long characterId, byte[] line)
+        {
+            var guild = GuildStore.GuildOf(characterId);
+            if (guild == null) return 0;
+            int heard = 0;
+            foreach (var member in GuildStore.Members(guild.Id))
+            {
+                if (member.CharacterId == characterId) continue;
+                var session = SessionRegistry.FindByCharacter(member.CharacterId);
+                if (session == null) continue;
+                await session.SendAsync(line);
+                heard++;
+            }
+            return heard;
+        }
 
         /// <summary>A frame for everybody in the guild who is connected.</summary>
         private static async Task TellEveryoneAsync(GuildStore.Guild guild, byte[] frame)
@@ -622,7 +695,8 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Searching the directory (jjm): the empty acknowledgement (jme) and the list of guilds (jiv).
+        /// Searching the directory (jjm): the list of guilds (jiv). The jme that comes before it in the
+        /// captures answers the jlu the client sends together with the jjm: see OwnApplicationAsync.
         /// </summary>
         /// <remarks>
         /// The jjm's filters -- levels, activities -- are not applied: with the guilds there are on a
@@ -646,16 +720,28 @@ namespace Jondo.Unity.Server.Handlers
                 });
             }
 
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jme, System.Array.Empty<byte>()));
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jiv, GuildProtocol.BuildDirectory(entries)));
         }
 
         /// <summary>
-        /// Leaving the guild (jho): f1 the character. He is taken out and it is confirmed with khj,
-        /// which is how the client empties the window. Measured in «salir de mi gremio».
+        /// Leaving the guild or expelling from it (jho): f1 the character. One's own id leaves: he is
+        /// taken out and it is confirmed with khj, which is how the client empties the window,
+        /// measured in «salir de mi gremio». Somebody else's expels him: the members window's kick
+        /// popup (GuildMembersUI.OpenKickMemberPopup) sends this same message with the member's id,
+        /// and taking every jho for leaving made whoever expelled leave the guild instead.
         /// </summary>
-        public static Task LeaveAsync(NetworkStream stream, byte[] frame)
-            => LeaveAsync(stream, SessionContext.State.CharacterId);
+        public static async Task LeaveAsync(NetworkStream stream, byte[] frame)
+        {
+            long who = SessionContext.State.CharacterId;
+            byte[] jho = ConnectionProtocol.ReadPayload(frame, Op.Jho);
+            long target = jho == null ? 0 : FieldValue(jho, 1);
+            if (target != 0 && target != who)
+            {
+                await KickAsync(who, target);
+                return;
+            }
+            await LeaveAsync(stream, who);
+        }
 
         /// <summary>Leaving, whether from the jho or from the command.</summary>
         public static async Task LeaveAsync(NetworkStream stream, long who)
@@ -679,46 +765,68 @@ namespace Jondo.Unity.Server.Handlers
         {
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Khj, GuildProtocol.BuildGoneNotice()));
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jhc, System.Array.Empty<byte>()));
+            await RedrawAsync(stream, characterId);
+        }
 
+        /// <summary>
+        /// The character drawn again (jsn), through his own stream and for whoever shares his map,
+        /// so the guild's name and emblem appear or go under his name.
+        /// </summary>
+        /// <remarks>
+        /// Founding, joining and leaving all end with it in the captures. Joining did not send it,
+        /// so whoever accepted an invitation kept being drawn without the guild until the map was
+        /// loaded again; and it went to him alone, so the rest of the map never saw the change.
+        /// </remarks>
+        private static async Task RedrawAsync(NetworkStream stream, long characterId)
+        {
             var session = SessionRegistry.FindByCharacter(characterId);
             var character = DatabaseManager.GetCharacterById(characterId);
-            if (session != null && character != null)
-            {
-                await WriteAsync(stream, ConnectionProtocol.Push(Op.Jsn, ConnectionProtocol.BuildActorRefreshed(
-                    character, session.State.CellId, session.State.Orientation, session.AccountId)));
-            }
+            if (session == null || character == null) return;
+
+            byte[] jsn = ConnectionProtocol.Push(Op.Jsn, ConnectionProtocol.BuildActorRefreshed(
+                character, session.State.CellId, session.State.Orientation, session.AccountId));
+            if (stream != null) await WriteAsync(stream, jsn);
+            else await session.SendAsync(jsn);
+            await SessionRegistry.BroadcastToMapAsync(session.MapId, jsn, session.Id);
         }
 
         /// <summary>
         /// Expelling a member. Returns the error message's key, or null if he is out.
         /// </summary>
         /// <remarks>
-        /// Without a capture: the request the client expels somebody with is in none, so it is done
-        /// through the command. What IS measured is how each one ends up: the expelled player receives
-        /// the same as whoever leaves of his own accord -- khj, jhc and his jsn without a guild --, and
-        /// the others get the list and the header brought up to date.
+        /// What is measured is how each one ends up: the expelled player receives the same as
+        /// whoever leaves of his own accord -- khj, jhc and his jsn without a guild --, and the others
+        /// get the list and the header brought up to date.
         ///
-        /// Only the leader expels, and not himself: the jho is there for leaving.
+        /// It takes right 13 of the client's data, "Excluir a un miembro" (the leader has them all),
+        /// and nobody expels the leader nor himself: the jho with one's own id is for leaving.
         /// </remarks>
         public static async Task<string> KickAsync(long kickerCharacterId, string targetName)
         {
             var guild = GuildStore.GuildOf(kickerCharacterId);
             if (guild == null) return "guild.noguild";
-            if (GuildStore.RankOf(kickerCharacterId) != GuildStore.RankLeader) return "guild.kick.notleader";
 
-            GuildStore.Member target = null;
             foreach (var member in GuildStore.Members(guild.Id))
             {
                 var character = DatabaseManager.GetCharacterById(member.CharacterId);
                 if (character != null && string.Equals(character.Name, targetName, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    target = member;
-                    break;
-                }
+                    return await KickAsync(kickerCharacterId, member.CharacterId);
             }
+            return "guild.kick.notmember";
+        }
 
+        /// <summary>Expelling a member by his character, from the jho or from the command.</summary>
+        public static async Task<string> KickAsync(long kickerCharacterId, long targetCharacterId)
+        {
+            var guild = GuildStore.GuildOf(kickerCharacterId);
+            if (guild == null) return "guild.noguild";
+            if (!GuildStore.HasRight(kickerCharacterId, GuildStore.ExpelRight)) return "guild.kick.noright";
+
+            var target = GuildStore.Members(guild.Id).Find(m => m.CharacterId == targetCharacterId);
             if (target == null) return "guild.kick.notmember";
             if (target.CharacterId == kickerCharacterId) return "guild.kick.self";
+            if (target.Rank == GuildStore.RankLeader) return "guild.kick.noright";
+            string targetName = DatabaseManager.GetCharacterById(target.CharacterId)?.Name ?? target.CharacterId.ToString();
 
             GuildStore.Leave(target.CharacterId);
 
@@ -844,12 +952,10 @@ namespace Jondo.Unity.Server.Handlers
                 return;   // the one-day deadline passed
             }
 
-            long from = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            long to = DateTimeOffset.UtcNow.AddHours(GuildOracles.HoursActive).ToUnixTimeMilliseconds();
-
+            // The alteration lasts what its own data says -- 2833, 120 minutes, ending on the minute --
+            // and is kept with the character's, so it is still listed after a relog or a fight.
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jkx, GuildProtocol.BuildOracleActivated(oracle)));
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Lzs,
-                GuildProtocol.BuildAlteration(catalogue.Alteration, from, to)));
+            await AlterationHandler.GainAsync(stream, catalogue.Alteration);
         }
 
         // ─── Contributing ───────────────────────────────────────────────────────
@@ -931,108 +1037,224 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>The tab the client asks for when opening the applications, measured in the capture.</summary>
         public const int ApplicationsTab = 8;
 
-        /// <summary>Viewing an application (jlt → jly).</summary>
-        public static async Task ApplicationDetailAsync(NetworkStream stream, byte[] frame)
+        /// <summary>
+        /// Answering an application (jlt): f1 whether it is accepted -- absent when it is refused --,
+        /// f2 the applicant. Read off the client: GuildApplicationsUI.ReplyToApplication(applicant,
+        /// accept) sends it. Measured on refusing one, "10a282acfea805", the applicant alone,
+        /// answered at once with the jly that takes it off the list. An accepted applicant joins at
+        /// rank 4 and is sent his whole guild.
+        /// </summary>
+        public static async Task AnswerApplicationAsync(NetworkStream stream, byte[] frame)
         {
             byte[] jlt = ConnectionProtocol.ReadPayload(frame, Op.Jlt);
             if (jlt == null) return;
+            bool accepted = FieldValue(jlt, 1) != 0;
             long applicant = FieldValue(jlt, 2);
 
             long who = SessionContext.State.CharacterId;
             var guild = who == 0 ? null : GuildStore.GuildOf(who);
-            if (guild == null) return;
+            if (guild == null || !GuildStore.HasRight(who, GuildStore.ManageApplicationsRight)) return;
 
             var application = GuildStore.ApplicationOf(guild.Id, applicant);
             if (application == null) return;
-            var detailed = Detailed(new[] { application });
-            if (detailed.Count == 0) return;
-            var (one, name, level, accountId, nick, tag) = detailed[0];
+            GuildStore.DropApplication(guild.Id, applicant);
+            await ApplicationMovedAsync(guild, application, GuildProtocol.ApplicationGone, who);
 
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jly,
-                GuildProtocol.BuildApplication(one, name, level, accountId, nick, tag, who)));
+            bool joins = accepted && GuildStore.GuildOf(applicant) == null;   // not if he is already in another
+            var applicantSession = SessionRegistry.FindByCharacter(applicant);
+            if (applicantSession != null)
+                await applicantSession.SendAsync(ConnectionProtocol.Push(Op.Jmp,
+                    GuildProtocol.BuildApplicationAnswered(guild, joins)));
+
+            if (!joins) return;
+            GuildStore.Join(applicant, guild.Id);
+            await SendGuildToNewMemberAsync(applicant, guild);
+            await RefreshEveryoneAsync(guild, applicant);
         }
 
         /// <summary>
-        /// Accepting an application (jjn): the applicant joins at rank 4 and whoever accepts it gets the
-        /// two notices that come out in the capture, the accepted one and the one that he is already
-        /// in. The one joining is sent his whole guild.
+        /// Withdrawing one's own application (jlv, empty): GuildDirectory.DeleteApplication sends it,
+        /// and the client waits for the jmi that says whether it went.
         /// </summary>
-        public static async Task AcceptApplicationAsync(NetworkStream stream, byte[] frame)
+        public static async Task WithdrawApplicationAsync(NetworkStream stream)
         {
-            byte[] jjn = ConnectionProtocol.ReadPayload(frame, Op.Jjn);
-            if (jjn == null) return;
-            long applicant = FieldValue(jjn, 2);
-
             long who = SessionContext.State.CharacterId;
-            var guild = who == 0 ? null : GuildStore.GuildOf(who);
-            if (guild == null) return;
-            if (GuildStore.ApplicationOf(guild.Id, applicant) == null) return;
-            if (GuildStore.GuildOf(applicant) != null) return;   // he is already in another
+            var applications = who == 0 ? new List<GuildStore.Application>() : GuildStore.ApplicationsBy(who);
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jmi,
+                GuildProtocol.BuildApplicationWithdrawn(applications.Count > 0)));
 
-            var character = DatabaseManager.GetCharacterById(applicant);
-            if (character == null) return;
+            foreach (var application in applications)
+            {
+                GuildStore.DropApplication(application.GuildId, who);
+                var guild = GuildStore.ById(application.GuildId);
+                if (guild != null) await ApplicationMovedAsync(guild, application, GuildProtocol.ApplicationGone, who);
+            }
+        }
 
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jin,
-                GuildProtocol.BuildApplicationStatus(character.Name, applicant, GuildProtocol.StatusAccepted)));
+        /// <summary>
+        /// Applying from the guild directory (jlw): f11 the text, f13 the guild. Read off the client
+        /// (GuildApplyUi.SendSubmitApplicationMessage, ffr.beej); no capture has one. The other text
+        /// fields are the directory's filters written out, and are not needed. One application at a
+        /// time: a pending one to another guild is taken back first.
+        /// </summary>
+        public static async Task ApplyFromClientAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jlw = ConnectionProtocol.ReadPayload(frame, Op.Jlw);
+            if (jlw == null) return;
+            var guild = GuildStore.ById(FieldValue(jlw, 13));
+            long who = SessionContext.State.CharacterId;
+            if (guild == null || who == 0) return;
+            await ApplyAsync(who, guild, TextField(jlw, 11));
+        }
 
-            GuildStore.Join(applicant, guild.Id);
+        /// <summary>
+        /// Rewriting one's own application (jmo): f2 the guild, f3 the text. The client asks for its
+        /// application (jlu) right behind it, and that is what shows the new text.
+        /// </summary>
+        public static async Task RewriteApplicationAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jmo = ConnectionProtocol.ReadPayload(frame, Op.Jmo);
+            if (jmo == null) return;
+            long who = SessionContext.State.CharacterId;
+            var guild = GuildStore.ById(FieldValue(jmo, 2));
+            if (guild == null || who == 0 || GuildStore.ApplicationOf(guild.Id, who) == null) return;
 
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jin,
-                GuildProtocol.BuildApplicationStatus(character.Name, applicant, GuildProtocol.StatusJoined)));
+            var application = GuildStore.Apply(who, guild.Id, Trimmed(TextField(jmo, 3)));
+            await ApplicationMovedAsync(guild, application, GuildProtocol.ApplicationRewritten, who);
+        }
 
-            await SendGuildToNewMemberAsync(applicant, guild);
-            await RefreshEveryoneAsync(guild, applicant);
+        /// <summary>One's own pending application (jlu → jme), or an empty jme when there is none.</summary>
+        public static async Task OwnApplicationAsync(NetworkStream stream)
+        {
+            long who = SessionContext.State.CharacterId;
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jme, OwnApplicationOf(who)));
+        }
+
+        private static byte[] OwnApplicationOf(long characterId)
+        {
+            var application = characterId == 0 ? null : GuildStore.ApplicationsBy(characterId).LastOrDefault();
+            var guild = application == null ? null : GuildStore.ById(application.GuildId);
+            var detailed = guild == null ? null : Detailed(new[] { application });
+            if (detailed == null || detailed.Count == 0) return System.Array.Empty<byte>();
+            var (one, name, level, accountId, nick, tag) = detailed[0];
+            return GuildProtocol.BuildOwnApplication(guild, one, name, level, accountId, nick, tag);
+        }
+
+        /// <summary>The longest text the client lets an application have.</summary>
+        private const int ApplicationTextMax = 200;
+
+        private static string Trimmed(string text)
+            => (text ?? "").Length > ApplicationTextMax ? text.Substring(0, ApplicationTextMax) : text ?? "";
+
+        /// <summary>The jly that moves an application on the list of whoever manages them.</summary>
+        private static async Task ApplicationMovedAsync(GuildStore.Guild guild, GuildStore.Application application,
+                                                        int move, long by)
+        {
+            var detailed = Detailed(new[] { application });
+            if (detailed.Count == 0) return;
+            var (one, name, level, accountId, nick, tag) = detailed[0];
+            byte[] frame = ConnectionProtocol.Push(Op.Jly,
+                GuildProtocol.BuildApplicationMoved(move, one, name, level, accountId, nick, tag, by));
+            foreach (var member in GuildStore.Members(guild.Id))
+            {
+                if (!GuildStore.HasRight(member.CharacterId, GuildStore.ManageApplicationsRight)) continue;
+                var session = SessionRegistry.FindByCharacter(member.CharacterId);
+                if (session != null) await session.SendAsync(frame);
+            }
         }
 
         // ─── Invitations ────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Inviting somebody. The client's button appears in no capture -- the ones there are come from
-        /// the receiving side --, so for now it is fired from the chat command and what travels is what
-        /// was measured: the invited player gets the jiq with the guild and the inviter's name, and he
-        /// answers with the jiz.
+        /// Inviting somebody from the client (jjn): f2 the character. A player's menu sends it
+        /// (PlayerMenuMaker.OnGuildInvite), and it was taken for accepting an application, which is
+        /// the jlt. Measured in «...-rechazarla-invitar a gremio»: the jjn "10a282acfea805" and a jin
+        /// at 1 back at once.
         /// </summary>
+        public static async Task InviteFromClientAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jjn = ConnectionProtocol.ReadPayload(frame, Op.Jjn);
+            if (jjn == null) return;
+            long target = FieldValue(jjn, 2);
+            long who = SessionContext.State.CharacterId;
+            if (who == 0 || target == 0 || target == who) return;
+
+            var session = SessionRegistry.FindByCharacter(target);
+            if (session == null) return;
+            if (await InviteAsync(who, session) != null) return;
+
+            var invited = DatabaseManager.GetCharacterById(target);
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jin,
+                GuildProtocol.BuildApplicationStatus(invited?.Name ?? "", target, GuildProtocol.StatusInvited)));
+        }
+
+        /// <summary>Inviting somebody by name, from the chat command.</summary>
         public static async Task<string> InviteAsync(long inviterCharacterId, string targetName)
+        {
+            var session = SessionRegistry.FindByName(targetName);
+            if (session == null) return "guild.invite.notfound";
+            return await InviteAsync(inviterCharacterId, session);
+        }
+
+        /// <summary>
+        /// The invitation itself: the invited player gets the jiq with the guild and the inviter's
+        /// name, and he answers with the jiz.
+        /// </summary>
+        private static async Task<string> InviteAsync(long inviterCharacterId, GameSession session)
         {
             var guild = GuildStore.GuildOf(inviterCharacterId);
             if (guild == null) return "guild.invite.noguild";
-
-            var session = SessionRegistry.FindByName(targetName);
-            if (session == null) return "guild.invite.notfound";
+            if (!GuildStore.HasRight(inviterCharacterId, GuildStore.ManageApplicationsRight)) return "guild.invite.noright";
             if (GuildStore.GuildOf(session.CharacterId) != null) return "guild.invite.hasguild";
 
             var inviter = DatabaseManager.GetCharacterById(inviterCharacterId);
             await session.SendAsync(ConnectionProtocol.Push(Op.Jiq,
                 GuildProtocol.BuildInvitation(guild, inviter?.Name ?? "")));
-            _invitations[session.CharacterId] = guild.Id;
+            lock (_invitations) _invitations[session.CharacterId] = (guild.Id, inviterCharacterId);
             return null;
         }
 
-        /// <summary>Which guild each character has been invited to, while he does not answer.</summary>
-        private static readonly Dictionary<long, long> _invitations = new();
+        /// <summary>Which guild each character has been invited to, and by whom, while he does not answer.</summary>
+        private static readonly Dictionary<long, (long Guild, long Inviter)> _invitations = new();
 
         /// <summary>
         /// The answer to the invitation (jiz): empty refuses it, f1 = 1 accepts it. Measured in the
-        /// capture of receiving it, where on accepting the whole guild and the jij arrive.
+        /// capture of receiving it, where on accepting the whole guild and the jij arrive; and in the
+        /// inviter's, the lqn 1423 and the jin at 3.
         /// </summary>
         public static async Task AnswerInvitationAsync(NetworkStream stream, byte[] frame)
         {
             long who = SessionContext.State.CharacterId;
-            if (who == 0 || !_invitations.TryGetValue(who, out long guildId)) return;
+            (long Guild, long Inviter) invitation;
+            lock (_invitations)
+            {
+                if (who == 0 || !_invitations.Remove(who, out invitation)) return;
+            }
 
             byte[] jiz = ConnectionProtocol.ReadPayload(frame, Op.Jiz);
             bool accepts = jiz != null && FieldValue(jiz, 1) == 1;
-            _invitations.Remove(who);
             if (!accepts) return;
             if (GuildStore.GuildOf(who) != null) return;
 
-            GuildStore.Join(who, guildId);
+            GuildStore.Join(who, invitation.Guild);
             var guild = GuildStore.GuildOf(who);
             if (guild == null) return;
 
+            // The capture's order: the guild, the jsn that draws him with it, then the jij.
             await SendGuildToOwnerAsync(stream, guild, who);
+            await RedrawAsync(stream, who);
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jij, GuildProtocol.BuildJoinDone()));
             await RefreshEveryoneAsync(guild, who);
+
+            var inviter = SessionRegistry.FindByCharacter(invitation.Inviter);
+            if (inviter != null)
+            {
+                string name = SessionContext.State.CharacterName;
+                await inviter.SendAsync(ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildSystemMessage(Managers.InfoMessages.GuildMemberJoined, name)));
+                await inviter.SendAsync(ConnectionProtocol.Push(Op.Jin,
+                    GuildProtocol.BuildApplicationStatus(name, who, GuildProtocol.StatusJoined)));
+            }
         }
 
         /// <summary>Sends the whole guild to whoever has just joined, if he is connected.</summary>
@@ -1048,22 +1270,37 @@ namespace Jondo.Unity.Server.Handlers
             await session.SendAsync(MembersFrame(members));
             await session.SendAsync(ConnectionProtocol.Push(Op.Jhh,
                 GuildProtocol.BuildGuildInfo(guild, members.Count)));
+            await RedrawAsync(null, characterId);
             await session.SendAsync(ConnectionProtocol.Push(Op.Jij, GuildProtocol.BuildJoinDone()));
         }
 
-        /// <summary>
-        /// Sending an application to a guild. As with the invitation, the client's button is not
-        /// measured: it is sent from the chat command, and what does travel measured is the notice to
-        /// the guild (jma).
-        /// </summary>
+        /// <summary>Sending an application to a guild by its name, from the chat command.</summary>
         public static async Task<string> ApplyAsync(long characterId, string guildName, string message)
         {
-            if (GuildStore.GuildOf(characterId) != null) return "guild.apply.hasguild";
             var guild = GuildStore.ByName(guildName);
             if (guild == null) return "guild.apply.notfound";
+            return await ApplyAsync(characterId, guild, message);
+        }
+
+        /// <summary>
+        /// Sending an application, from the client's directory or from the command: the guild's
+        /// members get the notice (jma, measured), whoever manages the applications sees it come
+        /// into the list (jly), and the applicant his pending application (jme).
+        /// </summary>
+        private static async Task<string> ApplyAsync(long characterId, GuildStore.Guild guild, string message)
+        {
+            if (GuildStore.GuildOf(characterId) != null) return "guild.apply.hasguild";
+
+            foreach (var earlier in GuildStore.ApplicationsBy(characterId))
+            {
+                if (earlier.GuildId == guild.Id) continue;
+                GuildStore.DropApplication(earlier.GuildId, characterId);
+                var other = GuildStore.ById(earlier.GuildId);
+                if (other != null) await ApplicationMovedAsync(other, earlier, GuildProtocol.ApplicationGone, characterId);
+            }
 
             var character = DatabaseManager.GetCharacterById(characterId);
-            GuildStore.Apply(characterId, guild.Id, message ?? "");
+            var application = GuildStore.Apply(characterId, guild.Id, Trimmed(message));
 
             byte[] aviso = ConnectionProtocol.Push(Op.Jma,
                 GuildProtocol.BuildApplicationArrived(characterId, character?.Name ?? ""));
@@ -1072,7 +1309,21 @@ namespace Jondo.Unity.Server.Handlers
                 var session = SessionRegistry.FindByCharacter(member.CharacterId);
                 if (session != null) await session.SendAsync(aviso);
             }
+            await ApplicationMovedAsync(guild, application, GuildProtocol.ApplicationNew, characterId);
+
+            var applicant = SessionRegistry.FindByCharacter(characterId);
+            if (applicant != null) await applicant.SendAsync(ConnectionProtocol.Push(Op.Jme, OwnApplicationOf(characterId)));
             return null;
+        }
+
+        /// <summary>A field's text, or empty.</summary>
+        private static string TextField(byte[] payload, int number)
+        {
+            foreach (var field in ProtoMessage.Parse(payload).Fields)
+            {
+                if (field.FieldNumber == number && field.WireType == 2) return System.Text.Encoding.UTF8.GetString(field.BytesValue);
+            }
+            return "";
         }
 
         /// <summary>A field's first varint, or zero.</summary>

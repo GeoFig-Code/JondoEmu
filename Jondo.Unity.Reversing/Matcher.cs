@@ -258,7 +258,6 @@ public static class Matcher
         return 0.5 * shape + 0.5 * neighbourhood;
     }
 
-    /// <summary>Each message's fingerprint in each round.</summary>
     /// <summary>
     /// Each message's shape without looking at the neighbours: round 0 of the fingerprint.
     ///
@@ -270,6 +269,7 @@ public static class Matcher
     public static Dictionary<string, string> Shapes(Model model)
         => Signatures(model, 0).ToDictionary(p => p.Key, p => p.Value[0], StringComparer.Ordinal);
 
+    /// <summary>Each message's fingerprint in each round.</summary>
     private static Dictionary<string, string[]> Signatures(Model model, int rounds)
     {
         var messages = model.Messages.ToDictionary(m => m.Name, StringComparer.Ordinal);

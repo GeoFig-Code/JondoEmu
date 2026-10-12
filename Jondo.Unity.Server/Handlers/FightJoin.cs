@@ -146,6 +146,8 @@ namespace Jondo.Unity.Server.Handlers
         internal static Pb TeamOnMap(FightInstance fight, int team, bool withMembers)
         {
             var side = fight.Bando(team);
+            if (team == FightInstance.Rojos && fight.TaxCollectorUuid != null)
+                return TaxCollectorSideOnMap(fight, side, withMembers);
             bool monsters = side.Exists(f => f.IsMonster && !f.EsInvocado)
                             || (team == FightInstance.Rojos && fight.Reglas.EnfrenteHayMonstruos);
 
@@ -171,13 +173,39 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
+        /// A tax collector's side: led by the tax collector's actor, the tax collector by its names
+        /// and its defenders as people. The kae of the attack capture: {f2 3, f3 -20074, f4 1,
+        /// f5 {f1 {f2 -1, f3 {35, 109}}}, f6 1}.
+        /// </summary>
+        private static Pb TaxCollectorSideOnMap(FightInstance fight, List<Fighter> side, bool withMembers)
+        {
+            List<Pb>? members = null;
+            if (withMembers)
+            {
+                members = new List<Pb>();
+                foreach (var f in side.ToList())
+                {
+                    if (f.EsInvocado || !f.IsAlive) continue;
+                    members.Add(f.TaxCollectorFirstName > 0
+                        ? FightJoinProtocol.TaxCollectorOnTeam(f.Id, f.TaxCollectorFirstName, f.TaxCollectorLastName)
+                        : FightJoinProtocol.PersonOnTeam(f.Id, f.Level, f.Name));
+                }
+            }
+            return FightJoinProtocol.Team(FightInstance.Rojos, fight.DefenderLeaderId,
+                                          FightJoinProtocol.TaxCollectorSide, members);
+        }
+
+        /// <summary>
         /// The monsters' side with only its first <paramref name="howMany"/> monsters: the kae
-        /// that grows one by one behind the swords (follow capture 141, dungeon 91-94).
+        /// that grows one by one behind the swords (follow capture 141, dungeon 91-94). A tax
+        /// collector's side is the tax collector, whole.
         /// </summary>
         private static Pb MonstersSoFar(FightInstance fight, IReadOnlyList<Fighter> monsters, int howMany)
-            => FightJoinProtocol.Team(FightInstance.Rojos, fight.DefenderLeaderId, true,
-                monsters.Take(howMany).Select(m =>
-                    FightJoinProtocol.MonsterOnTeam(m.Id, m.MonsterId, m.GradeIndex + 1)));
+            => fight.TaxCollectorUuid != null
+                ? TeamOnMap(fight, FightInstance.Rojos, withMembers: true)
+                : FightJoinProtocol.Team(FightInstance.Rojos, fight.DefenderLeaderId, true,
+                    monsters.Take(howMany).Select(m =>
+                        FightJoinProtocol.MonsterOnTeam(m.Id, m.MonsterId, m.GradeIndex + 1)));
 
         /// <summary>The fight as a jss or an hpy carries it, both sides with their members.</summary>
         internal static Pb MapEntryOf(FightInstance fight)
@@ -249,7 +277,8 @@ namespace Jondo.Unity.Server.Handlers
                 byte[] ours = ConnectionProtocol.Push(Op.Kae, FightJoinProtocol.BuildTeamUpdate(
                     TeamOnMap(fight, FightInstance.Azules, withMembers: true), fight.FightId));
                 byte[] theirs = ConnectionProtocol.Push(Op.Kae, FightJoinProtocol.BuildTeamUpdate(
-                    TeamOnMap(fight, FightInstance.Rojos, withMembers: !fight.Reglas.EnfrenteHayMonstruos),
+                    TeamOnMap(fight, FightInstance.Rojos,
+                              withMembers: !fight.Reglas.EnfrenteHayMonstruos || fight.TaxCollectorUuid != null),
                     fight.FightId));
                 foreach (var session in Publico(fight))
                 {
@@ -307,6 +336,11 @@ namespace Jondo.Unity.Server.Handlers
             long me = GameState.CharacterId;
             var fight = FightOf(me);
             if (fight == null) return;
+            await InTurnAsync(fight, () => SwitchOptionAsync(fight, me, option));
+        }
+
+        private static async Task SwitchOptionAsync(FightInstance fight, long me, int option)
+        {
             int side = fight.EquipoDe(me);
             var leader = side < 0 ? null : fight.Bando(side).FirstOrDefault(f => !f.IsMonster && !f.EsInvocado);
             if (leader == null || leader.Id != me) return;
@@ -407,6 +441,14 @@ namespace Jondo.Unity.Server.Handlers
             var me = SessionContext.Current;
             var fight = FightById(fightId);
 
+            // The check and the join under the fight's turn: two coming in for its last place at
+            // once both found it free.
+            if (fight != null) await InTurnAsync(fight, () => JoinCheckedAsync(me, fight, named, fightId));
+            else await JoinCheckedAsync(me, null, named, fightId);
+        }
+
+        private static async Task JoinCheckedAsync(GameSession me, FightInstance? fight, long named, long fightId)
+        {
             string? why = WhyNotJoin(fight, named, me.State, out int team);
             if (why == null && !MayJoinSide(fight!, team, me.CharacterId))
             {
@@ -446,6 +488,14 @@ namespace Jondo.Unity.Server.Handlers
                 : fight.EquipoDe(named);
             if (team < 0) return "the fighter named is not in the fight";
 
+            // A tax collector or a prism is defended through its alliance's fights (mer), not from
+            // the map; and its alliance does not attack it.
+            if (fight.DefendingAllianceId != 0)
+            {
+                if (team == FightInstance.Rojos) return "the defenders come through the alliance's fights";
+                if (AllianceFights.IsDefender(fight, who.CharacterId)) return "what is attacked is his alliance's";
+            }
+
             var refusal = fight.CanJoin(team, CapOf(fight));
             return refusal == FightInstance.JoinRefusal.None ? null : refusal.ToString();
         }
@@ -463,8 +513,8 @@ namespace Jondo.Unity.Server.Handlers
         /// client asks for the board with ijm/kmv, as at any fight entry, and PendingPreparation
         /// gives it to him.
         /// </remarks>
-        private static async Task<bool> JoinFightAsync(GameSession who, FightInstance fight, int team,
-                                                       bool followingLeader)
+        internal static async Task<bool> JoinFightAsync(GameSession who, FightInstance fight, int team,
+                                                        bool followingLeader)
         {
             Fighter fighter;
             using (SessionContext.Push(who))
@@ -608,8 +658,7 @@ namespace Jondo.Unity.Server.Handlers
                     Network.FightProtocol.BuildFighter(
                         monster.CellId, FacingOf(fight, monster), monster.Id, PlacementSheetOf(monster),
                         MonsterLook(monster),
-                        Network.FightProtocol.MonsterIdentity(monster.GradeIndex + 1, monster.MonsterId,
-                                                              monster.Level),
+                        IdentityOf(monster),
                         isMonster: true)));
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzu,
                     Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
@@ -784,10 +833,13 @@ namespace Jondo.Unity.Server.Handlers
             if (!_joinAfterWalk.TryRemove(me.State.CharacterId, out var pending)) return;
 
             var fight = FightById(pending.FightId);
-            if (fight == null || WhyNotFollow(fight, me.State) != null) return;
-            if (fight.CanJoin(pending.Team, CapOf(fight)) != FightInstance.JoinRefusal.None) return;
-
-            await JoinFightAsync(me, fight, pending.Team, followingLeader: true);
+            if (fight == null) return;
+            await InTurnAsync(fight, async () =>
+            {
+                if (WhyNotFollow(fight, me.State) != null) return;
+                if (fight.CanJoin(pending.Team, CapOf(fight)) != FightInstance.JoinRefusal.None) return;
+                await JoinFightAsync(me, fight, pending.Team, followingLeader: true);
+            });
         }
 
         /// <summary>
@@ -826,7 +878,7 @@ namespace Jondo.Unity.Server.Handlers
         /// the kar and jzu of a monster taken off (dungeon 140) and his side's kae, the map the
         /// same kae and his figure back. A fight left with nobody is dropped.
         /// </summary>
-        private static async Task LeavePlacementAsync(NetworkStream stream, FightInstance fight)
+        internal static async Task LeavePlacementAsync(NetworkStream stream, FightInstance fight)
         {
             long me = GameState.CharacterId;
             int team = fight.EquipoDe(me);
@@ -865,8 +917,13 @@ namespace Jondo.Unity.Server.Handlers
                 await ToTheMapAsync(fight, ConnectionProtocol.Push(Op.Hpr,
                     FightJoinProtocol.BuildFightHidden(fight.FightId)));
                 await FightOffTheMapAsync(fight);
+                // A tax collector or a prism left with nobody attacking it stands again.
+                await FightOverForTheWorldAsync(fight, attackersWon: false);
                 return;
             }
+
+            // And a defended fight's alliance sees him leave its fights window.
+            await AllianceFights.FighterLeftAsync(fight, me);
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Kar, FightJoinProtocol.BuildFighterRemoved(me)));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzu,

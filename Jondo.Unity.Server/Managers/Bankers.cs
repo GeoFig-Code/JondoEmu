@@ -77,9 +77,6 @@ namespace Jondo.Unity.Server.Managers
 
         private static readonly Dictionary<int, Banker> _byNpc = new Dictionary<int, Banker>();
 
-        /// <summary>How many placed NPCs were recognised as bankers.</summary>
-        public static int Count => _byNpc.Count;
-
         /// <summary>The banker this NPC is, or null.</summary>
         public static Banker? Of(int npcId)
             => npcId != 0 && _byNpc.TryGetValue(npcId, out var banker) ? banker : null;
@@ -134,12 +131,6 @@ namespace Jondo.Unity.Server.Managers
 
             return chosen == 0 ? null : new Banker { NpcId = npcId, Consult = chosen, Candidates = found };
         }
-
-        /// <summary>Registers a banker by hand, for tests that have no world loaded.</summary>
-        internal static void Register(Banker banker) => _byNpc[banker.NpcId] = banker;
-
-        /// <summary>Forgets one registered by hand.</summary>
-        internal static void Forget(int npcId) => _byNpc.Remove(npcId);
 
         /// <summary>The translation keys whose text starts with that sentence.</summary>
         internal static HashSet<long> TextKeysSaying(string wording)

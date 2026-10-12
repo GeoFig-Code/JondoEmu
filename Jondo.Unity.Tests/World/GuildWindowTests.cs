@@ -31,7 +31,7 @@ namespace Jondo.Unity.Tests.World
         public void Dispose()
         {
             GuildStore.ConnectionStringOverride = null;
-            SqliteConnection.ClearAllPools();
+            TestDatabases.ReleasePool(_file);
             try { File.Delete(_file); } catch (IOException) { }
         }
 

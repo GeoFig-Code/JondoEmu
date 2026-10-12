@@ -162,17 +162,14 @@ message changed since the previous version.
 | The generated protobuf message classes | `Jondo.Unity.Protocol/Messages/Protocol.proto` |
 | The opcodes themselves, as three-letter literals | `Network/ConnectionProtocol.cs`, `Network/WorldEntry.cs`, `Network/GameNodeProxy.cs` and the handlers; the console labels are in `Protocol/NetworkMessage.cs` |
 | Fight state, monster AI, damage and isometric geometry | `Jondo.Unity.World/Fights/`, `Jondo.Unity.World/Maps/MapGeometry.cs`; the packet side of a fight is `Handlers/FightHandler.cs` |
-| File lookup order: `datos/`, then `bases/`, then the root | `Jondo.Unity.Launcher/Paths.cs` |
+| File lookup order: `datos/`, then `bases/`, then the root | `Jondo.Unity.Core/Paths.cs` |
 | The MelonLoader mod that redirects the client | `JondoFix/` |
 
-`Jondo.Unity.Auth` (1 file), `Jondo.Unity.Core` (3 files, 132 lines) and `Jondo.Unity.Parser`
-(1 file, 82 lines) are near-empty shells. Authentication and HAAPI live in
-`Jondo.Unity.Launcher/Network/`, not in the project that carries their name. Do not waste time
-looking there.
+`Jondo.Unity.Core` holds only `Paths.cs`. Authentication and HAAPI live in
+`Jondo.Unity.Server/Network/` (`HaapiServer.cs` and the login path of the game server).
 
-Two more files are dead and misleading: nothing references `Jondo.Unity.Protocol/OpcodeRegistry.cs`
-or `TypeRegistry.cs`, and `OpcodeRegistry` maps `kub` to a fight placement message while the code
-that runs sends `kub` for characteristics. There is no central opcode table in the emulator.
+The opcodes are the constants of `Jondo.Unity.Protocol/Op.cs`. The old `OpcodeRegistry.cs` and
+`TypeRegistry.cs`, which nothing referenced, are gone.
 
 ### Checking things yourself
 

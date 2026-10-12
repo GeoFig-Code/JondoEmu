@@ -42,8 +42,6 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         private const int PrimerId = 1;
 
-        public static int Pending => _pendientes.Count;
-
         /// <summary>Opens a challenge and returns its id.</summary>
         /// <remarks>
         /// The map is stored with it because a challenge is between two who are in the same place: if one
@@ -64,10 +62,6 @@ namespace Jondo.Unity.Server.Managers
             _pendientes[id] = desafio;
             return desafio;
         }
-
-        /// <summary>The challenge with that id, or null if there is none or it has been answered.</summary>
-        public static Duel? Get(int id)
-            => _pendientes.TryGetValue(id, out var desafio) ? desafio : null;
 
         /// <summary>Takes it off the list. Returns null if somebody else got there first.</summary>
         /// <remarks>

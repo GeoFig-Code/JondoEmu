@@ -247,10 +247,6 @@ namespace Jondo.Unity.Launcher.UI
         };
 
         /// <summary>
-        /// Hand-drawn speaker. GDI+ will not render the 🔊/🔇 emoji of the web launcher in color,
-        /// so they are replaced by an equivalent vector icon.
-        /// </summary>
-        /// <summary>
         /// An open folder, for the button that chooses where the client is. Drawn by hand like
         /// the rest of the icons: the window loads no image that is not in launcher_assets.
         /// </summary>
@@ -277,6 +273,10 @@ namespace Jondo.Unity.Launcher.UI
             g.SmoothingMode = previousSmoothing;
         }
 
+        /// <summary>
+        /// Hand-drawn speaker. GDI+ will not render the 🔊/🔇 emoji of the web launcher in color,
+        /// so they are replaced by an equivalent vector icon.
+        /// </summary>
         public static void DrawSpeaker(Graphics g, Rectangle r, Color color, bool muted)
         {
             var previousSmoothing = g.SmoothingMode;

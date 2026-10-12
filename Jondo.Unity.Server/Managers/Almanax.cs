@@ -86,8 +86,6 @@ namespace Jondo.Unity.Server.Managers
         private static volatile AlmanaxCalendar? _calendar;
         private static readonly object _loadLock = new object();
 
-        public static AlmanaxCalendar? Calendar => _calendar;
-
         /// <summary>The server's clock. Replaceable so the tests can pick a day.</summary>
         public static Func<DateTime> Clock { get; set; } = () => DateTime.Now;
 

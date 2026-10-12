@@ -26,7 +26,6 @@ namespace Jondo.Unity.Server.Managers
         public bool AvailableInHouse { get; init; }
         public bool AllowMarking { get; init; }
         public bool IsForgemagus { get; init; }
-        public IReadOnlyList<int> CraftableItemIds => _craftableItems;
         public IReadOnlyList<int> ModifiableItemTypeIds => _modifiableItemTypes;
 
         internal List<int> MutableCraftableItems => _craftableItems;

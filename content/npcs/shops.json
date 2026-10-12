@@ -12,7 +12,24 @@
     "'comprar gremialogema-crear gremio-...': her kbd lists the guildalogem 1575 at 30,000, the",
     "book 30810 'Acerca de los gremios' at 500 and the guild shield 13240 at 100,000. This server",
     "sells the guildalogem for one kama so that anyone can found a guild; the other two keep the",
-    "price the capture shows."
+    "price the capture shows.",
+    "",
+    "She also sells the alliance gem 14290, 'Alianzalogema', for one kama: no vendor and no",
+    "recipe in the client's data gives it, and the Temple of Alliances'",
+    "door lets in only a character of level 50 who carries one. Without it nobody here could",
+    "found an alliance.",
+    "",
+    "And the alliance's two potions, 14291 to change its name and tag and 14292 to change its",
+    "emblem, for one kama each: no vendor in the client's data sells them either.",
+    "",
+    "And the alliances' tax collectors and prisms, which no vendor in the client's data sells: the ten",
+    "tax collector potions (27635, 27905-27912 and 14553, one per band of subarea levels) at the 100",
+    "kamas their templates carry, and the ten alliance prisms (27913-27921 and 14293) at their",
+    "templates' one kama.",
+    "",
+    "And the seven tax collector resources (27929-27935, 'Clavos de recaudador' to 'Correa de",
+    "recaudador') at their templates' one kama: every item a tax collector wears is crafted from one",
+    "of them and runes, and nothing in the client's data drops or sells them."
   ],
   "shops": [
     {
@@ -29,6 +46,126 @@
         {
           "gid": 13240,
           "price": 100000
+        },
+        {
+          "gid": 14290,
+          "price": 1
+        },
+        {
+          "gid": 14291,
+          "price": 1
+        },
+        {
+          "gid": 14292,
+          "price": 1
+        },
+        {
+          "gid": 27635,
+          "price": 100
+        },
+        {
+          "gid": 27905,
+          "price": 100
+        },
+        {
+          "gid": 27906,
+          "price": 100
+        },
+        {
+          "gid": 14553,
+          "price": 100
+        },
+        {
+          "gid": 27907,
+          "price": 100
+        },
+        {
+          "gid": 27908,
+          "price": 100
+        },
+        {
+          "gid": 27909,
+          "price": 100
+        },
+        {
+          "gid": 27910,
+          "price": 100
+        },
+        {
+          "gid": 27911,
+          "price": 100
+        },
+        {
+          "gid": 27912,
+          "price": 100
+        },
+        {
+          "gid": 27913,
+          "price": 1
+        },
+        {
+          "gid": 27914,
+          "price": 1
+        },
+        {
+          "gid": 27915,
+          "price": 1
+        },
+        {
+          "gid": 14293,
+          "price": 1
+        },
+        {
+          "gid": 27916,
+          "price": 1
+        },
+        {
+          "gid": 27917,
+          "price": 1
+        },
+        {
+          "gid": 27918,
+          "price": 1
+        },
+        {
+          "gid": 27919,
+          "price": 1
+        },
+        {
+          "gid": 27920,
+          "price": 1
+        },
+        {
+          "gid": 27921,
+          "price": 1
+        },
+        {
+          "gid": 27929,
+          "price": 1
+        },
+        {
+          "gid": 27930,
+          "price": 1
+        },
+        {
+          "gid": 27931,
+          "price": 1
+        },
+        {
+          "gid": 27932,
+          "price": 1
+        },
+        {
+          "gid": 27933,
+          "price": 1
+        },
+        {
+          "gid": 27934,
+          "price": 1
+        },
+        {
+          "gid": 27935,
+          "price": 1
         }
       ]
     }

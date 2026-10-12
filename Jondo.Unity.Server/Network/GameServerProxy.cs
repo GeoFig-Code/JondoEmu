@@ -105,13 +105,6 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
-        /// Port 5555 is the route used by the real client for the game phase. It must create the
-        /// same socket-owned GameSession as the dedicated GameNode listener. Previously it called
-        /// the dispatcher directly, without a GameSession or SessionContext.Push; consequently
-        /// every client fell back to SessionContext's single shared "Suelta" state. The last
-        /// character loaded then became the identity/map/look seen while processing every socket.
-        /// </summary>
-        /// <summary>
         /// The address of the socket's other end, without the port. If it cannot be read
         /// empty is returned: not knowing the IP is no reason to drop the connection.
         /// </summary>
@@ -128,6 +121,13 @@ namespace Jondo.Unity.Server.Network
             }
         }
 
+        /// <summary>
+        /// Port 5555 is the route used by the real client for the game phase. It must create the
+        /// same socket-owned GameSession as the dedicated GameNode listener. Previously it called
+        /// the dispatcher directly, without a GameSession or SessionContext.Push; consequently
+        /// every client fell back to SessionContext's single shared "Suelta" state. The last
+        /// character loaded then became the identity/map/look seen while processing every socket.
+        /// </summary>
         private static async Task HandleBoundGameSessionAsync(NetworkStream stream,
                                                               byte[] firstPayload,
                                                               string firstPayloadStr)
@@ -142,7 +142,6 @@ namespace Jondo.Unity.Server.Network
             // Where he comes from, to be able to tell him the next time he logs in.
             session.State.ClientIp = RemoteIp(stream);
 
-            GameNodeProxy.SesionesVivas[session.Id] = session;
             Console.WriteLine($"[Game Server] Socket bound to session {session.Id}.");
 
             try
@@ -173,6 +172,13 @@ namespace Jondo.Unity.Server.Network
                     }
                     catch { }
 
+                    // And his alliance sees him disconnected.
+                    try
+                    {
+                        await Handlers.AllianceHandler.DisconnectedAsync(session.CharacterId);
+                    }
+                    catch { }
+
                     session.LeaveWorld();
                 }
 
@@ -188,7 +194,6 @@ namespace Jondo.Unity.Server.Network
                     }
                 }
 
-                GameNodeProxy.SesionesVivas.TryRemove(session.Id, out _);
                 SessionRegistry.Unregister(session);
                 Console.WriteLine($"[Game Server] Session {session.Id} released.");
             }

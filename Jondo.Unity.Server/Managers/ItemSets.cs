@@ -41,8 +41,6 @@ namespace Jondo.Unity.Server.Managers
         private static volatile bool _loaded;
         private static readonly object _lock = new object();
 
-        public static int Count { get { Ensure(); return _sets.Count; } }
-
         /// <summary>
         /// Reads the file, once per run. Kept as a separate call so the server pays for it at
         /// boot, with its log line, rather than on the first sheet somebody opens.

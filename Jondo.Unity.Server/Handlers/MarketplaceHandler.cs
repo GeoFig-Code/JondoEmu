@@ -27,7 +27,6 @@ namespace Jondo.Unity.Server.Handlers
         public bool FollowItem(int gid) { lock (_gate) return _items.Add(gid); }
         public bool UnfollowItem(int gid) { lock (_gate) return _items.Remove(gid); }
         public bool Follows(int gid) { lock (_gate) return _items.Contains(gid); }
-        public bool FollowsType(int type) { lock (_gate) return _types.Contains(type); }
 
         /// <summary>A change of mode starts over: the client follows again what it wants.</summary>
         public void Forget() { lock (_gate) { _types.Clear(); _items.Clear(); } }

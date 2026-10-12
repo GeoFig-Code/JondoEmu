@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using Jondo.Unity.World.Fights;
 
 namespace Jondo.Unity.Server.Managers
 {
@@ -154,6 +155,40 @@ namespace Jondo.Unity.Server.Managers
         /// player: it goes by what the animals say.
         /// </remarks>
         public static int PotenciaDelInvocado(int bonusDeDanos) => bonusDeDanos * 3 / 5;
+
+        /// <summary>
+        /// What a summon is by its grade and its summoner: grade, level, points, resistances, life,
+        /// the four characteristics and power. One place for it: the fight's summons
+        /// (FightHandler) and the ones the bots' plans put down on their copy of the fight
+        /// (MonsterTactics.Simulation) -- whose bombs, made at grade one with nothing, blew up for ten.
+        /// </summary>
+        public static void Characteristics(Fighter invocado, Summon receta, Fighter quienInvoca)
+        {
+            invocado.GradeIndex = receta.Grado;
+            invocado.Level = receta.Nivel;
+            invocado.MaxAP = invocado.CurrentAP = receta.PuntosDeAccion;
+            invocado.MaxMP = invocado.CurrentMP = receta.PuntosDeMovimiento;
+            invocado.NeutralResPct = receta.ResistenciaNeutral;
+            invocado.EarthResPct = receta.ResistenciaTierra;
+            invocado.FireResPct = receta.ResistenciaFuego;
+            invocado.WaterResPct = receta.ResistenciaAgua;
+            invocado.AirResPct = receta.ResistenciaAire;
+            invocado.MaxHP = VidaDelInvocado(receta.Vida, quienInvoca.StatLevel, receta.VidaFija);
+            invocado.Strength = CaracteristicaDelInvocado(receta.Fuerza, receta.BonusFuerza, quienInvoca.StatLevel);
+            invocado.Intelligence = CaracteristicaDelInvocado(receta.Inteligencia, receta.BonusInteligencia, quienInvoca.StatLevel);
+            invocado.Chance = CaracteristicaDelInvocado(receta.Suerte, receta.BonusSuerte, quienInvoca.StatLevel);
+            invocado.Agility = CaracteristicaDelInvocado(receta.Agilidad, receta.BonusAgilidad, quienInvoca.StatLevel);
+            invocado.Power = PotenciaDelInvocado(receta.BonusDeDanos);
+            invocado.CurrentHP = invocado.MaxHP;
+
+            // Whether it plays is the template's flag, not a guess from its spell: see Summon.Juega.
+            // The old reading -- "only if its spell has something to do at turn start" -- happened
+            // to fit the two beacons and nothing else: a Tymobot has nothing to do at turn start and
+            // plays, controlled by its owner.
+            invocado.JuegaTurno = receta.Juega;
+            invocado.HechizosDeInvocado = receta.Hechizos;
+            invocado.TemplateAllowsTackle = receta.AllowsTackle;
+        }
 
         // ─── How long it lives ──────────────────────────────────────────────────
         //

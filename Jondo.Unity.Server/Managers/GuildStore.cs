@@ -372,6 +372,21 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Guild right 43 of the client's data: "Administrar las raids".</summary>
         public const int ManageRaidsRight = 43;
 
+        /// <summary>Guild right 6 of the client's data: "Gestionar las candidaturas e invitaciones".</summary>
+        public const int ManageApplicationsRight = 6;
+
+        /// <summary>Guild right 13 of the client's data: "Excluir a un miembro".</summary>
+        public const int ExpelRight = 13;
+
+        /// <summary>Guild right 26 of the client's data: "Atribuir rangos inferiores al mío".</summary>
+        public const int AssignRanksRight = 26;
+
+        /// <summary>
+        /// How long a member has to have been in the guild before his rank can change: the "24" the
+        /// real server's lqn 740 carries.
+        /// </summary>
+        public const int RankChangeMinimumHours = 24;
+
         /// <summary>
         /// Whether a member's rank carries a right of the client's guild rights table. Rank 1, the
         /// guild master, has them all; the rest have what their rank's list says, which is the list
@@ -779,6 +794,28 @@ namespace Jondo.Unity.Server.Managers
             borra.Parameters.AddWithValue("$g", guildId);
             borra.Parameters.AddWithValue("$c", characterId);
             borra.ExecuteNonQuery();
+        }
+
+        /// <summary>The applications a character has sent, to whichever guilds.</summary>
+        public static List<Application> ApplicationsBy(long characterId)
+        {
+            using var conexion = Open();
+            var query = conexion.CreateCommand();
+            query.CommandText = @"
+                SELECT GuildId, CharacterId, Message, WhenMs FROM GuildApplications
+                WHERE CharacterId = $c ORDER BY WhenMs;";
+            query.Parameters.AddWithValue("$c", characterId);
+            using var lector = query.ExecuteReader();
+            var fuera = new List<Application>();
+            while (lector.Read())
+            {
+                fuera.Add(new Application
+                {
+                    GuildId = lector.GetInt64(0), CharacterId = lector.GetInt64(1),
+                    Message = lector.GetString(2), WhenMs = lector.GetInt64(3),
+                });
+            }
+            return fuera;
         }
 
         // ─── Guild kamas, contributions and shop ────────────────────────────────

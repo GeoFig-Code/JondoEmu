@@ -56,7 +56,7 @@ public static class Op
     /// <summary>It travels with jru on every map change.</summary>
     public const string Hjk = "hjk";
 
-    /// <summary>Unidentified. 1 use in the emulator.</summary>
+    /// <summary>C→S: a tax collector's spell moved, { f1 to, f2 uuid, f3 from } (TaxCollectorEquipment, fgu.beuk).</summary>
     public const string Hke = "hke";
 
     /// <summary>Part of the 3.6.4.3 initialisation burst that kkn fires. It does not appear in any of the 242 captures.</summary>
@@ -97,6 +97,15 @@ public static class Op
 
     /// <summary>Unidentified. 1 use in the emulator.</summary>
     public const string Hpd = "hpd";
+
+    /// <summary>
+    /// An item's use under way: { f1: the item, f2: when it ends, ms, f3: the kind of delay, 1 an
+    /// item's use, f5: who }. The home potions open with it.
+    /// </summary>
+    public const string Hpp = "hpp";
+
+    /// <summary>That use done: { f1: who, f2: the kind of delay }.</summary>
+    public const string Hpq = "hpq";
 
     // ─── Challenges between players ─────────────────────────────────────────────────────────
     //
@@ -984,7 +993,7 @@ public static class Op
     /// <summary>C→S: writing the directory sheet. f2 { f2 description, f3 minimum level, f4 tags, f5, f6, f9 maximum level, f10 guild, f13 title }. It is answered with the jci.</summary>
     public const string Jcc = "jcc";
 
-    /// <summary>S→C, empty: acknowledgement of the directory search, before the jiv.</summary>
+    /// <summary>S→C: one's own pending application, f1 { f1 the guild, f2 the application }; empty when there is none. Answers the jlu.</summary>
     public const string Jme = "jme";
 
     /// <summary>S→C: the directory. One f1 per guild { f1 { f1 { f1 leader, f6 sheet, f7 members }, f3 emblem }, f2 id, f3 name, f4 level }.</summary>
@@ -1282,14 +1291,32 @@ public static class Op
     /// <summary>S→C: the applications to the guild. f2 the total, f3 { the application }.</summary>
     public const string Jmf = "jmf";
 
-    /// <summary>S→C: a new application. f2 { the application }, f3 the account.</summary>
+    /// <summary>S→C: the applications list changes. f1 1 one leaves it, f2 { the application }, f3 who dealt with it.</summary>
     public const string Jly = "jly";
 
-    /// <summary>S→C: result of inviting. f1 the name, f2 an id, f3 the state (1 requested, 3 accepted/declined).</summary>
+    /// <summary>S→C: how an invitation is going. f1 the name, f2 an id, f3 the state (1 sent, 3 joined).</summary>
     public const string Jin = "jin";
 
-    /// <summary>S→C: invitation acknowledgement by account id.</summary>
+    /// <summary>S→C: an application has arrived. f1 the applicant, f2 his name.</summary>
     public const string Jma = "jma";
+
+    /// <summary>C→S: withdrawing one's own application, empty; answered with the jmi.</summary>
+    public const string Jlv = "jlv";
+
+    /// <summary>S→C: one's own application withdrawn. f2 whether it was.</summary>
+    public const string Jmi = "jmi";
+
+    /// <summary>C→S, empty: asking for one's own pending application, on opening the directory; answered with the jme.</summary>
+    public const string Jlu = "jlu";
+
+    /// <summary>C→S: applying to a guild. f11 the text, f13 the guild, f14 the seconds the window was open; f1 to f12 but f11, the directory's filters as text.</summary>
+    public const string Jlw = "jlw";
+
+    /// <summary>C→S: rewriting one's own application. f2 the guild, f3 the text; the client asks the jlu right behind it.</summary>
+    public const string Jmo = "jmo";
+
+    /// <summary>S→C: one's own application answered. f1 the guild, f2 whether it was accepted.</summary>
+    public const string Jmp = "jmp";
 
     /// <summary>S→C: the guild's public sheet in the window (description, leader, recruitment).</summary>
     public const string Jci = "jci";
@@ -1321,8 +1348,26 @@ public static class Op
     /// <summary>S→C: activation acknowledgement. f1 the article.</summary>
     public const string Jkx = "jkx";
 
-    /// <summary>S→C: an alteration set. f1 { f1 from, f2 the alteration, f4 2, f5 until } in milliseconds.</summary>
+    /// <summary>
+    /// S→C: an alteration set. f1 its entry { f1 since, f2 the alteration, f3 its effects, f4 its kind
+    /// -- 1 lasting, 2 until a date, 3 fights, 4 victories --, f5 the date or the count left }.
+    /// </summary>
     public const string Lzs = "lzs";
+
+    /// <summary>S→C: an alteration lost, f1 its entry as it stood; «Has perdido la alteración» (info 1665) follows.</summary>
+    public const string Lzo = "lzo";
+
+    /// <summary>S→C: every alteration, f1 each entry: the answer to lzh, and again at the end of each fight.</summary>
+    public const string Lzp = "lzp";
+
+    /// <summary>C→S: the alterations asked for, empty, on entering the world.</summary>
+    public const string Lzh = "lzh";
+
+    /// <summary>
+    /// S→C: an item changed, f1 { f1 its slot, f5 the item }: the bonus slots' fights counting down
+    /// at the end of each fight.
+    /// </summary>
+    public const string Iuj = "iuj";
 
     /// <summary>C→S: contributing to the guild. f1 the bracket (1 = 10,000 kamas).</summary>
     public const string Jlb = "jlb";
@@ -1336,10 +1381,10 @@ public static class Op
     /// <summary>C→S: answering the invitation. Empty rejects; f1 = 1 accepts.</summary>
     public const string Jiz = "jiz";
 
-    /// <summary>C→S: viewing an application. f2 the character who sent it.</summary>
+    /// <summary>C→S: answering an application. f1 accepted (absent when refused), f2 the applicant.</summary>
     public const string Jlt = "jlt";
 
-    /// <summary>C→S: accepting an application. f2 the character who sent it.</summary>
+    /// <summary>C→S: inviting somebody to the guild. f2 the character.</summary>
     public const string Jjn = "jjn";
 
     /// <summary>C→S: searching the directory. f2, f3 and f17 levels, f9 and f14 filters. It is answered with jme and jiv. (Contributing is jlb.)</summary>
@@ -1357,7 +1402,7 @@ public static class Op
     /// <summary>The spouse, with their look; it is discarded. 13 messages.</summary>
     public const string Jgu = "jgu";
 
-    /// <summary>Unidentified. 1 use in the emulator.</summary>
+    /// <summary>C→S: a member's rank, from the members window. f2 the member, f4 the rank.</summary>
     public const string Jgv = "jgv";
 
     /// <summary>
@@ -1955,6 +2000,14 @@ public static class Op
     /// <summary>Abandoning the fight. Empty body; the server answers with a type 5 death sequence and a jxh.</summary>
     public const string Kme = "kme";
 
+    /// <summary>
+    /// The Koliseo's giving up, locked or not: { f1 bool, f2 bool, f3 bool, f4 bool }. The client's
+    /// surrender service keeps f1 and f2 and enables the leave button with f2
+    /// (EndTurnWidgetUI.OnUnlockSurrender); in an arena fight it stays greyed out until f2 comes.
+    /// Read off the client: no capture holds one.
+    /// </summary>
+    public const string Ltm = "ltm";
+
     /// <summary>Part of the 3.6.4.3 final burst that ibt fires (icg is sent three times). It does not appear in any of the 242 captures.</summary>
     public const string Klp = "klp";
 
@@ -2095,13 +2148,24 @@ public static class Op
     /// <summary>Unidentified. 4 uses in the emulator.</summary>
     public const string Ksl = "ksl";
 
+    /// <summary>
+    /// Client to server: the option chosen in a choice popup, { f1: its place in the kss }. «usar
+    /// ankla de anutropia» answers {2}, the Palacio del Rey Nidas.
+    /// </summary>
+    public const string Kso = "kso";
+
+    /// <summary>
+    /// A choice proposed: { f1: each option { f1: its place, f2: its id }, f2: true, f3: the
+    /// choice }. An ankla's dungeons (choice 28, 29, 30 or 31).
+    /// </summary>
+    public const string Kss = "kss";
+
     /// <summary>Unidentified. 2 uses in the emulator.</summary>
     public const string Ksv = "ksv";
 
     /// <summary>Unidentified. 4 uses in the emulator.</summary>
     public const string Ksx = "ksx";
 
-    /// <summary>The line coming back. Channels: 0 general (omitted for being zero), 1 team, 2 guild, 3 alliance, 4 party, 5 trade, 6 recruitment, and 9, 11, 16, 18, 19 for the rest.</summary>
     /// <summary>
     /// The character levels up: { f1: the new level }. Two bytes, and it is ALL that is needed
     /// for the client to bring up its window with music and animation. Neither the points, nor the life, nor
@@ -2110,6 +2174,7 @@ public static class Op
     /// </summary>
     public const string Kua = "kua";
 
+    /// <summary>The line coming back. Channels: 0 general (omitted for being zero), 1 team, 2 guild, 3 alliance, 4 party, 5 trade, 6 recruitment, and 9, 11, 16, 18, 19 for the rest.</summary>
     public const string Kti = "kti";
 
     /// <summary>A line the player wrote.</summary>
@@ -2495,6 +2560,322 @@ public static class Op
 
     /// <summary>Choosing a title; it only touches the draft. An empty message means none.</summary>
     public const string Lze = "lze";
+
+    // ─── Alliances ──────────────────────────────────────────────────────────────
+    // Read off the client's alliance frames (fgv the messages, fgu the requests) and checked against
+    // "entrar en alianza y salir de alianza", the one capture with an alliance.
+
+    /// <summary>C→S: the alliance window's sheet is asked for (dpv); answered with the mcx.</summary>
+    public const string Mcf = "mcf";
+
+    /// <summary>C→S: listening to the alliance's applications (dqk) {1 bool, 2 lzz}; nothing is answered in the capture.</summary>
+    public const string Mab = "mab";
+
+    /// <summary>C→S: joining an alliance from its directory card (dpy) {1 uuid}. «A B S I N T O» took the character at once.</summary>
+    public const string Mac = "mac";
+
+    /// <summary>S→C, empty: the directory's request was heard; the capture answers the mba with it.</summary>
+    public const string Mag = "mag";
+
+    /// <summary>C→S: a page of the alliance's applications (dpl) {2 after this date, 3 how many}; answered with the maz.</summary>
+    public const string Mah = "mah";
+
+    /// <summary>S→C: a page of the alliance's applications {1 how many are pending, 2 the applications lpo, 3, 4}. Empty in the capture.</summary>
+    public const string Maz = "maz";
+
+    /// <summary>C→S, empty: the alliance directory opens (dpt); answered with the mag.</summary>
+    public const string Mba = "mba";
+
+    /// <summary>S→C: the alliance's ranks, one f1 ldt each, the same shape as a guild's.</summary>
+    public const string Mbm = "mbm";
+
+    /// <summary>S→C, empty: one is no longer in an alliance; the client empties its window.</summary>
+    public const string Mbt = "mbt";
+
+    /// <summary>S→C: belonging to an alliance, silently {2 rank, 3 alliance}. World entry's.</summary>
+    public const string Mbz = "mbz";
+
+    /// <summary>S→C: joining an alliance {1 rank, 2 alliance}; the client says so in the chat.</summary>
+    public const string Mca = "mca";
+
+    /// <summary>C→S: expelling a member (dpz) {1 character}; one's own id is leaving.</summary>
+    public const string Mcc = "mcc";
+
+    /// <summary>S→C: the creation's result {1 lbv}, empty for success.</summary>
+    public const string Mch = "mch";
+
+    /// <summary>S→C: the alliance message {1 leg}.</summary>
+    public const string Mcm = "mcm";
+
+    /// <summary>S→C: the alliance bulletin {1 leg, 2 enum}.</summary>
+    public const string Mcr = "mcr";
+
+    /// <summary>S→C: the alliance directory {2 alliances, 4 how many in all, 5 page size}.</summary>
+    public const string Mcv = "mcv";
+
+    /// <summary>S→C, empty: opens the alliance founding editor.</summary>
+    public const string Mcw = "mcw";
+
+    /// <summary>S→C: the alliance's sheet {1 tax collectors, 2 prisms, 3 alliance, 4 members}.</summary>
+    public const string Mcx = "mcx";
+
+    /// <summary>C→S: a page of the alliance directory (dqm), with its filters; answered with the mcv.</summary>
+    public const string Mde = "mde";
+
+    /// <summary>C→S: founding an alliance (dpp) {1 emblem lld, 2 name, 3 tag}.</summary>
+    public const string Mdk = "mdk";
+
+    /// <summary>C→S: deleting one's own application (dpq), empty; answered with the mav.</summary>
+    public const string Mau = "mau";
+
+    /// <summary>S→C: one's application deleted {1 whether it was}.</summary>
+    public const string Mav = "mav";
+
+    /// <summary>C→S: answering an application (dpk) {1 accepted, 2 the applicant}.</summary>
+    public const string Maf = "maf";
+
+    /// <summary>C→S: applying to an alliance (dql) {1 its uuid, 2 the message}.</summary>
+    public const string Mai = "mai";
+
+    /// <summary>C→S: rewriting one's application (dqn) {1 the message, 2 the alliance's uuid}.</summary>
+    public const string Mae = "mae";
+
+    /// <summary>S→C: an application has arrived {1 the applicant, 2 his name}; a notification for whoever manages them.</summary>
+    public const string Mad = "mad";
+
+    /// <summary>S→C: one's application answered {1 the alliance, 3 accepted}.</summary>
+    public const string Maq = "maq";
+
+    /// <summary>S→C: the applications list moves {2 0 new / 1 gone / 2 rewritten, 3 the application, 4 who handled it}.</summary>
+    public const string Mbb = "mbb";
+
+    /// <summary>S→C: one's own pending application {1 the application, 2 the alliance}.</summary>
+    public const string Lzx = "lzx";
+
+    /// <summary>C→S, empty: the recruitment card is asked for (dpu); answered with the mar.</summary>
+    public const string Mas = "mas";
+
+    /// <summary>S→C: the recruitment card {1 lmn}.</summary>
+    public const string Mar = "mar";
+
+    /// <summary>C→S: the recruitment card as the window leaves it (dqy) {1 lmn}.</summary>
+    public const string Lzy = "lzy";
+
+    /// <summary>C→S, empty: the alliance's ranks are asked for (dqi); answered with the mbm.</summary>
+    public const string Mbg = "mbg";
+
+    /// <summary>C→S: creating a rank (dqf) {1 its icon, 3 its name, 4 the rank it goes after}.</summary>
+    public const string Mbj = "mbj";
+
+    /// <summary>C→S: a rank renamed or given another icon (dqh) {1 the rank ldt}.</summary>
+    public const string Mbd = "mbd";
+
+    /// <summary>C→S: removing a rank (dqg) {1 the rank its members go to, 2 the rank removed}.</summary>
+    public const string Mbk = "mbk";
+
+    /// <summary>C→S: every rank as the window orders them (dpj) {1 ldt each}.</summary>
+    public const string Mbn = "mbn";
+
+    /// <summary>C→S: a rank's rights (dqj) {2 the rights, 3 the rank}.</summary>
+    public const string Mbl = "mbl";
+
+    /// <summary>C→S: giving a member a rank (dpo) {1 the rank, 2 the member}.</summary>
+    public const string Mbo = "mbo";
+
+    /// <summary>S→C: a member's line, new or brought up to date {1 lmr}.</summary>
+    public const string Mbv = "mbv";
+
+    /// <summary>S→C: a member gone from the alliance {1 the member}.</summary>
+    public const string Mby = "mby";
+
+    /// <summary>C→S: the alliance message (dqe) {1 the text}; answered with the mcm, or the mdf.</summary>
+    public const string Mcs = "mcs";
+
+    /// <summary>S→C: the alliance message could not be set {1 1 no rights / 2 too soon}.</summary>
+    public const string Mdf = "mdf";
+
+    /// <summary>C→S: the alliance bulletin (dpn) {1 the text}; answered with the mcr, or the mco.</summary>
+    public const string Mdg = "mdg";
+
+    /// <summary>S→C: the alliance bulletin could not be set {1 1 no rights / 2 too soon}.</summary>
+    public const string Mco = "mco";
+
+    /// <summary>S→C: opens the alliance editor to modify {1 the emblem, 2 the name and tag}.</summary>
+    public const string Mce = "mce";
+
+    /// <summary>C→S: the alliance's new name and tag (dqc) {1 name, 2 tag}.</summary>
+    public const string Mcg = "mcg";
+
+    /// <summary>C→S: the alliance's new emblem (dqb) {1 lld}.</summary>
+    public const string Mcz = "mcz";
+
+    /// <summary>C→S: the alliance's new name, tag and emblem (dqd) {1 lld, 2 name, 4 tag}.</summary>
+    public const string Mcy = "mcy";
+
+    /// <summary>S→C: the modification's result {1 lbv}, empty for success.</summary>
+    public const string Mcn = "mcn";
+
+    /// <summary>C→S: an alliance's card from the directory (dpr) {1 its uuid}; answered with the mcl.</summary>
+    public const string Mck = "mck";
+
+    /// <summary>S→C: an alliance's card {1 the members it shows, 5 the alliance with its card}.</summary>
+    public const string Mcl = "mcl";
+
+    /// <summary>C→S: inviting a player into the alliance (dpw) {1 the player}.</summary>
+    public const string Mbr = "mbr";
+
+    /// <summary>C→S: answering an invitation (dpx) {1 accepted}; the inviter's «cancel» sends it too.</summary>
+    public const string Mbu = "mbu";
+
+    /// <summary>S→C: «X te invita a unirte a su alianza» {1 who invites, 2 the alliance}; opens the join popup.</summary>
+    public const string Mbs = "mbs";
+
+    /// <summary>S→C: how one's invitation goes, for whoever invites {1 the invited, 2 who invites, 3 1 waiting / 2 refused / 3 accepted}.</summary>
+    public const string Mbq = "mbq";
+
+    /// <summary>S→C: how an invitation goes, for whoever is invited {1 2 refused / 3 accepted}; 2 and 3 close the popup.</summary>
+    public const string Mcb = "mcb";
+
+    /// <summary>C→S, empty: no longer warn when a member connects (dqa).</summary>
+    public const string Mda = "mda";
+
+    /// <summary>C→S, empty: warn when a member connects (dqa).</summary>
+    public const string Mdj = "mdj";
+
+    // ─── Tax collectors and the alliance fights (see TaxCollectorProtocol) ──────
+
+    /// <summary>C→S, empty: attack the tax collector of the map (the menu's «Atacar», eoy.bane).</summary>
+    public const string Hkc = "hkc";
+
+    /// <summary>C→S: collect a tax collector, f1 its uuid (the menu's «Recaudar», eoy.band).</summary>
+    public const string Kbu = "kbu";
+
+    /// <summary>S→C: a tax collector refused (hla), f1 why (fgv.bewy).</summary>
+    public const string Hla = "hla";
+
+    /// <summary>S→C: one of the alliance's tax collectors placed or changed, f1 its lea (fgv.bewu).</summary>
+    public const string Hjq = "hjq";
+
+    /// <summary>S→C: a tax collector gone from the alliance's list, f1 its uuid (fgv.bewv).</summary>
+    public const string Hlc = "hlc";
+
+    /// <summary>S→C: a tax collector taken off by somebody, for the chat (fgv.bewz).</summary>
+    public const string Hjt = "hjt";
+
+    /// <summary>S→C: a tax collector's state, f1 uuid and f2 state (fgv.bexa).</summary>
+    public const string Hkd = "hkd";
+
+    /// <summary>S→C: one of the alliance's tax collectors attacked, chat and popup (fgv.beww).</summary>
+    public const string Hld = "hld";
+
+    /// <summary>S→C: how a tax collector's fight ended, survived or died (fgv.bewx).</summary>
+    public const string Hjw = "hjw";
+
+    /// <summary>S→C: a tax collector collected, by whom and with what (fgv.bexi).</summary>
+    public const string Kdc = "kdc";
+
+    /// <summary>S→C: what a tax collector says when talked to: pods, alliance, prospecting, worth.</summary>
+    public const string Ion = "ion";
+
+    /// <summary>C→S, empty: the alliance's fights tab opened (AllianceFightUi.OnEnable).</summary>
+    public const string Meq = "meq";
+
+    /// <summary>C→S, empty: the alliance's fights tab closed (AllianceFightUi.OnDisable).</summary>
+    public const string Mdy = "mdy";
+
+    /// <summary>C→S: join an alliance fight as a defender, f1 the fight (JoinFightUtils.Join).</summary>
+    public const string Mer = "mer";
+
+    /// <summary>C→S: leave an alliance fight's defence, f1 the fight (JoinFightUtils.Leave).</summary>
+    public const string Mea = "mea";
+
+    /// <summary>S→C: the alliance's fights, f1 each one (fgv.bewf).</summary>
+    public const string Mdu = "mdu";
+
+    /// <summary>S→C: an alliance fight added, f1 which and f2 its phase (fgv.bewi).</summary>
+    public const string Meh = "meh";
+
+    /// <summary>S→C: an alliance fight gone, f1 which (fgv.bewj).</summary>
+    public const string Mdv = "mdv";
+
+    /// <summary>S→C: a fighter into an alliance fight, f1 him, f2 the fight, f3 his side (fgv.bewg).</summary>
+    public const string Mdx = "mdx";
+
+    /// <summary>S→C: a fighter out of an alliance fight, f1 his id, f3 the fight (fgv.bewh).</summary>
+    public const string Meu = "meu";
+
+    /// <summary>S→C: an alliance fight's phase changed, f1 the fight, f3 the phase (fgv.bewk).</summary>
+    public const string Met = "met";
+
+    // ─── A tax collector's equipment, spells and the alliance's default ─────────
+
+    /// <summary>C→S: consult a tax collector, f1 its uuid (the menu's «Consultar»).</summary>
+    public const string Hkt = "hkt";
+
+    /// <summary>S→C: a tax collector to consult, f2 its lea (fgv.bexd): the window opens read-only.</summary>
+    public const string Hkb = "hkb";
+
+    /// <summary>C→S: modify a tax collector, f1 its uuid (the menu's «Modificar», eoy.edw).</summary>
+    public const string Ker = "ker";
+
+    /// <summary>S→C: a tax collector's equipment opened as an exchange, f1 its lea (epd.banv).</summary>
+    public const string Kds = "kds";
+
+    /// <summary>S→C: what a tax collector wears changed: f3 on, f4 the item, f5 uuid, f6 sheet (fgv.bexe).</summary>
+    public const string Hkh = "hkh";
+
+    /// <summary>C→S: a tax collector's spell set in a slot, { f1 uuid, f2 { f2 spell level, f3 slot } }.</summary>
+    public const string Hle = "hle";
+
+    /// <summary>C→S: a tax collector's spell slot emptied, { f1 uuid, f2 slot }.</summary>
+    public const string Hjx = "hjx";
+
+    /// <summary>S→C: a tax collector's spells, { f1 each, f3 uuid } (fgv.bexf).</summary>
+    public const string Hki = "hki";
+
+    /// <summary>C→S, empty: the alliance window's tax collectors or personalization tab opened.</summary>
+    public const string Hjy = "hjy";
+
+    /// <summary>S→C: the alliance's default tax collectors, f1 each preset (fgv.bexh).</summary>
+    public const string Hlb = "hlb";
+
+    /// <summary>S→C: a preset's spells, { f1 its id, f2 the spells } (fgv.bexg).</summary>
+    public const string Hlh = "hlh";
+
+    /// <summary>C→S: a preset's spell set, { f1 { f2 spell level, f3 slot }, f4 preset } (fgu.beun).</summary>
+    public const string Hko = "hko";
+
+    /// <summary>C→S: a preset's slot emptied, { f1 slot, f2 preset } (fgu.beuo).</summary>
+    public const string Hli = "hli";
+
+    /// <summary>C→S: a preset's spell moved, { f1 from, f2 preset, f3 to } (fgu.beup).</summary>
+    public const string Hkw = "hkw";
+
+    /// <summary>C→S, empty: the personalization tab closed (TaxCollectorPersonalization.OnDisable).</summary>
+    public const string Hkl = "hkl";
+
+    /// <summary>S→C: one's tax collectors collected or beaten while away, f1 each (fgv.bexb).</summary>
+    public const string Hkx = "hkx";
+
+    // ─── Prisms (see PrismProtocol) ─────────────────────────────────────────────
+
+    /// <summary>S→C: a prism placed or changed, f2 its lhm (fgv.bewq).</summary>
+    public const string Ifa = "ifa";
+
+    /// <summary>S→C: a prism gone, f1 its subarea (fgv.bewt).</summary>
+    public const string Iew = "iew";
+
+    /// <summary>S→C: one of the alliance's prisms attacked, f1 its lhm (fgv.bewo).</summary>
+    public const string Iex = "iex";
+
+    /// <summary>S→C: a prism's fight over, f1 how and f2 its lhm (fgv.bewp).</summary>
+    public const string Iev = "iev";
+
+    /// <summary>C→S, empty: attack the prism of the map (the prism's menu, dqt).</summary>
+    public const string Iez = "iez";
+
+    /// <summary>C→S: the prism's teleport list (the prism's menu, dqv).</summary>
+    public const string Ifd = "ifd";
 
     /// <summary>Unidentified. 1 use in the emulator.</summary>
     public const string Mes = "mes";

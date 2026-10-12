@@ -221,8 +221,10 @@ namespace Jondo.Unity.Server.Managers
                               $"{_templates.Count} templates.");
         }
 
-        /// <summary>The maps that have some NPC placed.</summary>
         /// <summary>
+        /// Seeds the NPCs that Ankama places around the world, through the content layers.
+        /// </summary>
+        /// <remarks>
         /// The world's NPCs, with the cell and the orientation they had on Ankama's server.
         ///
         /// They are not placed by eye. Each time the player entered a map, the real server
@@ -240,11 +242,7 @@ namespace Jondo.Unity.Server.Managers
         /// If a map already had NPCs seeded from NpcSpawns —the Amakna zaap one, with our
         /// sellers— it is left as it is and nothing is added to it. In the captures that map does not have
         /// a single NPC, so today nothing is overwritten, but the rule holds for the day it does.
-        /// </summary>
-        /// <summary>
-        /// Seeds the NPCs that Ankama places around the world, through the content layers.
-        /// </summary>
-        /// <remarks>
+        ///
         /// This used to read datos/npcs_reales.json straight off the disk. It now goes through
         /// NpcSpawnContent, which merges that file — the measured layer, 422 placements read off
         /// the captures — with content/npcs/spawns.json, the authored one. Same placements, plus
@@ -433,6 +431,7 @@ namespace Jondo.Unity.Server.Managers
             Console.WriteLine($"[Dreams] NPC {npcId} placed on map {mapId}, cell {cell}.");
         }
 
+        /// <summary>The maps that have some NPC placed.</summary>
         public static IEnumerable<long> Maps => _byMap.Keys;
 
         /// <summary>Every NPC placed in the world, map by map.</summary>
@@ -448,11 +447,11 @@ namespace Jondo.Unity.Server.Managers
         public static IReadOnlyList<Spawn> Of(long mapId)
             => _byMap.TryGetValue(mapId, out var here) ? here : (IReadOnlyList<Spawn>)Array.Empty<Spawn>();
 
-        /// <summary>Who the negative the client has just clicked is.</summary>
         /// <summary>The NPCs on a map. Empty if there are none.</summary>
         public static IReadOnlyList<Spawn> OnMap(long mapId)
             => _byMap.TryGetValue(mapId, out var here) ? here : (IReadOnlyList<Spawn>)Array.Empty<Spawn>();
 
+        /// <summary>Who the negative the client has just clicked is.</summary>
         public static Spawn? Find(long mapId, long contextualId)
         {
             if (!_byMap.TryGetValue(mapId, out var here)) return null;
@@ -560,15 +559,14 @@ namespace Jondo.Unity.Server.Managers
         public static IEnumerable<Template> Templates => _templates.Values;
 
         /// <summary>
+        /// An NPC's look, which can be SEVERAL with a condition each.
+        /// </summary>
+        /// <remarks>
         /// The look in the client's own notation: "{bones|skins|colours|scales}".
         ///
         /// Each slot can carry several comma-separated numbers, and almost all go empty: of
         /// the fifty-six NPCs of the capture none carries skins and only five carry colours.
-        /// </summary>
-        /// <summary>
-        /// An NPC's look, which can be SEVERAL with a condition each.
-        /// </summary>
-        /// <remarks>
+        ///
         /// Forty-eight templates of the 6,467 bring the look written as a comma-separated
         /// list, each one with its criterion behind a dollar sign:
         ///

@@ -30,7 +30,6 @@ namespace Jondo.Unity.Server
         public static string CharacterName { get => S.CharacterName; set => S.CharacterName = value; }
         public static int CharacterLevel { get => S.CharacterLevel; set => S.CharacterLevel = value; }
         public static int Breed { get => S.Breed; set => S.Breed = value; }
-        public static int Sex { get => S.Sex; set => S.Sex = value; }
         public static byte[]? PlayerActorDetails { get => S.PlayerActorDetails; set => S.PlayerActorDetails = value; }
         public static byte[]? LookBytes { get => S.LookBytes; set => S.LookBytes = value; }
 
@@ -74,12 +73,8 @@ namespace Jondo.Unity.Server
         public static List<PlayerItem> GetInventoryCopy() => S.GetInventoryCopy();
         public static void SetInventory(List<PlayerItem> items) => S.SetInventory(items);
         public static void AddInventoryItem(PlayerItem item) => S.AddInventoryItem(item);
-        public static void ClearInventory() => S.ClearInventory();
         public static PlayerItem? GetInventoryItem(long uid) => S.GetInventoryItem(uid);
         public static Dictionary<long, EquippedItemInfo> GetEquippedItemsCopy() => S.GetEquippedItemsCopy();
-        public static void SetEquippedItem(long uid, EquippedItemInfo info) => S.SetEquippedItem(uid, info);
-        public static void RemoveEquippedItem(long uid) => S.RemoveEquippedItem(uid);
-        public static void ClearEquippedItems() => S.ClearEquippedItems();
     }
 
     public class PlayerItem

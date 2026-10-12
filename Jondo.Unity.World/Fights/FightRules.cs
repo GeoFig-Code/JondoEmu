@@ -16,19 +16,19 @@
     /// for the koliseo touches one class instead of five methods.
     ///
     /// <code>
-    ///                       ContraMonstruos   Desafío   Koliseo   Entrenamiento
-    ///   HayRetos                   yes          no        no          no
-    ///   RelojDeColocación        45.0 s          —      59.2 s      45.0 s
-    ///   TipoDelKam                   4           0         7           4
-    ///   KaaConCuentaAtrás          yes          no        yes         yes
-    ///   ReparteBotín               yes          no        no          no
-    ///   PagaElKoliseo               no          no        yes         no
-    ///   BorraElGrupoAlGanar        yes          no        no          no
-    ///   AvanzaDeSala               yes          no        no          no
-    ///   DefeatCosts                yes          no        no          no
+    ///                       ContraMonstruos   Desafío   Koliseo   Entrenamiento   Recaudador
+    ///   HayRetos                   yes          no        no          no             no
+    ///   RelojDeColocación        45.0 s          —      59.2 s      45.0 s         45.0 s
+    ///   TipoDelKam                   4           0         7           4              5
+    ///   KaaConCuentaAtrás          yes          no        yes         yes            yes
+    ///   ReparteBotín               yes          no        no          no             no
+    ///   PagaElKoliseo               no          no        yes         no             no
+    ///   BorraElGrupoAlGanar        yes          no        no          no             no
+    ///   AvanzaDeSala               yes          no        no          no             no
+    ///   DefeatCosts                yes          no        no          no            yes
     /// </code>
     ///
-    /// The numbers are not chosen: 4, 0 and 7 are the kam's f2 in the captures, and 592
+    /// The numbers are not chosen: 4, 0, 7 and 5 are the kam's f2 in the captures, and 592
     /// is the koliseo kaa's f5.
     /// </remarks>
     public abstract class FightRules
@@ -104,6 +104,59 @@
         /// the damage dealt, so losing it costs nothing.
         /// </summary>
         public static readonly FightRules GigalodonEscape = new Gigalodon();
+
+        /// <summary>
+        /// Attacking an alliance's tax collector: its members may come to defend it while the
+        /// placement lasts, and what the attackers win is the tax collector's bag, not a loot table.
+        /// </summary>
+        public static readonly FightRules ContraRecaudador = new Recaudador();
+
+        /// <summary>
+        /// Attacking an alliance's prism: its members may come to defend it while the placement
+        /// lasts, and nothing is won but the prism falling.
+        /// </summary>
+        public static readonly FightRules ContraPrisma = new Prisma();
+
+        /// <summary>
+        /// The kam's type 9: the client's fight types draw 1, 5 and 9 with the same icon
+        /// (SpectatorUi.GetFightTypeIcon), the aggression, the tax collector's measured 5 and the
+        /// prism's, in the order of its fight type enum. No prism fight is captured.
+        /// </summary>
+        private sealed class Prisma : FightRules
+        {
+            public override bool HayRetos => false;
+            public override int RelojDeColocacion => 450;
+            public override int TipoDelKam => 9;
+            public override bool EnfrenteHayMonstruos => true;
+            public override bool ReparteBotin => false;
+            public override bool PagaElKoliseo => false;
+            public override bool BorraElGrupoAlGanar => false;
+            public override bool AvanzaDeSala => false;
+            public override bool DefeatCosts => true;
+            public override string Nombre => "against a prism";
+        }
+
+        /// <summary>
+        /// Measured in «atacar a recaudador y perder»: the kam is type 5 and the kaa carries the
+        /// usual countdown, 443 tenths a moment after it opened; and no challenge opcode comes out.
+        /// The tax collector is not a group of the spawner, so nothing is removed or put back on
+        /// winning: the tax collector's own code takes it off its map. Losing costs as against
+        /// monsters -- the client's help on defeats (Translations 1156704) excepts only challenges
+        /// and the Koliseo.
+        /// </summary>
+        private sealed class Recaudador : FightRules
+        {
+            public override bool HayRetos => false;
+            public override int RelojDeColocacion => 450;
+            public override int TipoDelKam => 5;
+            public override bool EnfrenteHayMonstruos => true;
+            public override bool ReparteBotin => false;
+            public override bool PagaElKoliseo => false;
+            public override bool BorraElGrupoAlGanar => false;
+            public override bool AvanzaDeSala => false;
+            public override bool DefeatCosts => true;
+            public override string Nombre => "against a tax collector";
+        }
 
         private sealed class Gigalodon : FightRules
         {

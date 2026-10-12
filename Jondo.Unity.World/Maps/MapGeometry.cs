@@ -173,43 +173,6 @@ namespace Jondo.Unity.World.Maps
             return true;
         }
 
-        /// <summary>
-        /// Cells travelled through by a pushed target (or a pulled one, with a negative distance).
-        /// The displacement follows the straight line from caster to target and stops at the first
-        /// obstacle. Returns the path starting at the target's current cell; if it cannot move,
-        /// that cell is the only entry.
-        /// </summary>
-        public static List<int> ComputePush(int casterCell, int targetCell, int distance,
-                                            HashSet<int> walkable, HashSet<int> occupied)
-        {
-            var path = new List<int> { targetCell };
-            if (distance == 0 || !IsValid(casterCell) || !IsValid(targetCell) || casterCell == targetCell)
-                return path;
-
-            int dx = PointX[targetCell] - PointX[casterCell];
-            int dy = PointY[targetCell] - PointY[casterCell];
-
-            // A single direction out of the four: the axis along which the two are furthest apart.
-            int stepX = 0, stepY = 0;
-            if (Math.Abs(dx) >= Math.Abs(dy)) stepX = Math.Sign(dx);
-            else stepY = Math.Sign(dy);
-            if (distance < 0) { stepX = -stepX; stepY = -stepY; }
-
-            int steps = Math.Abs(distance);
-            int x = PointX[targetCell], y = PointY[targetCell];
-            for (int i = 0; i < steps; i++)
-            {
-                x += stepX; y += stepY;
-                int next = PointToCell(x, y);
-                if (next < 0) break;
-                if (walkable != null && !walkable.Contains(next)) break;
-                if (occupied != null && occupied.Contains(next)) break;
-                path.Add(next);
-            }
-
-            return path;
-        }
-
         public static List<int> FindShortestPath(int startCell, int targetCell, HashSet<int> walkableCells = null, HashSet<int> occupiedCells = null)
         {
             if (startCell == targetCell) return new List<int> { startCell };

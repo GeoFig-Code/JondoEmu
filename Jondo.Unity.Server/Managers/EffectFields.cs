@@ -42,8 +42,6 @@ namespace Jondo.Unity.Server.Managers
         private static readonly Dictionary<int, (int Category, bool UseDice)> _kind =
             new Dictionary<int, (int, bool)>();
 
-        public static int Count => _fields.Count;
-
         /// <summary>The weapon damage effects, which are the ones that travel as a range.</summary>
         private const int WeaponDamageCategory = 2;
 
@@ -156,6 +154,20 @@ namespace Jondo.Unity.Server.Managers
 
         private static long OnlyNonZero(long value, long diceNum, long diceSide)
             => value != 0 ? value : (diceNum != 0 ? diceNum : diceSide);
+
+        /// <summary>
+        /// Whether an item made from its template keeps the effect's three numbers whole: the compound
+        /// ones the captures show travelling as f6 with all three, not rolled. A job scroll's 614 is
+        /// «f6 { f1: 100, f3: 28 }», the farmer's job in its third number; a bag's 209 «f6 { f1: the item,
+        /// f3: how many }»; a soul stone's 621 «f6 { f2: the grade, f3: the monster }» -- each its
+        /// template's numbers as they are.
+        /// </summary>
+        public static bool TravelsWhole(int effect)
+            => TravelsWhole(_fields.TryGetValue(effect, out int field) ? field : NoValue,
+                            _kind.TryGetValue(effect, out var kind) && kind.UseDice);
+
+        /// <summary>The same rule, on the learnt field and whether the effect is rolled.</summary>
+        internal static bool TravelsWhole(int learnedField, bool rolled) => learnedField == AsDice && !rolled;
 
         /// <summary>
         /// What this effect adds to the sheet. Only those travelling as a loose number or as a range count:

@@ -81,6 +81,9 @@ namespace Jondo.Unity.Server.Managers
         /// "E519" attached, only if he does NOT have or DOES have that state.</summary>
         public string TargetMask { get; set; } = "";
 
+        /// <summary>The cells a ';' zone names, map cells; empty for every other shape.</summary>
+        public IReadOnlyList<int> CeldasFijas { get; init; } = Array.Empty<int>();
+
         /// <summary>
         /// The SHAPE of the zone, which is a letter stored as its code: 'P' a point, 'C' a
         /// circle, 'X' a cross, 'L' a line... and <see cref="Tamano"/> is its radius or its length.
@@ -89,9 +92,6 @@ namespace Jondo.Unity.Server.Managers
         /// Ojo de Topo showed the preview over the two pious and then did nothing
         /// to the second.
         /// </summary>
-        /// <summary>The cells a ';' zone names, map cells; empty for every other shape.</summary>
-        public IReadOnlyList<int> CeldasFijas { get; init; } = Array.Empty<int>();
-
         public int Forma { get; init; } = 'P';
         public int Tamano { get; init; } = 1;
 

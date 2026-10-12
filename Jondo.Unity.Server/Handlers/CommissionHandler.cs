@@ -32,8 +32,6 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>One of the two at a time: both of them write here, each from their own connection.</summary>
         public SemaphoreSlim Gate { get; } = new SemaphoreSlim(1, 1);
-
-        public long Other(long me) => me == CrafterId ? CustomerId : CrafterId;
     }
 
     /// <summary>
@@ -76,8 +74,6 @@ namespace Jondo.Unity.Server.Handlers
         {
             using (SessionContext.Push(session)) return action();
         }
-
-        public static Commission? Of(GameSession session) => session.State.Commission;
 
         // ─── Invitation ─────────────────────────────────────────────────────────────────────
 

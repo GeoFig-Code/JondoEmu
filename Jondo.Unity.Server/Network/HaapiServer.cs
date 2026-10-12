@@ -9,7 +9,6 @@ namespace Jondo.Unity.Server.Network
     public static class HaapiServer
     {
         private static HttpListener? _listener;
-        private static Task? _listenTask;
         private static bool _isRunning;
 
         public static void Start(int port)
@@ -31,7 +30,7 @@ namespace Jondo.Unity.Server.Network
 
             Console.WriteLine($"[+] HAAPI HTTP Server listening on port {port}");
 
-            _listenTask = Task.Run(async () =>
+            _ = Task.Run(async () =>
             {
                 while (_isRunning && _listener != null)
                 {

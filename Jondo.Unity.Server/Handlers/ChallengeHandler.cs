@@ -53,7 +53,9 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>How many are chosen in a normal fight. In a dungeon it is two.</summary>
         private const int NormalCount = 1;
 
-        private static readonly Random _dado = new Random();
+        /// <summary>The shared die: several fights and sessions draw from it at once, and a plain
+        /// Random used from two threads breaks for good and draws zeros.</summary>
+        private static readonly Random _dado = Random.Shared;
 
         /// <summary>
         /// The group's level, which is what decides whether a challenge can be offered: the sum of the

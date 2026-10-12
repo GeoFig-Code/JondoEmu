@@ -643,9 +643,9 @@ The aura id also travels in `f9` of the appearance body inside `lxo` and `lyt` â
 which is how it was identified.
 
 **Known gap.** `AppearanceHandler.AuraAsync` echoes the id in `lym` and stops there; it does not
-attach binding point 6 to the look, and it does not fill `f9`. `Cosmetics.AuraBones` is loaded and
-currently unused. The wearer sees their aura because the client resolves the id locally; other
-players would not.
+attach binding point 6 to the look, and it does not fill `f9`. `Cosmetics` loads the auras' bones
+and nothing reads them yet. The wearer sees their aura because the client resolves the id locally;
+other players would not.
 
 ---
 

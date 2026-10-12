@@ -42,9 +42,6 @@ namespace Jondo.Unity.Server.Managers
 
         private static IReadOnlyDictionary<int, int> _tiers;
 
-        /// <summary>For the tests: the tier spells by light, instead of the database's.</summary>
-        internal static void UseTiers(IReadOnlyDictionary<int, int> tiers) => _tiers = tiers;
-
         /// <summary>The tier spells by the light they answer to, read once from the dispatcher.</summary>
         public static IReadOnlyDictionary<int, int> Tiers => _tiers ??= ReadTiers();
 

@@ -747,8 +747,5 @@ namespace Jondo.Unity.Server.Managers
             quantity = reader.IsDBNull(1) ? 1 : reader.GetInt32(1);
             return reader.GetInt64(0);
         }
-
-        /// <summary>Whether this uid is one of this account's bank stacks.</summary>
-        public static bool Holds(long accountId, long uid) => ItemsOf(accountId).Any(i => i.Uid == uid);
     }
 }

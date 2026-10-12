@@ -551,7 +551,7 @@ the `kkr` branch, and `joi`, `jrb`, `jub`, `jyk`, `jyz` and `jza` the fight bran
 Removing a whole branch therefore retires more than the one opcode that names it.
 
 **Seventy-seven are never dispatched.** They are constants, builders nothing calls, protobuf
-descriptors in `TypeRegistry`, and entries in the label table of `NetworkMessage.cs`. `bcy`, `bvr`
+descriptors in the old `TypeRegistry` (gone since), and entries in the label table of `NetworkMessage.cs`. `bcy`, `bvr`
 and `csm` come from `CommandHandler` (admin commands, not client protocol). `kof` is tested only in
 `PcapParser`, which reads capture files and is not part of the live dispatch. `xxx` is not an opcode
 at all — it is the placeholder in a documentation comment reading `type.ankama.com/xxx`.

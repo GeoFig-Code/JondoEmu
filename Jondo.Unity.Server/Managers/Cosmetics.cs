@@ -114,16 +114,6 @@ namespace Jondo.Unity.Server.Managers
         private static volatile bool _loaded;
         private static readonly object _lock = new object();
 
-        public static int Count { get { Ensure(); return _catalogue.Count; } }
-        public static int KnownLooks
-        {
-            get { Ensure(); return _skins.Count + _mounts.Count + _pets.Count + _variants.Count; }
-        }
-        public static IEnumerable<KeyValuePair<int, Piece>> All { get { Ensure(); return _catalogue; } }
-        /// <summary>The titles and ornaments the real server accepted in the captures.</summary>
-        public static IReadOnlyList<int> MeasuredTitles { get { Ensure(); return _titles; } }
-        public static IReadOnlyList<int> MeasuredOrnaments { get { Ensure(); return _ornaments; } }
-
         /// <summary>
         /// Reads the two files, once per run. Kept as a separate call so the server can pay for it
         /// at boot, with its log line, instead of on whoever happens to equip something first.
@@ -384,7 +374,6 @@ namespace Jondo.Unity.Server.Managers
         // Every reader goes through Ensure first. Before, a caller that had not thought to call
         // Initialize got empty tables and a character with nothing on -- silently, which is why
         // the launcher shot tests had to remember to initialize by hand.
-        public static bool Exists(int gid) { Ensure(); return _catalogue.ContainsKey(gid); }
 
         /// <summary>Every appearance mount and pet-mount whose look is measured.</summary>
         public static IReadOnlyCollection<PieceLook> MountLooks { get { Ensure(); return _mounts.Values; } }
@@ -465,13 +454,6 @@ namespace Jondo.Unity.Server.Managers
         {
             Ensure();
             return _pets.TryGetValue(gid, out var p) ? p : null;
-        }
-
-        /// <summary>An aura's bones, or zero.</summary>
-        public static int AuraBones(int auraId)
-        {
-            Ensure();
-            return _auras.TryGetValue(auraId, out int b) ? b : 0;
         }
 
         /// <summary>A type 5 appearance's bones, or zero if it is not compatible.</summary>

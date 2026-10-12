@@ -135,7 +135,6 @@ namespace Jondo.Unity.Server.Managers
         public static int Skill { get; private set; }
 
         public static IReadOnlyCollection<House> All => _houses.Values;
-        public static int CounterCount => _counters.Count;
 
         public static void Initialize()
         {
@@ -233,12 +232,5 @@ namespace Jondo.Unity.Server.Managers
                 if (TryGetByElement(element.Id, out var house)) yield return (element, house);
             }
         }
-
-        /// <summary>For tests: a marketplace declared by hand.</summary>
-        internal static void Declare(House house) => _houses[house.Id] = house;
-
-        /// <summary>For tests: a counter declared by hand.</summary>
-        internal static void DeclareCounter(int elementId, int houseId)
-            => _counters[elementId] = new Counter { ElementId = elementId, HouseId = houseId, Source = "test" };
     }
 }

@@ -1005,7 +1005,9 @@ namespace Jondo.Unity.Server.Handlers
             return vivos.Count == 0 ? null : vivos[_dado.Next(vivos.Count)];
         }
 
-        private static readonly Random _dado = new Random();
+        /// <summary>The shared die: several fights and sessions draw from it at once, and a plain
+        /// Random used from two threads breaks for good and draws zeros.</summary>
+        private static readonly Random _dado = Random.Shared;
 
         /// <summary>Is that fighter pointed out for that challenge?</summary>
         private static bool EsElSenalado(FightInstance fight, int reto, long quien)

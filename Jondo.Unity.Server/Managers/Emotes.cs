@@ -26,8 +26,6 @@ namespace Jondo.Unity.Server.Managers
         private static volatile EmoteCatalogue? _book;
         private static readonly object _loadLock = new object();
 
-        public static EmoteCatalogue? Book => _book;
-
         /// <summary>Reads the emote table. Once, at startup.</summary>
         public static void Load()
         {
@@ -41,11 +39,17 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        /// <summary>Puts this character's emotes on: the starting four and whatever was learned.</summary>
+        /// <summary>
+        /// Puts this character's emotes on: the starting four and whatever was learned -- and, for a
+        /// character of an administrator's account, every attitude of the game, by the server owner's
+        /// rule. The role is read from the database, as for the administration spells
+        /// (<see cref="AdminSpells"/>), never from anything the client sends.
+        /// </summary>
         public static void LoadFrom(long characterId)
         {
             var owned = new HashSet<int>(EmoteRules.Starting);
             owned.UnionWith(DatabaseManager.LoadEmotes(characterId));
+            if (_book != null && AdminSpells.Para(SessionContext.Current.AccountId)) owned.UnionWith(_book.Ids);
 
             var state = SessionContext.State;
             state.Emotes = owned;

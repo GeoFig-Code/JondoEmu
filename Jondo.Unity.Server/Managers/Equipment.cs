@@ -78,7 +78,6 @@ namespace Jondo.Unity.Server.Managers
 
         private static Dictionary<long, Item> Items => SessionContext.State.EquipmentItems;
 
-        public static int Count => Items.Count;
         public static System.Collections.Generic.IEnumerable<Item> All => Items.Values;
         public static int Worn
         {
@@ -91,6 +90,13 @@ namespace Jondo.Unity.Server.Managers
         }
 
         public static bool IsWorn(int position) => position >= 0 && position <= LastWornSlot;
+
+        /// <summary>
+        /// Whether what is in a slot adds to the sheet: the worn ones, and the bonus slots past them
+        /// -- a candy's boost food, a blessing (<see cref="BonusSlots"/>) --, which are worn by nobody
+        /// and drawn on nobody but count all the same.
+        /// </summary>
+        public static bool CountsOnSheet(int position) => IsWorn(position) || BonusSlots.IsBonusSlot(position);
 
         /// <summary>What a character is wearing, by slot, for ANY character and not only for the
         /// one playing.</summary>
@@ -205,14 +211,6 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        /// <summary>
-        /// An item's effects, as the database stores them.
-        ///
-        ///   [[effect, value, diceNum, diceSide], ...]
-        ///
-        /// The old two-number shape, [[effect, value]], is also accepted, which is how they were stored before
-        /// it was known that the protocol distinguishes between value and dice.
-        /// </summary>
         /// <summary>The effects of a stored string, loose, with no item to hold them.</summary>
         public static IReadOnlyList<ItemEffect> ParseEffects(string? json)
         {
@@ -223,6 +221,14 @@ namespace Jondo.Unity.Server.Managers
             return prestado.Effects;
         }
 
+        /// <summary>
+        /// An item's effects, as the database stores them.
+        ///
+        ///   [[effect, value, diceNum, diceSide], ...]
+        ///
+        /// The old two-number shape, [[effect, value]], is also accepted, which is how they were stored before
+        /// it was known that the protocol distinguishes between value and dice.
+        /// </summary>
         private static void ReadEffects(string json, Item item)
         {
             try
@@ -425,7 +431,8 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// What everything worn adds up to, characteristic by characteristic. An effect that takes
+        /// What everything worn adds up to, characteristic by characteristic, with what sits in the
+        /// bonus slots (<see cref="CountsOnSheet"/>). An effect that takes
         /// away counts as taking away: BonusType is -1 on those and the value it carries is
         /// positive, so adding it blind turns a penalty into a bonus.
         ///
@@ -440,8 +447,8 @@ namespace Jondo.Unity.Server.Managers
 
             foreach (var item in Items.Values)
             {
-                if (!IsWorn(item.Position)) continue;
-                wornTemplates.Add(item.Template);
+                if (!CountsOnSheet(item.Position)) continue;
+                if (IsWorn(item.Position)) wornTemplates.Add(item.Template);
 
                 foreach (var entry in item.Effects)
                 {
@@ -624,7 +631,7 @@ namespace Jondo.Unity.Server.Managers
         /// </remarks>
         public static void RememberWorn(long uid, int position, IEnumerable<ItemEffect>? effects)
         {
-            if (!IsWorn(position))
+            if (!CountsOnSheet(position))
             {
                 SessionContext.State.RemoveEquippedItem(uid);
                 return;
