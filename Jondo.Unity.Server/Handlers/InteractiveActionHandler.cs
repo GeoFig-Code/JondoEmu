@@ -158,6 +158,9 @@ namespace Jondo.Unity.Server.Handlers
                     await GuildRaidLuminarium.PressAsync(stream, GameState.CharacterId, mapId,
                                                          interactive.Element.Id, action.SkillId);
                     break;
+                case InteractiveActionKind.PaddockGate:
+                    await BreedingHandler.UseGateAsync(stream, interactive.Element.Id, action.SkillId);
+                    break;
                 case InteractiveActionKind.RaidStatue:
                     await GuildRaidExecrabe.PressAsync(stream, GameState.CharacterId, mapId,
                                                        interactive.Element.Id, action.SkillId);

@@ -2008,6 +2008,32 @@ public static class Op
     /// </summary>
     public const string Ltm = "ltm";
 
+    // ─── Breeding, read off the client (eqa sends, eqc handles); no capture holds them ───
+
+    /// <summary>Opens the breeding window on a paddock: { f1 the paddock (1 to 6), f2 }. Handled by eqc, it raises ceb.</summary>
+    public const string Hsb = "hsb";
+
+    /// <summary>The breeding window opened (BreedingUi's constructor): { f1 bool }. Answered with hql.</summary>
+    public const string Hqx = "hqx";
+
+    /// <summary>The breeding window's content: { f1 state, f2 the paddock's content (hta), f3 the stable, ride id → ride }.</summary>
+    public const string Hql = "hql";
+
+    /// <summary>The paddock tab shown (PaddockUi.OnEnable): { f1 { f1 bool, f2 string } }.</summary>
+    public const string Hue = "hue";
+
+    /// <summary>The paddock tab hidden (PaddockUi.OnDisable): empty.</summary>
+    public const string Hqq = "hqq";
+
+    /// <summary>A paddock picked in the paddock tab: { f1 {}, f2 the paddock }.</summary>
+    public const string Hrl = "hrl";
+
+    /// <summary>The paddocks a player may open: { f1 map paddock → open }. Raises cef.</summary>
+    public const string Hus = "hus";
+
+    /// <summary>A paddock's content: { oneof { f1 { f1 state, f2 content (hta) }, f2 error }, f3 the paddock, f4 }. Raises ceh.</summary>
+    public const string Hrc = "hrc";
+
     /// <summary>Part of the 3.6.4.3 final burst that ibt fires (icg is sent three times). It does not appear in any of the 242 captures.</summary>
     public const string Klp = "klp";
 

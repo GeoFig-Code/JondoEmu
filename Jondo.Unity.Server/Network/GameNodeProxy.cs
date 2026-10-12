@@ -709,6 +709,15 @@ namespace Jondo.Unity.Server.Network
                     // Leaving the guild.
                     await Handlers.GuildHandler.LeaveAsync(stream, payload);
                 }
+                // The breeding window: see Handlers.BreedingHandler.
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hqx)))
+                    await Handlers.BreedingHandler.WindowOpenedAsync(stream);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hue)))
+                    await Handlers.BreedingHandler.PaddockTabShownAsync(stream);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hrl)))
+                    await Handlers.BreedingHandler.PaddockPickedAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hqq)))
+                    Handlers.BreedingHandler.PaddockTabHidden();
                 // The alliance: see Handlers.AllianceHandler.
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Mdk)))
                     await Handlers.AllianceHandler.CreateAsync(stream, payload);

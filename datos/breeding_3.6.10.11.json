@@ -1,0 +1,9661 @@
+{
+ "version": "3.6.10.11",
+ "gateType": 120,
+ "paddocks": [
+  {
+   "id": 1,
+   "name": "Cercado de principiante",
+   "skill": 423,
+   "minLevel": 1,
+   "mapId": 73532673,
+   "element": 540843,
+   "cell": 89
+  },
+  {
+   "id": 2,
+   "name": "Cercado de aspirante",
+   "skill": 424,
+   "minLevel": 40,
+   "mapId": 73533185,
+   "element": 540844,
+   "cell": 134
+  },
+  {
+   "id": 3,
+   "name": "Cercado de aprendiz",
+   "skill": 425,
+   "minLevel": 80,
+   "mapId": 73533697,
+   "element": 540845,
+   "cell": 103
+  },
+  {
+   "id": 4,
+   "name": "Cercado de iniciado",
+   "skill": 426,
+   "minLevel": 120,
+   "mapId": 73533441,
+   "element": 540846,
+   "cell": 128
+  },
+  {
+   "id": 5,
+   "name": "Cercado de veterano",
+   "skill": 427,
+   "minLevel": 160,
+   "mapId": 73532929,
+   "element": 540847,
+   "cell": 468
+  },
+  {
+   "id": 6,
+   "name": "Cercado de maestro",
+   "skill": 428,
+   "minLevel": 200,
+   "mapId": 73532417,
+   "element": 540848,
+   "cell": 405
+  }
+ ],
+ "paddockGauges": [
+  {
+   "id": 1,
+   "name": "SLAPPER",
+   "tiers": [
+    {
+     "max": 40000,
+     "consumptionTick": 10
+    },
+    {
+     "max": 70000,
+     "consumptionTick": 20
+    },
+    {
+     "max": 90000,
+     "consumptionTick": 30
+    },
+    {
+     "max": 100000,
+     "consumptionTick": 40
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "name": "PATTER",
+   "tiers": [
+    {
+     "max": 40000,
+     "consumptionTick": 10
+    },
+    {
+     "max": 70000,
+     "consumptionTick": 20
+    },
+    {
+     "max": 90000,
+     "consumptionTick": 30
+    },
+    {
+     "max": 100000,
+     "consumptionTick": 40
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "name": "BLASTER",
+   "tiers": [
+    {
+     "max": 40000,
+     "consumptionTick": 10
+    },
+    {
+     "max": 70000,
+     "consumptionTick": 20
+    },
+    {
+     "max": 90000,
+     "consumptionTick": 30
+    },
+    {
+     "max": 100000,
+     "consumptionTick": 40
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "name": "DRINKING_TROUGH",
+   "tiers": [
+    {
+     "max": 40000,
+     "consumptionTick": 10
+    },
+    {
+     "max": 70000,
+     "consumptionTick": 20
+    },
+    {
+     "max": 90000,
+     "consumptionTick": 30
+    },
+    {
+     "max": 100000,
+     "consumptionTick": 40
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "name": "DRAGO_BUTT",
+   "tiers": [
+    {
+     "max": 40000,
+     "consumptionTick": 10
+    },
+    {
+     "max": 70000,
+     "consumptionTick": 20
+    },
+    {
+     "max": 90000,
+     "consumptionTick": 30
+    },
+    {
+     "max": 100000,
+     "consumptionTick": 40
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "name": "FEEDER",
+   "tiers": [
+    {
+     "max": 40000,
+     "consumptionTick": 10
+    },
+    {
+     "max": 70000,
+     "consumptionTick": 20
+    },
+    {
+     "max": 90000,
+     "consumptionTick": 30
+    },
+    {
+     "max": 100000,
+     "consumptionTick": 40
+    }
+   ]
+  }
+ ],
+ "rides": [
+  {
+   "id": 3,
+   "name": "Dragopavo ébano",
+   "species": 1,
+   "generation": 3,
+   "geneticWeight": 90,
+   "item": 33020,
+   "extraction": 3,
+   "senileExtraction": 1,
+   "tokens": 4,
+   "breedingXp": 90,
+   "parents": [
+    [
+     33,
+     46
+    ]
+   ],
+   "children": [
+    [
+     16,
+     9
+    ],
+    [
+     10,
+     12
+    ],
+    [
+     20,
+     34
+    ],
+    [
+     18,
+     42
+    ],
+    [
+     21,
+     50
+    ],
+    [
+     17,
+     51
+    ],
+    [
+     15,
+     52
+    ],
+    [
+     22,
+     53
+    ],
+    [
+     19,
+     54
+    ],
+    [
+     23,
+     79
+    ]
+   ]
+  },
+  {
+   "id": 9,
+   "name": "Dragopavo ébano y marfil",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33023,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     3,
+     16
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 10,
+   "name": "Dragopavo pelirrojo",
+   "species": 1,
+   "generation": 1,
+   "geneticWeight": 90,
+   "item": 33063,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 1,
+   "breedingXp": 30,
+   "parents": [],
+   "children": [
+    [
+     16,
+     11
+    ],
+    [
+     20,
+     38
+    ],
+    [
+     18,
+     46
+    ],
+    [
+     21,
+     57
+    ],
+    [
+     17,
+     62
+    ],
+    [
+     15,
+     69
+    ],
+    [
+     22,
+     70
+    ],
+    [
+     19,
+     71
+    ],
+    [
+     23,
+     84
+    ],
+    [
+     3,
+     12
+    ]
+   ]
+  },
+  {
+   "id": 11,
+   "name": "Dragopavo marfil y pelirrojo",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33045,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     10,
+     16
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 12,
+   "name": "Dragopavo ébano y pelirrojo",
+   "species": 1,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33026,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     3,
+     10
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 15,
+   "name": "Dragopavo turquesa",
+   "species": 1,
+   "generation": 7,
+   "geneticWeight": 90,
+   "item": 33065,
+   "extraction": 7,
+   "senileExtraction": 1,
+   "tokens": 60,
+   "breedingXp": 210,
+   "parents": [
+    [
+     53,
+     76
+    ]
+   ],
+   "children": [
+    [
+     20,
+     39
+    ],
+    [
+     18,
+     47
+    ],
+    [
+     21,
+     58
+    ],
+    [
+     17,
+     63
+    ],
+    [
+     16,
+     66
+    ],
+    [
+     22,
+     72
+    ],
+    [
+     19,
+     73
+    ],
+    [
+     23,
+     85
+    ],
+    [
+     3,
+     52
+    ],
+    [
+     10,
+     69
+    ]
+   ]
+  },
+  {
+   "id": 16,
+   "name": "Dragopavo marfil",
+   "species": 1,
+   "generation": 7,
+   "geneticWeight": 90,
+   "item": 33042,
+   "extraction": 7,
+   "senileExtraction": 1,
+   "tokens": 60,
+   "breedingXp": 210,
+   "parents": [
+    [
+     65,
+     76
+    ]
+   ],
+   "children": [
+    [
+     20,
+     37
+    ],
+    [
+     18,
+     45
+    ],
+    [
+     21,
+     56
+    ],
+    [
+     17,
+     61
+    ],
+    [
+     22,
+     67
+    ],
+    [
+     19,
+     68
+    ],
+    [
+     23,
+     83
+    ],
+    [
+     3,
+     9
+    ],
+    [
+     10,
+     11
+    ],
+    [
+     15,
+     66
+    ]
+   ]
+  },
+  {
+   "id": 17,
+   "name": "Dragopavo índigo",
+   "species": 1,
+   "generation": 3,
+   "geneticWeight": 90,
+   "item": 33036,
+   "extraction": 3,
+   "senileExtraction": 1,
+   "tokens": 4,
+   "breedingXp": 90,
+   "parents": [
+    [
+     33,
+     38
+    ]
+   ],
+   "children": [
+    [
+     20,
+     36
+    ],
+    [
+     18,
+     44
+    ],
+    [
+     21,
+     55
+    ],
+    [
+     22,
+     64
+    ],
+    [
+     19,
+     65
+    ],
+    [
+     23,
+     82
+    ],
+    [
+     3,
+     51
+    ],
+    [
+     16,
+     61
+    ],
+    [
+     10,
+     62
+    ],
+    [
+     15,
+     63
+    ]
+   ]
+  },
+  {
+   "id": 18,
+   "name": "Dragopavo dorado",
+   "species": 1,
+   "generation": 1,
+   "geneticWeight": 20,
+   "item": 33011,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 1,
+   "breedingXp": 30,
+   "parents": [],
+   "children": [
+    [
+     20,
+     33
+    ],
+    [
+     21,
+     43
+    ],
+    [
+     22,
+     48
+    ],
+    [
+     19,
+     49
+    ],
+    [
+     23,
+     78
+    ],
+    [
+     3,
+     42
+    ],
+    [
+     17,
+     44
+    ],
+    [
+     16,
+     45
+    ],
+    [
+     10,
+     46
+    ],
+    [
+     15,
+     47
+    ]
+   ]
+  },
+  {
+   "id": 19,
+   "name": "Dragopavo púrpura",
+   "species": 1,
+   "generation": 5,
+   "geneticWeight": 90,
+   "item": 33050,
+   "extraction": 5,
+   "senileExtraction": 1,
+   "tokens": 15,
+   "breedingXp": 150,
+   "parents": [
+    [
+     38,
+     51
+    ]
+   ],
+   "children": [
+    [
+     20,
+     41
+    ],
+    [
+     21,
+     60
+    ],
+    [
+     22,
+     76
+    ],
+    [
+     23,
+     87
+    ],
+    [
+     18,
+     49
+    ],
+    [
+     3,
+     54
+    ],
+    [
+     17,
+     65
+    ],
+    [
+     16,
+     68
+    ],
+    [
+     10,
+     71
+    ],
+    [
+     15,
+     73
+    ]
+   ]
+  },
+  {
+   "id": 20,
+   "name": "Dragopavo almendrado",
+   "species": 1,
+   "generation": 1,
+   "geneticWeight": 90,
+   "item": 33001,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 1,
+   "breedingXp": 30,
+   "parents": [],
+   "children": [
+    [
+     21,
+     35
+    ],
+    [
+     22,
+     40
+    ],
+    [
+     23,
+     77
+    ],
+    [
+     18,
+     33
+    ],
+    [
+     3,
+     34
+    ],
+    [
+     17,
+     36
+    ],
+    [
+     16,
+     37
+    ],
+    [
+     10,
+     38
+    ],
+    [
+     15,
+     39
+    ],
+    [
+     19,
+     41
+    ]
+   ]
+  },
+  {
+   "id": 21,
+   "name": "Dragopavo esmeralda",
+   "species": 1,
+   "generation": 9,
+   "geneticWeight": 90,
+   "item": 33028,
+   "extraction": 9,
+   "senileExtraction": 1,
+   "tokens": 250,
+   "breedingXp": 270,
+   "parents": [
+    [
+     66,
+     68
+    ]
+   ],
+   "children": [
+    [
+     22,
+     59
+    ],
+    [
+     23,
+     80
+    ],
+    [
+     20,
+     35
+    ],
+    [
+     18,
+     43
+    ],
+    [
+     3,
+     50
+    ],
+    [
+     17,
+     55
+    ],
+    [
+     16,
+     56
+    ],
+    [
+     10,
+     57
+    ],
+    [
+     15,
+     58
+    ],
+    [
+     19,
+     60
+    ]
+   ]
+  },
+  {
+   "id": 22,
+   "name": "Dragopavo orquídeo",
+   "species": 1,
+   "generation": 5,
+   "geneticWeight": 90,
+   "item": 33047,
+   "extraction": 5,
+   "senileExtraction": 1,
+   "tokens": 15,
+   "breedingXp": 150,
+   "parents": [
+    [
+     46,
+     51
+    ]
+   ],
+   "children": [
+    [
+     23,
+     86
+    ],
+    [
+     20,
+     40
+    ],
+    [
+     18,
+     48
+    ],
+    [
+     3,
+     53
+    ],
+    [
+     21,
+     59
+    ],
+    [
+     17,
+     64
+    ],
+    [
+     16,
+     67
+    ],
+    [
+     10,
+     70
+    ],
+    [
+     15,
+     72
+    ],
+    [
+     19,
+     76
+    ]
+   ]
+  },
+  {
+   "id": 23,
+   "name": "Dragopavo ciruela",
+   "species": 1,
+   "generation": 9,
+   "geneticWeight": 90,
+   "item": 33052,
+   "extraction": 9,
+   "senileExtraction": 1,
+   "tokens": 250,
+   "breedingXp": 270,
+   "parents": [
+    [
+     66,
+     72
+    ]
+   ],
+   "children": [
+    [
+     20,
+     77
+    ],
+    [
+     18,
+     78
+    ],
+    [
+     3,
+     79
+    ],
+    [
+     21,
+     80
+    ],
+    [
+     17,
+     82
+    ],
+    [
+     16,
+     83
+    ],
+    [
+     10,
+     84
+    ],
+    [
+     15,
+     85
+    ],
+    [
+     22,
+     86
+    ],
+    [
+     19,
+     87
+    ]
+   ]
+  },
+  {
+   "id": 33,
+   "name": "Dragopavo almendrado y dorado",
+   "species": 1,
+   "generation": 2,
+   "geneticWeight": 20,
+   "item": 33002,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     18,
+     20
+    ]
+   ],
+   "children": [
+    [
+     46,
+     3
+    ],
+    [
+     38,
+     17
+    ]
+   ]
+  },
+  {
+   "id": 34,
+   "name": "Dragopavo almendrado y ébano",
+   "species": 1,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33003,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     3,
+     20
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 35,
+   "name": "Dragopavo almendrado y esmeralda",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33004,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     20,
+     21
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 36,
+   "name": "Dragopavo almendrado e índigo",
+   "species": 1,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33005,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     17,
+     20
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 37,
+   "name": "Dragopavo almendrado y marfil",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33006,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     16,
+     20
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 38,
+   "name": "Dragopavo almendrado y pelirrojo",
+   "species": 1,
+   "generation": 2,
+   "geneticWeight": 20,
+   "item": 33009,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     10,
+     20
+    ]
+   ],
+   "children": [
+    [
+     51,
+     19
+    ],
+    [
+     33,
+     17
+    ]
+   ]
+  },
+  {
+   "id": 39,
+   "name": "Dragopavo almendrado y turquesa",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33010,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     15,
+     20
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 40,
+   "name": "Dragopavo almendrado y orquídeo",
+   "species": 1,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33007,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     20,
+     22
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 41,
+   "name": "Dragopavo almendrado y púrpura",
+   "species": 1,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33008,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     19,
+     20
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 42,
+   "name": "Dragopavo dorado y ébano",
+   "species": 1,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33012,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     3,
+     18
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 43,
+   "name": "Dragopavo dorado y esmeralda",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33013,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     18,
+     21
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 44,
+   "name": "Dragopavo dorado e índigo",
+   "species": 1,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33014,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     17,
+     18
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 45,
+   "name": "Dragopavo dorado y marfil",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33015,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     16,
+     18
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 46,
+   "name": "Dragopavo dorado y pelirrojo",
+   "species": 1,
+   "generation": 2,
+   "geneticWeight": 20,
+   "item": 33018,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     10,
+     18
+    ]
+   ],
+   "children": [
+    [
+     51,
+     22
+    ],
+    [
+     33,
+     3
+    ]
+   ]
+  },
+  {
+   "id": 47,
+   "name": "Dragopavo dorado y turquesa",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33019,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     15,
+     18
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 48,
+   "name": "Dragopavo dorado y orquídeo",
+   "species": 1,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33016,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     18,
+     22
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 49,
+   "name": "Dragopavo dorado y púrpura",
+   "species": 1,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33017,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     18,
+     19
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 50,
+   "name": "Dragopavo ébano y esmeralda",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33021,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     3,
+     21
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 51,
+   "name": "Dragopavo ébano e índigo",
+   "species": 1,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33022,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     3,
+     17
+    ]
+   ],
+   "children": [
+    [
+     38,
+     19
+    ],
+    [
+     46,
+     22
+    ]
+   ]
+  },
+  {
+   "id": 52,
+   "name": "Dragopavo ébano y turquesa",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33027,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     3,
+     15
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 53,
+   "name": "Dragopavo ébano y orquídeo",
+   "species": 1,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33024,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     3,
+     22
+    ]
+   ],
+   "children": [
+    [
+     76,
+     15
+    ]
+   ]
+  },
+  {
+   "id": 54,
+   "name": "Dragopavo ébano y púrpura",
+   "species": 1,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33025,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     3,
+     19
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 55,
+   "name": "Dragopavo esmeralda e índigo",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33029,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     17,
+     21
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 56,
+   "name": "Dragopavo esmeralda y marfil",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33030,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     16,
+     21
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 57,
+   "name": "Dragopavo esmeralda y pelirrojo",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33033,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     10,
+     21
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 58,
+   "name": "Dragopavo esmeralda y turquesa",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33034,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     15,
+     21
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 59,
+   "name": "Dragopavo esmeralda y orquídeo",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33031,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     21,
+     22
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 60,
+   "name": "Dragopavo esmeralda y púrpura",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33032,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     19,
+     21
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 61,
+   "name": "Dragopavo índigo y marfil",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33037,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     16,
+     17
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 62,
+   "name": "Dragopavo índigo y pelirrojo",
+   "species": 1,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33040,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     10,
+     17
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 63,
+   "name": "Dragopavo índigo y turquesa",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33041,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     15,
+     17
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 64,
+   "name": "Dragopavo índigo y orquídeo",
+   "species": 1,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33038,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     17,
+     22
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 65,
+   "name": "Dragopavo índigo y púrpura",
+   "species": 1,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33039,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     17,
+     19
+    ]
+   ],
+   "children": [
+    [
+     76,
+     16
+    ]
+   ]
+  },
+  {
+   "id": 66,
+   "name": "Dragopavo marfil y turquesa",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33046,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     15,
+     16
+    ]
+   ],
+   "children": [
+    [
+     68,
+     21
+    ],
+    [
+     72,
+     23
+    ]
+   ]
+  },
+  {
+   "id": 67,
+   "name": "Dragopavo marfil y orquídeo",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33043,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     16,
+     22
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 68,
+   "name": "Dragopavo marfil y púrpura",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33044,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     16,
+     19
+    ]
+   ],
+   "children": [
+    [
+     66,
+     21
+    ]
+   ]
+  },
+  {
+   "id": 69,
+   "name": "Dragopavo turquesa y pelirrojo",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33068,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     10,
+     15
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 70,
+   "name": "Dragopavo orquídeo y pelirrojo",
+   "species": 1,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33049,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     10,
+     22
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 71,
+   "name": "Dragopavo púrpura y pelirrojo",
+   "species": 1,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33051,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     10,
+     19
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 72,
+   "name": "Dragopavo turquesa y orquídeo",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33066,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     15,
+     22
+    ]
+   ],
+   "children": [
+    [
+     66,
+     23
+    ]
+   ]
+  },
+  {
+   "id": 73,
+   "name": "Dragopavo turquesa y púrpura",
+   "species": 1,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33067,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     15,
+     19
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 76,
+   "name": "Dragopavo orquídeo y púrpura",
+   "species": 1,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33048,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     19,
+     22
+    ]
+   ],
+   "children": [
+    [
+     53,
+     15
+    ],
+    [
+     65,
+     16
+    ]
+   ]
+  },
+  {
+   "id": 77,
+   "name": "Dragopavo ciruela y almendrado",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33053,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     20,
+     23
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 78,
+   "name": "Dragopavo ciruela y dorado",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33054,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     18,
+     23
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 79,
+   "name": "Dragopavo ciruela y ébano",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33055,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     3,
+     23
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 80,
+   "name": "Dragopavo ciruela y esmeralda",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33056,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     21,
+     23
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 82,
+   "name": "Dragopavo ciruela e índigo",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33057,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     17,
+     23
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 83,
+   "name": "Dragopavo ciruela y marfil",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33058,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     16,
+     23
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 84,
+   "name": "Dragopavo ciruela y pelirrojo",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33061,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     10,
+     23
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 85,
+   "name": "Dragopavo ciruela y turquesa",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33062,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     15,
+     23
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 86,
+   "name": "Dragopavo ciruela y orquídeo",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33059,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     22,
+     23
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 87,
+   "name": "Dragopavo ciruela y púrpura",
+   "species": 1,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33060,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     19,
+     23
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 88,
+   "name": "Dragopavo con armadura",
+   "species": 1,
+   "generation": 0,
+   "geneticWeight": 20,
+   "item": 33035,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 0,
+   "parents": [],
+   "children": []
+  },
+  {
+   "id": 89,
+   "name": "Dragopavo con plumas",
+   "species": 1,
+   "generation": 0,
+   "geneticWeight": 20,
+   "item": 33000,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 0,
+   "parents": [],
+   "children": []
+  },
+  {
+   "id": 90,
+   "name": "Mulagua orquídea",
+   "species": 2,
+   "generation": 1,
+   "geneticWeight": 90,
+   "item": 33096,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 1,
+   "breedingXp": 30,
+   "parents": [],
+   "children": [
+    [
+     91,
+     107
+    ],
+    [
+     92,
+     106
+    ],
+    [
+     93,
+     104
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     96,
+     118
+    ],
+    [
+     97,
+     123
+    ],
+    [
+     98,
+     165
+    ],
+    [
+     99,
+     147
+    ],
+    [
+     100,
+     157
+    ],
+    [
+     297,
+     305
+    ],
+    [
+     298,
+     319
+    ],
+    [
+     299,
+     332
+    ],
+    [
+     300,
+     344
+    ]
+   ]
+  },
+  {
+   "id": 91,
+   "name": "Mulagua ébano",
+   "species": 2,
+   "generation": 1,
+   "geneticWeight": 90,
+   "item": 33080,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 1,
+   "breedingXp": 30,
+   "parents": [],
+   "children": [
+    [
+     92,
+     109
+    ],
+    [
+     93,
+     103
+    ],
+    [
+     94,
+     110
+    ],
+    [
+     95,
+     114
+    ],
+    [
+     96,
+     120
+    ],
+    [
+     97,
+     125
+    ],
+    [
+     98,
+     142
+    ],
+    [
+     99,
+     149
+    ],
+    [
+     100,
+     159
+    ],
+    [
+     90,
+     107
+    ],
+    [
+     297,
+     302
+    ],
+    [
+     298,
+     316
+    ],
+    [
+     299,
+     329
+    ],
+    [
+     300,
+     341
+    ]
+   ]
+  },
+  {
+   "id": 92,
+   "name": "Mulagua índigo",
+   "species": 2,
+   "generation": 1,
+   "geneticWeight": 90,
+   "item": 33088,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 1,
+   "breedingXp": 30,
+   "parents": [],
+   "children": [
+    [
+     93,
+     102
+    ],
+    [
+     96,
+     119
+    ],
+    [
+     97,
+     124
+    ],
+    [
+     98,
+     141
+    ],
+    [
+     99,
+     148
+    ],
+    [
+     100,
+     158
+    ],
+    [
+     94,
+     108
+    ],
+    [
+     95,
+     113
+    ],
+    [
+     90,
+     106
+    ],
+    [
+     91,
+     109
+    ],
+    [
+     297,
+     303
+    ],
+    [
+     298,
+     317
+    ],
+    [
+     299,
+     330
+    ],
+    [
+     300,
+     342
+    ]
+   ]
+  },
+  {
+   "id": 93,
+   "name": "Mulagua púrpura",
+   "species": 2,
+   "generation": 1,
+   "geneticWeight": 90,
+   "item": 33101,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 1,
+   "breedingXp": 30,
+   "parents": [],
+   "children": [
+    [
+     94,
+     101
+    ],
+    [
+     95,
+     111
+    ],
+    [
+     96,
+     117
+    ],
+    [
+     97,
+     122
+    ],
+    [
+     98,
+     140
+    ],
+    [
+     99,
+     146
+    ],
+    [
+     100,
+     156
+    ],
+    [
+     90,
+     104
+    ],
+    [
+     91,
+     103
+    ],
+    [
+     92,
+     102
+    ],
+    [
+     297,
+     304
+    ],
+    [
+     298,
+     318
+    ],
+    [
+     299,
+     331
+    ],
+    [
+     300,
+     343
+    ]
+   ]
+  },
+  {
+   "id": 94,
+   "name": "Mulagua dorada",
+   "species": 2,
+   "generation": 1,
+   "geneticWeight": 90,
+   "item": 33072,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 1,
+   "breedingXp": 30,
+   "parents": [],
+   "children": [
+    [
+     95,
+     115
+    ],
+    [
+     96,
+     121
+    ],
+    [
+     97,
+     126
+    ],
+    [
+     98,
+     145
+    ],
+    [
+     99,
+     150
+    ],
+    [
+     100,
+     160
+    ],
+    [
+     90,
+     105
+    ],
+    [
+     91,
+     110
+    ],
+    [
+     93,
+     101
+    ],
+    [
+     92,
+     108
+    ],
+    [
+     297,
+     301
+    ],
+    [
+     298,
+     315
+    ],
+    [
+     299,
+     328
+    ],
+    [
+     300,
+     340
+    ]
+   ]
+  },
+  {
+   "id": 95,
+   "name": "Mulagua roja",
+   "species": 2,
+   "generation": 3,
+   "geneticWeight": 90,
+   "item": 33116,
+   "extraction": 3,
+   "senileExtraction": 1,
+   "tokens": 4,
+   "breedingXp": 90,
+   "parents": [
+    [
+     101,
+     105
+    ],
+    [
+     101,
+     108
+    ],
+    [
+     101,
+     110
+    ],
+    [
+     105,
+     108
+    ],
+    [
+     105,
+     110
+    ],
+    [
+     108,
+     110
+    ]
+   ],
+   "children": [
+    [
+     96,
+     116
+    ],
+    [
+     97,
+     127
+    ],
+    [
+     98,
+     143
+    ],
+    [
+     99,
+     151
+    ],
+    [
+     100,
+     161
+    ],
+    [
+     90,
+     112
+    ],
+    [
+     91,
+     114
+    ],
+    [
+     93,
+     111
+    ],
+    [
+     94,
+     115
+    ],
+    [
+     92,
+     113
+    ],
+    [
+     297,
+     307
+    ],
+    [
+     298,
+     321
+    ],
+    [
+     299,
+     334
+    ],
+    [
+     300,
+     346
+    ]
+   ]
+  },
+  {
+   "id": 96,
+   "name": "Mulagua almendrada",
+   "species": 2,
+   "generation": 3,
+   "geneticWeight": 90,
+   "item": 33069,
+   "extraction": 3,
+   "senileExtraction": 1,
+   "tokens": 4,
+   "breedingXp": 90,
+   "parents": [
+    [
+     102,
+     107
+    ],
+    [
+     103,
+     106
+    ],
+    [
+     104,
+     109
+    ]
+   ],
+   "children": [
+    [
+     97,
+     138
+    ],
+    [
+     98,
+     144
+    ],
+    [
+     99,
+     152
+    ],
+    [
+     100,
+     162
+    ],
+    [
+     90,
+     118
+    ],
+    [
+     91,
+     120
+    ],
+    [
+     92,
+     119
+    ],
+    [
+     93,
+     117
+    ],
+    [
+     94,
+     121
+    ],
+    [
+     95,
+     116
+    ],
+    [
+     297,
+     306
+    ],
+    [
+     298,
+     320
+    ],
+    [
+     299,
+     333
+    ],
+    [
+     300,
+     345
+    ]
+   ]
+  },
+  {
+   "id": 97,
+   "name": "Mulagua marfil",
+   "species": 2,
+   "generation": 5,
+   "geneticWeight": 90,
+   "item": 33094,
+   "extraction": 5,
+   "senileExtraction": 1,
+   "tokens": 15,
+   "breedingXp": 150,
+   "parents": [
+    [
+     115,
+     120
+    ],
+    [
+     115,
+     119
+    ],
+    [
+     115,
+     118
+    ],
+    [
+     115,
+     117
+    ],
+    [
+     116,
+     120
+    ],
+    [
+     116,
+     117
+    ],
+    [
+     116,
+     119
+    ],
+    [
+     116,
+     118
+    ]
+   ],
+   "children": [
+    [
+     98,
+     139
+    ],
+    [
+     99,
+     153
+    ],
+    [
+     100,
+     163
+    ],
+    [
+     90,
+     123
+    ],
+    [
+     91,
+     125
+    ],
+    [
+     92,
+     124
+    ],
+    [
+     93,
+     122
+    ],
+    [
+     94,
+     126
+    ],
+    [
+     95,
+     127
+    ],
+    [
+     96,
+     138
+    ],
+    [
+     297,
+     308
+    ],
+    [
+     298,
+     322
+    ],
+    [
+     299,
+     335
+    ],
+    [
+     300,
+     347
+    ]
+   ]
+  },
+  {
+   "id": 98,
+   "name": "Mulagua turquesa",
+   "species": 2,
+   "generation": 5,
+   "geneticWeight": 90,
+   "item": 33125,
+   "extraction": 5,
+   "senileExtraction": 1,
+   "tokens": 15,
+   "breedingXp": 150,
+   "parents": [
+    [
+     114,
+     121
+    ],
+    [
+     112,
+     121
+    ],
+    [
+     111,
+     121
+    ],
+    [
+     114,
+     116
+    ],
+    [
+     113,
+     121
+    ],
+    [
+     113,
+     116
+    ],
+    [
+     112,
+     116
+    ],
+    [
+     111,
+     116
+    ]
+   ],
+   "children": [
+    [
+     99,
+     154
+    ],
+    [
+     100,
+     164
+    ],
+    [
+     90,
+     165
+    ],
+    [
+     91,
+     142
+    ],
+    [
+     92,
+     141
+    ],
+    [
+     93,
+     140
+    ],
+    [
+     94,
+     145
+    ],
+    [
+     95,
+     143
+    ],
+    [
+     96,
+     144
+    ],
+    [
+     97,
+     139
+    ],
+    [
+     297,
+     309
+    ],
+    [
+     298,
+     323
+    ],
+    [
+     299,
+     336
+    ],
+    [
+     300,
+     348
+    ]
+   ]
+  },
+  {
+   "id": 99,
+   "name": "Mulagua ciruela",
+   "species": 2,
+   "generation": 7,
+   "geneticWeight": 90,
+   "item": 33105,
+   "extraction": 7,
+   "senileExtraction": 1,
+   "tokens": 60,
+   "breedingXp": 210,
+   "parents": [
+    [
+     125,
+     140
+    ],
+    [
+     124,
+     165
+    ],
+    [
+     123,
+     141
+    ],
+    [
+     122,
+     142
+    ]
+   ],
+   "children": [
+    [
+     100,
+     155
+    ],
+    [
+     90,
+     147
+    ],
+    [
+     91,
+     149
+    ],
+    [
+     92,
+     148
+    ],
+    [
+     93,
+     146
+    ],
+    [
+     94,
+     150
+    ],
+    [
+     95,
+     151
+    ],
+    [
+     96,
+     152
+    ],
+    [
+     97,
+     153
+    ],
+    [
+     98,
+     154
+    ],
+    [
+     297,
+     311
+    ],
+    [
+     298,
+     325
+    ],
+    [
+     299,
+     338
+    ],
+    [
+     300,
+     350
+    ]
+   ]
+  },
+  {
+   "id": 100,
+   "name": "Mulagua esmeralda",
+   "species": 2,
+   "generation": 7,
+   "geneticWeight": 90,
+   "item": 33087,
+   "extraction": 7,
+   "senileExtraction": 1,
+   "tokens": 60,
+   "breedingXp": 210,
+   "parents": [
+    [
+     139,
+     145
+    ],
+    [
+     139,
+     144
+    ],
+    [
+     139,
+     143
+    ],
+    [
+     138,
+     139
+    ],
+    [
+     127,
+     144
+    ],
+    [
+     126,
+     144
+    ],
+    [
+     126,
+     143
+    ],
+    [
+     126,
+     139
+    ]
+   ],
+   "children": [
+    [
+     90,
+     157
+    ],
+    [
+     91,
+     159
+    ],
+    [
+     92,
+     158
+    ],
+    [
+     93,
+     156
+    ],
+    [
+     94,
+     160
+    ],
+    [
+     95,
+     161
+    ],
+    [
+     96,
+     162
+    ],
+    [
+     97,
+     163
+    ],
+    [
+     98,
+     164
+    ],
+    [
+     99,
+     155
+    ],
+    [
+     297,
+     310
+    ],
+    [
+     298,
+     324
+    ],
+    [
+     299,
+     337
+    ],
+    [
+     300,
+     349
+    ]
+   ]
+  },
+  {
+   "id": 101,
+   "name": "Mulagua dorada y púrpura",
+   "species": 2,
+   "generation": 2,
+   "geneticWeight": 20,
+   "item": 33079,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     93,
+     94
+    ]
+   ],
+   "children": [
+    [
+     105,
+     95
+    ],
+    [
+     108,
+     95
+    ],
+    [
+     110,
+     95
+    ]
+   ]
+  },
+  {
+   "id": 102,
+   "name": "Mulagua índigo y púrpura",
+   "species": 2,
+   "generation": 2,
+   "geneticWeight": 20,
+   "item": 33093,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     92,
+     93
+    ]
+   ],
+   "children": [
+    [
+     107,
+     96
+    ]
+   ]
+  },
+  {
+   "id": 103,
+   "name": "Mulagua ébano y púrpura",
+   "species": 2,
+   "generation": 2,
+   "geneticWeight": 20,
+   "item": 33086,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     91,
+     93
+    ]
+   ],
+   "children": [
+    [
+     106,
+     96
+    ]
+   ]
+  },
+  {
+   "id": 104,
+   "name": "Mulagua orquídea y púrpura",
+   "species": 2,
+   "generation": 2,
+   "geneticWeight": 20,
+   "item": 33100,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     90,
+     93
+    ]
+   ],
+   "children": [
+    [
+     109,
+     96
+    ]
+   ]
+  },
+  {
+   "id": 105,
+   "name": "Mulagua dorada y orquídea",
+   "species": 2,
+   "generation": 2,
+   "geneticWeight": 20,
+   "item": 33078,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     90,
+     94
+    ]
+   ],
+   "children": [
+    [
+     108,
+     95
+    ],
+    [
+     110,
+     95
+    ],
+    [
+     101,
+     95
+    ]
+   ]
+  },
+  {
+   "id": 106,
+   "name": "Mulagua índigo y orquídea",
+   "species": 2,
+   "generation": 2,
+   "geneticWeight": 20,
+   "item": 33092,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     90,
+     92
+    ]
+   ],
+   "children": [
+    [
+     103,
+     96
+    ]
+   ]
+  },
+  {
+   "id": 107,
+   "name": "Mulagua ébano y orquídea",
+   "species": 2,
+   "generation": 2,
+   "geneticWeight": 20,
+   "item": 33085,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     90,
+     91
+    ]
+   ],
+   "children": [
+    [
+     102,
+     96
+    ]
+   ]
+  },
+  {
+   "id": 108,
+   "name": "Mulagua dorada e índigo",
+   "species": 2,
+   "generation": 2,
+   "geneticWeight": 20,
+   "item": 33076,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     92,
+     94
+    ]
+   ],
+   "children": [
+    [
+     110,
+     95
+    ],
+    [
+     101,
+     95
+    ],
+    [
+     105,
+     95
+    ]
+   ]
+  },
+  {
+   "id": 109,
+   "name": "Mulagua ébano e índigo",
+   "species": 2,
+   "generation": 2,
+   "geneticWeight": 20,
+   "item": 33083,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     91,
+     92
+    ]
+   ],
+   "children": [
+    [
+     104,
+     96
+    ]
+   ]
+  },
+  {
+   "id": 110,
+   "name": "Mulagua dorada y ébano",
+   "species": 2,
+   "generation": 2,
+   "geneticWeight": 20,
+   "item": 33074,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     91,
+     94
+    ]
+   ],
+   "children": [
+    [
+     101,
+     95
+    ],
+    [
+     105,
+     95
+    ],
+    [
+     108,
+     95
+    ]
+   ]
+  },
+  {
+   "id": 111,
+   "name": "Mulagua roja y púrpura",
+   "species": 2,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33124,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     93,
+     95
+    ]
+   ],
+   "children": [
+    [
+     121,
+     98
+    ],
+    [
+     116,
+     98
+    ]
+   ]
+  },
+  {
+   "id": 112,
+   "name": "Mulagua roja y orquídea",
+   "species": 2,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33123,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     90,
+     95
+    ]
+   ],
+   "children": [
+    [
+     121,
+     98
+    ],
+    [
+     116,
+     98
+    ]
+   ]
+  },
+  {
+   "id": 113,
+   "name": "Mulagua roja e índigo",
+   "species": 2,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33121,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     92,
+     95
+    ]
+   ],
+   "children": [
+    [
+     121,
+     98
+    ],
+    [
+     116,
+     98
+    ]
+   ]
+  },
+  {
+   "id": 114,
+   "name": "Mulagua roja y ébano",
+   "species": 2,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33119,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     91,
+     95
+    ]
+   ],
+   "children": [
+    [
+     121,
+     98
+    ],
+    [
+     116,
+     98
+    ]
+   ]
+  },
+  {
+   "id": 115,
+   "name": "Mulagua roja y dorada",
+   "species": 2,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33118,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     94,
+     95
+    ]
+   ],
+   "children": [
+    [
+     120,
+     97
+    ],
+    [
+     119,
+     97
+    ],
+    [
+     118,
+     97
+    ],
+    [
+     117,
+     97
+    ]
+   ]
+  },
+  {
+   "id": 116,
+   "name": "Mulagua roja y almendrada",
+   "species": 2,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33117,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     95,
+     96
+    ]
+   ],
+   "children": [
+    [
+     120,
+     97
+    ],
+    [
+     117,
+     97
+    ],
+    [
+     119,
+     97
+    ],
+    [
+     118,
+     97
+    ],
+    [
+     114,
+     98
+    ],
+    [
+     113,
+     98
+    ],
+    [
+     112,
+     98
+    ],
+    [
+     111,
+     98
+    ]
+   ]
+  },
+  {
+   "id": 117,
+   "name": "Mulagua púrpura y almendrada",
+   "species": 2,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33102,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     93,
+     96
+    ]
+   ],
+   "children": [
+    [
+     115,
+     97
+    ],
+    [
+     116,
+     97
+    ]
+   ]
+  },
+  {
+   "id": 118,
+   "name": "Mulagua orquídea y almendrada",
+   "species": 2,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33097,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     90,
+     96
+    ]
+   ],
+   "children": [
+    [
+     115,
+     97
+    ],
+    [
+     116,
+     97
+    ]
+   ]
+  },
+  {
+   "id": 119,
+   "name": "Mulagua índigo y almendrada",
+   "species": 2,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33089,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     92,
+     96
+    ]
+   ],
+   "children": [
+    [
+     115,
+     97
+    ],
+    [
+     116,
+     97
+    ]
+   ]
+  },
+  {
+   "id": 120,
+   "name": "Mulagua ébano y almendrada",
+   "species": 2,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33081,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     91,
+     96
+    ]
+   ],
+   "children": [
+    [
+     115,
+     97
+    ],
+    [
+     116,
+     97
+    ]
+   ]
+  },
+  {
+   "id": 121,
+   "name": "Mulagua dorada y almendrada",
+   "species": 2,
+   "generation": 4,
+   "geneticWeight": 20,
+   "item": 33073,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     94,
+     96
+    ]
+   ],
+   "children": [
+    [
+     114,
+     98
+    ],
+    [
+     112,
+     98
+    ],
+    [
+     111,
+     98
+    ],
+    [
+     113,
+     98
+    ]
+   ]
+  },
+  {
+   "id": 122,
+   "name": "Mulagua púrpura y marfil",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33104,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     93,
+     97
+    ]
+   ],
+   "children": [
+    [
+     142,
+     99
+    ]
+   ]
+  },
+  {
+   "id": 123,
+   "name": "Mulagua orquídea y marfil",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33099,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     90,
+     97
+    ]
+   ],
+   "children": [
+    [
+     141,
+     99
+    ]
+   ]
+  },
+  {
+   "id": 124,
+   "name": "Mulagua índigo y marfil",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33091,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     92,
+     97
+    ]
+   ],
+   "children": [
+    [
+     165,
+     99
+    ]
+   ]
+  },
+  {
+   "id": 125,
+   "name": "Mulagua ébano y marfil",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33084,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     91,
+     97
+    ]
+   ],
+   "children": [
+    [
+     140,
+     99
+    ]
+   ]
+  },
+  {
+   "id": 126,
+   "name": "Mulagua dorada y marfil",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33077,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     94,
+     97
+    ]
+   ],
+   "children": [
+    [
+     144,
+     100
+    ],
+    [
+     143,
+     100
+    ],
+    [
+     139,
+     100
+    ]
+   ]
+  },
+  {
+   "id": 127,
+   "name": "Mulagua roja y marfil",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33122,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     95,
+     97
+    ]
+   ],
+   "children": [
+    [
+     144,
+     100
+    ]
+   ]
+  },
+  {
+   "id": 138,
+   "name": "Mulagua almendrada y marfil",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33071,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     96,
+     97
+    ]
+   ],
+   "children": [
+    [
+     139,
+     100
+    ]
+   ]
+  },
+  {
+   "id": 139,
+   "name": "Mulagua turquesa y marfil",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33131,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     97,
+     98
+    ]
+   ],
+   "children": [
+    [
+     145,
+     100
+    ],
+    [
+     144,
+     100
+    ],
+    [
+     143,
+     100
+    ],
+    [
+     138,
+     100
+    ],
+    [
+     126,
+     100
+    ]
+   ]
+  },
+  {
+   "id": 140,
+   "name": "Mulagua turquesa y púrpura",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33133,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     93,
+     98
+    ]
+   ],
+   "children": [
+    [
+     125,
+     99
+    ]
+   ]
+  },
+  {
+   "id": 141,
+   "name": "Mulagua turquesa e índigo",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33130,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     92,
+     98
+    ]
+   ],
+   "children": [
+    [
+     123,
+     99
+    ]
+   ]
+  },
+  {
+   "id": 142,
+   "name": "Mulagua turquesa y ébano",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33128,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     91,
+     98
+    ]
+   ],
+   "children": [
+    [
+     122,
+     99
+    ]
+   ]
+  },
+  {
+   "id": 143,
+   "name": "Mulagua turquesa y roja",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33134,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     95,
+     98
+    ]
+   ],
+   "children": [
+    [
+     139,
+     100
+    ],
+    [
+     126,
+     100
+    ]
+   ]
+  },
+  {
+   "id": 144,
+   "name": "Mulagua turquesa y almendrada",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33126,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     96,
+     98
+    ]
+   ],
+   "children": [
+    [
+     139,
+     100
+    ],
+    [
+     127,
+     100
+    ],
+    [
+     126,
+     100
+    ]
+   ]
+  },
+  {
+   "id": 145,
+   "name": "Mulagua turquesa y dorada",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33127,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     94,
+     98
+    ]
+   ],
+   "children": [
+    [
+     139,
+     100
+    ]
+   ]
+  },
+  {
+   "id": 146,
+   "name": "Mulagua ciruela y púrpura",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33113,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     93,
+     99
+    ]
+   ],
+   "children": [
+    [
+     151,
+     298
+    ],
+    [
+     161,
+     300
+    ]
+   ]
+  },
+  {
+   "id": 147,
+   "name": "Mulagua ciruela y orquídea",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33112,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     90,
+     99
+    ]
+   ],
+   "children": [
+    [
+     152,
+     298
+    ],
+    [
+     162,
+     300
+    ]
+   ]
+  },
+  {
+   "id": 148,
+   "name": "Mulagua ciruela e índigo",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33110,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     92,
+     99
+    ]
+   ],
+   "children": [
+    [
+     153,
+     298
+    ],
+    [
+     163,
+     300
+    ]
+   ]
+  },
+  {
+   "id": 149,
+   "name": "Mulagua ciruela y ébano",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33108,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     91,
+     99
+    ]
+   ],
+   "children": [
+    [
+     154,
+     298
+    ],
+    [
+     164,
+     300
+    ]
+   ]
+  },
+  {
+   "id": 150,
+   "name": "Mulagua ciruela y dorada",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33107,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     94,
+     99
+    ]
+   ],
+   "children": [
+    [
+     155,
+     298
+    ],
+    [
+     164,
+     300
+    ]
+   ]
+  },
+  {
+   "id": 151,
+   "name": "Mulagua ciruela y roja",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33114,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     95,
+     99
+    ]
+   ],
+   "children": [
+    [
+     146,
+     298
+    ],
+    [
+     156,
+     299
+    ]
+   ]
+  },
+  {
+   "id": 152,
+   "name": "Mulagua ciruela y almendrada",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33106,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     96,
+     99
+    ]
+   ],
+   "children": [
+    [
+     147,
+     298
+    ],
+    [
+     157,
+     299
+    ]
+   ]
+  },
+  {
+   "id": 153,
+   "name": "Mulagua ciruela y marfil",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33111,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     97,
+     99
+    ]
+   ],
+   "children": [
+    [
+     148,
+     298
+    ],
+    [
+     158,
+     299
+    ],
+    [
+     160,
+     299
+    ]
+   ]
+  },
+  {
+   "id": 154,
+   "name": "Mulagua ciruela y turquesa",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33115,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     98,
+     99
+    ]
+   ],
+   "children": [
+    [
+     149,
+     298
+    ],
+    [
+     159,
+     299
+    ]
+   ]
+  },
+  {
+   "id": 155,
+   "name": "Mulagua ciruela y esmeralda",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33109,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     99,
+     100
+    ]
+   ],
+   "children": [
+    [
+     160,
+     297
+    ],
+    [
+     150,
+     298
+    ]
+   ]
+  },
+  {
+   "id": 156,
+   "name": "Mulagua púrpura y esmeralda",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33103,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     93,
+     100
+    ]
+   ],
+   "children": [
+    [
+     161,
+     297
+    ],
+    [
+     151,
+     299
+    ]
+   ]
+  },
+  {
+   "id": 157,
+   "name": "Mulagua orquídea y esmeralda",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33098,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     90,
+     100
+    ]
+   ],
+   "children": [
+    [
+     162,
+     297
+    ],
+    [
+     152,
+     299
+    ]
+   ]
+  },
+  {
+   "id": 158,
+   "name": "Mulagua índigo y esmeralda",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33090,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     92,
+     100
+    ]
+   ],
+   "children": [
+    [
+     163,
+     297
+    ],
+    [
+     153,
+     299
+    ]
+   ]
+  },
+  {
+   "id": 159,
+   "name": "Mulagua ébano y esmeralda",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33082,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     91,
+     100
+    ]
+   ],
+   "children": [
+    [
+     164,
+     297
+    ],
+    [
+     154,
+     299
+    ]
+   ]
+  },
+  {
+   "id": 160,
+   "name": "Mulagua dorada y esmeralda",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33075,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     94,
+     100
+    ]
+   ],
+   "children": [
+    [
+     155,
+     297
+    ],
+    [
+     153,
+     299
+    ]
+   ]
+  },
+  {
+   "id": 161,
+   "name": "Mulagua roja y esmeralda",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33120,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     95,
+     100
+    ]
+   ],
+   "children": [
+    [
+     156,
+     297
+    ],
+    [
+     146,
+     300
+    ]
+   ]
+  },
+  {
+   "id": 162,
+   "name": "Mulagua almendrada y esmeralda",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33070,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     96,
+     100
+    ]
+   ],
+   "children": [
+    [
+     157,
+     297
+    ],
+    [
+     147,
+     300
+    ]
+   ]
+  },
+  {
+   "id": 163,
+   "name": "Mulagua marfil y esmeralda",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33095,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     97,
+     100
+    ]
+   ],
+   "children": [
+    [
+     158,
+     297
+    ],
+    [
+     148,
+     300
+    ]
+   ]
+  },
+  {
+   "id": 164,
+   "name": "Mulagua turquesa y esmeralda",
+   "species": 2,
+   "generation": 8,
+   "geneticWeight": 20,
+   "item": 33129,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     98,
+     100
+    ]
+   ],
+   "children": [
+    [
+     159,
+     297
+    ],
+    [
+     149,
+     300
+    ],
+    [
+     150,
+     300
+    ]
+   ]
+  },
+  {
+   "id": 165,
+   "name": "Mulagua turquesa y orquídea",
+   "species": 2,
+   "generation": 6,
+   "geneticWeight": 20,
+   "item": 33132,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     90,
+     98
+    ]
+   ],
+   "children": [
+    [
+     124,
+     99
+    ]
+   ]
+  },
+  {
+   "id": 176,
+   "name": "Vueloceronte índigo",
+   "species": 3,
+   "generation": 1,
+   "geneticWeight": 1,
+   "item": 33176,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 1,
+   "breedingXp": 30,
+   "parents": [],
+   "children": [
+    [
+     177,
+     196
+    ],
+    [
+     178,
+     192
+    ],
+    [
+     179,
+     194
+    ],
+    [
+     180,
+     206
+    ],
+    [
+     181,
+     199
+    ],
+    [
+     182,
+     212
+    ],
+    [
+     183,
+     217
+    ],
+    [
+     184,
+     221
+    ],
+    [
+     185,
+     228
+    ],
+    [
+     186,
+     237
+    ],
+    [
+     187,
+     241
+    ],
+    [
+     188,
+     255
+    ],
+    [
+     189,
+     266
+    ],
+    [
+     190,
+     278
+    ]
+   ]
+  },
+  {
+   "id": 177,
+   "name": "Vueloceronte ébano",
+   "species": 3,
+   "generation": 1,
+   "geneticWeight": 1,
+   "item": 33166,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 1,
+   "breedingXp": 30,
+   "parents": [],
+   "children": [
+    [
+     178,
+     193
+    ],
+    [
+     179,
+     195
+    ],
+    [
+     180,
+     207
+    ],
+    [
+     181,
+     200
+    ],
+    [
+     182,
+     213
+    ],
+    [
+     183,
+     218
+    ],
+    [
+     184,
+     222
+    ],
+    [
+     185,
+     229
+    ],
+    [
+     186,
+     238
+    ],
+    [
+     187,
+     242
+    ],
+    [
+     188,
+     256
+    ],
+    [
+     189,
+     267
+    ],
+    [
+     190,
+     279
+    ],
+    [
+     176,
+     196
+    ]
+   ]
+  },
+  {
+   "id": 178,
+   "name": "Vueloceronte púrpura",
+   "species": 3,
+   "generation": 1,
+   "geneticWeight": 1,
+   "item": 33202,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 1,
+   "breedingXp": 30,
+   "parents": [],
+   "children": [
+    [
+     179,
+     191
+    ],
+    [
+     180,
+     204
+    ],
+    [
+     181,
+     197
+    ],
+    [
+     182,
+     210
+    ],
+    [
+     183,
+     215
+    ],
+    [
+     184,
+     219
+    ],
+    [
+     185,
+     226
+    ],
+    [
+     186,
+     235
+    ],
+    [
+     187,
+     239
+    ],
+    [
+     188,
+     253
+    ],
+    [
+     189,
+     264
+    ],
+    [
+     190,
+     276
+    ],
+    [
+     176,
+     192
+    ],
+    [
+     177,
+     193
+    ]
+   ]
+  },
+  {
+   "id": 179,
+   "name": "Vueloceronte orquídeo",
+   "species": 3,
+   "generation": 1,
+   "geneticWeight": 1,
+   "item": 33199,
+   "extraction": 0,
+   "senileExtraction": 1,
+   "tokens": 1,
+   "breedingXp": 30,
+   "parents": [],
+   "children": [
+    [
+     180,
+     205
+    ],
+    [
+     181,
+     198
+    ],
+    [
+     182,
+     211
+    ],
+    [
+     183,
+     216
+    ],
+    [
+     184,
+     220
+    ],
+    [
+     185,
+     227
+    ],
+    [
+     186,
+     236
+    ],
+    [
+     187,
+     240
+    ],
+    [
+     188,
+     254
+    ],
+    [
+     189,
+     265
+    ],
+    [
+     190,
+     277
+    ],
+    [
+     176,
+     194
+    ],
+    [
+     177,
+     195
+    ],
+    [
+     178,
+     191
+    ]
+   ]
+  },
+  {
+   "id": 180,
+   "name": "Vueloceronte pelirrojo",
+   "species": 3,
+   "generation": 3,
+   "geneticWeight": 1,
+   "item": 33216,
+   "extraction": 3,
+   "senileExtraction": 1,
+   "tokens": 4,
+   "breedingXp": 90,
+   "parents": [
+    [
+     191,
+     192
+    ],
+    [
+     191,
+     193
+    ],
+    [
+     192,
+     193
+    ]
+   ],
+   "children": [
+    [
+     181,
+     201
+    ],
+    [
+     182,
+     208
+    ],
+    [
+     183,
+     209
+    ],
+    [
+     184,
+     287
+    ],
+    [
+     185,
+     231
+    ],
+    [
+     187,
+     244
+    ],
+    [
+     188,
+     258
+    ],
+    [
+     189,
+     269
+    ],
+    [
+     190,
+     281
+    ],
+    [
+     186,
+     291
+    ],
+    [
+     176,
+     206
+    ],
+    [
+     177,
+     207
+    ],
+    [
+     178,
+     204
+    ],
+    [
+     179,
+     205
+    ]
+   ]
+  },
+  {
+   "id": 181,
+   "name": "Vueloceronte almendrado",
+   "species": 3,
+   "generation": 3,
+   "geneticWeight": 1,
+   "item": 33135,
+   "extraction": 3,
+   "senileExtraction": 1,
+   "tokens": 4,
+   "breedingXp": 90,
+   "parents": [
+    [
+     193,
+     195
+    ],
+    [
+     193,
+     196
+    ],
+    [
+     195,
+     196
+    ]
+   ],
+   "children": [
+    [
+     182,
+     202
+    ],
+    [
+     183,
+     203
+    ],
+    [
+     184,
+     223
+    ],
+    [
+     185,
+     230
+    ],
+    [
+     186,
+     292
+    ],
+    [
+     187,
+     243
+    ],
+    [
+     188,
+     257
+    ],
+    [
+     189,
+     268
+    ],
+    [
+     190,
+     280
+    ],
+    [
+     176,
+     199
+    ],
+    [
+     177,
+     200
+    ],
+    [
+     178,
+     197
+    ],
+    [
+     179,
+     198
+    ],
+    [
+     180,
+     201
+    ]
+   ]
+  },
+  {
+   "id": 182,
+   "name": "Vueloceronte marfil",
+   "species": 3,
+   "generation": 3,
+   "geneticWeight": 1,
+   "item": 33178,
+   "extraction": 3,
+   "senileExtraction": 1,
+   "tokens": 4,
+   "breedingXp": 90,
+   "parents": [
+    [
+     192,
+     196
+    ],
+    [
+     192,
+     194
+    ],
+    [
+     194,
+     196
+    ]
+   ],
+   "children": [
+    [
+     183,
+     214
+    ],
+    [
+     184,
+     288
+    ],
+    [
+     185,
+     233
+    ],
+    [
+     186,
+     293
+    ],
+    [
+     187,
+     245
+    ],
+    [
+     188,
+     259
+    ],
+    [
+     189,
+     270
+    ],
+    [
+     190,
+     282
+    ],
+    [
+     176,
+     212
+    ],
+    [
+     177,
+     213
+    ],
+    [
+     178,
+     210
+    ],
+    [
+     179,
+     211
+    ],
+    [
+     180,
+     208
+    ],
+    [
+     181,
+     202
+    ]
+   ]
+  },
+  {
+   "id": 183,
+   "name": "Vueloceronte turquesa",
+   "species": 3,
+   "generation": 3,
+   "geneticWeight": 1,
+   "item": 33250,
+   "extraction": 3,
+   "senileExtraction": 1,
+   "tokens": 4,
+   "breedingXp": 90,
+   "parents": [
+    [
+     191,
+     195
+    ],
+    [
+     194,
+     195
+    ],
+    [
+     191,
+     194
+    ]
+   ],
+   "children": [
+    [
+     184,
+     224
+    ],
+    [
+     185,
+     234
+    ],
+    [
+     186,
+     294
+    ],
+    [
+     187,
+     246
+    ],
+    [
+     188,
+     260
+    ],
+    [
+     189,
+     271
+    ],
+    [
+     190,
+     283
+    ],
+    [
+     176,
+     217
+    ],
+    [
+     177,
+     218
+    ],
+    [
+     178,
+     215
+    ],
+    [
+     179,
+     216
+    ],
+    [
+     180,
+     209
+    ],
+    [
+     181,
+     203
+    ],
+    [
+     182,
+     214
+    ]
+   ]
+  },
+  {
+   "id": 184,
+   "name": "Vueloceronte ciruela",
+   "species": 3,
+   "generation": 5,
+   "geneticWeight": 1,
+   "item": 33206,
+   "extraction": 5,
+   "senileExtraction": 1,
+   "tokens": 15,
+   "breedingXp": 150,
+   "parents": [
+    [
+     197,
+     201
+    ],
+    [
+     198,
+     201
+    ],
+    [
+     199,
+     201
+    ],
+    [
+     200,
+     201
+    ],
+    [
+     201,
+     203
+    ],
+    [
+     201,
+     202
+    ],
+    [
+     201,
+     204
+    ],
+    [
+     201,
+     205
+    ],
+    [
+     201,
+     206
+    ],
+    [
+     201,
+     207
+    ],
+    [
+     201,
+     208
+    ],
+    [
+     201,
+     209
+    ]
+   ],
+   "children": [
+    [
+     185,
+     225
+    ],
+    [
+     186,
+     295
+    ],
+    [
+     187,
+     247
+    ],
+    [
+     188,
+     261
+    ],
+    [
+     189,
+     272
+    ],
+    [
+     190,
+     284
+    ],
+    [
+     176,
+     221
+    ],
+    [
+     177,
+     222
+    ],
+    [
+     178,
+     219
+    ],
+    [
+     179,
+     220
+    ],
+    [
+     180,
+     287
+    ],
+    [
+     181,
+     223
+    ],
+    [
+     182,
+     288
+    ],
+    [
+     183,
+     224
+    ]
+   ]
+  },
+  {
+   "id": 185,
+   "name": "Vueloceronte esmeralda",
+   "species": 3,
+   "generation": 5,
+   "geneticWeight": 1,
+   "item": 33167,
+   "extraction": 5,
+   "senileExtraction": 1,
+   "tokens": 15,
+   "breedingXp": 150,
+   "parents": [
+    [
+     211,
+     214
+    ],
+    [
+     212,
+     214
+    ],
+    [
+     213,
+     214
+    ],
+    [
+     214,
+     216
+    ],
+    [
+     210,
+     214
+    ],
+    [
+     208,
+     214
+    ],
+    [
+     209,
+     214
+    ],
+    [
+     203,
+     214
+    ],
+    [
+     202,
+     214
+    ],
+    [
+     214,
+     215
+    ],
+    [
+     214,
+     217
+    ],
+    [
+     214,
+     218
+    ]
+   ],
+   "children": [
+    [
+     186,
+     296
+    ],
+    [
+     187,
+     248
+    ],
+    [
+     188,
+     262
+    ],
+    [
+     189,
+     273
+    ],
+    [
+     190,
+     285
+    ],
+    [
+     176,
+     228
+    ],
+    [
+     177,
+     229
+    ],
+    [
+     178,
+     226
+    ],
+    [
+     179,
+     227
+    ],
+    [
+     180,
+     231
+    ],
+    [
+     181,
+     230
+    ],
+    [
+     182,
+     233
+    ],
+    [
+     183,
+     234
+    ],
+    [
+     184,
+     225
+    ]
+   ]
+  },
+  {
+   "id": 186,
+   "name": "Vueloceronte dorado",
+   "species": 3,
+   "generation": 7,
+   "geneticWeight": 1,
+   "item": 33155,
+   "extraction": 7,
+   "senileExtraction": 1,
+   "tokens": 60,
+   "breedingXp": 210,
+   "parents": [
+    [
+     219,
+     231
+    ],
+    [
+     220,
+     234
+    ],
+    [
+     221,
+     233
+    ],
+    [
+     222,
+     230
+    ],
+    [
+     223,
+     229
+    ],
+    [
+     224,
+     227
+    ],
+    [
+     226,
+     287
+    ],
+    [
+     228,
+     288
+    ]
+   ],
+   "children": [
+    [
+     187,
+     249
+    ],
+    [
+     188,
+     263
+    ],
+    [
+     189,
+     274
+    ],
+    [
+     190,
+     286
+    ],
+    [
+     176,
+     237
+    ],
+    [
+     177,
+     238
+    ],
+    [
+     178,
+     235
+    ],
+    [
+     179,
+     236
+    ],
+    [
+     180,
+     291
+    ],
+    [
+     181,
+     292
+    ],
+    [
+     182,
+     293
+    ],
+    [
+     183,
+     294
+    ],
+    [
+     184,
+     295
+    ],
+    [
+     185,
+     296
+    ]
+   ]
+  },
+  {
+   "id": 187,
+   "name": "Vueloceronte jade",
+   "species": 3,
+   "generation": 9,
+   "geneticWeight": 1,
+   "item": 33184,
+   "extraction": 9,
+   "senileExtraction": 1,
+   "tokens": 250,
+   "breedingXp": 270,
+   "parents": [
+    [
+     225,
+     235
+    ],
+    [
+     291,
+     295
+    ]
+   ],
+   "children": [
+    [
+     188,
+     250
+    ],
+    [
+     189,
+     251
+    ],
+    [
+     190,
+     252
+    ],
+    [
+     176,
+     241
+    ],
+    [
+     177,
+     242
+    ],
+    [
+     178,
+     239
+    ],
+    [
+     179,
+     240
+    ],
+    [
+     180,
+     244
+    ],
+    [
+     181,
+     243
+    ],
+    [
+     182,
+     245
+    ],
+    [
+     183,
+     246
+    ],
+    [
+     184,
+     247
+    ],
+    [
+     185,
+     248
+    ],
+    [
+     186,
+     249
+    ]
+   ]
+  },
+  {
+   "id": 188,
+   "name": "Vueloceronte rubí",
+   "species": 3,
+   "generation": 9,
+   "geneticWeight": 1,
+   "item": 33223,
+   "extraction": 9,
+   "senileExtraction": 1,
+   "tokens": 250,
+   "breedingXp": 270,
+   "parents": [
+    [
+     225,
+     236
+    ],
+    [
+     292,
+     295
+    ]
+   ],
+   "children": [
+    [
+     189,
+     289
+    ],
+    [
+     190,
+     290
+    ],
+    [
+     176,
+     255
+    ],
+    [
+     177,
+     256
+    ],
+    [
+     178,
+     253
+    ],
+    [
+     179,
+     254
+    ],
+    [
+     180,
+     258
+    ],
+    [
+     181,
+     257
+    ],
+    [
+     182,
+     259
+    ],
+    [
+     183,
+     260
+    ],
+    [
+     184,
+     261
+    ],
+    [
+     185,
+     262
+    ],
+    [
+     186,
+     263
+    ],
+    [
+     187,
+     250
+    ]
+   ]
+  },
+  {
+   "id": 189,
+   "name": "Vueloceronte zafiro",
+   "species": 3,
+   "generation": 9,
+   "geneticWeight": 1,
+   "item": 33237,
+   "extraction": 9,
+   "senileExtraction": 1,
+   "tokens": 250,
+   "breedingXp": 270,
+   "parents": [
+    [
+     225,
+     237
+    ],
+    [
+     294,
+     296
+    ]
+   ],
+   "children": [
+    [
+     190,
+     275
+    ],
+    [
+     176,
+     266
+    ],
+    [
+     177,
+     267
+    ],
+    [
+     178,
+     264
+    ],
+    [
+     179,
+     265
+    ],
+    [
+     180,
+     269
+    ],
+    [
+     181,
+     268
+    ],
+    [
+     182,
+     270
+    ],
+    [
+     183,
+     271
+    ],
+    [
+     184,
+     272
+    ],
+    [
+     185,
+     273
+    ],
+    [
+     186,
+     274
+    ],
+    [
+     187,
+     251
+    ],
+    [
+     188,
+     289
+    ]
+   ]
+  },
+  {
+   "id": 190,
+   "name": "Vueloceronte amatista",
+   "species": 3,
+   "generation": 9,
+   "geneticWeight": 1,
+   "item": 33143,
+   "extraction": 9,
+   "senileExtraction": 1,
+   "tokens": 250,
+   "breedingXp": 270,
+   "parents": [
+    [
+     225,
+     238
+    ],
+    [
+     293,
+     296
+    ]
+   ],
+   "children": [
+    [
+     176,
+     278
+    ],
+    [
+     177,
+     279
+    ],
+    [
+     178,
+     276
+    ],
+    [
+     179,
+     277
+    ],
+    [
+     180,
+     281
+    ],
+    [
+     181,
+     280
+    ],
+    [
+     182,
+     282
+    ],
+    [
+     183,
+     283
+    ],
+    [
+     184,
+     284
+    ],
+    [
+     185,
+     285
+    ],
+    [
+     186,
+     286
+    ],
+    [
+     187,
+     252
+    ],
+    [
+     188,
+     290
+    ],
+    [
+     189,
+     275
+    ]
+   ]
+  },
+  {
+   "id": 191,
+   "name": "Vueloceronte púrpura y orquídeo",
+   "species": 3,
+   "generation": 2,
+   "geneticWeight": 1,
+   "item": 33205,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     178,
+     179
+    ]
+   ],
+   "children": [
+    [
+     192,
+     180
+    ],
+    [
+     193,
+     180
+    ],
+    [
+     195,
+     183
+    ],
+    [
+     194,
+     183
+    ]
+   ]
+  },
+  {
+   "id": 192,
+   "name": "Vueloceronte púrpura e índigo",
+   "species": 3,
+   "generation": 2,
+   "geneticWeight": 1,
+   "item": 33204,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     176,
+     178
+    ]
+   ],
+   "children": [
+    [
+     193,
+     180
+    ],
+    [
+     196,
+     182
+    ],
+    [
+     194,
+     182
+    ],
+    [
+     191,
+     180
+    ]
+   ]
+  },
+  {
+   "id": 193,
+   "name": "Vueloceronte púrpura y ébano",
+   "species": 3,
+   "generation": 2,
+   "geneticWeight": 1,
+   "item": 33203,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     177,
+     178
+    ]
+   ],
+   "children": [
+    [
+     195,
+     181
+    ],
+    [
+     196,
+     181
+    ],
+    [
+     191,
+     180
+    ],
+    [
+     192,
+     180
+    ]
+   ]
+  },
+  {
+   "id": 194,
+   "name": "Vueloceronte orquídeo e índigo",
+   "species": 3,
+   "generation": 2,
+   "geneticWeight": 1,
+   "item": 33201,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     176,
+     179
+    ]
+   ],
+   "children": [
+    [
+     195,
+     183
+    ],
+    [
+     196,
+     182
+    ],
+    [
+     192,
+     182
+    ],
+    [
+     191,
+     183
+    ]
+   ]
+  },
+  {
+   "id": 195,
+   "name": "Vueloceronte orquídeo y ébano",
+   "species": 3,
+   "generation": 2,
+   "geneticWeight": 1,
+   "item": 33200,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     177,
+     179
+    ]
+   ],
+   "children": [
+    [
+     196,
+     181
+    ],
+    [
+     191,
+     183
+    ],
+    [
+     193,
+     181
+    ],
+    [
+     194,
+     183
+    ]
+   ]
+  },
+  {
+   "id": 196,
+   "name": "Vueloceronte índigo y ébano",
+   "species": 3,
+   "generation": 2,
+   "geneticWeight": 1,
+   "item": 33177,
+   "extraction": 2,
+   "senileExtraction": 1,
+   "tokens": 2,
+   "breedingXp": 60,
+   "parents": [
+    [
+     176,
+     177
+    ]
+   ],
+   "children": [
+    [
+     192,
+     182
+    ],
+    [
+     193,
+     181
+    ],
+    [
+     194,
+     182
+    ],
+    [
+     195,
+     181
+    ]
+   ]
+  },
+  {
+   "id": 197,
+   "name": "Vueloceronte almendrado y púrpura",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33140,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     178,
+     181
+    ]
+   ],
+   "children": [
+    [
+     201,
+     184
+    ]
+   ]
+  },
+  {
+   "id": 198,
+   "name": "Vueloceronte almendrado y orquídeo",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33139,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     179,
+     181
+    ]
+   ],
+   "children": [
+    [
+     201,
+     184
+    ]
+   ]
+  },
+  {
+   "id": 199,
+   "name": "Vueloceronte almendrado e índigo",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33137,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     176,
+     181
+    ]
+   ],
+   "children": [
+    [
+     201,
+     184
+    ]
+   ]
+  },
+  {
+   "id": 200,
+   "name": "Vueloceronte almendrado y ébano",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33136,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     177,
+     181
+    ]
+   ],
+   "children": [
+    [
+     201,
+     184
+    ]
+   ]
+  },
+  {
+   "id": 201,
+   "name": "Vueloceronte almendrado y pelirrojo",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33141,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     180,
+     181
+    ]
+   ],
+   "children": [
+    [
+     203,
+     184
+    ],
+    [
+     202,
+     184
+    ],
+    [
+     204,
+     184
+    ],
+    [
+     205,
+     184
+    ],
+    [
+     206,
+     184
+    ],
+    [
+     207,
+     184
+    ],
+    [
+     208,
+     184
+    ],
+    [
+     209,
+     184
+    ],
+    [
+     197,
+     184
+    ],
+    [
+     198,
+     184
+    ],
+    [
+     199,
+     184
+    ],
+    [
+     200,
+     184
+    ]
+   ]
+  },
+  {
+   "id": 202,
+   "name": "Vueloceronte almendrado y marfil",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33138,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     181,
+     182
+    ]
+   ],
+   "children": [
+    [
+     214,
+     185
+    ],
+    [
+     201,
+     184
+    ]
+   ]
+  },
+  {
+   "id": 203,
+   "name": "Vueloceronte almendrado y turquesa",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33142,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     181,
+     183
+    ]
+   ],
+   "children": [
+    [
+     214,
+     185
+    ],
+    [
+     201,
+     184
+    ]
+   ]
+  },
+  {
+   "id": 204,
+   "name": "Vueloceronte pelirrojo y púrpura",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33221,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     178,
+     180
+    ]
+   ],
+   "children": [
+    [
+     201,
+     184
+    ]
+   ]
+  },
+  {
+   "id": 205,
+   "name": "Vueloceronte pelirrojo y orquídeo",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33220,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     179,
+     180
+    ]
+   ],
+   "children": [
+    [
+     201,
+     184
+    ]
+   ]
+  },
+  {
+   "id": 206,
+   "name": "Vueloceronte pelirrojo e índigo",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33218,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     176,
+     180
+    ]
+   ],
+   "children": [
+    [
+     201,
+     184
+    ]
+   ]
+  },
+  {
+   "id": 207,
+   "name": "Vueloceronte pelirrojo y ébano",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33217,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     177,
+     180
+    ]
+   ],
+   "children": [
+    [
+     201,
+     184
+    ]
+   ]
+  },
+  {
+   "id": 208,
+   "name": "Vueloceronte pelirrojo y marfil",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33219,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     180,
+     182
+    ]
+   ],
+   "children": [
+    [
+     214,
+     185
+    ],
+    [
+     201,
+     184
+    ]
+   ]
+  },
+  {
+   "id": 209,
+   "name": "Vueloceronte pelirrojo y turquesa",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33222,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     180,
+     183
+    ]
+   ],
+   "children": [
+    [
+     214,
+     185
+    ],
+    [
+     201,
+     184
+    ]
+   ]
+  },
+  {
+   "id": 210,
+   "name": "Vueloceronte marfil y púrpura",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33182,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     178,
+     182
+    ]
+   ],
+   "children": [
+    [
+     214,
+     185
+    ]
+   ]
+  },
+  {
+   "id": 211,
+   "name": "Vueloceronte marfil y orquídeo",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33181,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     179,
+     182
+    ]
+   ],
+   "children": [
+    [
+     214,
+     185
+    ]
+   ]
+  },
+  {
+   "id": 212,
+   "name": "Vueloceronte marfil e índigo",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33180,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     176,
+     182
+    ]
+   ],
+   "children": [
+    [
+     214,
+     185
+    ]
+   ]
+  },
+  {
+   "id": 213,
+   "name": "Vueloceronte marfil y ébano",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33179,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     177,
+     182
+    ]
+   ],
+   "children": [
+    [
+     214,
+     185
+    ]
+   ]
+  },
+  {
+   "id": 214,
+   "name": "Vueloceronte marfil y turquesa",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33183,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     182,
+     183
+    ]
+   ],
+   "children": [
+    [
+     216,
+     185
+    ],
+    [
+     215,
+     185
+    ],
+    [
+     217,
+     185
+    ],
+    [
+     218,
+     185
+    ],
+    [
+     211,
+     185
+    ],
+    [
+     212,
+     185
+    ],
+    [
+     213,
+     185
+    ],
+    [
+     210,
+     185
+    ],
+    [
+     208,
+     185
+    ],
+    [
+     209,
+     185
+    ],
+    [
+     203,
+     185
+    ],
+    [
+     202,
+     185
+    ]
+   ]
+  },
+  {
+   "id": 215,
+   "name": "Vueloceronte turquesa y púrpura",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33254,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     178,
+     183
+    ]
+   ],
+   "children": [
+    [
+     214,
+     185
+    ]
+   ]
+  },
+  {
+   "id": 216,
+   "name": "Vueloceronte turquesa y orquídeo",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33253,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     179,
+     183
+    ]
+   ],
+   "children": [
+    [
+     214,
+     185
+    ]
+   ]
+  },
+  {
+   "id": 217,
+   "name": "Vueloceronte turquesa e índigo",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33252,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     176,
+     183
+    ]
+   ],
+   "children": [
+    [
+     214,
+     185
+    ]
+   ]
+  },
+  {
+   "id": 218,
+   "name": "Vueloceronte turquesa y ébano",
+   "species": 3,
+   "generation": 4,
+   "geneticWeight": 1,
+   "item": 33251,
+   "extraction": 4,
+   "senileExtraction": 1,
+   "tokens": 8,
+   "breedingXp": 120,
+   "parents": [
+    [
+     177,
+     183
+    ]
+   ],
+   "children": [
+    [
+     214,
+     185
+    ]
+   ]
+  },
+  {
+   "id": 219,
+   "name": "Vueloceronte ciruela y púrpura",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33213,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     178,
+     184
+    ]
+   ],
+   "children": [
+    [
+     231,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 220,
+   "name": "Vueloceronte ciruela y orquídeo",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33212,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     179,
+     184
+    ]
+   ],
+   "children": [
+    [
+     234,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 221,
+   "name": "Vueloceronte ciruela e índigo",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33210,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     176,
+     184
+    ]
+   ],
+   "children": [
+    [
+     233,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 222,
+   "name": "Vueloceronte ciruela y ébano",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33208,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     177,
+     184
+    ]
+   ],
+   "children": [
+    [
+     230,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 223,
+   "name": "Vueloceronte ciruela y almendrado",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33207,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     181,
+     184
+    ]
+   ],
+   "children": [
+    [
+     229,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 224,
+   "name": "Vueloceronte ciruela y turquesa",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33215,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     183,
+     184
+    ]
+   ],
+   "children": [
+    [
+     227,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 225,
+   "name": "Vueloceronte ciruela y esmeralda",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33209,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     184,
+     185
+    ]
+   ],
+   "children": [
+    [
+     235,
+     187
+    ],
+    [
+     236,
+     188
+    ],
+    [
+     237,
+     189
+    ],
+    [
+     238,
+     190
+    ]
+   ]
+  },
+  {
+   "id": 226,
+   "name": "Vueloceronte esmeralda y púrpura",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33173,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     178,
+     185
+    ]
+   ],
+   "children": [
+    [
+     287,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 227,
+   "name": "Vueloceronte esmeralda y orquídeo",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33172,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     179,
+     185
+    ]
+   ],
+   "children": [
+    [
+     224,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 228,
+   "name": "Vueloceronte esmeralda e índigo",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33170,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     176,
+     185
+    ]
+   ],
+   "children": [
+    [
+     288,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 229,
+   "name": "Vueloceronte esmeralda y ébano",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33169,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     177,
+     185
+    ]
+   ],
+   "children": [
+    [
+     223,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 230,
+   "name": "Vueloceronte esmeralda y almendrado",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33168,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     181,
+     185
+    ]
+   ],
+   "children": [
+    [
+     222,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 231,
+   "name": "Vueloceronte esmeralda y pelirrojo",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33174,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     180,
+     185
+    ]
+   ],
+   "children": [
+    [
+     219,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 233,
+   "name": "Vueloceronte esmeralda y marfil",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33171,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     182,
+     185
+    ]
+   ],
+   "children": [
+    [
+     221,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 234,
+   "name": "Vueloceronte esmeralda y turquesa",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33175,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 30,
+   "breedingXp": 180,
+   "parents": [
+    [
+     183,
+     185
+    ]
+   ],
+   "children": [
+    [
+     220,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 235,
+   "name": "Vueloceronte dorado y púrpura",
+   "species": 3,
+   "generation": 8,
+   "geneticWeight": 1,
+   "item": 33162,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     178,
+     186
+    ]
+   ],
+   "children": [
+    [
+     225,
+     187
+    ]
+   ]
+  },
+  {
+   "id": 236,
+   "name": "Vueloceronte dorado y orquídeo",
+   "species": 3,
+   "generation": 8,
+   "geneticWeight": 1,
+   "item": 33161,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     179,
+     186
+    ]
+   ],
+   "children": [
+    [
+     225,
+     188
+    ]
+   ]
+  },
+  {
+   "id": 237,
+   "name": "Vueloceronte dorado e índigo",
+   "species": 3,
+   "generation": 8,
+   "geneticWeight": 1,
+   "item": 33159,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     176,
+     186
+    ]
+   ],
+   "children": [
+    [
+     225,
+     189
+    ]
+   ]
+  },
+  {
+   "id": 238,
+   "name": "Vueloceronte dorado y ébano",
+   "species": 3,
+   "generation": 8,
+   "geneticWeight": 1,
+   "item": 33157,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     177,
+     186
+    ]
+   ],
+   "children": [
+    [
+     225,
+     190
+    ]
+   ]
+  },
+  {
+   "id": 239,
+   "name": "Vueloceronte jade y púrpura",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33193,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     178,
+     187
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 240,
+   "name": "Vueloceronte jade y orquídeo",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33192,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     179,
+     187
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 241,
+   "name": "Vueloceronte jade e índigo",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33190,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     176,
+     187
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 242,
+   "name": "Vueloceronte jade y ébano",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33188,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     177,
+     187
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 243,
+   "name": "Vueloceronte jade y almendrado",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33185,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     181,
+     187
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 244,
+   "name": "Vueloceronte jade y pelirrojo",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33195,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     180,
+     187
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 245,
+   "name": "Vueloceronte jade y marfil",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33191,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     182,
+     187
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 246,
+   "name": "Vueloceronte jade y turquesa",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33198,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     183,
+     187
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 247,
+   "name": "Vueloceronte jade y ciruela",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33194,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     184,
+     187
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 248,
+   "name": "Vueloceronte jade y esmeralda",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33189,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     185,
+     187
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 249,
+   "name": "Vueloceronte jade y dorado",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33187,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     186,
+     187
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 250,
+   "name": "Vueloceronte jade y rubí",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33196,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     187,
+     188
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 251,
+   "name": "Vueloceronte jade y zafiro",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33197,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     187,
+     189
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 252,
+   "name": "Vueloceronte jade y amatista",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33186,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     187,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 253,
+   "name": "Vueloceronte rubí y púrpura",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33232,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     178,
+     188
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 254,
+   "name": "Vueloceronte rubí y orquídeo",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33231,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     179,
+     188
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 255,
+   "name": "Vueloceronte rubí e índigo",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33229,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     176,
+     188
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 256,
+   "name": "Vueloceronte rubí y ébano",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33227,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     177,
+     188
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 257,
+   "name": "Vueloceronte rubí y almendrado",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33224,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     181,
+     188
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 258,
+   "name": "Vueloceronte rubí y pelirrojo",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33234,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     180,
+     188
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 259,
+   "name": "Vueloceronte rubí y marfil",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33230,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     182,
+     188
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 260,
+   "name": "Vueloceronte rubí y turquesa",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33236,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     183,
+     188
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 261,
+   "name": "Vueloceronte rubí y ciruela",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33233,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     184,
+     188
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 262,
+   "name": "Vueloceronte rubí y esmeralda",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33228,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     185,
+     188
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 263,
+   "name": "Vueloceronte rubí y dorado",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33226,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     186,
+     188
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 264,
+   "name": "Vueloceronte zafiro y púrpura",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33246,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     178,
+     189
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 265,
+   "name": "Vueloceronte zafiro y orquídeo",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33245,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     179,
+     189
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 266,
+   "name": "Vueloceronte zafiro e índigo",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33243,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     176,
+     189
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 267,
+   "name": "Vueloceronte zafiro y ébano",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33241,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     177,
+     189
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 268,
+   "name": "Vueloceronte zafiro y almendrado",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33238,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     181,
+     189
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 269,
+   "name": "Vueloceronte zafiro y pelirrojo",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33248,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     180,
+     189
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 270,
+   "name": "Vueloceronte zafiro y marfil",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33244,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     182,
+     189
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 271,
+   "name": "Vueloceronte zafiro y turquesa",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33249,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     183,
+     189
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 272,
+   "name": "Vueloceronte zafiro y ciruela",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33247,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     184,
+     189
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 273,
+   "name": "Vueloceronte zafiro y esmeralda",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33242,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     185,
+     189
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 274,
+   "name": "Vueloceronte zafiro y dorado",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33240,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     186,
+     189
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 275,
+   "name": "Vueloceronte zafiro y amatista",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33239,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     189,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 276,
+   "name": "Vueloceronte amatista y púrpura",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33151,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     178,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 277,
+   "name": "Vueloceronte amatista y orquídeo",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33150,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     179,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 278,
+   "name": "Vueloceronte amatista e índigo",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33148,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     176,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 279,
+   "name": "Vueloceronte amatista y ébano",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33146,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     177,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 280,
+   "name": "Vueloceronte amatista y almendrado",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33144,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     181,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 281,
+   "name": "Vueloceronte amatista y pelirrojo",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33153,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     180,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 282,
+   "name": "Vueloceronte amatista y marfil",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33149,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     182,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 283,
+   "name": "Vueloceronte amatista y turquesa",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33154,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     183,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 284,
+   "name": "Vueloceronte amatista y ciruela",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33152,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     184,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 285,
+   "name": "Vueloceronte amatista y esmeralda",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33147,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     185,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 286,
+   "name": "Vueloceronte amatista y dorado",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33145,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     186,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 287,
+   "name": "Vueloceronte ciruela y pelirrojo",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33214,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 180,
+   "parents": [
+    [
+     180,
+     184
+    ]
+   ],
+   "children": [
+    [
+     226,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 288,
+   "name": "Vueloceronte ciruela y marfil",
+   "species": 3,
+   "generation": 6,
+   "geneticWeight": 1,
+   "item": 33211,
+   "extraction": 6,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 180,
+   "parents": [
+    [
+     182,
+     184
+    ]
+   ],
+   "children": [
+    [
+     228,
+     186
+    ]
+   ]
+  },
+  {
+   "id": 289,
+   "name": "Vueloceronte rubí y zafiro",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33235,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     188,
+     189
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 290,
+   "name": "Vueloceronte rubí y amatista",
+   "species": 3,
+   "generation": 10,
+   "geneticWeight": 1,
+   "item": 33225,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     188,
+     190
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 291,
+   "name": "Vueloceronte dorado y pelirrojo",
+   "species": 3,
+   "generation": 8,
+   "geneticWeight": 1,
+   "item": 33164,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     180,
+     186
+    ]
+   ],
+   "children": [
+    [
+     295,
+     187
+    ]
+   ]
+  },
+  {
+   "id": 292,
+   "name": "Vueloceronte dorado y almendrado",
+   "species": 3,
+   "generation": 8,
+   "geneticWeight": 1,
+   "item": 33156,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     181,
+     186
+    ]
+   ],
+   "children": [
+    [
+     295,
+     188
+    ]
+   ]
+  },
+  {
+   "id": 293,
+   "name": "Vueloceronte dorado y marfil",
+   "species": 3,
+   "generation": 8,
+   "geneticWeight": 1,
+   "item": 33160,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     182,
+     186
+    ]
+   ],
+   "children": [
+    [
+     296,
+     190
+    ]
+   ]
+  },
+  {
+   "id": 294,
+   "name": "Vueloceronte dorado y turquesa",
+   "species": 3,
+   "generation": 8,
+   "geneticWeight": 1,
+   "item": 33165,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     183,
+     186
+    ]
+   ],
+   "children": [
+    [
+     296,
+     189
+    ]
+   ]
+  },
+  {
+   "id": 295,
+   "name": "Vueloceronte dorado y ciruela",
+   "species": 3,
+   "generation": 8,
+   "geneticWeight": 1,
+   "item": 33163,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     184,
+     186
+    ]
+   ],
+   "children": [
+    [
+     291,
+     187
+    ],
+    [
+     292,
+     188
+    ]
+   ]
+  },
+  {
+   "id": 296,
+   "name": "Vueloceronte dorado y esmeralda",
+   "species": 3,
+   "generation": 8,
+   "geneticWeight": 1,
+   "item": 33158,
+   "extraction": 8,
+   "senileExtraction": 1,
+   "tokens": 120,
+   "breedingXp": 240,
+   "parents": [
+    [
+     185,
+     186
+    ]
+   ],
+   "children": [
+    [
+     293,
+     190
+    ],
+    [
+     294,
+     189
+    ]
+   ]
+  },
+  {
+   "id": 297,
+   "name": "Mulagua ámbar",
+   "species": 2,
+   "generation": 9,
+   "geneticWeight": 20,
+   "item": 33255,
+   "extraction": 9,
+   "senileExtraction": 1,
+   "tokens": 250,
+   "breedingXp": 270,
+   "parents": [
+    [
+     156,
+     161
+    ],
+    [
+     157,
+     162
+    ],
+    [
+     158,
+     163
+    ],
+    [
+     159,
+     164
+    ],
+    [
+     160,
+     155
+    ]
+   ],
+   "children": [
+    [
+     94,
+     301
+    ],
+    [
+     91,
+     302
+    ],
+    [
+     92,
+     303
+    ],
+    [
+     93,
+     304
+    ],
+    [
+     90,
+     305
+    ],
+    [
+     96,
+     306
+    ],
+    [
+     95,
+     307
+    ],
+    [
+     97,
+     308
+    ],
+    [
+     98,
+     309
+    ],
+    [
+     100,
+     310
+    ],
+    [
+     99,
+     311
+    ],
+    [
+     298,
+     312
+    ],
+    [
+     299,
+     313
+    ],
+    [
+     300,
+     314
+    ]
+   ]
+  },
+  {
+   "id": 298,
+   "name": "Mulagua coral",
+   "species": 2,
+   "generation": 9,
+   "geneticWeight": 20,
+   "item": 33256,
+   "extraction": 9,
+   "senileExtraction": 1,
+   "tokens": 250,
+   "breedingXp": 270,
+   "parents": [
+    [
+     146,
+     151
+    ],
+    [
+     147,
+     152
+    ],
+    [
+     148,
+     153
+    ],
+    [
+     149,
+     154
+    ],
+    [
+     150,
+     155
+    ]
+   ],
+   "children": [
+    [
+     94,
+     315
+    ],
+    [
+     91,
+     316
+    ],
+    [
+     92,
+     317
+    ],
+    [
+     93,
+     318
+    ],
+    [
+     90,
+     319
+    ],
+    [
+     96,
+     320
+    ],
+    [
+     95,
+     321
+    ],
+    [
+     97,
+     322
+    ],
+    [
+     98,
+     323
+    ],
+    [
+     100,
+     324
+    ],
+    [
+     99,
+     325
+    ],
+    [
+     299,
+     326
+    ],
+    [
+     300,
+     327
+    ],
+    [
+     297,
+     312
+    ]
+   ]
+  },
+  {
+   "id": 299,
+   "name": "Mulagua azur",
+   "species": 2,
+   "generation": 9,
+   "geneticWeight": 20,
+   "item": 33257,
+   "extraction": 9,
+   "senileExtraction": 1,
+   "tokens": 250,
+   "breedingXp": 270,
+   "parents": [
+    [
+     156,
+     151
+    ],
+    [
+     157,
+     152
+    ],
+    [
+     158,
+     153
+    ],
+    [
+     159,
+     154
+    ],
+    [
+     160,
+     153
+    ]
+   ],
+   "children": [
+    [
+     94,
+     328
+    ],
+    [
+     91,
+     329
+    ],
+    [
+     92,
+     330
+    ],
+    [
+     93,
+     331
+    ],
+    [
+     90,
+     332
+    ],
+    [
+     96,
+     333
+    ],
+    [
+     95,
+     334
+    ],
+    [
+     97,
+     335
+    ],
+    [
+     98,
+     336
+    ],
+    [
+     100,
+     337
+    ],
+    [
+     99,
+     338
+    ],
+    [
+     300,
+     339
+    ],
+    [
+     297,
+     313
+    ],
+    [
+     298,
+     326
+    ]
+   ]
+  },
+  {
+   "id": 300,
+   "name": "Mulagua aguamarina",
+   "species": 2,
+   "generation": 9,
+   "geneticWeight": 20,
+   "item": 33258,
+   "extraction": 9,
+   "senileExtraction": 1,
+   "tokens": 250,
+   "breedingXp": 270,
+   "parents": [
+    [
+     146,
+     161
+    ],
+    [
+     147,
+     162
+    ],
+    [
+     148,
+     163
+    ],
+    [
+     149,
+     164
+    ],
+    [
+     150,
+     164
+    ]
+   ],
+   "children": [
+    [
+     94,
+     340
+    ],
+    [
+     91,
+     341
+    ],
+    [
+     92,
+     342
+    ],
+    [
+     93,
+     343
+    ],
+    [
+     90,
+     344
+    ],
+    [
+     96,
+     345
+    ],
+    [
+     95,
+     346
+    ],
+    [
+     97,
+     347
+    ],
+    [
+     98,
+     348
+    ],
+    [
+     100,
+     349
+    ],
+    [
+     99,
+     350
+    ],
+    [
+     297,
+     314
+    ],
+    [
+     298,
+     327
+    ],
+    [
+     299,
+     339
+    ]
+   ]
+  },
+  {
+   "id": 301,
+   "name": "Mulagua ámbar y dorada",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33259,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     94
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 302,
+   "name": "Mulagua ámbar y ébano",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33260,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     91
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 303,
+   "name": "Mulagua ámbar e índigo",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33261,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     92
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 304,
+   "name": "Mulagua ámbar y púrpura",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33262,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     93
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 305,
+   "name": "Mulagua ámbar y orquídea",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33263,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     90
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 306,
+   "name": "Mulagua ámbar y almendrada",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33264,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     96
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 307,
+   "name": "Mulagua ámbar y roja",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33265,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     95
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 308,
+   "name": "Mulagua ámbar y marfil",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33266,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     97
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 309,
+   "name": "Mulagua ámbar y turquesa",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33267,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     98
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 310,
+   "name": "Mulagua ámbar y esmeralda",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33268,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     100
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 311,
+   "name": "Mulagua ámbar y ciruela",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33269,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     99
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 312,
+   "name": "Mulagua ámbar y coral",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33270,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     298
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 313,
+   "name": "Mulagua ámbar y azur",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33271,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     299
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 314,
+   "name": "Mulagua ámbar y aguamarina",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33272,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     297,
+     300
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 315,
+   "name": "Mulagua coral y dorada",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33273,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     298,
+     94
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 316,
+   "name": "Mulagua coral y ébano",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33274,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     298,
+     91
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 317,
+   "name": "Mulagua coral e índigo",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33275,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     298,
+     92
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 318,
+   "name": "Mulagua coral y púrpura",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33276,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     298,
+     93
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 319,
+   "name": "Mulagua coral y orquídea",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33277,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     298,
+     90
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 320,
+   "name": "Mulagua coral y almendrada",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33278,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     298,
+     96
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 321,
+   "name": "Mulagua coral y roja",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33279,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     298,
+     95
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 322,
+   "name": "Mulagua coral y marfil",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33280,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     298,
+     97
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 323,
+   "name": "Mulagua coral y turquesa",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33281,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     298,
+     98
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 324,
+   "name": "Mulagua coral y esmeralda",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33282,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     298,
+     100
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 325,
+   "name": "Mulagua coral y ciruela",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33283,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     298,
+     99
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 326,
+   "name": "Mulagua coral y azur",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33284,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     298,
+     299
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 327,
+   "name": "Mulagua coral y aguamarina",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33285,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     298,
+     300
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 328,
+   "name": "Mulagua azur y dorada",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33286,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     299,
+     94
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 329,
+   "name": "Mulagua azur y ébano",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33287,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     299,
+     91
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 330,
+   "name": "Mulagua azur e índigo",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33288,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     299,
+     92
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 331,
+   "name": "Mulagua azur y púrpura",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33289,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     299,
+     93
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 332,
+   "name": "Mulagua azur y orquídea",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33290,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     299,
+     90
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 333,
+   "name": "Mulagua azur y almendrada",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33291,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     299,
+     96
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 334,
+   "name": "Mulagua azur y roja",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33292,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     299,
+     95
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 335,
+   "name": "Mulagua azur y marfil",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33293,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     299,
+     97
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 336,
+   "name": "Mulagua azur y turquesa",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33294,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     299,
+     98
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 337,
+   "name": "Mulagua azur y esmeralda",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33295,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     299,
+     100
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 338,
+   "name": "Mulagua azur y ciruela",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33296,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     299,
+     99
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 339,
+   "name": "Mulagua azur y aguamarina",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33297,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     299,
+     300
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 340,
+   "name": "Mulagua aguamarina y dorada",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33298,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     300,
+     94
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 341,
+   "name": "Mulagua aguamarina y ébano",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33299,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     300,
+     91
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 342,
+   "name": "Mulagua aguamarina e índigo",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33300,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     300,
+     92
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 343,
+   "name": "Mulagua aguamarina y púrpura",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33301,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     300,
+     93
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 344,
+   "name": "Mulagua aguamarina y orquídea",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33302,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     300,
+     90
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 345,
+   "name": "Mulagua aguamarina y almendrada",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33303,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     300,
+     96
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 346,
+   "name": "Mulagua aguamarina y roja",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33304,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     300,
+     95
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 347,
+   "name": "Mulagua aguamarina y marfil",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33305,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     300,
+     97
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 348,
+   "name": "Mulagua aguamarina y turquesa",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33306,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     300,
+     98
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 349,
+   "name": "Mulagua aguamarina y esmeralda",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33307,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     300,
+     100
+    ]
+   ],
+   "children": []
+  },
+  {
+   "id": 350,
+   "name": "Mulagua aguamarina y ciruela",
+   "species": 2,
+   "generation": 10,
+   "geneticWeight": 20,
+   "item": 33308,
+   "extraction": 10,
+   "senileExtraction": 1,
+   "tokens": 0,
+   "breedingXp": 300,
+   "parents": [
+    [
+     300,
+     99
+    ]
+   ],
+   "children": []
+  }
+ ],
+ "species": [
+  {
+   "id": 1,
+   "name": "Dragopavo",
+   "extractionItem": 33515
+  },
+  {
+   "id": 2,
+   "name": "Mulagua",
+   "extractionItem": 17864
+  },
+  {
+   "id": 3,
+   "name": "Vueloceronte",
+   "extractionItem": 19975
+  }
+ ],
+ "rideGauges": [
+  {
+   "id": 1,
+   "max": 20000,
+   "minMood": 0,
+   "maxMood": 5001
+  },
+  {
+   "id": 2,
+   "max": 20000,
+   "minMood": -2000,
+   "maxMood": 2000
+  },
+  {
+   "id": 3,
+   "max": 20000,
+   "minMood": -5000,
+   "maxMood": -1
+  }
+ ],
+ "foods": [
+  {
+   "item": 7903,
+   "type": 0,
+   "family": 1
+  },
+  {
+   "item": 7904,
+   "type": 0,
+   "family": 1
+  },
+  {
+   "item": 0,
+   "type": 41,
+   "family": 1
+  },
+  {
+   "item": 0,
+   "type": 62,
+   "family": 1
+  },
+  {
+   "item": 0,
+   "type": 63,
+   "family": 1
+  },
+  {
+   "item": 0,
+   "type": 64,
+   "family": 1
+  },
+  {
+   "item": 0,
+   "type": 41,
+   "family": 5
+  },
+  {
+   "item": 0,
+   "type": 63,
+   "family": 5
+  },
+  {
+   "item": 19349,
+   "type": 0,
+   "family": 1
+  },
+  {
+   "item": 19349,
+   "type": 0,
+   "family": 5
+  },
+  {
+   "item": 19349,
+   "type": 0,
+   "family": 6
+  },
+  {
+   "item": 14635,
+   "type": 0,
+   "family": 6
+  },
+  {
+   "item": 28294,
+   "type": 0,
+   "family": 1
+  },
+  {
+   "item": 28294,
+   "type": 0,
+   "family": 5
+  },
+  {
+   "item": 28294,
+   "type": 0,
+   "family": 6
+  }
+ ]
+}

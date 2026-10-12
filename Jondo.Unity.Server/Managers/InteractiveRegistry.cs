@@ -60,6 +60,9 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>The Cangrancio's statues, levers of its enigma (GuildRaidExecrabe).</summary>
         RaidStatue,
+
+        /// <summary>A paddock's gate: it opens the breeding window on its paddock (BreedingHandler).</summary>
+        PaddockGate,
     }
 
     /// <summary>A skill offered by an interactive element.</summary>
@@ -307,6 +310,17 @@ namespace Jondo.Unity.Server.Managers
                 {
                     if (found.Id != element) continue;
                     Register(map, found, Interactives.TypeOfGfx(found.Gfx), InteractiveActionKind.AllianceFounding, skill);
+                }
+            }
+
+            // The six paddocks' gates, type 120 «Cercado», each with the skill that opens its paddock
+            // (423 to 428), as the client's breeding data places them (Managers.Breeding).
+            foreach (var paddock in Breeding.Paddocks)
+            {
+                foreach (var gate in Interactives.ElementsOf(paddock.MapId))
+                {
+                    if (gate.Id != paddock.Element || _byElement.ContainsKey((paddock.MapId, gate.Id))) continue;
+                    Register(paddock.MapId, gate, Breeding.GateType, InteractiveActionKind.PaddockGate, paddock.Skill);
                 }
             }
 

@@ -1,4 +1,4 @@
-High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** written in C# (**.NET 10**), with decoupled modular projects, a SQLite data layer, a combat engine driven entirely by client data — PvM, duels and Koliseo — a cross-platform launcher and a world editor.
+﻿High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** written in C# (**.NET 10**), with decoupled modular projects, a SQLite data layer, a combat engine driven entirely by client data — PvM, duels and Koliseo — a cross-platform launcher and a world editor.
 
 > ⚠️ **Runs against Dofus 3 clients 3.6.10.11 and 3.6.10.10.** The live game is on 3.6.11.12, so the
 > official launcher does not provide a client that works here — [Step 2](#step-2--get-the-361011-client)
@@ -322,7 +322,8 @@ An alliance is made of characters, not guilds.
 <img width="2560" height="1500" alt="image" src="https://github.com/user-attachments/assets/375da573-ab61-4bf0-83fd-6f2a8f872cde" />
 <img width="2560" height="1506" alt="image" src="https://github.com/user-attachments/assets/581b105c-9569-4f54-ab77-01e122b8ce06" />
 
-- ❌ Breeding: paddocks, stable, gauges, mating, cloning and extraction
+- 🚧 Breeding: the gates of the six paddocks open the breeding window, each from its breeder level
+- ❌ The stable, the rides in the paddocks, the gauges, mating, cloning and extraction
 - ✅ Characteristic points, with scrolled characteristics kept apart
 <img width="708" height="1048" alt="image" src="https://github.com/user-attachments/assets/b07f0ac2-f701-4f3a-82e2-c04f884d696d" />
 
