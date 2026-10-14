@@ -1564,28 +1564,33 @@ namespace Jondo.Unity.Server.Handlers
                                                              fighter.TaxCollectorLastName, fighter.MonsterId)
                 : Network.FightProtocol.MonsterIdentity(fighter.GradeIndex + 1, fighter.MonsterId, fighter.Level);
 
-        /// <summary>The normal look the fighter had on entering this fight.</summary>
-        private static byte[] NormalFightLook(Fighter fighter)
+        /// <summary>
+        /// The normal look the fighter had on entering this fight; <paramref name="onFoot"/>, the
+        /// same without its mount.
+        /// </summary>
+        private static byte[] NormalFightLook(Fighter fighter, bool onFoot = false)
         {
             // A double (180) wears the look of the character it copies.
             if (fighter.IsMonster && fighter.DoubleOf == 0) return MonsterLook(fighter);
-            if (fighter.IsBot) return fighter.BotLook ?? Array.Empty<byte>();
+            if (fighter.IsBot) return (onFoot ? fighter.BotLookOnFoot : null) ?? fighter.BotLook ?? Array.Empty<byte>();
 
             var character = DatabaseManager.GetCharacterById(fighter.DoubleOf != 0 ? fighter.DoubleOf : fighter.Id);
             return character != null
                 ? Managers.BreedLookTable.BuildLook(character.Breed, character.Sex,
-                                                     character.HeadId, null, character.Id)
+                                                     character.HeadId, null, character.Id, onFoot: onFoot)
                 : Array.Empty<byte>();
         }
 
         /// <summary>
         /// Announces a transformation through fight action 149. Appearance zero brings back the normal
-        /// look; the others keep colours, skins, scale and pets and replace only the root's bones.
+        /// look; the others keep colours, skins, scale and pets and replace only the root's bones --
+        /// the character's, on foot. Mounted, the root is the mount: a JondoBot Zobal putting on a mask
+        /// got the mask's bones on its dragoturkey, and the client drew nothing at all.
         /// </summary>
         private static async Task AnnounceAppearanceAsync(NetworkStream stream, Fighter fighter,
                                                           int appearance)
         {
-            byte[] look = NormalFightLook(fighter);
+            byte[] look = NormalFightLook(fighter, onFoot: appearance != 0);
             if (look.Length == 0) return;
 
             if (appearance != 0)

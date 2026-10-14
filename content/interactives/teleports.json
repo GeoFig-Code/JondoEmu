@@ -53,7 +53,14 @@
     "the room's two exits. Those two, 515546 on 422 and 515570 on 436, are measured in the jss",
     "of 'bastante combate con steamer': type -1 and skill 339, 'Indicar una salida'. They lead",
     "back to the arch, landing on 260, the hall's one walkable cell next to it. The arch's own",
-    "type and skill are the pair every measured passage uses: no capture walks through it."
+    "type and skill are the pair every measured passage uses: no capture walks through it.",
+    "",
+    "THE ASTRUB BANK. Its door on the square, 191104002 [4,-18], is the vault's: element 515308 on",
+    "cell 288 (gfx 63529, at the foot of the vault door in the map data). It leads into the bank's",
+    "room, 192415750 at the same coordinates, landing on 410, beside the room's two exits. Those,",
+    "515304 on 409 and 515305 on 424 (gfx 3518, as in the Militia Tower's training room), take",
+    "skill 339, 'Indicar una salida', and lead back to 302, the square's walkable cell before the door.",
+    "No capture goes in: the door's type and skill are the pair every measured passage uses."
   ],
   "passages": [
     {
@@ -165,6 +172,36 @@
       "skill": 339,
       "toMap": 192413706,
       "toCell": 260
+    },
+    {
+      "map": 191104002,
+      "element": 515308,
+      "cell": 288,
+      "gfx": 63529,
+      "type": -1,
+      "skill": 184,
+      "toMap": 192415750,
+      "toCell": 410
+    },
+    {
+      "map": 192415750,
+      "element": 515304,
+      "cell": 409,
+      "gfx": 3518,
+      "type": -1,
+      "skill": 339,
+      "toMap": 191104002,
+      "toCell": 302
+    },
+    {
+      "map": 192415750,
+      "element": 515305,
+      "cell": 424,
+      "gfx": 3518,
+      "type": -1,
+      "skill": 339,
+      "toMap": 191104002,
+      "toCell": 302
     }
   ]
 }
