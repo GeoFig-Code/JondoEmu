@@ -65,10 +65,8 @@ namespace Jondo.Unity.Server.Handlers
         /// What the guardian of this map should offer, on top of whatever else it says.
         /// </summary>
         /// <remarks>
-        /// The keyring ALWAYS when the dungeon takes it, because the free entry it gives is the
-        /// player's to spend and hiding the option would hide the reason they cannot get in. The
-        /// loose key ONLY when it is in the bag: an option that can never work is worse than no
-        /// option, since the player has no way to tell it apart from a broken door.
+        /// Offer the two independent entry methods declared by the guardian. Availability is
+        /// checked when the player answers, with a chat warning if the selected method cannot work.
         ///
         /// Empty when this map is not a dungeon entrance, or when the guardian declares neither
         /// reply -- see <see cref="DungeonDoor"/>, which finds them by wording rather than by id.
@@ -82,20 +80,9 @@ namespace Jondo.Unity.Server.Handlers
             var offer = new List<long>(2);
 
             if (dungeon.OnKeyring && options.Keyring != 0) offer.Add(options.Keyring);
-            if (options.Key != 0 && HasAKeyFor(dungeon)) offer.Add(options.Key);
+            if (options.Key != 0) offer.Add(options.Key);
 
             return offer.ToArray();
-        }
-
-        /// <summary>Whether one of the keys this dungeon asks for is in the bag right now.</summary>
-        private static bool HasAKeyFor(DungeonManager.Dungeon dungeon)
-        {
-            foreach (var (wanted, count) in dungeon.Required)
-            {
-                if (FindInBag(wanted, count) != 0) return true;
-            }
-
-            return false;
         }
 
         /// <summary>
@@ -105,9 +92,8 @@ namespace Jondo.Unity.Server.Handlers
         /// Returns true when the player went in, so the caller knows the conversation ended in a
         /// map change and there is nothing more to say.
         ///
-        /// Called on <em>any</em> reply, which is the same simplification the quest handover makes
-        /// and for the same reason: nothing in the captured data marks which reply is the yes. The
-        /// guardian's own tree, once somebody writes one, is where that belongs.
+        /// Only the guardian's key or keyring reply selects an entry method. Other dialogue
+        /// answers do not open the dungeon.
         /// </remarks>
         public static async Task<bool> AtTheDoorAsync(NetworkStream stream, long mapId, long reply = 0)
         {
@@ -118,20 +104,11 @@ namespace Jondo.Unity.Server.Handlers
 
             var state = SessionContext.State;
 
-            // Which of the two the player actually picked, when the guardian is one we recognise.
-            //
-            // When it is not -- and 60 of the 126 entrances have no guardian placed at all, while
-            // some of the placed ones declare neither reply -- the old rule stands: ANY answer
-            // opens the door. That rule is wrong and it is deliberate. Replacing it with "only the
-            // right reply opens" would shut those dungeons completely, and a door that opens on
-            // the wrong answer is a smaller lie than one that never opens.
             var options = DungeonDoor.For(state.OpenDialogueNpcId);
-            bool recognised = options.Keyring != 0 || options.Key != 0;
-
-            if (recognised && reply != 0 && reply != options.Keyring && reply != options.Key)
-            {
-                return false;
-            }
+            EntryMethod method;
+            if (reply != 0 && reply == options.Keyring) method = EntryMethod.Keyring;
+            else if (reply != 0 && reply == options.Key) method = EntryMethod.Key;
+            else return false;
 
             if (dungeon.MinLevel > 0 && state.CharacterLevel < dungeon.MinLevel)
             {
@@ -141,40 +118,21 @@ namespace Jondo.Unity.Server.Handlers
                 return false;
             }
 
-            // The keyring FIRST when its free entry is still there this week, and the loose key
-            // only after that. Backwards from how it was, and it matters to the player: the key is
-            // a craftable item somebody paid for or made, and the keyring entry expires unused
-            // every Tuesday whether or not it is spent. Burning the key while a free entry was
-            // sitting there is throwing away the one that cannot be got back.
-            bool freeEntry = dungeon.OnKeyring
+            bool freeEntry = method == EntryMethod.Keyring && dungeon.OnKeyring
                              && DungeonKeyring.FreeEntryLeft(state.CharacterId, dungeon.Id, DateTime.Now);
 
-            // And when the player said WHICH, that decides it rather than the order above. Picking
-            // "Darle la llave y entrar" and having the keyring spent instead would be the server
-            // overruling a choice it had just offered.
-            if (recognised && reply == options.Key && reply != 0) freeEntry = false;
-
-            // Keep the precise reason in the log; either refusal sends the same missing-item
-            // message to the player without interrupting the game connection.
-            bool keyringSpent = dungeon.OnKeyring && !freeEntry && FindInBag(Keyring, 1) != 0;
-
-            if (!TryTakeTheKey(dungeon, freeEntry, out long uid, out int item))
+            if (!TryTakeTheKey(dungeon, method, freeEntry, out long uid, out int item))
             {
-                // Told to the PLAYER, not only to the console. This branch used to return in
-                // silence: the guardian's dialogue closed, nothing happened, and nothing on screen
-                // said why. From the player's chair that is indistinguishable from the dungeon not
-                // being implemented at all -- and it is what "no veo opcion de usar el llavero"
-                // looks like from the inside, with the server log saying, correctly and only to
-                // itself, "the key is missing (8143 x1, or the keyring 10207) and there is no keyring".
-                if (keyringSpent)
+                if (method == EntryMethod.Keyring)
                 {
-                    Console.WriteLine($"[Dungeon] {dungeon.Name}: the keyring was already used this week " +
-                                      $"and there is no loose key.");
+                    Console.WriteLine($"[Dungeon] {dungeon.Name}: keyring entry unavailable " +
+                                      $"(accepted: {dungeon.OnKeyring}, free entry: {freeEntry}, " +
+                                      $"owned: {FindInBag(Keyring, 1) != 0}). No loose key is used.");
                 }
                 else
                 {
                     Console.WriteLine($"[Dungeon] {dungeon.Name}: the key is missing " +
-                                      $"({Wanted(dungeon)}) and there is no keyring.");
+                                      $"({Wanted(dungeon)}). The keyring is not used.");
                 }
                 await TellMissingKeyAsync(stream);
                 return false;
@@ -182,18 +140,16 @@ namespace Jondo.Unity.Server.Handlers
 
             if (uid != 0)
             {
-                // Spent, and the client told, exactly the way destroying an item by hand does it.
-                // A key taken only from the database would come back the moment the bag is redrawn.
-                if (DatabaseManager.DestroyCharacterItem(state.CharacterId, uid, 1))
+                // Spend one key and announce the remaining stack, or the removal of its last unit.
+                if (!await ItemUseHandler.SpendOneAsync(stream, uid, weigh: false))
                 {
-                    Equipment.Remove(uid, 1);
-                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                        ConnectionProtocol.Push(Op.Ium, ConnectionProtocol.BuildItemGone(uid)));
-                    Console.WriteLine($"[Dungeon] {dungeon.Name}: item {item} is spent.");
+                    await TellMissingKeyAsync(stream);
+                    return false;
                 }
+                Console.WriteLine($"[Dungeon] {dungeon.Name}: one unit of item {item} is spent.");
             }
 
-            if (item == Keyring)
+            if (method == EntryMethod.Keyring)
             {
                 // One free entry per dungeon per week, and the week turns over on Tuesday. See
                 // DungeonKeyring: this is the client's own help text, not a house rule.
@@ -246,13 +202,14 @@ namespace Jondo.Unity.Server.Handlers
             return dungeon != null && dungeon.LastRoom == mapId;
         }
 
+        internal enum EntryMethod { Key, Keyring }
+
         /// <summary>
-        /// Finds the key in the bag. Returns false when there is nothing that opens the door.
+        /// Finds only the item selected by the player's entry method.
         /// </summary>
         /// <remarks>
-        /// The dungeon's own key first, the keyring second, and a dungeon that asks for nothing
-        /// opens for anybody — 61 of the 187 do. <paramref name="uid"/> comes back zero when
-        /// nothing has to be spent, which is not the same as failing and must not be read as it.
+        /// There is no fallback between a key and the keyring. <paramref name="uid"/> is zero
+        /// for the keyring because it is never consumed; its weekly use is recorded separately.
         ///
         /// Two kinds of key and they behave differently, which is the whole reason this is not one
         /// lookup. The dungeon's OWN key is an ordinary craftable item (handyman) and is SPENT:
@@ -260,15 +217,16 @@ namespace Jondo.Unity.Server.Handlers
         /// for finishing the tutorial, and is NEVER spent — 107 of the 187 dungeons take it, and
         /// it has to still be there for the next one.
         /// </remarks>
-        private static bool TryTakeTheKey(DungeonManager.Dungeon dungeon, bool freeEntry,
+        internal static bool TryTakeTheKey(DungeonManager.Dungeon dungeon, EntryMethod method, bool freeEntry,
                                           out long uid, out int item)
         {
             uid = 0;
             item = 0;
 
-            if (dungeon.Required.Count == 0) return true;
+            if (method == EntryMethod.Keyring)
+                return dungeon.OnKeyring && freeEntry && TryTheKeyring(out item);
 
-            if (freeEntry && TryTheKeyring(out item)) return true;
+            if (dungeon.Required.Count == 0) return true;
 
             foreach (var (wanted, count) in dungeon.Required)
             {
@@ -328,7 +286,6 @@ namespace Jondo.Unity.Server.Handlers
         {
             var parts = new List<string>();
             foreach (var (item, count) in dungeon.Required) parts.Add($"{item} x{count}");
-            if (dungeon.OnKeyring) parts.Add($"or the keyring {Keyring}");
             return parts.Count == 0 ? "nothing" : string.Join(", ", parts);
         }
 
