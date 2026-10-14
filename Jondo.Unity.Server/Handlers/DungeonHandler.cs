@@ -154,10 +154,8 @@ namespace Jondo.Unity.Server.Handlers
             // overruling a choice it had just offered.
             if (recognised && reply == options.Key && reply != 0) freeEntry = false;
 
-            // And when it is the keyring that is spent rather than missing, say which of the two it
-            // is. "No tienes el objeto necesario" would be a lie: the keyring is right there in the
-            // bag, it is this week's entry that is gone, and the two send the player to do
-            // completely different things about it.
+            // Keep the precise reason in the log; either refusal sends the same missing-item
+            // message to the player without interrupting the game connection.
             bool keyringSpent = dungeon.OnKeyring && !freeEntry && FindInBag(Keyring, 1) != 0;
 
             if (!TryTakeTheKey(dungeon, freeEntry, out long uid, out int item))
@@ -172,14 +170,13 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     Console.WriteLine($"[Dungeon] {dungeon.Name}: the keyring was already used this week " +
                                       $"and there is no loose key.");
-                    await TellAsync(stream, CommandTexts.Get("dungeon.keyring_used",
-                        dungeon.Name, DungeonKeyring.NextReset(DateTime.Now)));
-                    return false;
                 }
-
-                Console.WriteLine($"[Dungeon] {dungeon.Name}: the key is missing " +
-                                  $"({Wanted(dungeon)}) and there is no keyring.");
-                await WarnAsync(stream, InfoMessages.MissingItem);
+                else
+                {
+                    Console.WriteLine($"[Dungeon] {dungeon.Name}: the key is missing " +
+                                      $"({Wanted(dungeon)}) and there is no keyring.");
+                }
+                await TellMissingKeyAsync(stream);
                 return false;
             }
 
@@ -336,18 +333,17 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Any sentence to the player, on the information channel and only for him.
+        /// A missing key is a private red, bold chat notice, not a connection error.
         /// </summary>
         /// <remarks>
-        /// Through the client's empty template -- <see cref="InfoMessages.FreeText"/>, whose text is
-        /// <c>{0}</c> -- because what has to be said here, when the free entry comes back, is said by
-        /// none of the sentences the client carries written.
+        /// The free-text template exists at type 0, id 0. Its rich-text tags specify the
+        /// requested colour and weight, and the sentence follows the session language.
         /// </remarks>
-        private static Task TellAsync(NetworkStream stream, string text)
+        private static Task TellMissingKeyAsync(NetworkStream stream)
             => Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Lqn,
-                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning,
-                                                        InfoMessages.FreeText, text)));
+                    ConnectionProtocol.BuildNotice(
+                        $"<color=#FF0000><b>{CommandTexts.Get("dungeon.missing_item")}</b></color>")));
 
         private static Task WarnAsync(NetworkStream stream, int messageId)
             => Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
