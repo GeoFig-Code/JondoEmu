@@ -186,6 +186,9 @@ namespace Jondo.Unity.World.Fights
         /// <summary>A bot's look, built once when it is made.</summary>
         public byte[]? BotLook { get; set; }
 
+        /// <summary>A bot's look without its mount: what a transformation changes the bones of.</summary>
+        public byte[]? BotLookOnFoot { get; set; }
+
         // Spells available to this fighter
         public List<int> SpellIds { get; set; } = new List<int>();
 

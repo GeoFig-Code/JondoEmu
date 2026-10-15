@@ -21,8 +21,12 @@
     "that no interactive and no other NPC takes, facing 3. The banker of each is the client's own:",
     "the Brakmarian (6374) says 'the only safe place in Brakmar'; Moneo (3516) owes his bank to the",
     "Parafrascos corporation of the cacterro desert, Picanesburgo's area; Yendong (5653) is taken",
-    "for Pandala by his name; the rest get the generic owl 'Banquero' (100). Astrub's 100 on 318",
-    "was 'placed by hand in Giny' in the derived layer: removed, and placed by the same rule.",
+    "for Pandala by his name; the rest get the generic owl 'Banquero' (100). Astrub has two of its",
+    "own, Orroha Neuw (520) and Al Etsop (522), so it gets no owl; the one the derived layer had there",
+    "(100 on 318, 'placed by hand in Giny') is removed. The two stand behind their counter, which the",
+    "room's own floor shows: the counter is the unwalkable diagonal 258-272-287-301-316-330-345, with",
+    "the walkable lane between it and the vault. They take the lane's front row, 273 and 317, facing 3,",
+    "the counter, as Bonta's banker does; the derived layer had them on the room's emblem (356, 371).",
     "Bonta's 289 is a cell nobody walks on -- he stands behind his counter -- but where each other bank's",
     "counter is cannot be read off the data (captured NPCs stand on walkable, fight-only and unwalkable",
     "cells alike: 151, 113 and 158), so these stand inside the room, where they can be reached.",
@@ -35,15 +39,33 @@
   "spawns": [
     {
       "map": 192415750,
-      "npc": 100,
-      "cell": 318,
+      "npc": 520,
+      "cell": 356,
       "remove": true
     },
     {
       "map": 192415750,
-      "npc": 100,
-      "cell": 289,
+      "npc": 520,
+      "cell": 273,
       "orientation": 3
+    },
+    {
+      "map": 192415750,
+      "npc": 522,
+      "cell": 371,
+      "remove": true
+    },
+    {
+      "map": 192415750,
+      "npc": 522,
+      "cell": 317,
+      "orientation": 3
+    },
+    {
+      "map": 192415750,
+      "npc": 100,
+      "cell": 318,
+      "remove": true
     },
     {
       "map": 214695944,

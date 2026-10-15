@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -185,7 +185,7 @@ namespace Jondo.Unity.Server.Managers
         /// piece in place of whatever the NPC had on that slot, not on top of it --, half again as
         /// big, and on its mount, as big too.
         /// </summary>
-        public static byte[] LookOf(Spec spec)
+        public static byte[] LookOf(Spec spec, bool onFoot = false)
         {
             long bones;
             List<long> skins, colors, scales;
@@ -224,14 +224,14 @@ namespace Jondo.Unity.Server.Managers
             if (scales.Count == 0) scales.Add(100);
             scales = scales.Select(s => s * Size / 100).ToList();
 
-            Mounts.Look? rides = spec.Rides == null ? null : new Mounts.Look
+            Mounts.Look? rides = spec.Rides == null || onFoot ? null : new Mounts.Look
             {
                 MountId = spec.Rides.MountId,
                 Bones = spec.Rides.Bones,
                 Scale = (spec.Rides.Scale > 0 ? spec.Rides.Scale : 100) * Size / 100,
                 Colors = spec.Rides.Colors,
             };
-            Cosmetics.PieceLook? appearance = spec.RidesAppearance == null ? null : new Cosmetics.PieceLook
+            Cosmetics.PieceLook? appearance = spec.RidesAppearance == null || onFoot ? null : new Cosmetics.PieceLook
             {
                 Bones = spec.RidesAppearance.Bones,
                 Scale = (spec.RidesAppearance.Scale > 0 ? spec.RidesAppearance.Scale : 100) * Size / 100,
@@ -353,6 +353,7 @@ namespace Jondo.Unity.Server.Managers
                 IsBot = true,
                 IsReady = true,
                 BotLook = LookOf(spec),
+                BotLookOnFoot = LookOf(spec, onFoot: true),
             };
 
             // The rest of the sheet as a character's is filled: flee and tackle a tenth of agility,

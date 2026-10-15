@@ -171,7 +171,8 @@ namespace Jondo.Unity.Server.Managers
         public static byte[] BuildLook(int breedId, int sex, int headId = 0,
                                        IReadOnlyList<long>? customColors = null,
                                        long characterId = 0,
-                                       bool paraLaVentana = false)
+                                       bool paraLaVentana = false,
+                                       bool onFoot = false)
         {
             // With an id that character is asked about, which is what is needed on the selection
             // screen; without it, the one playing.
@@ -198,7 +199,7 @@ namespace Jondo.Unity.Server.Managers
             // neither of the two, better on foot than an empty skeleton.
             int huesosRaiz = (impuesto != null && impuesto.Bones != 0) ? impuesto.Bones
                                                                       : (mount?.Bones ?? 0);
-            bool montado = mount != null && huesosRaiz != 0;
+            bool montado = !onFoot && mount != null && huesosRaiz != 0;
 
             var colores = ColorsFor(breedId, sex, customColors);
             var cuerpo = BuildBodyLook(breedId, sex, headId, customColors, montado, prendas, quien);

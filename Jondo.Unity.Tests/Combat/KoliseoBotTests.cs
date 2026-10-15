@@ -209,6 +209,31 @@ namespace Jondo.Unity.Tests.Combat
         }
 
         /// <summary>
+        /// A transformation changes the bones of the bot on foot. Mounted, its look's root is the
+        /// mount and the rider hangs from it (f7): a Zobal's mask put the mask's bones on the
+        /// dragoturkey, and the client drew nothing at all.
+        /// </summary>
+        [Fact]
+        public void A_bot_is_transformed_on_foot()
+        {
+            var spec = new KoliseoBots.Spec
+            {
+                Id = KoliseoBots.FirstId + 778, Breed = 14, Name = "test",
+                Choices = new System.Collections.Generic.Dictionary<int, int>(),
+                Rides = new Mounts.Look { MountId = 1, Bones = 639, Scale = 100, Colors = new long[] { 1, 2 } },
+            };
+
+            var mounted = ProtoMessage.Parse(KoliseoBots.LookOf(spec)).Fields;
+            var onFoot = ProtoMessage.Parse(KoliseoBots.LookOf(spec, onFoot: true)).Fields;
+
+            Assert.Equal(639, (int)mounted.Single(f => f.FieldNumber == 3).VarIntValue);
+            Assert.Contains(mounted, f => f.FieldNumber == 7);
+            Assert.DoesNotContain(onFoot, f => f.FieldNumber == 7);
+            Assert.NotEqual(639, (int)onFoot.Single(f => f.FieldNumber == 3).VarIntValue);
+            Assert.NotNull(KoliseoBots.BuildFighter(spec).BotLookOnFoot);
+        }
+
+        /// <summary>
         /// Alone against JondoBots in the Koliseo, giving up is open from the start: the client
         /// greys its leave button out in an arena fight until an ltm with f2 unlocks it. Not with
         /// another person in the fight, nor outside the Koliseo.
