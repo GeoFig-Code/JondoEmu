@@ -213,9 +213,8 @@ namespace Jondo.Unity.Server.Handlers
             //
             // Without this, a guardian without a written tree falls into SinArbolEscrito, which
             // returns THE LAST answer of the template and nothing else: Mawy Ingals declares nineteen
-            // and the only thing on screen was "No.". The keyring goes whenever the dungeon accepts
-            // it; the loose key only if it is in the bag, because an option that cannot work is not
-            // distinguishable from a broken door. See DungeonHandler.DoorReplies.
+            // and the only thing on screen was "No.". Offer the guardian's independent entry
+            // choices; DungeonHandler checks the selected item and reports a refusal in chat.
             long[] puerta = DungeonHandler.DoorReplies(npc.NpcId, mapId);
             if (puerta.Length > 0)
             {
