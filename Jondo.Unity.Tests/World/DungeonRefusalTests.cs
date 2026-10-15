@@ -108,6 +108,114 @@ namespace Jondo.Unity.Tests.World
             }
         }
 
+        /// <summary>
+        /// A guardian that declares neither reply lets the player in on any answer: with the keyring
+        /// while this week's entry is left, else with the key. One that asks opens only on its own.
+        /// </summary>
+        [Fact]
+        public async Task A_guardian_that_asks_nothing_opens_on_any_reply()
+        {
+            const long other = 12345, keyReply = 24970;
+            await using var pipe = await ClientPipe.OpenAsync(990000008, 990000009, 1);
+            using (SessionContext.Push(pipe.Session))
+            {
+                var dungeon = new DungeonManager.Dungeon { OnKeyring = true };
+                dungeon.Required.Add((999999, 1));
+                var silent = new DungeonDoor.Options();
+                var asking = new DungeonDoor.Options { Key = keyReply, Keyring = keyReply + 1 };
+                var key = DungeonHandler.EntryMethod.Key;
+                var keyring = DungeonHandler.EntryMethod.Keyring;
+
+                Assert.Equal(key, DungeonHandler.Chosen(dungeon, silent, other, true));
+                Assert.Equal(key, DungeonHandler.Chosen(dungeon, silent, 0, true));
+                Assert.Null(DungeonHandler.Chosen(dungeon, asking, other, true));
+
+                Equipment.Add(1, DungeonHandler.Keyring, 1, Equipment.Bag, null);
+                Assert.Equal(keyring, DungeonHandler.Chosen(dungeon, silent, other, true));
+                Assert.Equal(key, DungeonHandler.Chosen(dungeon, silent, other, false));
+                Assert.Equal(key, DungeonHandler.Chosen(dungeon, asking, keyReply, true));
+                Assert.Equal(keyring, DungeonHandler.Chosen(dungeon, asking, keyReply + 1, false));
+
+                // A door that asks for nothing takes neither, and one that refuses the keyring never
+                // gets it.
+                dungeon.Required.Clear();
+                Assert.Equal(key, DungeonHandler.Chosen(dungeon, silent, other, true));
+                dungeon.Required.Add((999999, 1));
+                dungeon.OnKeyring = false;
+                Assert.Equal(key, DungeonHandler.Chosen(dungeon, silent, other, true));
+            }
+        }
+
+        /// <summary>
+        /// At a guardian that asks nothing, the answer reaches the door: without the key it is
+        /// refused out loud, where before nothing at all happened.
+        /// </summary>
+        [Fact]
+        public async Task A_guardian_that_asks_nothing_refuses_out_loud()
+        {
+            const int dungeonId = int.MaxValue - 1, npcId = int.MaxValue - 1;
+            const long entrance = -990000002;
+            var dungeons = (Dictionary<int, DungeonManager.Dungeon>)DungeonManager.All;
+            var dungeon = new DungeonManager.Dungeon
+            {
+                Id = 0, Name = "Mazmorra de las Larvas", EntranceMapId = entrance, OnKeyring = true,
+            };
+            dungeon.Rooms.Add(entrance - 1);
+            dungeon.Required.Add((999999, 1));
+            dungeons.Add(dungeonId, dungeon);
+
+            try
+            {
+                await using var pipe = await ClientPipe.OpenAsync(990000010, 990000011, entrance);
+                using (SessionContext.Push(pipe.Session))
+                {
+                    pipe.Session.State.Language = "en";
+                    pipe.Session.State.CharacterLevel = 200;
+                    pipe.Session.State.OpenDialogueNpcId = npcId;
+                    Assert.Empty(DungeonHandler.DoorReplies(npcId, entrance));
+
+                    Assert.False(await DungeonHandler.AtTheDoorAsync(pipe.ToClient, entrance, 12345));
+                    Assert.Equal(ConnectionProtocol.BuildNotice(
+                            "<color=#FF0000><b>You do not possess the required item.</b></color>"),
+                        await pipe.Next(Op.Lqn));
+                    Assert.Equal(entrance, pipe.Session.State.MapId);
+                }
+            }
+            finally { dungeons.Remove(dungeonId); }
+        }
+
+        /// <summary>
+        /// With the keyring in the bag but this week's entry used, the player is told so and when
+        /// it comes back, not that the item is missing. Picking the key says the key is missing.
+        /// </summary>
+        [Fact]
+        public async Task A_used_up_keyring_says_when_it_comes_back()
+        {
+            await using var pipe = await ClientPipe.OpenAsync(990000012, 990000013, 1);
+            using (SessionContext.Push(pipe.Session))
+            {
+                pipe.Session.State.Language = "es";
+                var thursday = new System.DateTime(2026, 10, 15);
+                var dungeon = new DungeonManager.Dungeon { Name = "Cripta de Chadalid", OnKeyring = true };
+                dungeon.Required.Add((999999, 1));
+                var key = DungeonHandler.EntryMethod.Key;
+                var keyring = DungeonHandler.EntryMethod.Keyring;
+                string missing = CommandTexts.Get("dungeon.missing_item");
+
+                Assert.Equal(missing, DungeonHandler.Refusal(dungeon, keyring, true, false, thursday));
+
+                Equipment.Add(1, DungeonHandler.Keyring, 1, Equipment.Bag, null);
+                string usedUp = DungeonHandler.Refusal(dungeon, keyring, true, false, thursday);
+                Assert.Contains("Cripta de Chadalid", usedUp);
+                Assert.Contains("martes 20/10", usedUp);
+                Assert.Equal(usedUp, DungeonHandler.Refusal(dungeon, key, false, false, thursday));
+                Assert.Equal(missing, DungeonHandler.Refusal(dungeon, key, true, false, thursday));
+
+                dungeon.OnKeyring = false;
+                Assert.Equal(missing, DungeonHandler.Refusal(dungeon, key, false, false, thursday));
+            }
+        }
+
         [Theory]
         [InlineData(1)]
         [InlineData(3)]

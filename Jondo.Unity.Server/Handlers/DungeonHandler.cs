@@ -70,6 +70,7 @@ namespace Jondo.Unity.Server.Handlers
         ///
         /// Empty when this map is not a dungeon entrance, or when the guardian declares neither
         /// reply -- see <see cref="DungeonDoor"/>, which finds them by wording rather than by id.
+        /// Such a guardian lets the player in on any answer; see <see cref="Chosen"/>.
         /// </remarks>
         public static long[] DoorReplies(int npcId, long mapId)
         {
@@ -92,8 +93,9 @@ namespace Jondo.Unity.Server.Handlers
         /// Returns true when the player went in, so the caller knows the conversation ended in a
         /// map change and there is nothing more to say.
         ///
-        /// Only the guardian's key or keyring reply selects an entry method. Other dialogue
-        /// answers do not open the dungeon.
+        /// When the guardian offers a key or keyring reply, only those replies select an entry
+        /// method and other dialogue answers do not open the dungeon. When it offers neither, any
+        /// answer opens, as it always did; see <see cref="Chosen"/>.
         /// </remarks>
         public static async Task<bool> AtTheDoorAsync(NetworkStream stream, long mapId, long reply = 0)
         {
@@ -105,10 +107,9 @@ namespace Jondo.Unity.Server.Handlers
             var state = SessionContext.State;
 
             var options = DungeonDoor.For(state.OpenDialogueNpcId);
-            EntryMethod method;
-            if (reply != 0 && reply == options.Keyring) method = EntryMethod.Keyring;
-            else if (reply != 0 && reply == options.Key) method = EntryMethod.Key;
-            else return false;
+            bool freeEntryLeft = dungeon.OnKeyring
+                                 && DungeonKeyring.FreeEntryLeft(state.CharacterId, dungeon.Id, DateTime.Now);
+            if (Chosen(dungeon, options, reply, freeEntryLeft) is not EntryMethod method) return false;
 
             if (dungeon.MinLevel > 0 && state.CharacterLevel < dungeon.MinLevel)
             {
@@ -118,8 +119,7 @@ namespace Jondo.Unity.Server.Handlers
                 return false;
             }
 
-            bool freeEntry = method == EntryMethod.Keyring && dungeon.OnKeyring
-                             && DungeonKeyring.FreeEntryLeft(state.CharacterId, dungeon.Id, DateTime.Now);
+            bool freeEntry = method == EntryMethod.Keyring && freeEntryLeft;
 
             if (!TryTakeTheKey(dungeon, method, freeEntry, out long uid, out int item))
             {
@@ -134,7 +134,7 @@ namespace Jondo.Unity.Server.Handlers
                     Console.WriteLine($"[Dungeon] {dungeon.Name}: the key is missing " +
                                       $"({Wanted(dungeon)}). The keyring is not used.");
                 }
-                await TellMissingKeyAsync(stream);
+                await TellAsync(stream, Refusal(dungeon, method, options.Asks, freeEntryLeft, DateTime.Now));
                 return false;
             }
 
@@ -143,7 +143,7 @@ namespace Jondo.Unity.Server.Handlers
                 // Spend one key and announce the remaining stack, or the removal of its last unit.
                 if (!await ItemUseHandler.SpendOneAsync(stream, uid, weigh: false))
                 {
-                    await TellMissingKeyAsync(stream);
+                    await TellAsync(stream, CommandTexts.Get("dungeon.missing_item"));
                     return false;
                 }
                 Console.WriteLine($"[Dungeon] {dungeon.Name}: one unit of item {item} is spent.");
@@ -203,6 +203,51 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         internal enum EntryMethod { Key, Keyring }
+
+        /// <summary>
+        /// The entry method this reply picks, or null when it is not one of the door's replies.
+        /// </summary>
+        /// <remarks>
+        /// A guardian that declares neither reply asks nothing, and then any answer opens, as it
+        /// always did: nine dungeons have such a guardian at the door (the Larvas, the Minotoror's
+        /// two rooms, the Araknas temple…), and waiting for the right reply would shut them for
+        /// good. There the keyring goes first while this week's free entry is left, because the
+        /// key is a crafted item and the free entry is lost every Tuesday whether used or not; a
+        /// door that asks for nothing takes neither.
+        /// </remarks>
+        internal static EntryMethod? Chosen(DungeonManager.Dungeon dungeon, DungeonDoor.Options options,
+                                            long reply, bool freeEntryLeft)
+        {
+            if (!options.Asks)
+            {
+                return dungeon.Required.Count > 0 && dungeon.OnKeyring && freeEntryLeft
+                       && FindInBag(Keyring, 1) != 0
+                    ? EntryMethod.Keyring
+                    : EntryMethod.Key;
+            }
+
+            if (reply != 0 && reply == options.Keyring) return EntryMethod.Keyring;
+            if (reply != 0 && reply == options.Key) return EntryMethod.Key;
+            return null;
+        }
+
+        /// <summary>What the player is told when the door stays shut.</summary>
+        /// <remarks>
+        /// When the keyring is in the bag and the dungeon takes it, it is this week's entry that is
+        /// gone, not the item, and "you do not have the item" would send the player looking for
+        /// something they already own. That applies when they picked the keyring, or when the
+        /// guardian asked nothing and the keyring was the one that could have opened.
+        /// </remarks>
+        internal static string Refusal(DungeonManager.Dungeon dungeon, EntryMethod method, bool guardianAsks,
+                                       bool freeEntryLeft, DateTime now)
+        {
+            bool keyringUsedUp = dungeon.OnKeyring && !freeEntryLeft && FindInBag(Keyring, 1) != 0
+                                 && (method == EntryMethod.Keyring || !guardianAsks);
+
+            return keyringUsedUp
+                ? CommandTexts.Get("dungeon.keyring_used", (object)dungeon.Name, DungeonKeyring.NextReset(now))
+                : CommandTexts.Get("dungeon.missing_item");
+        }
 
         /// <summary>
         /// Finds only the item selected by the player's entry method.
@@ -290,17 +335,16 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// A missing key is a private red, bold chat notice, not a connection error.
+        /// A refused entry is a private red, bold chat notice, not a connection error.
         /// </summary>
         /// <remarks>
         /// The free-text template exists at type 0, id 0. Its rich-text tags specify the
         /// requested colour and weight, and the sentence follows the session language.
         /// </remarks>
-        private static Task TellMissingKeyAsync(NetworkStream stream)
+        private static Task TellAsync(NetworkStream stream, string text)
             => Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Lqn,
-                    ConnectionProtocol.BuildNotice(
-                        $"<color=#FF0000><b>{CommandTexts.Get("dungeon.missing_item")}</b></color>")));
+                    ConnectionProtocol.BuildNotice($"<color=#FF0000><b>{text}</b></color>")));
 
         private static Task WarnAsync(NetworkStream stream, int messageId)
             => Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,

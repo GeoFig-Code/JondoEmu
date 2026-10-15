@@ -60,6 +60,9 @@ namespace Jondo.Unity.Server.Managers
 
             /// <summary>Whether the guardian declared more than one of either, so the pick is a guess.</summary>
             public bool Ambiguous { get; init; }
+
+            /// <summary>Whether the guardian asks the player to pick, with either reply.</summary>
+            public bool Asks => Keyring != 0 || Key != 0;
         }
 
         private static readonly Dictionary<int, Options> _byNpc = new Dictionary<int, Options>();
