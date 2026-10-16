@@ -1,5 +1,6 @@
-# What is published is just what is needed to run the emulator without recompiling it: the .exe in the root,
-# datos/ with what it reads, launcher_assets/, docs/ and the source code. Everything else out.
+# What is published is just what is needed to run the emulator without recompiling it: datos/ with what
+# it reads, launcher_assets/, docs/ and the source code. Everything else out. The .exe are not here
+# either: the Release workflow builds them and attaches them to a GitHub release.
 
 # ─── Build ──────────────────────────────────────────────────────────────────
 [Bb]in/
@@ -11,6 +12,11 @@ runtimes/
 *.runtimeconfig.json
 # The dlls go inside the single-file .exe; none loose.
 *.dll
+
+# ─── Executables ────────────────────────────────────────────────────────────
+# Publishing still copies Jondo Server.exe, Jondo Studio.exe and Jondo Emulator Launcher.exe to the
+# root so they run against this checkout, but they are build output, not source.
+*.exe
 
 # ─── Server settings ────────────────────────────────────────────────────────
 # What each server sets in its Settings window: its own, not the repository's.

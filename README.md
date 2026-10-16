@@ -40,6 +40,13 @@
 
 **Nothing has to be compiled.** The launcher ships as a single ready-to-run executable with every dependency inside it, and the world database ships compressed and extracts itself on first run.
 
+**⬇️ Download a zip from the [Releases page](../../releases)** and unpack it anywhere. No need to clone this repository to play.
+
+* **`Jondo-Full-vX.Y.Z-win-x64.zip`**: the whole emulator, with the launcher, the server, Jondo Studio and the data they read. Take this one to run a server.
+* **`Jondo-Launcher-vX.Y.Z-win-x64.zip`**: only the launcher, for a player whose server runs on another machine. Point the launcher at it with a `servidor=<address>` line in `%APPDATA%\Jondo\lanzador.cfg`.
+
+Either one unpacks as a **`JondoEmu`** folder. Keep that name and put it beside the client's folder from Step 2: that is where JondoFix looks for it.
+
 ### Step 1 — Install the .NET 10 runtime
 
 Download it from [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/10.0). The *Desktop Runtime* is the one you want.

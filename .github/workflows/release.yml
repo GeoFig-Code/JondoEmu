@@ -1,0 +1,167 @@
+name: Release
+
+# Builds the three executables from a commit, runs the tests and leaves them in a draft release.
+# The .exe are not versioned in git any more: this is where they come from.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full commit SHA to release (empty = latest commit of the selected branch)
+        required: false
+        type: string
+        default: ''
+      bump:
+        description: Version bump
+        required: false
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+permissions:
+  contents: write
+
+# Two releases at once would both read the same last tag and compute the same version.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check the commit input
+        shell: bash
+        env:
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          if [[ -n "$COMMIT" && ! "$COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::'commit' must be a full 40-character SHA, got '$COMMIT'"
+            exit 1
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit || github.sha }}
+          # The whole history, so that the version tags are there.
+          fetch-depth: 0
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+
+      # The last vX.Y.Z tag in the repository, bumped. With no tag yet, the first one is 0.1.0.
+      - name: Compute version
+        id: version
+        shell: bash
+        env:
+          BUMP: ${{ inputs.bump || 'patch' }}
+        run: |
+          last=$({ git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true; } | sed -n 1p)
+
+          if [[ -z "$last" ]]; then
+            version=0.1.0
+            echo "No version tag found; starting at $version"
+          else
+            IFS=. read -r major minor patch <<< "${last#v}"
+            case "$BUMP" in
+              major) major=$((major + 1)); minor=0; patch=0 ;;
+              minor) minor=$((minor + 1)); patch=0 ;;
+              patch) patch=$((patch + 1)) ;;
+              *) echo "::error::Unknown bump '$BUMP'"; exit 1 ;;
+            esac
+            version="$major.$minor.$patch"
+            echo "Last tag $last, $BUMP bump -> $version"
+          fi
+
+          {
+            echo "version=$version"
+            echo "tag=v$version"
+            echo "sha=$(git rev-parse HEAD)"
+          } >> "$GITHUB_OUTPUT"
+
+      # Same as in CI: without world.db some 64 tests skip themselves and count as passed.
+      - name: Unpack world.db
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force bases | Out-Null
+          Expand-Archive -Path datos/world.zip -DestinationPath bases -Force
+          Get-Item bases/world.db | Select-Object Name,Length
+
+      - name: Restore
+        run: dotnet restore Jondo.Unity.sln
+
+      - name: Build
+        run: dotnet build Jondo.Unity.sln --configuration Release --no-restore -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Test
+        run: dotnet test Jondo.Unity.Tests/Jondo.Unity.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=tests.trx" --results-directory TestResults
+
+      # SkipTests: the tests have just run in the step above, so the publish gate would only run
+      # them a second time. Each project's deploy target copies its .exe to the root, as it does
+      # locally, which is where the next step picks them up.
+      - name: Publish
+        shell: pwsh
+        run: |
+          $projects = 'Jondo.Unity.Server', 'Jondo.Unity.Launcher', 'Jondo.Unity.Studio'
+          foreach ($project in $projects) {
+            dotnet publish "$project/$project.csproj" --configuration Release --no-restore `
+              -p:Version=${{ steps.version.outputs.version }} `
+              -p:SkipTests=true
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      # Two zips, each one a folder that runs as it is unpacked, with the data taken by git archive
+      # so that only what is versioned goes in and nothing the tests wrote (bases/, logs/):
+      #
+      #   Full      the three .exe and everything the server reads next to it: datos/ (world.zip
+      #             among it), content/, launcher_assets/, JondoFix.dll and the root marker.
+      #   Launcher  only what a player needs to open the game against a server elsewhere: the
+      #             launcher, its artwork, the JondoFix.dll it copies into the client, and the
+      #             vendor names the mod reads from datos/ inside the client.
+      #
+      # The folder is called JondoEmu because that is one of the names JondoFix looks for beside
+      # the client's folder when JONDO_EMULATOR_ROOT is not set.
+      - name: Package
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.version.outputs.tag }}'
+          New-Item -ItemType Directory -Force release | Out-Null
+
+          function New-ReleaseZip([string]$name, [string[]]$exes, [string[]]$data) {
+            $stage = "stage/$name/JondoEmu"
+            New-Item -ItemType Directory -Force $stage | Out-Null
+            git archive --format=tar --output="stage/$name.tar" HEAD -- $data
+            if ($LASTEXITCODE -ne 0) { throw "git archive failed for $name" }
+            tar -xf "stage/$name.tar" -C $stage
+            if ($LASTEXITCODE -ne 0) { throw "tar failed for $name" }
+            Copy-Item -LiteralPath $exes -Destination $stage
+            Compress-Archive -Path $stage -DestinationPath "release/$name.zip"
+          }
+
+          New-ReleaseZip "Jondo-Full-$tag-win-x64" `
+            -exes 'Jondo Emulator Launcher.exe', 'Jondo Server.exe', 'Jondo Studio.exe' `
+            -data '.jondo-root', 'datos', 'content', 'launcher_assets', 'JondoFix/JondoFix.dll'
+
+          New-ReleaseZip "Jondo-Launcher-$tag-win-x64" `
+            -exes 'Jondo Emulator Launcher.exe' `
+            -data '.jondo-root', 'launcher_assets', 'JondoFix/JondoFix.dll', 'datos/vendedores_jondo.json'
+
+          Get-ChildItem release | Select-Object Name,Length
+
+      - name: Create draft release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          commit: ${{ steps.version.outputs.sha }}
+          draft: true
+          generateReleaseNotes: true
+          artifacts: release/*.zip,TestResults/tests.trx
+          artifactErrorsFailBuild: true
