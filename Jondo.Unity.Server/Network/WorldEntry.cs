@@ -462,6 +462,14 @@ namespace Jondo.Unity.Server.Network
                     AlterationProtocol.BuildList(Managers.Alterations.Of(character.Id), DateTime.UtcNow));
             }
 
+            // The experience settings. The captured hox limited everybody to the capturer's 100;
+            // this character's own limit, from the base.
+            if (ConnectionProtocol.ReadPayload(frame, Op.Hox) != null)
+            {
+                return ConnectionProtocol.Push(Op.Hox,
+                    Handlers.ExperienceLimitHandler.BuildSettings(Managers.ExperienceLimit.Of(character.Id)));
+            }
+
             // The haven bag's themes and rooms. The captured ones were the capturer's -- eight
             // themes, four rooms in 32, 4, 1 and 1 -- handed to everybody. Every theme for every
             // character here, and this character's own rooms.

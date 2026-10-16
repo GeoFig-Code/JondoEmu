@@ -5404,7 +5404,8 @@
        "v": 100
       }
      ]
-    }
+    },
+    "built": "ExperienceLimitHandler.BuildSettings"
    },
    {
     "opcode": "kvv",

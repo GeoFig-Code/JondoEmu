@@ -155,8 +155,11 @@ namespace Jondo.Unity.Server.Handlers
                         int wisdom = session.State.TotalWisdom + StatsHandler.GetEquipBonus(ConnectionProtocol.Stat.Wisdom);
                         xp = XpShare(xpBase, session.State.CharacterLevel, levels, strongest, monsterLevels, wisdom);
                     }
+                    xp = CombatExperience.WithCharacterBonus(xp, CombatExperience.CharacterBonusPercent);
                     xp = ServerSettings.WithBonus(ConElExtra(xp, extra), ServerSettings.Current.ExperienceBonusPercent);
                 }
+                // And last, as the client cuts its tooltip: the limit he set on what he earns.
+                xp = ExperienceLimit.ApplyFor(fighter.Id, xp);
                 plan[fighter.Id] = new Reward
                 {
                     Xp = xp,

@@ -61,16 +61,28 @@ namespace Jondo.Unity.Tests.Combat
 
         /// <summary>
         /// Two real fights. The solo one of «entrar a combate-desconectarse-reconectar…»: eight
-        /// monsters, 13,894 gradeXp, levels adding up to 109, the strongest at 15, a 354 with wisdom 100 and its
-        /// challenge failed. The four monsters of the follow capture for the 354 with wisdom 352, beside a 447. The client's sum
-        /// gives 2,800 and 339 (559 with the challenge's 65 %); the real server paid 2,980 and 589.
+        /// monsters, 13,894 gradeXp, levels adding up to 109, the strongest at 15, a 354 with wisdom 100, a hox
+        /// of 105 and its challenge failed. The four monsters of the follow capture for the 354 with wisdom
+        /// 352, beside a 447. The client's sum gives 2,800 and 339, and 2,939 and 355 with the bonus (585
+        /// with the challenge's 65 %); the real server paid 2,980 and 589.
         /// </summary>
         [Fact]
         public void The_captured_fights_by_the_client_s_sum()
         {
             Assert.Equal(2800, CombatExperience.Share(13894, 354, new[] { 354 }, 15, 109, 100));
             Assert.Equal(339, CombatExperience.Share(6260, 354, new[] { 447, 354 }, 14, 50, 352));
+            Assert.Equal(2939, CombatExperience.WithCharacterBonus(2800, 5));
+            Assert.Equal(355, CombatExperience.WithCharacterBonus(339, 5));
         }
+
+        /// <summary>The bonus factor is worked out in single precision, as the client does: 5 % of 2,800 is not quite 140.</summary>
+        [Theory]
+        [InlineData(2800, 5, 2939)]
+        [InlineData(2800, 0, 2800)]
+        [InlineData(1000, 50, 1500)]
+        [InlineData(0, 5, 0)]
+        public void The_character_s_bonus_multiplies_as_the_client_does(long experience, int bonus, long expected)
+            => Assert.Equal(expected, CombatExperience.WithCharacterBonus(experience, bonus));
 
         [Fact]
         public void A_defeat_pays_nothing()
@@ -121,14 +133,52 @@ namespace Jondo.Unity.Tests.Combat
                         IsMonster = true, XpReward = 5000 });
                 fight.ChallengesFixed.Add((1, 100));
                 FightHandler.PlanRewards(fight);
-                Assert.Equal(22000, FightHandler.RewardOf(fight, first).Xp);
-                Assert.Equal(44000, FightHandler.RewardOf(fight, second).Xp);
+                // 5,500 each, ×2 and ×4 by wisdom, ×1.05 by the bonus (11,549 and 23,099), ×2 by the challenge.
+                Assert.Equal(23098, FightHandler.RewardOf(fight, first).Xp);
+                Assert.Equal(46198, FightHandler.RewardOf(fight, second).Xp);
                 var planned = FightHandler.RewardOf(fight, first);
                 FightHandler.PlanRewards(fight);
                 Assert.Same(planned, FightHandler.RewardOf(fight, first));
             }
             finally
             {
+                SessionRegistry.Unregister(a);
+                SessionRegistry.Unregister(b);
+            }
+        }
+
+        /// <summary>Each winner's limit on earned experience cuts his own share, last, and nobody else's.</summary>
+        [Fact]
+        public void The_limit_cuts_only_its_owner_s_share()
+        {
+            const long first = 8_999_031, second = 8_999_032;
+            var a = GameSession.SinSocket();
+            var b = GameSession.SinSocket();
+            foreach (var (session, id) in new[] { (a, first), (b, second) })
+            {
+                session.BindAccount(id, 1);
+                session.State.CharacterId = id;
+                session.State.CharacterLevel = 100;
+                session.EnterWorld();
+                Assert.True(SessionRegistry.Register(session));
+            }
+            ExperienceLimit.Set(first, 50);
+            try
+            {
+                var fight = new FightInstance(8_999_031, 1);
+                fight.AddPlayer(new Fighter { Id = first, Level = 100, MaxHP = 100, CurrentHP = 100 });
+                fight.AddPlayer(new Fighter { Id = second, Level = 100, MaxHP = 100, CurrentHP = 100 });
+                fight.AddMonster(new Fighter { Id = -1, Level = 100, MaxHP = 100, CurrentHP = 0,
+                    IsMonster = true, XpReward = 10001 });
+                FightHandler.PlanRewards(fight);
+                long whole = CombatExperience.WithCharacterBonus(
+                    CombatExperience.Share(10001, 100, new[] { 100, 100 }, 100, 100), CombatExperience.CharacterBonusPercent);
+                Assert.Equal(whole / 2, FightHandler.RewardOf(fight, first).Xp);
+                Assert.Equal(whole, FightHandler.RewardOf(fight, second).Xp);
+            }
+            finally
+            {
+                ExperienceLimit.Set(first, ExperienceLimit.Full);
                 SessionRegistry.Unregister(a);
                 SessionRegistry.Unregister(b);
             }
@@ -161,7 +211,8 @@ namespace Jondo.Unity.Tests.Combat
                 fight.AddMonster(new Fighter { Id = -1, Level = 100, MaxHP = 100, CurrentHP = 0,
                     IsMonster = true, XpReward = 10000 });
                 FightHandler.PlanRewards(fight);
-                Assert.Equal(CombatExperience.Share(10000, 100, new[] { 100 }, 100, 100),
+                Assert.Equal(CombatExperience.WithCharacterBonus(CombatExperience.Share(10000, 100, new[] { 100 }, 100, 100),
+                                                                 CombatExperience.CharacterBonusPercent),
                              FightHandler.RewardOf(fight, stays).Xp);
                 Assert.Null(FightHandler.RewardOf(fight, left));
             }

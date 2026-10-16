@@ -592,6 +592,10 @@ namespace Jondo.Unity.Server.Network
                 {
                     await CharacteristicsHandler.ResetAsync(stream);
                 }
+                else if (payloadStr.Contains(Op.Uri(Op.Kts)))
+                {
+                    await ExperienceLimitHandler.SetAsync(stream, payload);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Iuk)))
                 {
                     await EquipmentHandler.MoveAsync(stream, payload, sessionAccountId);

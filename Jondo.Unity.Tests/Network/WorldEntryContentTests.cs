@@ -22,6 +22,9 @@ namespace Jondo.Unity.Tests.Network
     /// the frame the capture holds, in the same order. If that holds, nothing downstream can behave
     /// differently, because nothing downstream can tell the difference.
     /// </remarks>
+    // WorldEntryContent.Load empties the blocks and fills them again: whoever reads them meanwhile
+    // finds them half there. Every test class that loads the manifest goes in this collection.
+    [Collection("world entry content")]
     public class WorldEntryContentTests
     {
         private const string Manifest = "world/entry.json";

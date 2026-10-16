@@ -1036,7 +1036,8 @@ namespace Jondo.Unity.Server.Managers
             kamas = Almanax.WithBonus(Almanax.BonusType.QuestKamas, kamas);
 
             bool paid = await CharacterRewards.GiveKamasAsync(stream, kamas);
-            bool levelled = await CharacterRewards.GiveExperienceAsync(stream, experience);
+            // Under the player's limit: the client warns about it beside a quest's experience.
+            bool levelled = await CharacterRewards.GiveExperienceAsync(stream, experience, limited: true);
             paid |= experience > 0;
 
             if (paid)

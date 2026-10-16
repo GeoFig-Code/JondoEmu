@@ -8844,7 +8844,9 @@ namespace Jondo.Unity.Server.Handlers
             // -- in the capture's jyg his block goes WITHOUT the won field, not with a zero --.
             if (won && fight.Reglas.PagaElKoliseo)
             {
-                xpGained = Managers.KoliseoRewards.Experiencia(GameState.CharacterLevel);
+                // Under the limit he set, as the client warns beside the Koliseo's experience.
+                xpGained = Managers.ExperienceLimit.ApplyFor(GameState.CharacterId,
+                    Managers.KoliseoRewards.Experiencia(GameState.CharacterLevel));
                 kamas = Managers.KoliseoRewards.KamasPorVictoria;
                 loot = Managers.KoliseoRewards.Botin();
                 EntregarBotin(loot, out caidos);

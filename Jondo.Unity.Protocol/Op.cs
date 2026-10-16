@@ -98,6 +98,14 @@ public static class Op
     /// </summary>
     public const string Hon = "hon";
 
+    /// <summary>
+    /// S→C { f1, f2, f4 }: the character's experience settings, at world entry and after a kts (ees.wtx).
+    /// The client keeps f1 − 100 as the experience bonus percent the monster tooltip multiplies by,
+    /// f2 − 100 beside it, and f4 as the limit on earned experience, in percent. Captured: 105, 105,
+    /// 100, and 50 after limiting it.
+    /// </summary>
+    public const string Hox = "hox";
+
     /// <summary>The game server's greeting; f5 is omitted on purpose because it does not appear in any of the three startup captures.</summary>
     public const string Hoy = "hoy";
 
@@ -2223,6 +2231,9 @@ public static class Op
 
     /// <summary>A line the player wrote.</summary>
     public const string Ktm = "ktm";
+
+    /// <summary>C→S { f1 percent }: the limit on earned experience, set in the characteristics panel (ees.wty).</summary>
+    public const string Kts = "kts";
 
     /// <summary>
     /// Whispering to someone: { f1: the text, f5: to whom }. It is not a channel of the normal chat -that is

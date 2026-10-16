@@ -27,23 +27,33 @@ namespace Jondo.Unity.Server.Managers
     /// level is a 200. The companions it adds to P without counting them for the group, this
     /// server does not have.
     ///
-    /// Three more factors of the client are one here, as they are there:
-    ///   - the map's reward rate and the character's experience bonus, which no message of this
-    ///     client sets;
+    /// After the wisdom, the client's other factors:
+    ///   - the map's reward rate, which no message of this client sets: 1;
+    ///   - the character's experience bonus, <see cref="WithCharacterBonus"/>: f1 − 100 of the hox,
+    ///     5 in every capture, so 5 here too (<see cref="CharacterBonusPercent"/>);
     ///   - the alliance prism's 25, for fighting where one's own alliance has its prism, which
-    ///     the client divides by a hundred in whole numbers: 1 + 25/100 is 1.
+    ///     the client divides by a hundred in whole numbers: 1 + 25/100 is 1;
+    ///   - last, the limit the player sets on what he earns (<see cref="ExperienceLimit"/>).
     ///
     /// Measured against the captures:
     ///   - The solo fight of «entrar a combate-desconectarse-reconectar…» had eight monsters,
-    ///     13,894 gradeXp, levels adding up to 109, the strongest at 15, wisdom 100 and its only
-    ///     challenge failed. It gives 1,400 before wisdom and 2,800 after; the real server paid 2,980.
-    ///   - The four-monster fight of the follow capture gives 559 for the 354 (wisdom 352,
-    ///     challenge 65 %), where it paid 589.
-    /// What makes up those 5 or 6 %, the client does not show.
+    ///     13,894 gradeXp, levels adding up to 109, the strongest at 15, wisdom 100, a hox of 105
+    ///     and its only challenge failed. It gives 1,400 before wisdom, 2,800 after and 2,939 with
+    ///     the bonus; the real server paid 2,980.
+    ///   - The four-monster fight of the follow capture gives 339 for the 354 (wisdom 352), 355
+    ///     with the bonus and 585 with the challenge's 65 %, where it paid 589.
+    /// What makes up the last 1 %, the client does not show.
     /// </remarks>
     public static class CombatExperience
     {
         internal static readonly double[] GroupCoefficients = { 1, 1.1, 1.5, 2.3, 3.1, 3.6, 4.2, 4.7 };
+
+        /// <summary>
+        /// The character's experience bonus, in percent: f1 − 100 of the hox (ees.wtx keeps it,
+        /// eet.xbc gives it to the tooltip). Every capture carries 105, whatever gives it on the
+        /// real server, so every character here has 5; the hox world entry sends says so.
+        /// </summary>
+        public const int CharacterBonusPercent = 5;
 
         /// <summary>The level a character counts at for experience: up to 200.</summary>
         public static int CombatLevel(int level) => Math.Clamp(level, 1, 200);
@@ -66,6 +76,18 @@ namespace Jondo.Unity.Server.Managers
             double capped = Math.Min(own, Math.Truncate(2.5 * strongestMonster));
             long personal = (long)Math.Truncate(capped / total * 100 / 100 * groupXp);
             return Math.Max(1, (long)Math.Truncate(personal * (100d + Math.Max(0, wisdom)) / 100d));
+        }
+
+        /// <summary>
+        /// Some experience with the character's bonus, as the client multiplies its tooltip:
+        /// (int)(xp × (bonus / 100 + 1)), the factor worked out in single precision. So 5 % is
+        /// 1.0499999523…, and 2,800 comes out at 2,939, not 2,940 -- what the tooltip shows.
+        /// </summary>
+        public static long WithCharacterBonus(long experience, int bonusPercent)
+        {
+            if (experience <= 0) return 0;
+            float factor = (float)bonusPercent / 100f + 1f;
+            return (long)(experience * (double)factor);
         }
     }
 }

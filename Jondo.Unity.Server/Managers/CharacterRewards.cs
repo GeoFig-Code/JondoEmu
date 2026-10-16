@@ -50,13 +50,18 @@ namespace Jondo.Unity.Server.Managers
         /// Hands over experience: the level-up window when it is one, the new character sheet and
         /// the gain. Returns whether the level went up. <paramref name="serverBonus"/> false leaves a
         /// fixed amount as it is -- an experience scroll's 2,000 is 2,000 whatever the server's bonus.
+        /// <paramref name="limited"/> puts it under the limit the player set on what he earns (see
+        /// <see cref="ExperienceLimit"/>), for the gains the client warns about.
         /// </summary>
-        public static async Task<bool> GiveExperienceAsync(NetworkStream stream, long experience, bool serverBonus = true)
+        public static async Task<bool> GiveExperienceAsync(NetworkStream stream, long experience, bool serverBonus = true,
+                                                           bool limited = false)
         {
             if (experience <= 0) return false;
             if (serverBonus) experience = ServerSettings.WithBonus(experience, ServerSettings.Current.ExperienceBonusPercent);
 
             var state = SessionContext.State;
+            if (limited) experience = ExperienceLimit.ApplyFor(state.CharacterId, experience);
+            if (experience <= 0) return false;
             state.Experience += experience;
 
             bool up = false;

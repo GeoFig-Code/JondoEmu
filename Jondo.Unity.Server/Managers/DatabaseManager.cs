@@ -2257,7 +2257,7 @@ namespace Jondo.Unity.Server
             "CharacterDreams",
             "CharacterChallenges", "CharacterQuests", "CharacterAchievements",
             "CharacterKeyring", "CharacterElements",
-            "CharacterEnergy",
+            "CharacterEnergy", "CharacterExperienceLimit",
         };
 
         /// <summary>
