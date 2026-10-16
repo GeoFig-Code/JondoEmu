@@ -9,32 +9,12 @@ using Jondo.Unity.World.Fights;
 namespace Jondo.Unity.Server.Handlers
 {
     /// <summary>
-    /// What a won fight pays, shared among the players who won it: worked out once, for all of
-    /// them, before anybody is shown the end.
+    /// Combat rewards planned once for every participant before any end screen is sent.
     /// </summary>
     /// <remarks>
-    /// ─── What is measured ─────────────────────────────────────────────────────────────────
-    ///
-    /// The follow capture ("Combate/entrar a combate con listo automatico y entrada automatica
-    /// siguiendo a lider de grupo-combate-victoria") ends two fights won by two players, levels
-    /// 447 and 354, and each jyg lists BOTH players' gains -- experience, kamas and items -- to
-    /// both of them:
-    ///
-    ///   one monster     447: 11 xp,  9 kamas, 6903 and 287     354: 25 xp,  4 kamas, 287
-    ///   four monsters   447: 343 xp, 30 kamas, 6898 ×2, 6903, 6902   354: 589 xp, 17 kamas, 6903, 6902
-    ///
-    /// So the items are rolled for each player on his own, the kamas are one sum cut in two
-    /// unequal parts, and the experience is shared. Its exact numbers carry what every player
-    /// brings of his own -- wisdom, the share given to a mount or a guild, an account's bonus --
-    /// which this server does not model for anyone, alone or not.
-    ///
-    /// ─── What is inferred: the game's own rules ──────────────────────────────────────────
-    ///
-    /// The shares are Dofus's: the experience grows with the group -- 1, 1.1, 1.5, 2.3, 3.1,
-    /// 3.6, 4.2, 4.7 for one to eight players, counting only those at a third of the highest
-    /// level or more -- and is cut by level, each player's level counting up to two and a half
-    /// times the strongest monster's; the kamas are cut by prospecting. Worked out against what
-    /// one player alone would get here, so a player alone gets exactly what he always got.
+    /// PvM uses Giny 2.68's base level ratios and personal wisdom. Challenges remain common.
+    /// A defeat pays 20% on killed opponents only. Donations are taken mount first, then guild,
+    /// with Stump 2.71's conversion by level gap and no custom guild multiplier.
     /// </remarks>
     public static partial class FightHandler
     {
@@ -42,6 +22,7 @@ namespace Jondo.Unity.Server.Handlers
         internal sealed class Reward
         {
             public long Xp { get; set; }
+            public CombatExperience.Allocation Donations { get; set; }
             public long Kamas { get; set; }
             public Dictionary<int, int> Loot { get; set; } = new();
 
@@ -50,25 +31,17 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>The group bonus to experience, by how many players count for it.</summary>
-        internal static readonly double[] GroupCoefficients = { 1, 1.1, 1.5, 2.3, 3.1, 3.6, 4.2, 4.7 };
+        internal static readonly double[] GroupCoefficients = CombatExperience.GroupCoefficients;
 
         /// <summary>Each fight's shares, from the moment it is decided to the last player's end.</summary>
         private static readonly ConcurrentDictionary<long, Dictionary<long, Reward>> _rewards = new();
 
         /// <summary>
-        /// One player's experience out of what a player alone would get: the group bonus, then his
-        /// part by level -- each level counting up to two and a half times the strongest monster's.
+        /// One player's PvM share, including the level mismatch in solo as well as in a group.
         /// </summary>
-        internal static long XpShare(long alone, int level, IReadOnlyList<int> levels, int strongestMonster)
-        {
-            if (alone <= 0 || levels.Count <= 1) return Math.Max(0, alone);
-            int cap = Math.Max(1, (int)Math.Truncate(2.5 * Math.Max(1, strongestMonster)));
-            int highest = levels.Max();
-            int counting = Math.Clamp(levels.Count(l => l * 3 >= highest), 1, GroupCoefficients.Length);
-            double weights = levels.Sum(l => (double)Math.Min(l, cap));
-            if (weights <= 0) return 0;
-            return (long)Math.Floor(alone * GroupCoefficients[counting - 1] * Math.Min(level, cap) / weights);
-        }
+        internal static long XpShare(long baseXp, int level, IReadOnlyList<int> levels, int strongestMonster,
+                                     int totalMonsterLevel, int wisdom = 0)
+            => CombatExperience.Share(baseXp, level, levels, strongestMonster, totalMonsterLevel, wisdom);
 
         /// <summary>One player's kamas out of the fight's: his prospecting's part of the team's.</summary>
         internal static long KamasShare(long total, int prospecting, IReadOnlyList<int> prospectings)
@@ -89,9 +62,8 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// The shares of a won fight against monsters, for every player who won it: the monsters'
-        /// experience and kamas with the challenges' bonus, cut among them, and the items rolled for
-        /// each one in his own session. A dream's fights are not cut: in the four-player dream
+        /// PvM rewards for every participant, including XP-only defeat rewards. Victory loot is
+        /// rolled in each player's session. A dream's fights are not cut: in the four-player dream
         /// capture every player gets the same experience and the same items.
         /// </summary>
         /// <remarks>
@@ -103,8 +75,9 @@ namespace Jondo.Unity.Server.Handlers
         /// umbral, la victoria es definitiva" (1178499) -- so its players are paid then even when
         /// the last wave had the better of them.
         /// </remarks>
-        private static void PlanRewards(FightInstance fight)
+        internal static void PlanRewards(FightInstance fight)
         {
+            if (_rewards.ContainsKey(fight.FightId)) return;
             // A tax collector's attackers share its bag; a prism pays nothing, and the defenders of
             // either win nothing but having saved it.
             if (fight.DefendingAllianceId != 0)
@@ -118,40 +91,68 @@ namespace Jondo.Unity.Server.Handlers
             bool won = fight.Azul.Concat(fight.Rojo).Any(f => !f.IsMonster && !f.EsInvocado && fight.HaGanado(f.Id));
             var dream = DreamHandler.PayOf(fight, won);
 
-            var winners = new List<(Fighter Fighter, GameSession Session)>();
+            var participants = new List<(Fighter Fighter, GameSession Session)>();
             foreach (var fighter in fight.Azul.Concat(fight.Rojo))
             {
                 if (fighter.IsMonster || fighter.EsInvocado || fighter.EsIlusion) continue;
-                if (!fight.HaGanado(fighter.Id) && dream?.Finished != true) continue;
                 var session = SessionRegistry.FindByCharacter(fighter.Id);
-                if (session != null) winners.Add((fighter, session));
+                if (session != null) participants.Add((fighter, session));
             }
-            if (winners.Count == 0) return;
+            if (participants.Count == 0) return;
 
-            var paying = fight.Rojo.Where(m => m.IsMonster && !m.EsInvocado).ToList();
-            int extra = ChallengeWatcher.EndBonus(fight, won: true);
+            var paying = fight.Rojo.Where(m => m.IsMonster && !m.EsInvocado && !m.EsIlusion).ToList();
+            var killed = paying.Where(m => !m.IsAlive).ToList();
+            int extra = ChallengeWatcher.EndBonus(fight, won);
             long xpAlone = ServerSettings.WithBonus(ConElExtra(paying.Sum(m => (long)m.XpReward), extra),
                                                     ServerSettings.Current.ExperienceBonusPercent);
             long kamasAlone = ServerSettings.WithBonus(ConElExtra(paying.Sum(m => 10L + (m.Level * 5L)), extra),
                                                        ServerSettings.Current.KamasBonusPercent);
-            int strongest = paying.Count == 0 ? 1 : paying.Max(m => m.Level);
             bool shared = !Dreams.IsDreamMap(fight.RoleplayMapId);
-
-            var levels = winners.Select(w => Math.Max(1, w.Session.State.CharacterLevel)).ToList();
-            var prospectings = winners.Select(w => ProspectingOf(w.Session)).ToList();
+            var prospectings = participants.Select(w => ProspectingOf(w.Session)).ToList();
 
             var plan = new Dictionary<long, Reward>();
-            for (int i = 0; i < winners.Count; i++)
+            for (int i = 0; i < participants.Count; i++)
             {
-                var (fighter, session) = winners[i];
-                Dictionary<int, int> loot;
+                var (fighter, session) = participants[i];
+                bool rewardedVictory = fight.HaGanado(fighter.Id) || dream?.Finished == true;
+                Dictionary<int, int> loot = new();
                 var perfect = new List<RandomLoot.Drop>();
-                if (dream != null) loot = DreamLootOf(fight, dream);
-                else using (SessionContext.Push(session)) loot = RollLoot(fight, extra, perfect);
+                if (rewardedVictory)
+                {
+                    if (dream != null) loot = DreamLootOf(fight, dream);
+                    else using (SessionContext.Push(session)) loot = RollLoot(fight, extra, perfect);
+                }
+                long xp = 0;
+                CombatExperience.Allocation donations = default;
+                if (!shared)
+                {
+                    // Dreams have their own reward rules; neither their losses nor PvP use PvM XP.
+                    xp = rewardedVictory ? xpAlone : 0;
+                }
+                else if (fight.Reglas.EnfrenteHayMonstruos)
+                {
+                    var defeated = rewardedVictory ? paying : killed;
+                    var levels = fight.Aliados(fighter.Id).Where(f => !f.IsMonster && !f.EsInvocado && !f.EsIlusion)
+                        .Select(f => CombatExperience.CombatLevel(f.Level)).ToList();
+                    using (SessionContext.Push(session))
+                    {
+                        int wisdom = session.State.TotalWisdom + StatsHandler.GetEquipBonus(ConnectionProtocol.Stat.Wisdom);
+                        xp = XpShare(defeated.Sum(m => (long)m.XpReward), session.State.CharacterLevel, levels,
+                            defeated.Count == 0 ? 0 : defeated.Max(m => m.Level), defeated.Sum(m => m.Level), wisdom);
+                        xp = ServerSettings.WithBonus(xp, ServerSettings.Current.ExperienceBonusPercent);
+                        xp = ConElExtra(xp, extra);
+                        xp = CombatExperience.AfterOutcome(xp, rewardedVictory);
+                        var mount = Equipment.All.FirstOrDefault(item => item.Position == Mounts.Slot
+                            && Mounts.CanGainExperience(item.Template));
+                        donations = ExperienceDonations.Credit(fighter.Id, xp, session.State.CharacterLevel, mount?.Uid ?? 0);
+                        xp = donations.Character;
+                    }
+                }
                 plan[fighter.Id] = new Reward
                 {
-                    Xp = shared ? XpShare(xpAlone, levels[i], levels, strongest) : xpAlone,
-                    Kamas = dream != null ? 0 : shared ? KamasShare(kamasAlone, prospectings[i], prospectings) : kamasAlone,
+                    Xp = xp,
+                    Donations = donations,
+                    Kamas = !rewardedVictory || dream != null ? 0 : shared ? KamasShare(kamasAlone, prospectings[i], prospectings) : kamasAlone,
                     Loot = loot,
                     Perfect = perfect,
                 };
@@ -162,14 +163,14 @@ namespace Jondo.Unity.Server.Handlers
 
             if (dream != null)
             {
-                Program.LogDebug($"[Dreams] Fight #{fight.FightId} pays {winners.Count} dreamer(s) at a loot bonus of " +
+                Program.LogDebug($"[Dreams] Fight #{fight.FightId} pays {participants.Count} dreamer(s) at a loot bonus of " +
                                  $"{dream.LootBonus}: {Dreams.ReflectionsFor(dream.LootBonus)} reflection(s) each" +
                                  (dream.Finished ? $", {dream.Fragments} dream fragment(s) for {dream.Waves} wave(s)." : "."));
             }
 
-            if (winners.Count > 1)
+            if (participants.Count > 1)
             {
-                Program.LogDebug($"[Fight] Share of #{fight.FightId} among {winners.Count}: " +
+                Program.LogDebug($"[Fight] Share of #{fight.FightId} among {participants.Count}: " +
                                  string.Join(", ", plan.Select(p => $"{p.Key} {p.Value.Xp} xp {p.Value.Kamas} kamas " +
                                                                     $"{p.Value.Loot.Sum(l => l.Value)} item(s)")));
             }
@@ -220,7 +221,7 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>This player's share of the fight, if it was planned.</summary>
-        private static Reward? RewardOf(FightInstance fight, long characterId)
+        internal static Reward? RewardOf(FightInstance fight, long characterId)
             => _rewards.TryGetValue(fight.FightId, out var plan) && plan.TryGetValue(characterId, out var reward)
                 ? reward
                 : null;
