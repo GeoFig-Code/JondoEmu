@@ -1237,6 +1237,12 @@ namespace Jondo.Unity.World.Fights
         public HashSet<long> Wounded { get; } = new HashSet<long>();
 
         /// <summary>
+        /// People who gave up while the fight went on without them: they lie dead on its board and
+        /// hear no more of it, they had their end and went back to their map.
+        /// </summary>
+        public HashSet<long> Gone { get; } = new HashSet<long>();
+
+        /// <summary>
         /// Whom each challenge points at: challenge → fighter. There are challenges that demand killing a specific one
         /// first, or last, or concentrating the attacks on him, and that «specific one» is chosen by the
         /// server and told to the client so it puts the mark on him.

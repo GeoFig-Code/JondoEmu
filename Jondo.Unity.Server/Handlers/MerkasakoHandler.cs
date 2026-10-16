@@ -60,8 +60,9 @@ namespace Jondo.Unity.Server.Handlers
 
             state.HavenBagEntryMapId = state.MapId;
             state.HavenBagEntryCell = state.CellId;
+            HavenBagStore.SetEntry(state.CharacterId, state.MapId, state.CellId);
 
-            await GoToThemeAsync(stream, HavenBagStore.ThemeOf(state.CharacterId));
+            await GoToRoomAsync(stream, HavenBagStore.CurrentRoom(state.CharacterId), entering: true);
         }
 
         /// <summary>
@@ -72,8 +73,13 @@ namespace Jondo.Unity.Server.Handlers
         /// the exit jru neither jbf, nor jbu, nor jaz appear -- the three that do go on ENTERING --, only
         /// lqu, lva, lva, iom and the jss.
         ///
-        /// If it is not known where he came from -- he disconnected inside, or went in before this
-        /// existed -- he is sent back to the starting point instead of being left locked in.
+        /// Where he came from is kept in the database too (<see cref="HavenBagStore.EntryOf"/>): one
+        /// who logged in inside was taken to the starting point, Incarnam, since the session that
+        /// knew it was gone. If it is not known at all he is still sent there rather than locked in.
+        ///
+        /// And the roleplay context goes and comes back (kml, kmp), as on leaving a fight. The client
+        /// keeps the bag's menu while its haven bag state stands, and only the roleplay entities'
+        /// reset clears it (RoleplayEntitiesService.Reset); without it the menu stayed on in Incarnam.
         /// </remarks>
         private static async Task LeaveAsync(NetworkStream stream)
         {
@@ -82,6 +88,7 @@ namespace Jondo.Unity.Server.Handlers
 
             long salidaMapa = state.HavenBagEntryMapId;
             int salidaCasilla = state.HavenBagEntryCell;
+            if (salidaMapa == 0) (salidaMapa, salidaCasilla) = HavenBagStore.EntryOf(state.CharacterId);
 
             if (salidaMapa == 0 || Merkasako.IsHavenBag(salidaMapa))
             {
@@ -100,6 +107,8 @@ namespace Jondo.Unity.Server.Handlers
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.BuildActorLeft(state.CharacterId));
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kml));
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kmp));
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.BuildLoadMap(salidaMapa));
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
@@ -111,24 +120,58 @@ namespace Jondo.Unity.Server.Handlers
                               $"cell {state.CellId}.");
         }
 
-        /// <summary>Changing the decor from inside.</summary>
-        public static async Task ChangeThemeAsync(NetworkStream stream, byte[] payload)
+        /// <summary>
+        /// Going to another room of one's bag (jbl { f1 room }): the room's theme is loaded, with its
+        /// furniture. «Cambiar de salas» sends 1, 2, 3 and an empty one for room 0.
+        /// </summary>
+        /// <remarks>
+        /// It was read as a theme: room 1 opened theme 1 whatever the room had.
+        /// </remarks>
+        public static async Task ChangeRoomAsync(NetworkStream stream, byte[] payload)
         {
             byte[]? jbl = ConnectionProtocol.ReadPayload(payload, Op.Jbl);
-            if (jbl == null) return;
+            if (jbl == null || !Merkasako.IsHavenBag(SessionContext.State.MapId)) return;
 
-            // Without f1 -- proto3 swallows the zero -- the usual one is meant.
-            int theme = Merkasako.DefaultTheme;
+            int room = 0;
             foreach (var field in ProtoMessage.Parse(jbl).Fields)
-            {
-                if (field.FieldNumber == 1 && field.WireType == 0) theme = (int)field.VarIntValue;
-            }
+                if (field.FieldNumber == 1 && field.WireType == 0) room = (int)field.VarIntValue;
+            if (room < 0 || room >= Merkasako.Rooms) return;
 
-            await GoToThemeAsync(stream, theme);
+            HavenBagStore.SetCurrentRoom(SessionContext.State.CharacterId, room);
+            await GoToRoomAsync(stream, room, entering: false);
         }
 
-        private static async Task GoToThemeAsync(NetworkStream stream, int theme)
+        /// <summary>
+        /// The room's theme changed (jbt { f1 theme }), once its popup is accepted: the room takes
+        /// it, is loaded again in it, and the rooms' list (jbf) follows. Every theme is everybody's
+        /// here (<see cref="Merkasako.Themes"/>).
+        /// </summary>
+        public static async Task ChangeThemeAsync(NetworkStream stream, byte[] payload)
         {
+            byte[]? jbt = ConnectionProtocol.ReadPayload(payload, Op.Jbt);
+            if (jbt == null || !Merkasako.IsHavenBag(SessionContext.State.MapId)) return;
+
+            int theme = 0;
+            foreach (var field in ProtoMessage.Parse(jbt).Fields)
+                if (field.FieldNumber == 1 && field.WireType == 0) theme = (int)field.VarIntValue;
+            if (!Merkasako.IsTheme(theme)) return;
+
+            long who = SessionContext.State.CharacterId;
+            int room = HavenBagStore.CurrentRoom(who);
+            HavenBagStore.SetRoomTheme(who, room, theme);
+            await GoToRoomAsync(stream, room, entering: false);
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Jbf, ConnectionProtocol.BuildHavenBagRooms(HavenBagStore.RoomsOf(who))));
+        }
+
+        /// <summary>
+        /// Into a room of one's bag: its theme's map, by the zaap. Entering, the rooms' list (jbf)
+        /// goes behind the map's own frames, as in «ir al merkasako y volver» (frame 11).
+        /// </summary>
+        private static async Task GoToRoomAsync(NetworkStream stream, int room, bool entering)
+        {
+            long who = SessionContext.State.CharacterId;
+            int theme = HavenBagStore.ThemeOfRoom(who, room);
             long target = Merkasako.MapOfTheme(theme);
             if (target == 0)
             {
@@ -142,14 +185,14 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
-            HavenBagStore.SaveTheme(Jondo.Unity.Server.Network.SessionContext.State.CharacterId, Merkasako.ThemeOfMap(target));
+            HavenBagStore.SaveTheme(who, Merkasako.ThemeOfMap(target));
 
-            long left = Jondo.Unity.Server.Network.SessionContext.State.MapId;
-            Jondo.Unity.Server.Network.SessionContext.State.MapId = target;
+            long left = SessionContext.State.MapId;
+            SessionContext.State.MapId = target;
 
             // Next to the zaap, which is where the game leaves one on entering.
             var zaap = Merkasako.ZaapOf(target);
-            Jondo.Unity.Server.Network.SessionContext.State.CellId = MapManager.GetNearestWalkableCell(target, zaap.Cell);
+            SessionContext.State.CellId = MapManager.GetNearestWalkableCell(target, zaap.Cell);
             DatabaseManager.SaveCurrentCharacter();
 
             // Whoever stays on the map he left stops seeing him there. This was missing: going
@@ -159,16 +202,33 @@ namespace Jondo.Unity.Server.Handlers
                 await SessionRegistry.RemoveFromMapAsync(left, SessionContext.Current.CharacterId, SessionContext.Current.Id);
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.BuildActorLeft(Jondo.Unity.Server.Network.SessionContext.State.CharacterId));
+                ConnectionProtocol.BuildActorLeft(SessionContext.State.CharacterId));
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.BuildLoadMap(target));
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.BuildMapClock());
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.BuildMapDiscovered(target));
+            if (entering)
+            {
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Jbf, ConnectionProtocol.BuildHavenBagRooms(HavenBagStore.RoomsOf(who))));
+            }
 
-            Console.WriteLine($"[Merkasako] Theme {Merkasako.ThemeOfMap(target)} -> map {target}, " +
-                              $"cell {Jondo.Unity.Server.Network.SessionContext.State.CellId} (zaap on {zaap.Cell}).");
+            Console.WriteLine($"[Merkasako] Room {room}, theme {Merkasako.ThemeOfMap(target)} -> map {target}, " +
+                              $"cell {SessionContext.State.CellId} (zaap on {zaap.Cell}).");
+        }
+
+        /// <summary>
+        /// Whose bag the map is, the jss's f8 (jqd), for the one standing in it: here always his
+        /// own, since nobody visits another's. The HavenbagManagerUI shows its menu -- rooms,
+        /// themes, furniture -- only in one's own bag (m_inMyOwnHavenbag), which it learns here.
+        /// </summary>
+        public static void AddToMap(Pb jss, long mapId, DatabaseManager.DbCharacter owner)
+        {
+            if (owner == null || !Merkasako.IsHavenBag(mapId)) return;
+            jss.Msg(8, ConnectionProtocol.HavenBagInfo(HavenBagStore.CurrentRoom(owner.Id), Merkasako.ThemeOfMap(mapId),
+                                                       Merkasako.Rooms, owner.Id, owner.Name, owner.Level));
         }
 
         // ─── Furniture placement mode ───────────────────────────────────────────
@@ -185,11 +245,27 @@ namespace Jondo.Unity.Server.Handlers
             Console.WriteLine("[Merkasako] Furniture placing mode open.");
         }
 
-        /// <summary>A piece of the room. It is noted and the closing is waited for to write it.</summary>
+        /// <summary>
+        /// Accepting the room starts with a jbk: a new upload of the whole room begins, and what
+        /// was gathered before is forgotten. Nothing is answered to it.
+        /// </summary>
+        public static void UploadStarts()
+        {
+            SessionContext.State.IsHavenBagEditing = true;
+            SessionContext.State.PendingHavenBagFurniture.Clear();
+        }
+
+        /// <summary>
+        /// A piece of the room (jbg): added to the upload, and the upload written at once, in place
+        /// of the room. On accepting, the client sends jbk, the pieces, jav and jaw -- the capture's
+        /// order -- but the pieces may also come behind the jav (01:16:03 of the 16/10 test). It
+        /// was written on the first close, before any piece had come: the room was stored empty and
+        /// the pieces that followed were dropped.
+        /// </summary>
         public static void CollectFurniture(byte[] payload)
         {
             byte[]? jbg = ConnectionProtocol.ReadPayload(payload, Op.Jbg);
-            if (jbg == null) return;
+            if (jbg == null || !Merkasako.IsHavenBag(SessionContext.State.MapId)) return;
 
             foreach (var field in ProtoMessage.Parse(jbg).Fields)
             {
@@ -216,25 +292,20 @@ namespace Jondo.Unity.Server.Handlers
                     Orientation = orientation,
                 });
             }
+
+            long who = SessionContext.State.CharacterId;
+            int theme = Merkasako.ThemeOfMap(SessionContext.State.MapId);
+            HavenBagStore.SaveFurniture(who, theme, SessionContext.State.PendingHavenBagFurniture);
+            Console.WriteLine($"[Merkasako] Theme {theme}: {SessionContext.State.PendingHavenBagFurniture.Count} piece(s) of furniture saved.");
         }
 
         /// <summary>
-        /// The client closes the menu. This is where the room is written to the database and sent back to
-        /// him as it ended up.
+        /// The client closes the menu (jav, jaw): the room is sent back to him as it is stored.
+        /// It was written here, but its pieces are written as they come (<see cref="CollectFurniture"/>).
         /// </summary>
         public static async Task CloseEditorAsync(NetworkStream stream)
         {
-            long who = Jondo.Unity.Server.Network.SessionContext.State.CharacterId;
-            int theme = Merkasako.ThemeOfMap(Jondo.Unity.Server.Network.SessionContext.State.MapId);
-
-            if (SessionContext.State.IsHavenBagEditing)
-            {
-                HavenBagStore.SaveFurniture(who, theme, SessionContext.State.PendingHavenBagFurniture);
-                Console.WriteLine($"[Merkasako] Theme {theme}: {SessionContext.State.PendingHavenBagFurniture.Count} piece(s) of furniture saved.");
-            }
-
             SessionContext.State.IsHavenBagEditing = false;
-            SessionContext.State.PendingHavenBagFurniture.Clear();
 
             await SendFurnitureAsync(stream);
 

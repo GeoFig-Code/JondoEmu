@@ -316,6 +316,12 @@ namespace Jondo.Unity.Server
         /// <summary>Which sentence it is on right now.</summary>
         public long OpenDialogueMessage { get; set; }
 
+        /// <summary>
+        /// The tax collector or prism being talked to, by its actor id, or zero. Its dialogue has
+        /// no NPC behind it and no replies but «Leave», which the client sends as the kla.
+        /// </summary>
+        public long OpenActorDialogue { get; set; }
+
         // Per-character manager caches. These must never be static: loading the second account
         // would otherwise replace the first account's equipment, appearance and spell bar.
         internal Dictionary<long, Managers.Equipment.Item> EquipmentItems { get; }

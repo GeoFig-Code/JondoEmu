@@ -65,6 +65,24 @@ namespace Jondo.Unity.Tests.World
             NpcShops.Forget();
         }
 
+        /// <summary>
+        /// Hal Ylanza, at the Temple of Alliances, sells Gremia's catalogue at Gremia's prices:
+        /// her entry names him in «alsoSoldBy».
+        /// </summary>
+        [Fact]
+        public void Hal_Ylanza_sells_what_Gremia_sells()
+        {
+            NpcShops.Forget();
+            NpcShops.ApplyAuthored(Paths.ContentFile(NpcShops.AuthoredFile));
+
+            const int halYlanza = 2142;
+            Assert.True(NpcShops.Sells(halYlanza));
+            Assert.Equal(NpcShops.CatalogueOf(7580), NpcShops.CatalogueOf(halYlanza));
+            Assert.Contains(AllianceHandler.AllianceGemTemplate, NpcShops.CatalogueOf(halYlanza));
+
+            NpcShops.Forget();
+        }
+
         /// <summary>A file that is not there breaks nothing, and a half-written one does not either.</summary>
         [Fact]
         public void A_missing_or_empty_file_changes_nothing()

@@ -157,6 +157,27 @@ namespace Jondo.Unity.Server.Handlers
             jss.Msg(5, PrismProtocol.Actor(prism, alliance));
         }
 
+        /// <summary>
+        /// Talking to it (iov 3 on its actor): the dialogue opens (ioc) and asks the prism's
+        /// question (iot, empty). False when the actor is no prism.
+        /// </summary>
+        /// <remarks>
+        /// The client writes the sentence itself (NpcDialog.OnAlliancePrismDialogQuestion): the
+        /// subarea's prism from the ife, its alliance and its state. Unanswered, «Speak» did nothing.
+        /// Its «Leave» is the kla, closed like a tax collector's (TaxCollectorHandler.CloseTalkAsync).
+        /// </remarks>
+        public static async Task<bool> TalkAsync(NetworkStream stream, long mapId, long contextId)
+        {
+            var prism = PrismStore.ByContextId(contextId);
+            if (prism == null || prism.MapId != mapId) return false;
+            if (AllianceStore.ById(prism.AllianceId) == null) return false;
+
+            SessionContext.State.OpenActorDialogue = contextId;
+            await SendAsync(stream, ConnectionProtocol.Push(Op.Ioc, ConnectionProtocol.BuildNpcDialog(mapId, contextId)));
+            await SendAsync(stream, ConnectionProtocol.Push(Op.Iot, Array.Empty<byte>()));
+            return true;
+        }
+
         /// <summary>An alliance's prisms, as its sheet (mcx) lists them in its f2.</summary>
         public static IEnumerable<Pb> InformationOf(AllianceStore.Alliance alliance)
             => PrismStore.OfAlliance(alliance.Id).Select(p => PrismProtocol.Information(p, alliance));

@@ -225,6 +225,24 @@ namespace Jondo.Unity.Server.Managers
         public static TaxCollector ByContextId(long contextId)
             => ByMap.Values.FirstOrDefault(t => t.ContextId == contextId);
 
+        /// <summary>
+        /// The tax collectors a fight on this map gathers for: those of its territory (subarea),
+        /// split by the dungeon. The client's guide (1149321): «pueden acumular recursos en cada
+        /// combate efectuado en el territorio en el que se encuentren. Si se coloca a un recaudador
+        /// en una mazmorra, solo se contarán los combates dentro de esa mazmorra, mientras que, si
+        /// está en el exterior, solo se contarán los combates fuera de la mazmorra».
+        /// </summary>
+        public static List<TaxCollector> GatheringFor(long fightMapId, int subAreaId)
+        {
+            var dungeon = DungeonManager.OfRoom(fightMapId);
+            return ByMap.Values
+                .Where(t => dungeon != null
+                    ? DungeonManager.OfRoom(t.MapId)?.Id == dungeon.Id
+                    : t.SubAreaId == subAreaId && DungeonManager.OfRoom(t.MapId) == null)
+                .OrderBy(t => t.Id)
+                .ToList();
+        }
+
         /// <summary>An alliance's tax collectors, oldest first.</summary>
         public static List<TaxCollector> OfAlliance(long allianceId)
             => ByMap.Values.Where(t => t.AllianceId == allianceId).OrderBy(t => t.Id).ToList();

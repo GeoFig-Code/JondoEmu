@@ -312,6 +312,12 @@ namespace Jondo.Unity.Server
 
             if (arenas.Count == 0) return roleplayMapId;
 
+            // The same block of ids first. A subarea's arenas can come in more than one family:
+            // the Edge of the Evil Forest (22) has five next to its maps (882176xx) and five
+            // underground ones (994851xx), and the hash below put a fight at (-1,14) in a cave.
+            var sameBlock = arenas.Where(id => id >> 16 == roleplayMapId >> 16).ToList();
+            if (sameBlock.Count > 0) arenas = sameBlock;
+
             // Pairing by a fixed id offset. There is no single rule for the whole game, but within
             // a given zone the arena id is the roleplay map id plus a small, constant offset.
             // Verified against real data:

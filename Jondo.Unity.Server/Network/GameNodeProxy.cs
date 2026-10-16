@@ -775,6 +775,8 @@ namespace Jondo.Unity.Server.Network
                     Handlers.AllianceHandler.SetConnectionWarnings(true);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Mda)))
                     Handlers.AllianceHandler.SetConnectionWarnings(false);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Mes)))
+                    await Handlers.AllianceHandler.AvaSwitchAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Mba)))
                     await Handlers.AllianceHandler.DirectoryOpenedAsync(stream);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Mde)))
@@ -1096,7 +1098,13 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Jbl)))
                 {
-                    // Switching theme inside the haven bag.
+                    // Going to another room of the haven bag.
+                    hasSentMapBlock = true;
+                    await MerkasakoHandler.ChangeRoomAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Jbt)))
+                {
+                    // The room's theme changed.
                     hasSentMapBlock = true;
                     await MerkasakoHandler.ChangeThemeAsync(stream, payload);
                 }
@@ -1107,14 +1115,18 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Jbg)))
                 {
-                    // A piece of the room. It is gathered and stored on closing the menu.
+                    // A piece of the room, stored as it comes with the rest of its upload.
                     MerkasakoHandler.CollectFurniture(payload);
                 }
-                else if (payloadStr.Contains("type.ankama.com/jbk")
-                         || payloadStr.Contains("type.ankama.com/jav")
+                else if (payloadStr.Contains("type.ankama.com/jbk"))
+                {
+                    // Accepting the room: its upload starts, the pieces follow.
+                    MerkasakoHandler.UploadStarts();
+                }
+                else if (payloadStr.Contains("type.ankama.com/jav")
                          || payloadStr.Contains("type.ankama.com/jaw"))
                 {
-                    // Closing the management menu. All three arrive in a row on accepting.
+                    // Closing the management menu.
                     await MerkasakoHandler.CloseEditorAsync(stream);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kcr)))
@@ -1344,6 +1356,7 @@ namespace Jondo.Unity.Server.Network
                     else if (ChestHandler.IsOpen) await ChestHandler.CloseAsync(stream);
                     else if (NpcHandler.IsShopOpen) await NpcHandler.CloseShopAsync(stream);
                     else if (NpcHandler.IsDialogueOpen) await NpcHandler.CloseAsync(stream, payload);
+                    else if (await TaxCollectorHandler.CloseTalkAsync(stream)) { }
                     // A document -- a book, a notice -- closes with the empty kld of the book
                     // capture. Last but the zaap: a book left open must not take another window's X.
                     else if (await ReadingItemHandler.CloseAsync(stream)) { }

@@ -70,13 +70,18 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
-        /// Its look: the prism monster's bones and first colour, and the emblem's colours as 9 and
-        /// 10 -- the capture's, without the skin the client's data does not give.
+        /// Its look: the prism monster's bones and first colour, the symbol's prism skin (2673 for
+        /// symbol 104, matched by texture), and the emblem's colours as 9 and 10 -- the capture's.
         /// </summary>
         [Fact]
-        public void Its_look_is_the_capture_s_but_the_skin()
+        public void Its_look_is_the_capture_s()
         {
-            Assert.Equal("{2211||1=12772846,9=0,10=11862276}", PrismProtocol.LookString(Bloodbath, PrismMonsterLook));
+            if (AllianceData.PrismSkinOfSymbol(104) == 0) return;   // no alliance data
+
+            Assert.Equal("{2211|2673|1=12772846,9=0,10=11862276}", PrismProtocol.LookString(Bloodbath, PrismMonsterLook));
+            Assert.Equal(4793, AllianceData.PrismSkinOfSymbol(434));
+            Assert.Equal(Hex("0a0ceecb8b0e808080488482d455100318a3113202f114"),
+                         ConnectionProtocol.MonsterLook(PrismProtocol.LookString(Bloodbath, PrismMonsterLook), hardcore: false).Build());
         }
 
         /// <summary>Its fight: the kam's 9, the usual clock, no challenges and no loot.</summary>
@@ -107,6 +112,33 @@ namespace Jondo.Unity.Tests.World
             PrismStore.Remove(prism);
             Assert.Null(PrismStore.InSubArea(838));
             Assert.NotNull(PrismStore.Place(4, 838, 144445703, 300, 1));
+        }
+
+        /// <summary>
+        /// «Speak» on a prism (iov 3 on its actor): the dialogue opens (ioc) with the prism's
+        /// question (iot, empty), and its «Leave» then closes it.
+        /// </summary>
+        [Fact]
+        public async System.Threading.Tasks.Task Speaking_to_it_opens_its_dialogue()
+        {
+            var alliance = AllianceStore.Create(5, "Habladores", "HAB", 1, 1, 1, 1, 1);
+            var prism = PrismStore.Place(alliance.Id, 839, 144445704, 300, 1);
+            try
+            {
+                await using var pipe = await Economy.ClientPipe.OpenAsync(990000022, 990000023, 144445704);
+                using (SessionContext.Push(pipe.Session))
+                {
+                    Assert.False(await PrismHandler.TalkAsync(pipe.ToClient, 144445704, prism.ContextId - 1));
+                    Assert.True(await PrismHandler.TalkAsync(pipe.ToClient, 144445704, prism.ContextId));
+                    Assert.Equal(ConnectionProtocol.BuildNpcDialog(144445704, prism.ContextId), await pipe.Next(Jondo.Unity.Protocol.Op.Ioc));
+                    Assert.Empty(await pipe.Next(Jondo.Unity.Protocol.Op.Iot));
+                    Assert.Equal(prism.ContextId, pipe.Session.State.OpenActorDialogue);
+
+                    Assert.True(await TaxCollectorHandler.CloseTalkAsync(pipe.ToClient));
+                    await pipe.Next(Jondo.Unity.Protocol.Op.Kld);
+                }
+            }
+            finally { PrismStore.Remove(prism); }
         }
 
         /// <summary>The prism item's criterion: the right to place a prism and the subarea's level.</summary>

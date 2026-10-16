@@ -250,6 +250,16 @@ namespace Jondo.Unity.Server.Managers
                     if (gids.Count == 0) continue;
                     _byNpc[npc.GetInt32()] = gids.ToArray();
                     vendors++;
+
+                    // The same catalogue for other vendors, written once: "alsoSoldBy": [2142].
+                    if (shop.TryGetProperty("alsoSoldBy", out var others))
+                    {
+                        foreach (var other in others.EnumerateArray())
+                        {
+                            _byNpc[other.GetInt32()] = gids.ToArray();
+                            vendors++;
+                        }
+                    }
                 }
 
                 if (vendors > 0) Console.WriteLine($"[Shops] {vendors} vendor(s) written by hand, from {AuthoredFile}.");

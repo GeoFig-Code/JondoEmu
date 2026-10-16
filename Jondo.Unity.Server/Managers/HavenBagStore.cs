@@ -63,8 +63,28 @@ namespace Jondo.Unity.Server.Managers
                         CharacterId INTEGER NOT NULL,
                         Gid         INTEGER NOT NULL,
                         Quantity    INTEGER NOT NULL DEFAULT 1,
-                        Effects     TEXT);";
+                        Effects     TEXT);
+
+                    CREATE TABLE IF NOT EXISTS HavenBagRooms (
+                        CharacterId INTEGER NOT NULL,
+                        RoomId      INTEGER NOT NULL,
+                        ThemeId     INTEGER NOT NULL,
+                        PRIMARY KEY (CharacterId, RoomId));";
                 command.ExecuteNonQuery();
+
+                // The room one is in, beside the theme of the bag's first days, and where one came in
+                // from: kept across sessions, or whoever logged in inside left to the starting point.
+                foreach (var (column, type) in new[] { ("RoomId", "INTEGER NOT NULL DEFAULT 0"),
+                                                       ("EntryMapId", "INTEGER NOT NULL DEFAULT 0"),
+                                                       ("EntryCell", "INTEGER NOT NULL DEFAULT 0") })
+                {
+                    var columns = connection.CreateCommand();
+                    columns.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('HavenBag') WHERE name = '{column}';";
+                    if (Convert.ToInt64(columns.ExecuteScalar()) != 0) continue;
+                    var add = connection.CreateCommand();
+                    add.CommandText = $"ALTER TABLE HavenBag ADD COLUMN {column} {type};";
+                    add.ExecuteNonQuery();
+                }
             }
             catch (Exception ex)
             {
@@ -73,6 +93,133 @@ namespace Jondo.Unity.Server.Managers
 
             // The chest's uids above the dispenser, as the bank's: see StorageStacks.EnsureTables.
             StorageStacks.EnsureTables();
+        }
+
+        // ─── The rooms ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// This character's rooms, 0 to <see cref="Merkasako.Rooms"/> - 1, each with its theme. The
+        /// missing ones are made on reading: room 0 in the theme the bag had before it had rooms,
+        /// the others in the usual one.
+        /// </summary>
+        public static List<(int Room, int Theme)> RoomsOf(long characterId)
+        {
+            var rooms = new SortedDictionary<int, int>();
+            try
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+
+                var read = connection.CreateCommand();
+                read.CommandText = "SELECT RoomId, ThemeId FROM HavenBagRooms WHERE CharacterId = $id;";
+                read.Parameters.AddWithValue("$id", characterId);
+                using (var reader = read.ExecuteReader())
+                {
+                    while (reader.Read()) rooms[reader.GetInt32(0)] = reader.GetInt32(1);
+                }
+
+                for (int room = 0; room < Merkasako.Rooms; room++)
+                {
+                    if (rooms.ContainsKey(room)) continue;
+                    rooms[room] = room == 0 ? ThemeOf(characterId) : Merkasako.DefaultTheme;
+                    var write = connection.CreateCommand();
+                    write.CommandText = "INSERT OR IGNORE INTO HavenBagRooms (CharacterId, RoomId, ThemeId) VALUES ($id, $r, $t);";
+                    write.Parameters.AddWithValue("$id", characterId);
+                    write.Parameters.AddWithValue("$r", room);
+                    write.Parameters.AddWithValue("$t", rooms[room]);
+                    write.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Merkasako] Could not read the rooms: {ex.Message}");
+            }
+
+            var list = new List<(int, int)>();
+            foreach (var pair in rooms)
+                if (pair.Key < Merkasako.Rooms) list.Add((pair.Key, pair.Value));
+            return list;
+        }
+
+        /// <summary>The theme of one of this character's rooms.</summary>
+        public static int ThemeOfRoom(long characterId, int room)
+        {
+            foreach (var (r, theme) in RoomsOf(characterId))
+                if (r == room) return theme;
+            return Merkasako.DefaultTheme;
+        }
+
+        public static void SetRoomTheme(long characterId, int room, int theme)
+        {
+            RoomsOf(characterId);
+            Execute("UPDATE HavenBagRooms SET ThemeId = $t WHERE CharacterId = $id AND RoomId = $r;",
+                    ("$id", characterId), ("$r", room), ("$t", theme));
+        }
+
+        /// <summary>The room this character was in last, which the bag opens on.</summary>
+        public static int CurrentRoom(long characterId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT RoomId FROM HavenBag WHERE CharacterId = $id;";
+                command.Parameters.AddWithValue("$id", characterId);
+                if (command.ExecuteScalar() is long room && room >= 0 && room < Merkasako.Rooms) return (int)room;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Merkasako] Could not read the room: {ex.Message}");
+            }
+            return 0;
+        }
+
+        /// <summary>Where this character came into the bag from, or (0, 0) when it is not known.</summary>
+        public static (long MapId, int Cell) EntryOf(long characterId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT EntryMapId, EntryCell FROM HavenBag WHERE CharacterId = $id;";
+                command.Parameters.AddWithValue("$id", characterId);
+                using var reader = command.ExecuteReader();
+                if (reader.Read()) return (reader.GetInt64(0), reader.GetInt32(1));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Merkasako] Could not read where it came in from: {ex.Message}");
+            }
+            return (0, 0);
+        }
+
+        public static void SetEntry(long characterId, long mapId, int cell)
+            => Execute("INSERT INTO HavenBag (CharacterId, EntryMapId, EntryCell) VALUES ($id, $m, $c) " +
+                       "ON CONFLICT(CharacterId) DO UPDATE SET EntryMapId = $m, EntryCell = $c;",
+                       ("$id", characterId), ("$m", mapId), ("$c", cell));
+
+        public static void SetCurrentRoom(long characterId, int room)
+            => Execute("INSERT INTO HavenBag (CharacterId, RoomId) VALUES ($id, $r) " +
+                       "ON CONFLICT(CharacterId) DO UPDATE SET RoomId = $r;",
+                       ("$id", characterId), ("$r", room));
+
+        private static void Execute(string sql, params (string Name, object Value)[] parameters)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = sql;
+                foreach (var (name, value) in parameters) command.Parameters.AddWithValue(name, value);
+                command.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Merkasako] Could not write: {ex.Message}");
+            }
         }
 
         // ─── The theme ──────────────────────────────────────────────────────────

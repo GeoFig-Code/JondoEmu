@@ -402,6 +402,89 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(20, fighter.Otra(78));
         }
 
+        // ─── The alliance window and the end of the fight ───────────────────────
+
+        /// <summary>
+        /// A person of the alliance fights' list is the fighter of the person's oneof, its f4, with
+        /// the look in its f6: gk.mwi reads that one, and the f6 (a rank) left «Attacks» empty.
+        /// </summary>
+        [Fact]
+        public void A_fighter_of_the_list_is_the_fighter_variant()
+        {
+            byte[] look = { 0x0a, 0x01, 0x02 };
+            var (numbers, blocks) = Fields(TaxCollectorProtocol.Fighter(-40001, "78 241", 200, look, TaxCollectorProtocol.FighterListMarker).Build());
+            Assert.Equal(-40001, numbers[2]);
+            var (_, entry) = Fields(Assert.Single(blocks[1]));
+            Assert.False(entry.ContainsKey(6));
+            var (breed, fighter) = Fields(Assert.Single(entry[4]));
+            Assert.Equal(look, Assert.Single(fighter[6]));
+            Assert.Equal(TaxCollectorProtocol.FighterListMarker, breed[7]);
+        }
+
+        /// <summary>
+        /// A tax collector's end-of-fight entry carries its alliance in the f4 of the fighter's oneof
+        /// (lmk), where fkv.bgdw looks for it; without it the screen drew «???».
+        /// </summary>
+        [Fact]
+        public void A_tax_collector_ends_the_fight_with_its_alliance()
+        {
+            byte[] block = AllianceProtocol.Block(OriflAmes).Build();
+            var jyg = FightProtocol.BuildFightResults(new[]
+            {
+                new FightProtocol.FightResult { Fighter = -1, TaxCollectorAlliance = block },
+                new FightProtocol.FightResult { Fighter = -2 },
+            }, 1000);
+
+            var lines = Fields(jyg).Blocks[2];
+            var (_, first) = Fields(lines[0]);
+            var (_, firstFighter) = Fields(Assert.Single(first[3]));
+            var (_, taxCollector) = Fields(Assert.Single(firstFighter[4]));
+            Assert.Equal(block, Assert.Single(taxCollector[1]));
+
+            var (_, second) = Fields(lines[1]);
+            Assert.False(Fields(Assert.Single(second[3])).Blocks.ContainsKey(4));
+        }
+
+        /// <summary>
+        /// A fight gathers for the tax collectors of its territory (subarea), not only of its map:
+        /// the client's guide, 1149321. One in another subarea gathers nothing.
+        /// </summary>
+        [Fact]
+        public void A_fight_gathers_for_its_territory()
+        {
+            var here = TaxCollectorStore.Place(17, 100, "Owner", 9_100_001, 9101, 300, 3, 35, 109);
+            var sameTerritory = TaxCollectorStore.Place(18, 101, "Other", 9_100_002, 9101, 300, 3, 35, 109);
+            var elsewhere = TaxCollectorStore.Place(19, 102, "Far", 9_100_003, 9102, 300, 3, 35, 109);
+            try
+            {
+                var gathering = TaxCollectorStore.GatheringFor(9_100_009, 9101);
+                Assert.Contains(here, gathering);
+                Assert.Contains(sameTerritory, gathering);
+                Assert.DoesNotContain(elsewhere, gathering);
+            }
+            finally
+            {
+                foreach (var tc in new[] { here, sameTerritory, elsewhere })
+                    if (tc != null) TaxCollectorStore.Remove(tc);
+            }
+        }
+
+        /// <summary>«Leave» on a tax collector's dialogue closes it with the conversation's kld (reason 1).</summary>
+        [Fact]
+        public async System.Threading.Tasks.Task Leave_closes_the_talk()
+        {
+            await using var pipe = await Economy.ClientPipe.OpenAsync(990000020, 990000021, 1);
+            using (SessionContext.Push(pipe.Session))
+            {
+                Assert.False(await TaxCollectorHandler.CloseTalkAsync(pipe.ToClient));
+                pipe.Session.State.OpenActorDialogue = -40001;
+                Assert.True(await TaxCollectorHandler.CloseTalkAsync(pipe.ToClient));
+                Assert.Equal(ConnectionProtocol.BuildDialogClosed(ConnectionProtocol.NpcDialogCloseReason),
+                             await pipe.Next(Op.Kld));
+                Assert.Equal(0, pipe.Session.State.OpenActorDialogue);
+            }
+        }
+
         private static (Dictionary<int, long> Numbers, Dictionary<int, List<byte[]>> Blocks) Fields(byte[] message)
         {
             var numbers = new Dictionary<int, long>();

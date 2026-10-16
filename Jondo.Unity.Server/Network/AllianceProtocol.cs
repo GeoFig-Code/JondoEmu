@@ -22,6 +22,29 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         private const int MeasuredMinusOne = -1;
 
+        /// <summary>A member's whereabouts (lay) when connected and not fighting: in the world.</summary>
+        internal const int InTheWorld = 1;
+
+        /// <summary>
+        /// The aggressable status (lbc), seven values in Dofus 2's order: 0 not aggressable, 1 and
+        /// 2 PvP, 3 AvA aggressable, 4 AvA not aggressable, 5 disqualified, 6 prequalified.
+        /// </summary>
+        public const int NotAggressable = 0;
+
+        /// <summary>Taking part in AvA, outside any fought-over zone: the switch is on above 2.</summary>
+        public const int AvaNotAggressable = 4;
+
+        /// <summary>This character's status, from the alliance window's «Alliance fight» switch.</summary>
+        public static int AggressableStatus(long characterId)
+            => AllianceStore.TakesPartInAva(characterId) ? AvaNotAggressable : NotAggressable;
+
+        /// <summary>
+        /// A character's aggressable status (hon): f1 the character, f5 the status. f2 to f4 are
+        /// left out; the handler (eht.gmh) only reads them below the AvA statuses.
+        /// </summary>
+        public static byte[] BuildAggressableStatus(long characterId, int status)
+            => Pb.New().Var(1, characterId).VarIfNotZero(5, status).Build();
+
         /// <summary>
         /// The creation's results (lbv), as the client's handler of the mch (fgv.bevj, read in
         /// Ghidra) words them: 1 invalidName, 2 alreadyInAlliance, 3 alreadyUsedName, 6
@@ -141,16 +164,22 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildRanks(IReadOnlyList<AllianceStore.Rank> ranks)
         {
             var mbm = Pb.New();
-            foreach (var rank in ranks)
-            {
-                mbm.Msg(1, Pb.New()
+            foreach (var rank in ranks) mbm.Msg(1, Rank(rank));
+            return mbm.Build();
+        }
+
+        /// <summary>
+        /// A rank (ldt): f2 name, f3 { f1 modifiable, f3 rights }, f4 { f2 icon, f3 order }, f5 id.
+        /// The f4 always goes, even empty: the card reads it without looking (gl.mwk).
+        /// </summary>
+        internal static Pb Rank(AllianceStore.Rank rank)
+            => rank == null
+                ? Pb.New().Msg(4, Pb.New())
+                : Pb.New()
                     .Str(2, rank.Name)
                     .Msg(3, Pb.New().VarIfNotZero(1, rank.Flag ? 1 : 0).PackedIfAny(3, rank.Rights))
                     .Msg(4, Pb.New().Var(2, rank.Icon).VarIfNotZero(3, rank.Order))
-                    .Var(5, rank.Id));
-            }
-            return mbm.Build();
-        }
+                    .Var(5, rank.Id);
 
         /// <summary>A member's line, with what the entry needs besides the membership.</summary>
         public readonly record struct MemberRow(AllianceStore.Member Member, string Name, int Level, long AccountId,
@@ -177,14 +206,20 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         /// <remarks>
         /// The details (lon) as the client reads them: f1 the achievement points (1893, 759, 116...),
-        /// f2 the rank, f4 when he joined in milliseconds, f5 -1, f6 the class, f8 the status
-        /// ({f1 1} connected), f9 the sex and f10 the account.
+        /// f2 the rank, f3 where he is (lay: 0 offline, 1 in the world), f4 when he joined in
+        /// milliseconds, f5 -1, f6 the class, f8 the availability ({f1 1} available), f9 the sex
+        /// and f10 the account.
+        ///
+        /// The members tab counts and shows as connected whoever has a non-zero f3 (gw's +0x30,
+        /// filled from lon's f3 by gw.bnp, read by AllianceMembersUi.OnAllianceMembersUpdated);
+        /// the f8 alone left everybody grey, «Members: 0 / 2».
         /// </remarks>
         internal static Pb MemberLine(MemberRow row)
         {
             var details = Pb.New()
                 .VarIfNotZero(1, row.AchievementPoints)
                 .Var(2, row.Member.Rank)
+                .VarIfNotZero(3, row.Online ? InTheWorld : 0)
                 .Var(4, row.Member.JoinedUtcMs)
                 .Var(5, MeasuredMinusOne)
                 .Var(6, row.Breed)
@@ -204,13 +239,21 @@ namespace Jondo.Unity.Server.Network
         /// shows, f5 the alliance with its card -- the fields fgv's handler reads (bexk, in Ghidra);
         /// its f2 and f4 are left out, their meaning not read. It shows the leader.
         /// </summary>
-        public static byte[] BuildCardView(AllianceStore.Alliance alliance, Pb card, IEnumerable<MemberRow> shown)
+        /// <remarks>
+        /// Each member is { f1 { f2 name, f3 level, f6 his rank }, f2 the character }. The member's
+        /// oneof is the rank (f6, ldt) here, not the details (f5, lon) of the members tab: the card's
+        /// conversion (gl.mwk) reads the rank's f4 without a null check, so the details threw in
+        /// the client, the card was never stored and its window never opened.
+        /// </remarks>
+        public static byte[] BuildCardView(AllianceStore.Alliance alliance, Pb card,
+                                           IEnumerable<(MemberRow Row, AllianceStore.Rank Rank)> shown)
         {
             var mcl = Pb.New();
-            foreach (var row in shown)
+            foreach (var (row, rank) in shown)
             {
-                var line = ProtoMessage.Parse(MemberLine(row).Build());
-                mcl.Bytes(1, line.Fields.Single(f => f.FieldNumber == 3).BytesValue);
+                mcl.Msg(1, Pb.New()
+                    .Msg(1, Pb.New().Str(2, row.Name).Var(3, row.Level).Msg(6, Rank(rank)))
+                    .Var(2, row.Member.CharacterId));
             }
             return mcl.Msg(5, Block(alliance, card)).Build();
         }

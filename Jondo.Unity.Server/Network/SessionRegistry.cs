@@ -202,10 +202,19 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>Returns a stable snapshot; callers never enumerate a mutable registry.</summary>
+        /// <remarks>
+        /// A haven bag's map is every bag of its theme -- one map per theme for everybody -- and
+        /// each bag is its owner's alone: asked from a session, it answers with that session's own
+        /// bag, himself. Nobody visits another's here. Without it two players in two bags of one
+        /// theme saw each other, the second to come in seeing the first.
+        /// </remarks>
         public static IReadOnlyList<GameSession> OnMap(long mapId)
-            => _sessions.Values
-                .Where(s => s.IsInWorld && s.MapId == mapId)
-                .ToArray();
+        {
+            var here = _sessions.Values.Where(s => s.IsInWorld && s.MapId == mapId);
+            if (Managers.Merkasako.IsHavenBag(mapId) && SessionContext.Actual is { } viewer)
+                here = here.Where(s => s.CharacterId == viewer.CharacterId);
+            return here.ToArray();
+        }
 
         /// <summary>
         /// Whether somebody standing on the map should hear what was sent to it.

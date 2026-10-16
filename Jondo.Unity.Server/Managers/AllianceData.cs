@@ -25,7 +25,7 @@ namespace Jondo.Unity.Server.Managers
         public sealed record RankTemplate(int Id, string Name, int Order, bool Modifiable, int Icon);
         public sealed record Right(int Id, int GroupId, int Order, string Name);
         public sealed record NamePart(int Id, string Name);
-        public sealed record EmblemSymbol(int Id, int SkinId, bool Colorizable);
+        public sealed record EmblemSymbol(int Id, int SkinId, bool Colorizable, int PrismSkinId = 0);
 
         private sealed record Document(List<RankTemplate> Ranks, List<Right> Rights,
                                        List<NamePart> TaxCollectorFirstNames, List<NamePart> TaxCollectorNames,
@@ -113,5 +113,12 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The skin an emblem symbol dresses a tax collector with; zero when it is not known.</summary>
         public static int SkinOfSymbol(int symbol)
             => Loaded.EmblemSymbols.FirstOrDefault(e => e.Id == symbol)?.SkinId ?? 0;
+
+        /// <summary>
+        /// The skin an emblem symbol dresses a prism with, another set than the tax collector's;
+        /// zero when it is not known. Matched by texture, see tools/match_prism_skins.py.
+        /// </summary>
+        public static int PrismSkinOfSymbol(int symbol)
+            => Loaded.EmblemSymbols.FirstOrDefault(e => e.Id == symbol)?.PrismSkinId ?? 0;
     }
 }

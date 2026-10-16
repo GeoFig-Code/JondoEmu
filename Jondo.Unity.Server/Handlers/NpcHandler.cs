@@ -104,6 +104,8 @@ namespace Jondo.Unity.Server.Handlers
             // An alliance's tax collector is talked to with the same iov (action 3, as in «atacar a
             // recaudador y perder») and answers with its own ion.
             if (action == Npcs.Talk && await TaxCollectorHandler.TalkAsync(stream, mapId, contextualId)) return;
+            // And a prism, the same way, with its own question (iot).
+            if (action == Npcs.Talk && await PrismHandler.TalkAsync(stream, mapId, contextualId)) return;
 
             var npc = Npcs.Find(mapId, contextualId);
             if (npc == null)

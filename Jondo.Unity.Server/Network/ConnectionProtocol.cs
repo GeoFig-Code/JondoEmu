@@ -929,6 +929,10 @@ namespace Jondo.Unity.Server.Network
             // one the viewer is inside, f9 those on this street that can be owned.
             Handlers.HouseHandler.AddToMap(jss, mapId);
 
+            // And whose haven bag it is, the f8 the capture carries there: without it the client
+            // did not know it stood in its own, and its menu never showed.
+            Handlers.MerkasakoHandler.AddToMap(jss, mapId, character);
+
             AddInteractiveElements(jss, mapId, accountId);
 
             // And last, the fights in their placement: the swords. Each f12 is what an hpy carries
@@ -2505,13 +2509,16 @@ namespace Jondo.Unity.Server.Network
                 humanoidBody.Msg(5, Pb.New().Msg(4, GuildProtocol.GuildBlock(guild)));
             }
 
-            // The alliance, right behind the guild: f5 { f5 { f2 alliance } }, as the jsn that
-            // redraws the character on joining «A B S I N T O» carries it. It is what puts the
-            // alliance's tag by his name.
+            // The alliance, right behind the guild: f5 { f5 { f1 status, f2 alliance } }, as the jsn
+            // that redraws the character on joining «A B S I N T O» carries it. It is what puts the
+            // alliance's tag by his name, and its f1 is his aggressable status: the client sets the
+            // alliance window's «Alliance fight» switch from it on every map (ees.wue).
             var alliance = Managers.AllianceStore.AllianceOf(characterId);
             if (alliance != null)
             {
-                humanoidBody.Msg(5, Pb.New().Msg(5, Pb.New().Msg(2, AllianceProtocol.Block(alliance))));
+                humanoidBody.Msg(5, Pb.New().Msg(5, Pb.New()
+                    .VarIfNotZero(1, AllianceProtocol.AggressableStatus(characterId))
+                    .Msg(2, AllianceProtocol.Block(alliance))));
             }
 
             var (title, ornament) = Managers.Wardrobe.Of(characterId);
@@ -2557,6 +2564,38 @@ namespace Jondo.Unity.Server.Network
             }
             return jbu.Build();
         }
+
+        /// <summary>
+        /// One's rooms (jbf): f1 (repeated) { f1 theme, f2 room }. The captured account's
+        /// «0a0208200a04080410010a04080110020a0408011003»: room 0 in theme 32, 1 in 4, 2 and 3 in 1.
+        /// </summary>
+        public static byte[] BuildHavenBagRooms(IEnumerable<(int Room, int Theme)> rooms)
+        {
+            var jbf = Pb.New();
+            foreach (var (room, theme) in rooms)
+                jbf.Msg(1, Pb.New().Var(1, theme).VarIfNotZero(2, room));
+            return jbf.Build();
+        }
+
+        /// <summary>The themes one has (jbo): f1 packed. The captured account's eight, «0a082233020401152003».</summary>
+        public static byte[] BuildHavenBagThemes(IEnumerable<int> themes)
+        {
+            var all = themes.Select(t => (long)t).ToList();
+            return all.Count == 0 ? Array.Empty<byte>() : Pb.New().Packed(1, all).Build();
+        }
+
+        /// <summary>
+        /// Whose bag a map is (the jss's f8, jqd): f1 the room, f2 its theme, f3 how many rooms,
+        /// f5 the owner { f1 { f2 name, f3 level }, f2 id }. The capture's: {32, 4, «Sacri-Master» 354}.
+        /// </summary>
+        public static Pb HavenBagInfo(int room, int theme, int rooms, long ownerId, string ownerName, int ownerLevel)
+            => Pb.New()
+                .VarIfNotZero(1, room)
+                .Var(2, theme)
+                .Var(3, rooms)
+                .Msg(5, Pb.New()
+                    .Msg(1, Pb.New().Str(2, ownerName ?? "").Var(3, ownerLevel))
+                    .Var(2, ownerId));
 
         // ─── World: chest ───────────────────────────────────────────────────────
 

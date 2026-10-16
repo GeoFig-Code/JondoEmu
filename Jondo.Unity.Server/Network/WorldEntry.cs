@@ -462,6 +462,19 @@ namespace Jondo.Unity.Server.Network
                     AlterationProtocol.BuildList(Managers.Alterations.Of(character.Id), DateTime.UtcNow));
             }
 
+            // The haven bag's themes and rooms. The captured ones were the capturer's -- eight
+            // themes, four rooms in 32, 4, 1 and 1 -- handed to everybody. Every theme for every
+            // character here, and this character's own rooms.
+            if (ConnectionProtocol.ReadPayload(frame, Op.Jbo) != null)
+            {
+                return ConnectionProtocol.Push(Op.Jbo, ConnectionProtocol.BuildHavenBagThemes(Managers.Merkasako.Themes));
+            }
+            if (ConnectionProtocol.ReadPayload(frame, Op.Jbf) != null)
+            {
+                return ConnectionProtocol.Push(Op.Jbf,
+                    ConnectionProtocol.BuildHavenBagRooms(Managers.HavenBagStore.RoomsOf(character.Id)));
+            }
+
             if (ConnectionProtocol.ReadPayload(frame, Op.Hms) != null)
             {
                 return ConnectionProtocol.Push(Op.Hms,

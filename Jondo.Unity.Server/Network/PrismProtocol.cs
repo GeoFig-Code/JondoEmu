@@ -34,15 +34,16 @@ namespace Jondo.Unity.Server.Network
         // ─── The look ───────────────────────────────────────────────────────────
 
         /// <summary>
-        /// A prism's look as a look string: the prism monster's bones and first colour, and two
-        /// colours of the emblem -- 9 its f3, 10 its f5 --.
+        /// A prism's look as a look string: the prism monster's bones, its symbol's prism skin, its
+        /// first colour, and two colours of the emblem -- 9 its f3, 10 its f5 --.
         /// </summary>
         /// <remarks>
         /// Both prisms of the captures go {2211, colours 1=0xc2e5ee, 9, 10}: «Bloodbath» (no f3, f5
         /// 0xb50104) with 9=0 and 10=0xb50104, and the other alliance (f3 0x1d1d1d, f5 0x3f3f3f)
         /// with those two. 2211 and 0xc2e5ee are the prism monster's own look. They also carry a
-        /// skin, 2673 and 4793 for the symbols 104 and 434, which is no skin of the client's emblem
-        /// data and is left out: the prism stands in its alliance's colours without the symbol.
+        /// skin, 2673 and 4793 for the symbols 104 and 434: no table of the client's says it, but
+        /// they draw those symbols, and the rest of the set was matched by texture
+        /// (<see cref="AllianceData.PrismSkinOfSymbol"/>). Without it the banner was blank.
         /// </remarks>
         public static string LookString(AllianceStore.Alliance alliance)
             => LookString(alliance, MobSpawnManager.GetMonsterData(Monster)?.Look);
@@ -54,7 +55,9 @@ namespace Jondo.Unity.Server.Network
             long bones = variant?.Bones ?? 0;
             long first = variant?.Colors.FirstOrDefault(c => (c >> 24) == 1) ?? 0;
             string colour1 = first == 0 ? "" : $"1={first & 0xFFFFFF},";
-            return $"{{{bones}||{colour1}9={alliance?.EmblemBackground ?? 0},10={alliance?.EmblemSymbolRgb ?? 0}}}";
+            int skin = alliance == null ? 0 : AllianceData.PrismSkinOfSymbol(alliance.EmblemSymbol);
+            string skins = skin > 0 ? skin.ToString() : "";
+            return $"{{{bones}|{skins}|{colour1}9={alliance?.EmblemBackground ?? 0},10={alliance?.EmblemSymbolRgb ?? 0}}}";
         }
 
         public static Pb Look(AllianceStore.Alliance alliance)
@@ -129,10 +132,12 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildFightResult(int how, Pb prism) => Pb.New().VarIfNotZero(1, how).Msg(2, prism).Build();
 
         /// <summary>
-        /// A prism as the first defender of its fight's line: its monster's name is the client's,
-        /// so it goes as the prism of its subarea, with its look.
+        /// A prism as the first defender of its fight's line: named by its monster, «3451», which
+        /// the client writes as «Prisma» (AllianceFightUi.GetFighterName), at its fight's level,
+        /// with its look and the breed -2. It went nameless at level 1: «? (Niv.1)».
         /// </summary>
         public static Pb Fighter(PrismStore.Prism prism, AllianceStore.Alliance alliance)
-            => TaxCollectorProtocol.Fighter(prism.ContextId, "", 1, Look(alliance).Build());
+            => TaxCollectorProtocol.Fighter(prism.ContextId, Monster.ToString(), TaxCollectorProtocol.LevelOf(Monster),
+                                            Look(alliance).Build(), TaxCollectorProtocol.PrismListMarker);
     }
 }

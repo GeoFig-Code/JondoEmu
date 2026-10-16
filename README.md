@@ -221,8 +221,10 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ❌ The other 1,400 doors cannot be owned; houses shared with a guild, kicking someone out, the list
   of houses on sale
 - ✅ **67 public bins**, shared by everybody
-- ✅ Haven bags: entering and leaving, their own zaap, **48 themes**, **4,083 furniture pieces**
-  placed and saved, the chest, the lottery machine
+- ✅ Haven bags: entering and leaving, their own zaap, **four rooms** and **every theme** for every
+  character, **4,083 furniture pieces** placed and saved, the chest, the lottery machine
+- ✅ Each haven bag is its owner's alone
+- ❌ Visiting another player's haven bag
 <img width="2560" height="1492" alt="image" src="https://github.com/user-attachments/assets/a81a3b24-8559-4ad5-8a27-e6913eef95a8" />
 
 > The client does not say which interior sits behind each door: the 1,437 doors share **114 interiors**,
@@ -296,13 +298,15 @@ An alliance is made of characters, not guilds.
 - ✅ The recruitment card, the alliance message and the bulletin
 - ✅ Changing the name, tag or emblem with their potions
 - ✅ The alliance chat channel
-- ✅ Tax collectors: placed with a tax collector potion, gathering from fights on their map,
-  collected or attacked, with their own window — seven equipment slots and six spells — and the
-  alliance's default spells
-- ✅ Defending tax collectors and prisms from the alliance window's fights tab
-- ✅ Prisms: one per subarea, listed on the world map, with their teleport; attacked and defended
-- ✅ The *Pócima del templo de las alianzas*
-- ❌ The top tax collectors, prism modules, AvA, conquests and nuggets
+- ✅ Tax collectors: placed with a tax collector potion, gathering from fights in their territory,
+  talked to, collected or attacked, with their own window — seven equipment slots and six spells —
+  and the alliance's default spells
+- ✅ Defending tax collectors and prisms from the alliance window's fights tab; giving up a defence
+- ✅ Prisms: one per subarea, in their alliance's emblem, listed on the world map, talked to, with
+  their teleport; attacked and defended
+- ✅ The alliance fight switch
+- ✅ The *Pócima del templo de las alianzas*; Hal Ylanza at the temple sells what Gremia sells
+- ❌ The top tax collectors, prism modules, weakened and vulnerable prisms, conquests and nuggets
 
 ### 🎒 Character and inventory
 

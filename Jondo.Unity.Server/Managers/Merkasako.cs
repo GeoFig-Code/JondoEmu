@@ -17,10 +17,15 @@ namespace Jondo.Unity.Server.Managers
     /// Almost all of them also carry a normal zaap, with the same drawing as the world's, a chest
     /// (drawing 12367, the same as in houses) and the lottery (drawing 51031, which is only here).
     ///
-    /// What is spoken with the client, from the captures:
+    /// What is spoken with the client, from the captures and the client's code:
     ///
+    ///   jbo { f1 (packed): themes }    the themes one has, at world entry (egx)
+    ///   jbf { f1 (rep): {f1: theme, f2: room} }   one's rooms and their themes (egx.dtk)
     ///   jbn { f2: whose }           the button and the H key
-    ///   jbl { f1: theme }           switch theme
+    ///   jbl { f1: room }            go to another room (erb.bbqb, «cambiar de salas»: 1, 2, 3, 0)
+    ///   jbt { f1: theme }           the room's theme changed, after its popup (ere.bbrl)
+    ///   jss f8 { f1 room, f2 theme, f3 rooms, f5 owner }   whose bag one stands in: the
+    ///                               HavenbagManagerUI shows its menu only in one's own
     ///   jbv -> jbm                  open furniture placing mode
     ///   jbg { f2 (rep): {f1: cell, f2: furniture, f3: rotation} }   store the room
     ///   jbu { f1 (rep): {f1: cell, f2: furniture, f3: rotation} }   what is placed
@@ -41,6 +46,12 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>The theme one starts with, Kerubim's.</summary>
         public const int DefaultTheme = 1;
+
+        /// <summary>
+        /// How many rooms a bag has: four, rooms 0 to 3, as the captured account's (jbf) and its
+        /// jss's f3. Every character has them all.
+        /// </summary>
+        public const int Rooms = 4;
 
         private static readonly Dictionary<int, long> _themes = new Dictionary<int, long>();
         private static readonly Dictionary<long, int> _themeOfMap = new Dictionary<long, int>();
@@ -132,6 +143,20 @@ namespace Jondo.Unity.Server.Managers
         }
 
         public static bool IsHavenBag(long mapId) => _maps.Contains(mapId);
+
+        /// <summary>Every theme with a map, in order: all of them are everybody's here.</summary>
+        public static IReadOnlyList<int> Themes
+        {
+            get
+            {
+                var all = new List<int>(_themes.Keys);
+                all.Sort();
+                return all;
+            }
+        }
+
+        /// <summary>Whether this theme exists and has a map.</summary>
+        public static bool IsTheme(int theme) => _themes.ContainsKey(theme);
 
         /// <summary>Does that piece of furniture exist in the client's catalogue?</summary>
         public static bool IsFurniture(long typeId) => _furniture.Contains(typeId);

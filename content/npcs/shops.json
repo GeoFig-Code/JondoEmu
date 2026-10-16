@@ -29,11 +29,15 @@
     "",
     "And the seven tax collector resources (27929-27935, 'Clavos de recaudador' to 'Correa de",
     "recaudador') at their templates' one kama: every item a tax collector wears is crafted from one",
-    "of them and runes, and nothing in the client's data drops or sells them."
+    "of them and runes, and nothing in the client's data drops or sells them.",
+    "",
+    "HAL YLANZA (NPC 2142), at the Temple of Alliances (115083777), sells the same, through",
+    "'alsoSoldBy': the client's data gives him the buy action (11), as it does Gremia."
   ],
   "shops": [
     {
       "npc": 7580,
+      "alsoSoldBy": [ 2142 ],
       "items": [
         {
           "gid": 1575,

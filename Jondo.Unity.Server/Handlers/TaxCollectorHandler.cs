@@ -169,9 +169,27 @@ namespace Jondo.Unity.Server.Handlers
             if (alliance == null) return false;
 
             var items = TaxCollectorStore.Items(tc);
+            SessionContext.State.OpenActorDialogue = contextId;
             await SendAsync(stream, Op.Ioc, ConnectionProtocol.BuildNpcDialog(mapId, contextId));
             await SendAsync(stream, Op.Ion, TaxCollectorProtocol.BuildDialog(alliance, PodsOf(items),
                 TaxCollectorStore.OfAlliance(alliance.Id).Count, WorthOf(items)));
+            return true;
+        }
+
+        /// <summary>
+        /// «Leave» on a tax collector's or a prism's dialogue (kla): it closes with the kld of a
+        /// conversation, reason 1. False when none is being talked to.
+        /// </summary>
+        /// <remarks>
+        /// It used to fall through to the zaap list's close, whose kld carries reason 10, and the
+        /// client keeps a conversation up on that one: «Leave» did nothing.
+        /// </remarks>
+        public static async Task<bool> CloseTalkAsync(NetworkStream stream)
+        {
+            if (SessionContext.State.OpenActorDialogue == 0) return false;
+            SessionContext.State.OpenActorDialogue = 0;
+            await SendAsync(stream, Op.Kld, ConnectionProtocol.BuildDialogClosed(
+                ConnectionProtocol.NpcDialogCloseReason));
             return true;
         }
 
@@ -184,15 +202,24 @@ namespace Jondo.Unity.Server.Handlers
         // ─── Gathering ──────────────────────────────────────────────────────────
 
         /// <summary>
-        /// A fight won against monsters on a tax collector's map: their loot tables rolled once
-        /// more for it, at its prospecting, while it has pods left. Its chests raise the one and its
-        /// saddlebags the other.
+        /// A fight won against monsters in a tax collector's territory: their loot tables rolled
+        /// once more for each such tax collector, at its prospecting, while it has pods left. Its
+        /// chests raise the one and its saddlebags the other.
         /// </summary>
+        /// <remarks>
+        /// The territory, not the map: <see cref="TaxCollectorStore.GatheringFor"/> says which,
+        /// after the client's guide. Only its map counted before, and a tax collector left for
+        /// days on a quiet map of a busy territory came back with 0 pods.
+        /// </remarks>
         internal static void Gather(FightInstance fight)
         {
-            var tc = TaxCollectorStore.OnMap(fight.RoleplayMapId);
-            if (tc == null) return;
+            int subArea = MapManager.GetMapInfo(fight.RoleplayMapId)?.SubAreaId ?? 0;
+            foreach (var tc in TaxCollectorStore.GatheringFor(fight.RoleplayMapId, subArea))
+                GatherFor(tc, fight);
+        }
 
+        private static void GatherFor(TaxCollectorStore.TaxCollector tc, FightInstance fight)
+        {
             int prospecting = ProspectingOf(tc);
             int maxPods = MaxPodsOf(tc);
             int pods = PodsOf(TaxCollectorStore.Items(tc));

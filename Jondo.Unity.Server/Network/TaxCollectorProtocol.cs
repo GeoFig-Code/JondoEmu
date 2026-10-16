@@ -45,10 +45,18 @@ namespace Jondo.Unity.Server.Network
         public const int Prospecting = 200;
 
         /// <summary>
-        /// The marker a tax collector carries as a fighter of the alliance fights' list: the level
-        /// -5, whose name is then read as its two name ids (ffc.bdjs, bdjn).
+        /// The breed a tax collector carries as a fighter of the alliance fights' list (lpc f7): -5,
+        /// whose name is then read as its two name ids (ffc.bdjn) and whose slot shows the tax
+        /// collector's icon (AllianceFightUi.BindCharacterSlot). It went as the level, which no one
+        /// reads for that.
         /// </summary>
         public const int FighterListMarker = -5;
+
+        /// <summary>
+        /// A prism's breed in the same list: -2, the other one the slot treats as no player. Its
+        /// name is its monster, «3451», which AllianceFightUi.GetFighterName writes as «Prisma».
+        /// </summary>
+        public const int PrismListMarker = -2;
 
         /// <summary>
         /// Why a tax collector could not be placed or touched (hla), as fgv.bewy words them: 0 an
@@ -469,24 +477,38 @@ namespace Jondo.Unity.Server.Network
             => Pb.New().VarIfNotZero(1, endsMs).VarIfNotZero(2, phase);
 
         /// <summary>
-        /// A person in the list (lpg): { f1 { f2 name, f3 level, f6 { f6 look } }, f2 id }, read off
-        /// gj.dga, which takes the name from f2, the level from f3 and the look from the f6.
+        /// A person in the list (lpg): { f1 { f2 name, f3 level, f4 { f6 look, f7 breed } }, f2 id },
+        /// read off gk.mwi, which takes the name from f2, the level from f3 and the look and breed
+        /// from the f4.
         /// </summary>
-        public static Pb Fighter(long id, string name, int level, byte[] look)
+        /// <remarks>
+        /// The f4 is one of the person's oneof (lpe: f4 lpc a fighter, f5 lon a member's details,
+        /// f6 ldt a rank). It went as f6, a rank: gk.mwi read the absent fighter without a null
+        /// check, threw, and the alliance window's «Attacks» tab stayed empty. The breed draws the
+        /// slot's class head and names the class in its tooltip; without it the slot was blank.
+        /// </remarks>
+        public static Pb Fighter(long id, string name, int level, byte[] look, int breed)
             => Pb.New()
                 .Msg(1, Pb.New()
                     .Str(2, name ?? "")
                     .Var(3, level)
-                    .Msg(6, Pb.New().Bytes(6, look ?? Array.Empty<byte>())))
+                    .Msg(4, Pb.New().Bytes(6, look ?? Array.Empty<byte>()).VarIfNotZero(7, breed)))
                 .Var(2, id);
 
         /// <summary>
-        /// The tax collector in the list: its two name ids as its name, "35 109", and the level -5,
-        /// which is how ffc tells it from a person.
+        /// The tax collector in the list: its two name ids as its name, "35 109", its fight's level
+        /// and the breed -5, which is how the client tells it from a person.
         /// </summary>
         public static Pb TaxCollectorFighter(TaxCollectorStore.TaxCollector tc, AllianceStore.Alliance alliance)
-            => Fighter(tc.ContextId, $"{tc.FirstNameId} {tc.LastNameId}", FighterListMarker,
-                       Look(alliance, MapBones).Build());
+            => Fighter(tc.ContextId, $"{tc.FirstNameId} {tc.LastNameId}", LevelOf(Monster),
+                       Look(alliance, MapBones).Build(), FighterListMarker);
+
+        /// <summary>A monster's first grade's level, as its fight has it; 1 when it is not loaded.</summary>
+        internal static int LevelOf(int monster)
+        {
+            var data = MobSpawnManager.GetMonsterData(monster);
+            return data == null || data.Grades.Count == 0 ? 1 : data.Grades[0].Level;
+        }
 
         /// <summary>
         /// One fight of the list (lgz): f1 the defenders, the tax collector first, f2 the attackers,

@@ -271,6 +271,94 @@ namespace Jondo.Unity.Tests.World
             Assert.Null(AllianceOption(ConnectionProtocol.BuildPlayerActorBlock(loner, 341, 5, 65924386)));
         }
 
+        /// <summary>
+        /// A connected member is in the world, the details' f3 = 1, which is what the members tab
+        /// counts and lights green; a disconnected one carries none.
+        /// </summary>
+        [Fact]
+        public void A_connected_member_is_in_the_world()
+        {
+            var member = new AllianceStore.Member { CharacterId = 8411, Rank = 1, JoinedUtcMs = 1791760506416 };
+            Assert.Equal(1, Whereabouts(new AllianceProtocol.MemberRow(member, "Online", 200, 1, 9, 1, 17, true)));
+            Assert.Null(Whereabouts(new AllianceProtocol.MemberRow(member, "Offline", 200, 1, 9, 1, 17, false)));
+        }
+
+        /// <summary>The details' f3 of a member's line, or null.</summary>
+        private static long? Whereabouts(AllianceProtocol.MemberRow row)
+        {
+            var line = ProtoMessage.Parse(AllianceProtocol.MemberLine(row).Build());
+            var person = ProtoMessage.Parse(line.Fields.Single(f => f.FieldNumber == 3).BytesValue);
+            var entry = ProtoMessage.Parse(person.Fields.Single(f => f.FieldNumber == 1).BytesValue);
+            var details = ProtoMessage.Parse(entry.Fields.Single(f => f.FieldNumber == 5).BytesValue);
+            return details.Fields.FirstOrDefault(f => f.FieldNumber == 3)?.VarIntValue;
+        }
+
+        /// <summary>
+        /// The card (mcl) shows each member with his rank, the f6 of the person's oneof, its f4
+        /// always there; the details (f5) of the members tab made the client throw.
+        /// </summary>
+        [Fact]
+        public void The_card_shows_each_member_with_his_rank()
+        {
+            var leader = new AllianceProtocol.MemberRow(
+                new AllianceStore.Member { CharacterId = 8412, Rank = 1, JoinedUtcMs = 1 }, "Leader", 200, 1, 9, 1, 17, true);
+            var rank = new AllianceStore.Rank { Id = 1, Name = "Jefe", Icon = 3, Order = 0 };
+
+            foreach (var shownRank in new[] { rank, null })
+            {
+                var mcl = ProtoMessage.Parse(AllianceProtocol.BuildCardView(Absinto, Pb.New(), new[] { (leader, shownRank) }));
+                var person = ProtoMessage.Parse(mcl.Fields.Single(f => f.FieldNumber == 1).BytesValue);
+                Assert.Equal(8412, person.Fields.Single(f => f.FieldNumber == 2).VarIntValue);
+                var entry = ProtoMessage.Parse(person.Fields.Single(f => f.FieldNumber == 1).BytesValue);
+                Assert.Equal("Leader", System.Text.Encoding.UTF8.GetString(entry.Fields.Single(f => f.FieldNumber == 2).BytesValue));
+                Assert.DoesNotContain(entry.Fields, f => f.FieldNumber == 5);
+                var ldt = ProtoMessage.Parse(entry.Fields.Single(f => f.FieldNumber == 6).BytesValue);
+                Assert.Single(ldt.Fields, f => f.FieldNumber == 4);
+                if (shownRank != null) Assert.Equal("Jefe", System.Text.Encoding.UTF8.GetString(ldt.Fields.Single(f => f.FieldNumber == 2).BytesValue));
+            }
+        }
+
+        /// <summary>
+        /// The «Alliance fight» switch: kept per character, answered with the hon {f1 character,
+        /// f5 status}, 4 when on and nothing when off, and carried by the map's actor (f1 of its
+        /// alliance option).
+        /// </summary>
+        [Fact]
+        public void The_alliance_fight_switch_is_kept_and_answered()
+        {
+            AllianceStore.Create(8413, "Jondo Guerreros", "JGU", 408, 27, 3116544, 0, 15859463);
+            var member = new DatabaseManager.DbCharacter { Id = 8413, Name = "Guerrero", Level = 200, Breed = 2 };
+
+            AllianceStore.SetTakesPartInAva(8413, true);
+            Assert.Equal(AllianceProtocol.AvaNotAggressable, AllianceProtocol.AggressableStatus(8413));
+            Assert.Equal(Hex("08dd41" + "2804"), AllianceProtocol.BuildAggressableStatus(8413, AllianceProtocol.AggressableStatus(8413)));
+            Assert.Equal(AllianceProtocol.AvaNotAggressable, AllianceStatusOption(ConnectionProtocol.BuildPlayerActorBlock(member, 341, 5, 65924386)));
+
+            AllianceStore.SetTakesPartInAva(8413, false);
+            Assert.Equal(AllianceProtocol.NotAggressable, AllianceProtocol.AggressableStatus(8413));
+            Assert.Equal(Hex("08dd41"), AllianceProtocol.BuildAggressableStatus(8413, AllianceProtocol.AggressableStatus(8413)));
+            Assert.Equal(0, AllianceStatusOption(ConnectionProtocol.BuildPlayerActorBlock(member, 341, 5, 65924386)));
+        }
+
+        /// <summary>The f1 of the actor's alliance option, f5 { f5 { f1 ... } }, or 0.</summary>
+        private static long AllianceStatusOption(byte[] actor)
+        {
+            var root = ProtoMessage.Parse(actor);
+            var details = ProtoMessage.Parse(root.Fields.Single(f => f.FieldNumber == 2).BytesValue);
+            var kind = ProtoMessage.Parse(details.Fields.Single(f => f.FieldNumber == 1).BytesValue);
+            var humanoid = ProtoMessage.Parse(kind.Fields.Single(f => f.FieldNumber == 5).BytesValue);
+            var body = ProtoMessage.Parse(humanoid.Fields.Single(f => f.FieldNumber == 3).BytesValue);
+
+            foreach (var option in body.Fields.Where(f => f.FieldNumber == 5 && f.WireType == 2))
+            {
+                var alliance = ProtoMessage.Parse(option.BytesValue).Fields.FirstOrDefault(f => f.FieldNumber == 5 && f.WireType == 2);
+                if (alliance == null) continue;
+                var status = ProtoMessage.Parse(alliance.BytesValue).Fields.FirstOrDefault(f => f.FieldNumber == 1);
+                return status == null ? 0 : status.VarIntValue;
+            }
+            return -1;
+        }
+
         /// <summary>The f5 { f5 { f2 ... } } of the actor's humanoid body, or null.</summary>
         private static byte[]? AllianceOption(byte[] actor)
         {

@@ -925,7 +925,14 @@ namespace Jondo.Unity.Server.Handlers
             // And a defended fight's alliance sees him leave its fights window.
             await AllianceFights.FighterLeftAsync(fight, me);
 
+            // Off the others' board as the dungeon capture takes a fighter off it (140-167): kar,
+            // kmu and jzw. The kar alone only cancels his pending swaps in the placement frame
+            // (fjw.bfvx); it is the jzw that takes him off (fjw.bfwh), and without it he stayed
+            // standing there for the whole fight, struck by spells that did nothing.
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Kar, FightJoinProtocol.BuildFighterRemoved(me)));
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Kmu, FightJoinProtocol.BuildActorHidden(me)));
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzw,
+                FightJoinProtocol.BuildTeamMemberRemoved(fight.FightId, team, me)));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzu,
                 Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
 

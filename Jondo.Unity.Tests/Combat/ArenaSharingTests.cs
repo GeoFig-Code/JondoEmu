@@ -38,6 +38,22 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Equal(first, second);
         }
 
+        /// <summary>
+        /// A subarea with two families of arenas fights in the one beside its maps: the Edge of the
+        /// Evil Forest (22) has five at 882176xx and five underground at 994851xx, and a tax
+        /// collector's fight at (-1,14), 88212745, was played in a cave.
+        /// </summary>
+        [Fact]
+        public void The_arena_is_of_the_map_s_own_block()
+        {
+            if (!MapManager.WalkableCells.ContainsKey(88212745)) MapManager.Initialize();
+            if (MapManager.GetMapInfo(88212745) == null) return;   // no world data
+
+            long arena = MapManager.ResolveArenaMapId(88212745);
+            Assert.Equal(88212745L >> 16, arena >> 16);
+            Assert.Equal(22, MapManager.GetMapInfo(arena)!.SubAreaId);
+        }
+
         [Fact]
         public void A_fresh_session_is_in_no_fight()
         {

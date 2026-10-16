@@ -158,6 +158,9 @@ namespace Jondo.Unity.Server.Managers
                 CREATE INDEX IF NOT EXISTS IdxAllianceApplicationsAlliance ON AllianceApplications (AllianceId);
                 CREATE TABLE IF NOT EXISTS AllianceConnectionWarnings (
                     CharacterId INTEGER PRIMARY KEY
+                );
+                CREATE TABLE IF NOT EXISTS AllianceAvaFighters (
+                    CharacterId INTEGER PRIMARY KEY
                 );";
             create.ExecuteNonQuery();
         }
@@ -759,6 +762,32 @@ namespace Jondo.Unity.Server.Managers
                 : "DELETE FROM AllianceConnectionWarnings WHERE CharacterId = $c;";
             save.Parameters.AddWithValue("$c", characterId);
             save.ExecuteNonQuery();
+        }
+
+        /// <summary>The «Alliance fight» switch per character, read once: every map's actors ask.</summary>
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, bool> _avaFighters = new();
+
+        /// <summary>Whether this character has the alliance window's «Alliance fight» switch on.</summary>
+        public static bool TakesPartInAva(long characterId)
+            => _avaFighters.GetOrAdd(characterId, id =>
+            {
+                using var conexion = Open();
+                var query = conexion.CreateCommand();
+                query.CommandText = "SELECT 1 FROM AllianceAvaFighters WHERE CharacterId = $c;";
+                query.Parameters.AddWithValue("$c", id);
+                return query.ExecuteScalar() != null;
+            });
+
+        public static void SetTakesPartInAva(long characterId, bool takesPart)
+        {
+            using var conexion = Open();
+            var save = conexion.CreateCommand();
+            save.CommandText = takesPart
+                ? "INSERT OR IGNORE INTO AllianceAvaFighters (CharacterId) VALUES ($c);"
+                : "DELETE FROM AllianceAvaFighters WHERE CharacterId = $c;";
+            save.Parameters.AddWithValue("$c", characterId);
+            save.ExecuteNonQuery();
+            _avaFighters[characterId] = takesPart;
         }
 
         private static List<int> ParseIds(string text)

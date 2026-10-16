@@ -92,6 +92,12 @@ public static class Op
     /// <summary>Spouse and guild of the recorded account; it is discarded. 4 messages.</summary>
     public const string Hol = "hol";
 
+    /// <summary>
+    /// S→C: a character's aggressable status (eht.gmh): f1 the character, f5 the status (lbc,
+    /// 0 not aggressable, 3 and up AvA). The alliance window's «Alliance fight» switch is on above 2.
+    /// </summary>
+    public const string Hon = "hon";
+
     /// <summary>The game server's greeting; f5 is omitted on purpose because it does not appear in any of the three startup captures.</summary>
     public const string Hoy = "hoy";
 
@@ -951,8 +957,20 @@ public static class Op
     /// <summary>A portion of the room; it arrives split into three in a row and each portion carries the whole room, not a diff.</summary>
     public const string Jbg = "jbg";
 
-    /// <summary>Changing the room's theme from inside.</summary>
+    /// <summary>
+    /// S→C: one's rooms (egx.dtk): f1 (rep) { f1 theme, f2 room }. At world entry and on entering
+    /// the bag; the four of the captured account were {32, 0} {4, 1} {1, 2} {1, 3}.
+    /// </summary>
+    public const string Jbf = "jbf";
+
+    /// <summary>C→S { f1 room }: going to another room of one's bag (erb.bbqb). «Cambiar de salas» sends 1, 2, 3 and 0.</summary>
     public const string Jbl = "jbl";
+
+    /// <summary>S→C { f1 (packed) themes }: the themes one has, at world entry (egx).</summary>
+    public const string Jbo = "jbo";
+
+    /// <summary>C→S { f1 theme }: the room's theme changed, once its popup is accepted (ere.bbrl).</summary>
+    public const string Jbt = "jbt";
 
     /// <summary>Placement mode confirmed.</summary>
     public const string Jbm = "jbm";
@@ -2803,6 +2821,13 @@ public static class Op
     /// <summary>S→C: what a tax collector says when talked to: pods, alliance, prospecting, worth.</summary>
     public const string Ion = "ion";
 
+    /// <summary>
+    /// S→C, empty: what a prism says when talked to, after the ioc (fsw.bigu,
+    /// NpcDialog.OnAlliancePrismDialogQuestion). The client writes the sentence itself from the
+    /// subarea's prism: its alliance and its state.
+    /// </summary>
+    public const string Iot = "iot";
+
     /// <summary>C→S, empty: the alliance's fights tab opened (AllianceFightUi.OnEnable).</summary>
     public const string Meq = "meq";
 
@@ -2903,7 +2928,10 @@ public static class Op
     /// <summary>C→S: the prism's teleport list (the prism's menu, dqv).</summary>
     public const string Ifd = "ifd";
 
-    /// <summary>Unidentified. 1 use in the emulator.</summary>
+    /// <summary>
+    /// C→S { f1 bool }: the alliance window's «Alliance fight» switch, taking part in AvA or not
+    /// (fgu.beuc). Answered with the hon.
+    /// </summary>
     public const string Mes = "mes";
 
     /// <summary>Unidentified. 1 use in the emulator.</summary>

@@ -1070,8 +1070,10 @@ namespace Jondo.Unity.Server.Handlers
             var alliance = AllianceStore.ByUuid(uuid);
             if (alliance == null) return;
             var leader = RowOf(AllianceStore.LeaderOf(alliance.Id));
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Mcl, AllianceProtocol.BuildCardView(alliance, CardOf(alliance),
-                leader == null ? Array.Empty<AllianceProtocol.MemberRow>() : new[] { leader.Value })));
+            var shown = leader == null
+                ? Array.Empty<(AllianceProtocol.MemberRow, AllianceStore.Rank)>()
+                : new[] { (leader.Value, AllianceStore.Ranks(alliance.Id).FirstOrDefault(r => r.Id == leader.Value.Member.Rank)) };
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Mcl, AllianceProtocol.BuildCardView(alliance, CardOf(alliance), shown)));
         }
 
         // ─── Invitations ────────────────────────────────────────────────────────
@@ -1246,6 +1248,27 @@ namespace Jondo.Unity.Server.Handlers
         {
             long who = SessionContext.State.CharacterId;
             if (who != 0) AllianceStore.SetWarnsOnConnection(who, on);
+        }
+
+        /// <summary>
+        /// The alliance window's «Alliance fight» switch (mes { f1 on }): taking part in AvA, kept
+        /// per character. The switch only moves with the answer, the hon (eht.gmh raises the event
+        /// AllianceUI.OnPvpAvaStateChange listens to); unanswered, it stayed off however often it
+        /// was clicked. From then on the map's actor carries the status too.
+        /// </summary>
+        public static async Task AvaSwitchAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] mes = ConnectionProtocol.ReadPayload(frame, Op.Mes);
+            long who = SessionContext.State.CharacterId;
+            if (mes == null || who == 0 || AllianceStore.AllianceOf(who) == null) return;
+
+            bool on = false;
+            foreach (var field in ProtoMessage.Parse(mes).Fields)
+                if (field.FieldNumber == 1 && field.WireType == 0) on = field.VarIntValue != 0;
+
+            AllianceStore.SetTakesPartInAva(who, on);
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Hon,
+                AllianceProtocol.BuildAggressableStatus(who, AllianceProtocol.AggressableStatus(who))));
         }
 
         /// <summary>The directory opens (mba): the empty mag the capture answers with.</summary>

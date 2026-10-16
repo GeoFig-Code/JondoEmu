@@ -297,10 +297,11 @@ namespace Jondo.Unity.Server.Handlers
             // ONLY this player's fight. There was an _activeFights.Clear() here, which took down
             // everybody else's fights: when one finished his, the rest had their fight vanish
             // halfway through the screen.
+            // Not one he gave up and that goes on without him (Gone): it is the others' still.
             long quien = suyo.CharacterId;
             foreach (var par in _activeFights)
             {
-                bool esSuyo = par.Value.EquipoDe(quien) >= 0;
+                bool esSuyo = par.Value.EquipoDe(quien) >= 0 && !par.Value.Gone.Contains(quien);
                 if (esSuyo) _activeFights.TryRemove(par.Key, out _);
             }
 
@@ -2188,6 +2189,8 @@ namespace Jondo.Unity.Server.Handlers
 
             foreach (var combate in _activeFights.Values)
             {
+                // One he gave up goes on without him: he is no longer in it (Gone).
+                if (combate.Gone.Contains(characterId)) continue;
                 foreach (var f in combate.Azul) if (f.Id == characterId) return combate;
                 foreach (var f in combate.Rojo) if (f.Id == characterId) return combate;
             }
@@ -5118,6 +5121,7 @@ namespace Jondo.Unity.Server.Handlers
             foreach (var luchador in TodosLosCombatientes(fight))
             {
                 if (luchador.IsMonster || luchador.EsInvocado) continue;
+                if (fight.Gone.Contains(luchador.Id)) continue;
                 if (!vistos.Add(luchador.Id)) continue;
 
                 var sesion = SessionRegistry.FindByCharacter(luchador.Id);
@@ -8525,25 +8529,12 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
-            // WHAT THIS DOES NOT DO, and it has to be written before somebody takes it for done:
-            // it tells NOBODY ELSE. All the frames down here go out through the socket of whoever
-            // gives up and through no other.
-            //
-            // Today it makes no difference, and that is the only reason it stays this way: in this
-            // emulator there ARE NO two-player fights. AddPlayer is called from a single place --
-            // the creation of the fight, with the session's character -- and there is no road that
-            // puts a second player into somebody else's fight, not even by inviting him. Blue always
-            // has exactly one.
-            //
-            // The day there is, this is what is missing and in this order: the death's jwe, the
-            // resent list and the jto/jwi that wrap them have to go to the other participants as
-            // well -- through their fight list, NOT through the map: two fights share an arena, see
-            // SessionRegistry.Hears -- and the fight has to go on for them instead of ending.
-            //
-            // What ALREADY works for that day, and they are two different lists on purpose: the
-            // ROUND is rebuilt by Agrupar, which filters by IsAlive, so whoever abandons never gets
-            // the turn again; and the CAROUSEL is drawn by the client with the team list, which keeps
-            // its dead, so he stays on screen in grey and the others' slots are not renumbered.
+            // The death goes to everybody in the fight (ATodosAsync), and when his side still stands
+            // -- a prism's defender beside it, a party -- the fight goes on without him
+            // (GoesOnWithoutHimAsync). Two different lists keep that right: the ROUND is rebuilt by
+            // Agrupar, which filters by IsAlive, so whoever abandons never gets the turn again; and
+            // the CAROUSEL is drawn by the client with the team list, which keeps its dead, so he
+            // stays on screen in grey and the others' slots are not renumbered.
             var quitter = AbandoningFighter(fight, GameState.CharacterId);
             if (quitter == null)
             {
@@ -8590,7 +8581,37 @@ namespace Jondo.Unity.Server.Handlers
 
             Program.LogDebug($"[Fight] Character {quitter.Id} abandoned fight #{fight.FightId}; " +
                              $"waiting for jti action {closure} before the result screen.");
-            await CheckFightOverAsync(stream, fight, closure, alreadyAsked: true);
+            if (await CheckFightOverAsync(stream, fight, closure, alreadyAsked: true)) return;
+            await GoesOnWithoutHimAsync(stream, fight, quitter);
+        }
+
+        /// <summary>
+        /// A fight that goes on after somebody gave up -- a defender of a prism beside it, a party --:
+        /// he gets his defeat on his own and goes back to his map, and the others carry on with him
+        /// dead on the board.
+        /// </summary>
+        /// <remarks>
+        /// It waited for an end that was not coming: the side still stood, nothing ended, and he was
+        /// left in front of the prism and the enemy until the others finished. If it was his turn,
+        /// it is passed from somebody still in the fight: his own session has no fight any more.
+        /// </remarks>
+        private static async Task GoesOnWithoutHimAsync(NetworkStream stream, FightInstance fight, Fighter quitter)
+        {
+            bool hisTurn = fight.CurrentFighter == quitter;
+            bool blueWins = quitter.TeamId != FightInstance.Azules;
+
+            fight.Gone.Add(quitter.Id);
+            await TerminarParaUnoAsync(stream, fight, gane: false, azulGana: blueWins);
+            await BackOnTheMapAsync(SessionContext.Current);
+            Program.LogDebug($"[Fight] {quitter.Id} left fight #{fight.FightId}, which goes on without him.");
+
+            if (!hisTurn) return;
+            var other = Publico(fight).FirstOrDefault();
+            if (other == null) return;
+            using (SessionContext.Push(other))
+            {
+                await PassTurnOfAsync(other.Stream, fight);
+            }
         }
 
         internal static Fighter? AbandoningFighter(FightInstance? fight, long characterId)
@@ -8888,6 +8909,19 @@ namespace Jondo.Unity.Server.Handlers
             {
                 if (f.EsInvocado || f.EsIlusion) continue;
                 results.Add(FinDe(f, !azulGana, f.Id == yo, xpGained, spoils, gane, RewardOf(fight, f.Id)));
+            }
+
+            // A tax collector is listed with its alliance, the f4 of its entry: without it the end
+            // screen drew it among the enemies as «???», a monster it did not know.
+            if (fight.Reglas == FightRules.ContraRecaudador
+                && Managers.AllianceStore.ById(fight.DefendingAllianceId) is { } defending)
+            {
+                byte[] block = Network.AllianceProtocol.Block(defending).Build();
+                foreach (var result in results)
+                {
+                    if (fight.Todos.Any(f => f.Id == result.Fighter && f.MonsterId == Network.TaxCollectorProtocol.Monster))
+                        result.TaxCollectorAlliance = block;
+                }
             }
 
             int duration = (int)Math.Max(0, (DateTime.UtcNow - fight.StartedAt).TotalMilliseconds);
@@ -9271,7 +9305,15 @@ namespace Jondo.Unity.Server.Handlers
         {
             var fight = GetCurrentFight();
             if (fight == null || fight.State != Jondo.Unity.World.Fights.FightState.Ongoing) return;
+            await PassTurnOfAsync(stream, fight);
+        }
 
+        /// <summary>
+        /// The same for a given fight, from any of its people's sessions: the turn of one who gave
+        /// up is passed from somebody still in it (<see cref="GoesOnWithoutHimAsync"/>).
+        /// </summary>
+        private static async Task PassTurnOfAsync(NetworkStream stream, FightInstance fight)
+        {
             // Stopping THIS fight's clock: if the turn is passed by hand it must not fire afterwards.
             PararElReloj(fight);
 

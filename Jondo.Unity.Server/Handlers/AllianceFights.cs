@@ -228,9 +228,9 @@ namespace Jondo.Unity.Server.Handlers
         internal static Pb PersonOf(long characterId)
         {
             var character = DatabaseManager.GetCharacterById(characterId);
-            if (character == null) return TaxCollectorProtocol.Fighter(characterId, "", 1, null);
+            if (character == null) return TaxCollectorProtocol.Fighter(characterId, "", 1, null, 0);
             byte[] look = BreedLookTable.BuildLook(character.Breed, character.Sex, character.HeadId, null, character.Id);
-            return TaxCollectorProtocol.Fighter(characterId, character.Name, character.Level, look);
+            return TaxCollectorProtocol.Fighter(characterId, character.Name, character.Level, look, character.Breed);
         }
 
         private static async Task SendAsync(NetworkStream stream, byte[] frame)

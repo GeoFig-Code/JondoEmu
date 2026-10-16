@@ -85,7 +85,8 @@
        ]
       }
      ]
-    }
+    },
+    "built": "ConnectionProtocol.BuildHavenBagRooms"
    },
    {
     "opcode": "kuf",
@@ -5451,7 +5452,8 @@
        "raw": "IjMCBAEVIAM="
       }
      ]
-    }
+    },
+    "built": "ConnectionProtocol.BuildHavenBagThemes"
    },
    {
     "opcode": "jbf",
@@ -5511,7 +5513,8 @@
        ]
       }
      ]
-    }
+    },
+    "built": "ConnectionProtocol.BuildHavenBagRooms"
    },
    {
     "opcode": "ivo",
