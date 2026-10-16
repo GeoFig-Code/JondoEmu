@@ -380,6 +380,10 @@ namespace Jondo.Unity.Server.Managers
             return salida;
         }
 
+        /// <summary>Real mounts gain XP; petsmounts only share their equipment slot and appearance.</summary>
+        public static bool CanGainExperience(int itemGid)
+            => IsRideable(itemGid) && TypeOf(itemGid) != Mascotura;
+
         /// <summary>
         /// The mount the character has on right now, or null if he is on foot.
         ///

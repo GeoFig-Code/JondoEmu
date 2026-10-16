@@ -8782,9 +8782,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             bool alliesAlive = gane;
 
-            // What is won. The experience is what each monster declares in its sheet (gradeXp),
-            // which is the same the client shows when hovering over the group; there is no made-up
-            // formula. Kamas and items, whatever each one drops.
+            // Monster gradeXp is the base; FightRewards applies levels, wisdom and donations.
             bool won = alliesAlive;
 
             // The challenges, before everything about the end: the real server sends its kwl a few
@@ -8815,16 +8813,16 @@ namespace Jondo.Unity.Server.Handlers
             var quePagan = fight.Reglas.ReparteBotin
                 ? fight.Rojo.Where(m => !m.EsInvocado).ToList()
                 : new List<Fighter>();
-            long xpGained = won ? ServerSettings.WithBonus(ConElExtra(quePagan.Sum(m => (long)m.XpReward), extraDeRetos),
-                                                           ServerSettings.Current.ExperienceBonusPercent) : 0;
+            // PvM XP (including defeat and donations) is planned once in FightRewards, for all clients.
+            long xpGained = 0;
             long kamas = won ? ServerSettings.WithBonus(ConElExtra(quePagan.Sum(m => 10L + (m.Level * 5L)), extraDeRetos),
                                                         ServerSettings.Current.KamasBonusPercent) : 0;
             var caidos = new List<PlayerItem>();
             Dictionary<int, int> loot;
 
-            // His share, when the fight was planned for all its winners (FightRewards): the same
-            // numbers his partners see in their end screen. Only winners are planned, and the one
-            // loser who is: the dreamer who falls at the Fin du rêve after its minimum of waves.
+            // His share, planned for every participant (FightRewards): the same
+            // numbers his partners see in their end screen. PvM losers have a plan as well: XP
+            // from killed opponents only, with no kamas or loot.
             var suyo = RewardOf(fight, GameState.CharacterId);
             if (suyo != null)
             {

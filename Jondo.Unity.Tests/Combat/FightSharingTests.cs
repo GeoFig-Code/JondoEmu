@@ -15,29 +15,28 @@ namespace Jondo.Unity.Tests.Combat
 
         // ─── The shares ─────────────────────────────────────────────────────────────────
 
-        /// <summary>A player alone gets what he always got.</summary>
+        /// <summary>Solo also applies the level mismatch and individual cap.</summary>
         [Fact]
-        public void Alone_nothing_is_cut()
+        public void Solo_XP_is_reduced_against_a_low_level_monster_but_kamas_are_not_shared()
         {
-            Assert.Equal(1000, FightHandler.XpShare(1000, 354, new[] { 354 }, 11));
+            Assert.Equal(250, FightHandler.XpShare(10000, 354, new[] { 354 }, 20, 20));
             Assert.Equal(65, FightHandler.KamasShare(65, 130, new[] { 130 }));
         }
 
         /// <summary>
-        /// Two high levels against a small monster count the same -- both capped at two and a half
-        /// times its level -- and the group bonus of two, 1.1, is split between them.
+        /// The individual cap reduces total distributed XP; the denominator keeps full combat levels.
         /// </summary>
         [Fact]
         public void Two_players_share_the_group_bonus_by_level_up_to_the_cap()
         {
             int[] levels = { 447, 354 };
-            Assert.Equal(550, FightHandler.XpShare(1000, 447, levels, 11));
-            Assert.Equal(550, FightHandler.XpShare(1000, 354, levels, 11));
+            Assert.Equal(3437, FightHandler.XpShare(10000, 447, levels, 50, 400));
+            Assert.Equal(3437, FightHandler.XpShare(10000, 354, levels, 50, 400));
 
             // Against a monster strong enough, the levels count whole.
             int[] mixed = { 200, 100 };
-            Assert.Equal(733, FightHandler.XpShare(1000, 200, mixed, 200));
-            Assert.Equal(366, FightHandler.XpShare(1000, 100, mixed, 200));
+            Assert.Equal(733, FightHandler.XpShare(1000, 200, mixed, 200, 300));
+            Assert.Equal(366, FightHandler.XpShare(1000, 100, mixed, 200, 300));
         }
 
         /// <summary>Someone under a third of the highest level does not count for the group bonus.</summary>
@@ -45,8 +44,8 @@ namespace Jondo.Unity.Tests.Combat
         public void A_low_level_does_not_raise_the_group_bonus()
         {
             int[] levels = { 200, 50 };
-            Assert.Equal(800, FightHandler.XpShare(1000, 200, levels, 200));
-            Assert.Equal(200, FightHandler.XpShare(1000, 50, levels, 200));
+            Assert.Equal(800, FightHandler.XpShare(1000, 200, levels, 200, 250));
+            Assert.Equal(200, FightHandler.XpShare(1000, 50, levels, 200, 250));
         }
 
         /// <summary>The kamas go by prospecting: 47 between 300 and 170 is 30 and 17.</summary>
