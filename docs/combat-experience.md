@@ -1,76 +1,53 @@
 # Combat experience
 
-Ordinary PvM uses the base distribution from Giny.NETCore branch `2.68`, commit
-`45641404ef0eaf757d9921249c2ca4d20259574d`. Mount and guild donations use the level-gap
-conversion from Stump-2.71 commit `c4713c90a232611c5289724869320a1837df213a`, without
-its custom guild multiplier. These are emulator references, not a claim of exact
-compatibility with the official Unity server.
+A fight against monsters pays each winner the experience the client itself works out
+for the tooltip of a monster group. That tooltip's "experience" and "group experience"
+lines come from `WorldRpMonstersGroupTooltipBuilder.GetMonstersGroupData` and its
+formula service (class `ekn` in 3.6.10.11). The server uses the same sum, in
+`CombatExperience.Share`.
 
-`CombatExperience.Share` sums monster grade XP and applies the group coefficient
-(1, 1.1, 1.5, 2.3, 3.1, 3.6, 4.2, 4.7). Only characters at least one third of the
-highest character level count for that bonus. All participating character levels
-count in the denominator, including characters who died or are disconnected.
-Combat levels are limited to 200; Omega levels do not increase them.
+## The sum
 
-If P is the sum of character levels and M the sum of monster levels, the level
-coefficient is M/P when P-5 > M, (P+10)/M when P+10 < M, and 1 otherwise. Individual
-weight is min(character level, truncate(2.5 * strongest monster level)) / P.
-The denominator is never reduced to the sum of the capped weights. The same
-rules apply in solo. Group XP and the individual share are truncated separately,
-then personal wisdom multiplies the share by (100 + max(0, wisdom)) / 100.
-Positive base XP has Giny's minimum of one XP before server/challenge/outcome bonuses.
-
-The server XP bonus and the shared challenge bonus follow the personal share.
-On defeat, only dead, non-summoned, non-illusion monsters contribute XP **and**
-monster levels to the calculation. The result pays 20%, rounded as in Stump
-(`Math.Round`, midpoint to even). Defeat gives no challenge bonus, kamas, or loot.
-No kills means no XP. PvP and Infinite Dreams retain their separate reward rules.
-
-## Donations
-
-Donations follow the outcome adjustment. The full mount percentage is removed
-first, then the guild percentage is removed from the remainder. Each percentage
-is truncated to whole XP. The recipient gets the converted amount, not the entire
-amount taken from the character. The unconverted portion is not redistributed.
-
-Conversion uses character combat level minus recipient level. Stump's strict `>`
-boundaries are retained:
-
-| Level gap | XP credited from the amount taken |
+| Step | What the client does |
 | --- | --- |
-| <= 10 | 10% |
-| > 10 and <= 20 | 8% |
-| > 20 and <= 30 | 6% |
-| > 30 and <= 40 | 4% |
-| > 40 and <= 50 | 3% |
-| > 50 and <= 60 | 2% |
-| > 60 and <= 70 | 1.5% |
-| > 70 | 1% |
+| Base | The `gradeXp` of every monster of the group, added up. The values in `world.db` match the client's `MonstersDataRoot`. |
+| Levels | Every level counts up to 200: the player's, and each party member's. An Omega level is a 200. |
+| Group bonus | 1, 1.1, 1.5, 2.3, 3.1, 3.6, 4.2, 4.7 by how many players count. A player counts with at least the highest level divided by three, in whole numbers. The eight values are the client's static `double[]`, found byte for byte in `global-metadata.dat`. |
+| Level ratio | M is the monsters' levels added up, P the players'. The ratio is M/P when M < P − 5, (P + 10)/M when M > P + 10, and 1 otherwise. |
+| Group XP | trunc(base × group bonus × ratio) |
+| Player's part | His level, up to trunc(2.5 × the strongest monster's level), out of P: trunc(group XP × part). |
+| Wisdom | trunc(part × (100 + wisdom) / 100), with a negative wisdom counting as zero. |
+| Floor | At least 1 when the base is above zero. |
 
-Converted credits are truncated. There is no guild x10, automatic mount bonus,
-VIP bonus, IP bonus, or random XP cap. Actual mount XP, guild XP, and the member's
-guild contribution are persisted in SQLite. Guild level follows its existing
-Jondo curve. The donation transaction completes before end screens are sent.
+The group is the players of the winner's side who are still in the fight, dead or
+alive. Someone who left is no longer in it, and gets nothing. The client also adds a
+companion's level to P without counting the companion for the group bonus; this server
+has no companions.
 
-## Configuration API
+On top of the client's sum, the server adds:
 
-The client does not yet have handlers for donation settings or a mount progression
-window. The server-side API is prepared in `ExperienceDonations`:
+* the challenges met, as a percentage shared by the whole side;
+* the experience bonus of the server settings.
 
-```csharp
-// Rates are percentages, each in [0, 90]. Settings persist across connections.
-ExperienceDonations.SetRates(characterId, mountPercent: 20, guildId: guildId, guildPercent: 50);
+A defeat pays nothing. The two defeats in the captures pay no experience.
 
-// Register the mount's known level; this preserves XP already earned by its item UID.
-ExperienceDonations.SetMountLevel(mountItemUid, level: 50);
-var progress = ExperienceDonations.MountOf(mountItemUid);
-```
+## Factors the client has that are 1
 
-Both rates default to zero. Mount XP follows the equipped real mount's item UID;
-pets, petsmounts, cosmetic mounts and unequipped mounts do not receive donations.
-An unregistered mount starts at level 1 with zero XP. Mount XP is accumulated, but
-automatic mount level progression/breeding is not implemented: a future mount
-subsystem must supply its level through `SetMountLevel`. No new XP curve is invented.
-Guild settings are bound to the configured guild membership; a missing or different
-guild does not take XP. The caller must authorize configuration changes before
-exposing these APIs to clients.
+* **Map reward rate** (`pMapRewardRate`): the client multiplies by (100 + rate) / 100. No message of this client sets the rate.
+* **Character experience bonus**: (1 + bonus / 100). No message of this client sets it either.
+* **Alliance prism**: the client returns 25 when the player fights in a sub-area whose prism belongs to his own alliance. It then applies 1 + 25 / 100 in whole numbers, which is 1, so the tooltip never shows it.
+
+## Against the captures
+
+| Fight | Inputs | Client's sum | Real server |
+| --- | --- | --- | --- |
+| Solo, «entrar a combate-desconectarse-reconectar…» | 8 monsters, base 13,894, M = 109, strongest 15, level 354, wisdom 100, its challenge failed | 2,800 | 2,980 |
+| Group, four monsters of the follow capture | base 6,260, M = 50, strongest 14, levels 447 and 354; for the 354: wisdom 352, challenge 65 % | 339 → 559 with the challenge | 589 |
+
+The real server pays 5 to 6 % more than the client shows, in both. Where that comes from
+is not in the client and not in the captures, so it is not added.
+
+## Not done
+
+* **Experience given to a mount or a guild.** The client has the settings, its guild member card and the mount's experience share, but no capture shows how much of the given experience reaches the guild or the mount. Until one does, the character keeps all of it.
+* **The limit on earned experience** that the characteristics panel offers. The captures «limitar experiencia obtenida» have it, and the client applies it to the tooltip; the server does not handle it yet.

@@ -8782,7 +8782,9 @@ namespace Jondo.Unity.Server.Handlers
         {
             bool alliesAlive = gane;
 
-            // Monster gradeXp is the base; FightRewards applies levels, wisdom and donations.
+            // What is won. The experience starts from what each monster declares in its sheet
+            // (gradeXp), and FightRewards cuts it as the client does for its tooltip: levels, group
+            // and wisdom. Kamas and items, whatever each one drops.
             bool won = alliesAlive;
 
             // The challenges, before everything about the end: the real server sends its kwl a few
@@ -8813,16 +8815,16 @@ namespace Jondo.Unity.Server.Handlers
             var quePagan = fight.Reglas.ReparteBotin
                 ? fight.Rojo.Where(m => !m.EsInvocado).ToList()
                 : new List<Fighter>();
-            // PvM XP (including defeat and donations) is planned once in FightRewards, for all clients.
+            // The experience is only ever the planned share: a defeat pays none.
             long xpGained = 0;
             long kamas = won ? ServerSettings.WithBonus(ConElExtra(quePagan.Sum(m => 10L + (m.Level * 5L)), extraDeRetos),
                                                         ServerSettings.Current.KamasBonusPercent) : 0;
             var caidos = new List<PlayerItem>();
             Dictionary<int, int> loot;
 
-            // His share, planned for every participant (FightRewards): the same
-            // numbers his partners see in their end screen. PvM losers have a plan as well: XP
-            // from killed opponents only, with no kamas or loot.
+            // His share, when the fight was planned for all its winners (FightRewards): the same
+            // numbers his partners see in their end screen. Only winners are planned, and the one
+            // loser who is: the dreamer who falls at the Fin du rêve after its minimum of waves.
             var suyo = RewardOf(fight, GameState.CharacterId);
             if (suyo != null)
             {

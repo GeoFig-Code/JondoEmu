@@ -517,7 +517,8 @@ One fight engine serves four kinds of fight:
 - ✅ Push and collision damage
 - ✅ Joining someone else's fight; party fights and their options
 - ✅ A won fight is shared among the players
-- 🟡 Wisdom and experience given to a mount or a guild
+- ✅ Experience as the monster group's tooltip counts it: group bonus, levels and wisdom
+- ❌ Experience given to a mount or a guild; the limit on earned experience
 - ✅ Losing costs energy and half the life, and sends you back to the zaap
 - ❌ Ghosts, tombs and phoenixes
 

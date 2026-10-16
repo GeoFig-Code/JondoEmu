@@ -8,6 +8,10 @@ using Xunit;
 
 namespace Jondo.Unity.Tests.Combat
 {
+    /// <summary>
+    /// The experience of a fight against monsters, as the client works it out for the tooltip of
+    /// a monster group (see <see cref="CombatExperience"/>).
+    /// </summary>
     [Collection("guild raids")]
     public sealed class CombatExperienceTests : IDisposable
     {
@@ -43,102 +47,59 @@ namespace Jondo.Unity.Tests.Combat
                          CombatExperience.Share(10000, 500, new[] { 500, 70 }, 200, 270));
         }
 
+        /// <summary>
+        /// The client counts for the group those at the highest level divided by three in whole
+        /// numbers or more: with a 100, a 33 counts (1.1) and a 32 does not.
+        /// </summary>
         [Fact]
-        public void The_third_threshold_is_not_rounded_down()
+        public void The_third_is_rounded_down_as_the_client_does()
         {
-            Assert.Equal(7518, CombatExperience.Share(10000, 100, new[] { 100, 33 }, 100, 133));
+            Assert.Equal(8270, CombatExperience.Share(10000, 100, new[] { 100, 33 }, 100, 133));
+            Assert.Equal(7575, CombatExperience.Share(10000, 100, new[] { 100, 32 }, 100, 132));
             Assert.Equal(0, CombatExperience.Share(0, 100, new[] { 100 }, 0, 0));
         }
 
+        /// <summary>
+        /// Two real fights. The solo one of «entrar a combate-desconectarse-reconectar…»: eight
+        /// monsters, 13,894 gradeXp, levels adding up to 109, the strongest at 15, a 354 with wisdom 100 and its
+        /// challenge failed. The four monsters of the follow capture for the 354 with wisdom 352, beside a 447. The client's sum
+        /// gives 2,800 and 339 (559 with the challenge's 65 %); the real server paid 2,980 and 589.
+        /// </summary>
         [Fact]
-        public void Donations_take_mount_first_then_guild_and_credit_only_the_converted_amount()
+        public void The_captured_fights_by_the_client_s_sum()
         {
-            var split = CombatExperience.Allocate(100000, 20, 20, 20, 50, 20);
-            Assert.Equal(40000, split.Character);
-            Assert.Equal(20000, split.MountTaken);
-            Assert.Equal(2000, split.Mount);
-            Assert.Equal(40000, split.GuildTaken);
-            Assert.Equal(4000, split.Guild); // No custom x10.
-            Assert.Equal(100000, split.Character + split.MountTaken + split.GuildTaken);
-        }
-
-        [Theory]
-        [InlineData(10, 1000)]
-        [InlineData(11, 800)]
-        [InlineData(60, 200)]
-        [InlineData(61, 150)]
-        [InlineData(70, 150)]
-        [InlineData(71, 100)]
-        public void Stump_conversion_keeps_its_strict_gap_boundaries(int gap, long expected)
-            => Assert.Equal(expected, CombatExperience.ConvertedDonation(10000, 1 + gap, 1));
-
-        [Fact]
-        public void Mount_and_guild_credits_persist_and_update_the_members_contribution()
-        {
-            var guild = GuildStore.Create(1, "XP", 1, 1, 1, 1);
-            ExperienceDonations.SetRates(1, 20, guild.Id, 50);
-            ExperienceDonations.SetMountLevel(55, 20);
-            var split = ExperienceDonations.Credit(1, 100000, 20, 55);
-            Assert.Equal(40000, split.Character);
-            Assert.Equal((20, 2000L), ExperienceDonations.MountOf(55));
-            Assert.Equal(3200, GuildStore.GuildOf(1).Experience); // Guild level 1: gap 19 => 8% of 40000.
-            Assert.Equal(3200, GuildStore.MemberOf(1).Experience);
-            Assert.Equal(GuildLevels.MaxLevel, GuildStore.GuildOf(1).Level);
-            ExperienceDonations.SetMountLevel(55, 21);
-            Assert.Equal((21, 2000L), ExperienceDonations.MountOf(55));
+            Assert.Equal(2800, CombatExperience.Share(13894, 354, new[] { 354 }, 15, 109, 100));
+            Assert.Equal(339, CombatExperience.Share(6260, 354, new[] { 447, 354 }, 14, 50, 352));
         }
 
         [Fact]
-        public void Missing_mount_or_membership_does_not_take_XP()
-        {
-            ExperienceDonations.SetRates(2, 90, 999, 90);
-            var split = ExperienceDonations.Credit(2, 10000, 100, 0);
-            Assert.Equal(10000, split.Character);
-            Assert.Equal(0, split.MountTaken);
-            Assert.Equal(0, split.GuildTaken);
-        }
-
-        [Theory]
-        [InlineData(false, 0)]
-        [InlineData(true, 5000)]
-        public void A_defeat_pays_twenty_percent_on_kills_with_no_loot_or_kamas(bool killed, long expected)
+        public void A_defeat_pays_nothing()
         {
             const long player = 8_999_001;
             var session = GameSession.SinSocket();
             session.BindAccount(player, 1);
             session.State.CharacterId = player;
             session.State.CharacterLevel = 100;
-            session.State.StatWisdom = 150;
             session.EnterWorld();
             Assert.True(SessionRegistry.Register(session));
             try
             {
-                var fight = new FightInstance(killed ? 8_999_001 : 8_999_002, 1);
+                var fight = new FightInstance(8_999_001, 1);
                 fight.AddPlayer(new Fighter { Id = player, Level = 100, MaxHP = 100, CurrentHP = 0 });
-                fight.AddMonster(new Fighter { Id = -1, Level = 100, MaxHP = 100, CurrentHP = killed ? 0 : 100,
+                fight.AddMonster(new Fighter { Id = -1, Level = 100, MaxHP = 100, CurrentHP = 0,
                     IsMonster = true, XpReward = 10000 });
                 fight.AddMonster(new Fighter { Id = -2, Level = 100, MaxHP = 100, CurrentHP = 100,
                     IsMonster = true, XpReward = 90000 });
-                fight.AddMonster(new Fighter { Id = -3, Level = 100, MaxHP = 100, CurrentHP = 0,
-                    IsMonster = true, Invocador = -2, XpReward = 90000 });
-                fight.ChallengesFixed.Add((1, 100)); // Defeat cannot earn a challenge bonus.
                 FightHandler.PlanRewards(fight);
-                var reward = Assert.IsType<FightHandler.Reward>(FightHandler.RewardOf(fight, player));
-                Assert.Equal(expected, reward.Xp); // A kill pays 10000 * 2.5 wisdom * 20%.
-                Assert.Equal(0, reward.Kamas);
-                Assert.Empty(reward.Loot);
-                FightHandler.PlanRewards(fight);
-                Assert.Same(reward, FightHandler.RewardOf(fight, player));
+                Assert.Null(FightHandler.RewardOf(fight, player));
             }
             finally { SessionRegistry.Unregister(session); }
         }
 
         [Fact]
-        public void A_shared_challenge_keeps_personal_wisdom_and_donations_are_credited_once()
+        public void A_shared_challenge_keeps_personal_wisdom()
         {
             const long first = 8_999_011, second = 8_999_012;
-            var guild = GuildStore.Create(first, "Shared XP", 1, 1, 1, 1);
-            ExperienceDonations.SetRates(first, 0, guild.Id, 50);
             var a = GameSession.SinSocket();
             var b = GameSession.SinSocket();
             foreach (var (session, id, wisdom) in new[] { (a, first, 100), (b, second, 300) })
@@ -160,11 +121,49 @@ namespace Jondo.Unity.Tests.Combat
                         IsMonster = true, XpReward = 5000 });
                 fight.ChallengesFixed.Add((1, 100));
                 FightHandler.PlanRewards(fight);
-                Assert.Equal(11000, FightHandler.RewardOf(fight, first).Xp);
+                Assert.Equal(22000, FightHandler.RewardOf(fight, first).Xp);
                 Assert.Equal(44000, FightHandler.RewardOf(fight, second).Xp);
-                Assert.Equal(110, GuildStore.GuildOf(first).Experience);
+                var planned = FightHandler.RewardOf(fight, first);
                 FightHandler.PlanRewards(fight);
-                Assert.Equal(110, GuildStore.GuildOf(first).Experience);
+                Assert.Same(planned, FightHandler.RewardOf(fight, first));
+            }
+            finally
+            {
+                SessionRegistry.Unregister(a);
+                SessionRegistry.Unregister(b);
+            }
+        }
+
+        /// <summary>
+        /// One who walked out of the fight is no longer of the group: the other is paid alone, and
+        /// the one who left, back on the map, takes nothing of a win he gave up.
+        /// </summary>
+        [Fact]
+        public void Who_left_does_not_count_for_the_group()
+        {
+            const long stays = 8_999_021, left = 8_999_022;
+            var a = GameSession.SinSocket();
+            var b = GameSession.SinSocket();
+            foreach (var (session, id) in new[] { (a, stays), (b, left) })
+            {
+                session.BindAccount(id, 1);
+                session.State.CharacterId = id;
+                session.State.CharacterLevel = 100;
+                session.EnterWorld();
+                Assert.True(SessionRegistry.Register(session));
+            }
+            try
+            {
+                var fight = new FightInstance(8_999_021, 1);
+                fight.AddPlayer(new Fighter { Id = stays, Level = 100, MaxHP = 100, CurrentHP = 100 });
+                fight.AddPlayer(new Fighter { Id = left, Level = 100, MaxHP = 100, CurrentHP = 0 });
+                fight.Gone.Add(left);
+                fight.AddMonster(new Fighter { Id = -1, Level = 100, MaxHP = 100, CurrentHP = 0,
+                    IsMonster = true, XpReward = 10000 });
+                FightHandler.PlanRewards(fight);
+                Assert.Equal(CombatExperience.Share(10000, 100, new[] { 100 }, 100, 100),
+                             FightHandler.RewardOf(fight, stays).Xp);
+                Assert.Null(FightHandler.RewardOf(fight, left));
             }
             finally
             {
