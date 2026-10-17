@@ -2801,6 +2801,10 @@ namespace Jondo.Unity.Server
 
         private static string EffectsOfTemplate(SqliteConnection connection, int gid)
         {
+            // A ride is born at level 1, its sex and serenity drawn, its characteristics those of its
+            // level (Managers.Rides): its template carries them at level 200.
+            if (Managers.Rides.IsRide(gid)) return Managers.Forgemagic.Serialize(Managers.Rides.Fresh(gid, Random.Shared));
+
             try
             {
                 var leer = connection.CreateCommand();

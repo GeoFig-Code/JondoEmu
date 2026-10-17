@@ -63,21 +63,25 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
-        /// hsb opens the window on its paddock; hrc carries the paddock's content in its result and
-        /// the paddock; hus every paddock with whether it opens.
+        /// hsb opens the window on its paddock; hrc carries the paddock's content in its result's f2
+        /// with what may be done in it, and the paddock; hus every paddock with whether it opens.
         /// </summary>
         [Fact]
         public void The_window_messages()
         {
             Assert.Equal(new byte[] { 0x08, 0x02 }, BreedingProtocol.BuildOpenWindow(2));
 
-            var content = BreedingProtocol.PaddockContent(new int[BreedingProtocol.GaugeCount], new[] { 3 });
-            var hrc = ProtoMessage.Parse(BreedingProtocol.BuildPaddock(4, content)).Fields;
+            var gauges = new Stable.Gauges();
+            gauges.Values[Stable.Feeder] = 500;
+            gauges.Active.Add(Stable.Feeder);
+            var content = BreedingProtocol.PaddockContent(gauges, System.Array.Empty<Stable.StoredRide>());
+            var hrc = ProtoMessage.Parse(BreedingProtocol.BuildPaddock(4, BreedingProtocol.GaugeOnly, content)).Fields;
             Assert.Equal(4, (int)hrc.Single(f => f.FieldNumber == 3).VarIntValue);
-            var result = ProtoMessage.Parse(hrc.Single(f => f.FieldNumber == 1).BytesValue).Fields;
+            var result = ProtoMessage.Parse(hrc.Single(f => f.FieldNumber == 2).BytesValue).Fields;
+            Assert.Equal(BreedingProtocol.GaugeOnly, (int)result.Single(f => f.FieldNumber == 1).VarIntValue);
             var paddock = ProtoMessage.Parse(result.Single(f => f.FieldNumber == 2).BytesValue).Fields;
-            Assert.Equal(BreedingProtocol.GaugeCount, paddock.Count(f => f.FieldNumber == 1));
-            Assert.Equal(3, (int)paddock.Single(f => f.FieldNumber == 2).VarIntValue);
+            Assert.Equal(6, paddock.Count(f => f.FieldNumber == 1));
+            Assert.Equal(5, (int)paddock.Single(f => f.FieldNumber == 2).VarIntValue);      // the feeder is hqf 5
 
             var hus = ProtoMessage.Parse(BreedingProtocol.BuildAccessiblePaddocks(new[] { (1, true), (2, false) })).Fields;
             Assert.Equal(2, hus.Count(f => f.FieldNumber == 1));

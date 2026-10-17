@@ -336,8 +336,12 @@ An alliance is made of characters, not guilds.
 <img width="2560" height="1500" alt="image" src="https://github.com/user-attachments/assets/375da573-ab61-4bf0-83fd-6f2a8f872cde" />
 <img width="2560" height="1506" alt="image" src="https://github.com/user-attachments/assets/581b105c-9569-4f54-ab77-01e122b8ce06" />
 
-- 🚧 Breeding: the gates of the six paddocks open the breeding window, each from its breeder level
-- ❌ The stable, the rides in the paddocks, the gauges, mating, cloning and extraction
+- ✅ Breeding: the gates of the six paddocks open the breeding window, each from its breeder level
+- ✅ The stable and the paddocks: rides moved between them and the bag, and renamed
+- ✅ The paddock gauges: fuel, two on at a time, serenity, love, maturity, stamina and experience
+- ✅ Rides that level up to 200, their characteristics growing with their level
+- ✅ Mating with its preview, mákinas and genetichas; cloning and extraction
+- ❌ Catching wild rides with nets
 - ✅ Characteristic points, with scrolled characteristics kept apart
 <img width="708" height="1048" alt="image" src="https://github.com/user-attachments/assets/b07f0ac2-f701-4f3a-82e2-c04f884d696d" />
 

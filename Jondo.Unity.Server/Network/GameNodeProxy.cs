@@ -717,6 +717,30 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.BreedingHandler.PaddockPickedAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hqq)))
                     Handlers.BreedingHandler.PaddockTabHidden();
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hse)))
+                    await Handlers.BreedingHandler.TransferFromBagAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hsn)))
+                    await Handlers.BreedingHandler.SendToBagAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Huh)))
+                    await Handlers.BreedingHandler.MoveAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hut)))
+                    await Handlers.BreedingHandler.RenameAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hun)))
+                    await Handlers.BreedingHandler.EnableGaugeAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hqw)))
+                    await Handlers.BreedingHandler.DisableGaugeAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hub)))
+                    await Handlers.BreedingHandler.FillGaugesAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Htl)))
+                    await Handlers.BreedingHandler.SimulateFuelAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hsv)))
+                    await Handlers.BreedingHandler.ExtractAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hqv)))
+                    await Handlers.BreedingHandler.CloneAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hsa)))
+                    await Handlers.BreedingHandler.PreviewMatingAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Htu)))
+                    await Handlers.BreedingHandler.BreedAsync(stream, payload);
                 // The alliance: see Handlers.AllianceHandler.
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Mdk)))
                     await Handlers.AllianceHandler.CreateAsync(stream, payload);

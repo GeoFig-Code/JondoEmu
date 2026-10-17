@@ -2057,8 +2057,86 @@ public static class Op
     /// <summary>The paddocks a player may open: { f1 map paddock → open }. Raises cef.</summary>
     public const string Hus = "hus";
 
-    /// <summary>A paddock's content: { oneof { f1 { f1 state, f2 content (hta) }, f2 error }, f3 the paddock, f4 }. Raises ceh.</summary>
+    /// <summary>A paddock's content: { oneof { f1 error, f2 { f1 OpenPaddockState, f2 content (hta) } }, f3 the paddock, f4 }. Raises ceh.</summary>
     public const string Hrc = "hrc";
+
+    /// <summary>Rides of the bag put in a line (BreedingLine drop, dfz): { f1 item uids, f2 {}, f3 the line, 0 paddock 1 stable }. Answered with hty.</summary>
+    public const string Hse = "hse";
+
+    /// <summary>The rides put in: { f1 map item uid → { f1 the ride (hqu), f2 its id }, f2 map item uid → error }. Raises ced.</summary>
+    public const string Hty = "hty";
+
+    /// <summary>Rides of a line sent back to the bag (dge): { f1 the line, f2 their ids }. Answered with hti.</summary>
+    public const string Hsn = "hsn";
+
+    /// <summary>The rides sent back: { f1 map ride id → result, 0 done }. Raises cee.</summary>
+    public const string Hti = "hti";
+
+    /// <summary>Rides moved to the other line (dga): { f1 their ids, f2 the line they go to, f3, f4 }. Answered with hur.</summary>
+    public const string Huh = "huh";
+
+    /// <summary>The rides moved: { f1 {}, f2 map ride id → result, 0 done }. Raises cec and cee.</summary>
+    public const string Hur = "hur";
+
+    /// <summary>A ride renamed (RideRenameUi.Validate, dfy): { f1 its id, f2 its line, f3 the name }. Answered with hqp.</summary>
+    public const string Hut = "hut";
+
+    /// <summary>A rename's result: { f1 0 done, 4 "Nombre no válido", other "Ha ocurrido un error" }. Raises ceo.</summary>
+    public const string Hqp = "hqp";
+
+    /// <summary>A gauge switched on (PaddockUi.OnGaugeClicked, dgj): { f1 the gauge, 0 slapper to 5 feeder }. Answered with htr.</summary>
+    public const string Hun = "hun";
+
+    /// <summary>The gauges on: { oneof { f2 { f1 the gauges on }, f3 error } }. Raises cem.</summary>
+    public const string Htr = "htr";
+
+    /// <summary>A gauge switched off (dgk): { f1 the gauge }. Answered with hsh.</summary>
+    public const string Hqw = "hqw";
+
+    /// <summary>A gauge switched off, the result: { f1 0 done }. Raises cen.</summary>
+    public const string Hsh = "hsh";
+
+    /// <summary>Fuel poured into the paddock (PaddockUi drop, PaddockGaugeFillUi.OnApply, dfw): { f1 map item uid → quantity }. Answered with htf.</summary>
+    public const string Hub = "hub";
+
+    /// <summary>The gauges after the fuel: { oneof { f1 error, f2 { f1 the gauges' values } } }. Raises cei.</summary>
+    public const string Htf = "htf";
+
+    /// <summary>The fill window's preview (SendSimulationRequest, dfx): { f1 map item uid → quantity, f2 }. Answered with hum.</summary>
+    public const string Htl = "htl";
+
+    /// <summary>The preview: { oneof { f1 error, f3 { f1 map item uid → quantity, f2 the gauges' values } } }. Raises cej.</summary>
+    public const string Hum = "hum";
+
+    /// <summary>A paddock's content again: { f1 content (hta), f2 }. Raises cek.</summary>
+    public const string Hua = "hua";
+
+    /// <summary>The stable again: { oneof { f1 error, f2 { f1 map ride id → ride } } }. Raises cdi.</summary>
+    public const string Huz = "huz";
+
+    /// <summary>Rides extracted (ExtractionUi.OnExtractAll, dgh): { f1 their ids }. Answered with hrh.</summary>
+    public const string Hsv = "hsv";
+
+    /// <summary>The extraction: { oneof { f1 { f1 map item → quantity, f2 the rides gone }, f2 error } }. Raises ceq.</summary>
+    public const string Hrh = "hrh";
+
+    /// <summary>Two rides cloned (CloningUi.OnValidate, dgb): { f1 the original, f2 the other }. Answered with hsm.</summary>
+    public const string Hqv = "hqv";
+
+    /// <summary>The clone: { oneof { f1 { f1 the ride, f2 its id }, f3 error }, f2 }. Raises cea.</summary>
+    public const string Hsm = "hsm";
+
+    /// <summary>The mating preview asked (dgc): { f1 a ride, f2, f3 the mákina's uid, f4 the other }. Answered with hrz.</summary>
+    public const string Hsa = "hsa";
+
+    /// <summary>The mating preview: { oneof { f1 { the breeder's experience, the capacities, children, colours, ... }, f3 error }, f2 }. Raises cdy.</summary>
+    public const string Hrz = "hrz";
+
+    /// <summary>Two rides bred (MatingUi.ValidateBreeding, dgd): { f1 a ride, f2 the mákina's uid, f3 the other, f4, f5 }. Answered with hsu.</summary>
+    public const string Htu = "htu";
+
+    /// <summary>The mating: { oneof { f1 error, f2 { f1 genetichas, f2 children, f3 experience, f4, f5 the parents } }, f3 }. Raises cdz.</summary>
+    public const string Hsu = "hsu";
 
     /// <summary>Part of the 3.6.4.3 final burst that ibt fires (icg is sent three times). It does not appear in any of the 242 captures.</summary>
     public const string Klp = "klp";
