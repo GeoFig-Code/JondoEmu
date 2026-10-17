@@ -34,8 +34,6 @@ namespace Jondo.Unity.Launcher.Security
         private const string DpapiPrefix = "dpapi:";
         private const string AesPrefix = "aesgcm:";
 
-        private static bool OnWindows => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-
         /// <summary>The ciphertext in Base64, ready to write to the file.</summary>
         public static string Protect(string plain)
         {
@@ -44,7 +42,9 @@ namespace Jondo.Unity.Launcher.Security
 
             try
             {
-                if (OnWindows)
+                // OperatingSystem.IsWindows and not a helper of our own: it is the check the platform
+                // analyzer recognises as guarding the DPAPI calls.
+                if (OperatingSystem.IsWindows())
                 {
                     byte[] cifrado = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
                     return DpapiPrefix + Convert.ToBase64String(cifrado);
@@ -70,6 +70,8 @@ namespace Jondo.Unity.Launcher.Security
             {
                 if (stored.StartsWith(DpapiPrefix, StringComparison.Ordinal))
                 {
+                    // Written by DPAPI, which only Windows can undo.
+                    if (!OperatingSystem.IsWindows()) return "";
                     byte[] cifrado = Convert.FromBase64String(stored.Substring(DpapiPrefix.Length));
                     return Encoding.UTF8.GetString(
                         ProtectedData.Unprotect(cifrado, null, DataProtectionScope.CurrentUser));
@@ -123,15 +125,18 @@ namespace Jondo.Unity.Launcher.Security
             if (!string.IsNullOrEmpty(carpeta)) Directory.CreateDirectory(carpeta);
             File.WriteAllBytes(KeyPath, nueva);
 
-            try
+            // Only the owner. Without this the key stays readable for any account on the machine
+            // and the encryption defends against nothing. Windows has no POSIX permissions to set.
+            if (!OperatingSystem.IsWindows())
             {
-                // Only the owner. Without this the key stays readable for any account on the
-                // machine and the encryption defends against nothing.
-                File.SetUnixFileMode(KeyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
-            }
-            catch
-            {
-                // On systems without POSIX permissions there is nothing to adjust.
+                try
+                {
+                    File.SetUnixFileMode(KeyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                }
+                catch
+                {
+                    // A file system without POSIX permissions: nothing to adjust.
+                }
             }
 
             return nueva;

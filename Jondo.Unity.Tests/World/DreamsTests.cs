@@ -396,7 +396,7 @@ namespace Jondo.Unity.Tests.World
             byte[] izg = DreamProtocol.BuildDreamState(s);
             var campos = ProtoMessage.Parse(izg).Fields;
 
-            var bono = Assert.Single(campos.Where(f => f.FieldNumber == 15));
+            var bono = Assert.Single(campos, f => f.FieldNumber == 15);
             Assert.NotNull(bono.BytesValue);
         }
 

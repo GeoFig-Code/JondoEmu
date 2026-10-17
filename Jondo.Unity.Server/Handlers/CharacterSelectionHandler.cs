@@ -35,39 +35,6 @@ namespace Jondo.Unity.Server.Handlers
 
         private static readonly Dictionary<int, int> StatIdByEffectActionId = EffectActionIdByStatId.ToDictionary(k => k.Value, v => v.Key);
 
-        public static async Task HandleAuthRequest(NetworkStream stream, byte[] payload, string payloadStr)
-        {
-            if (payloadStr.Contains("type.ankama.com/jtk"))
-            {
-                Console.WriteLine("[Game Node] Received New Auth Request (jtk)");
-                byte[] jtmFrame = NetworkEnvelope.ConvertHexStringToByteArray("33-0A-31-12-2F-0A-13-74-79-70-65-2E-61-6E-6B-61-6D-61-2E-63-6F-6D-2F-6A-74-6D-12-18-08-01-12-14-32-30-33-35-2D-30-31-2D-30-31-54-30-30-3A-30-30-3A-30-30-5A");
-                await Jondo.Protocol.NetworkMessage.WriteRawFrameAsync(stream, jtmFrame);
-                Console.WriteLine("[Game Node] Sent New Auth Accepted (jtm)");
-            }
-            else if (payloadStr.Contains("type.ankama.com/knx"))
-            {
-                Console.WriteLine("[Game Node] Received New Auth Request (knx) [3.6]");
-                byte[] frame557 = NetworkEnvelope.ConvertHexStringToByteArray("19-1A-17-0A-15-0A-13-74-79-70-65-2E-61-6E-6B-61-6D-61-2E-63-6F-6D-2F-6B-6F-66-24-1A-22-0A-20-0A-13-74-79-70-65-2E-61-6E-6B-61-6D-61-2E-63-6F-6D-2F-6C-6F-72-12-09-08-78-10-DC-BC-D5-D9-05-19-1A-17-0A-15-0A-13-74-79-70-65-2E-61-6E-6B-61-6D-61-2E-63-6F-6D-2F-68-6E-70-19-1A-17-0A-15-0A-13-74-79-70-65-2E-61-6E-6B-61-6D-61-2E-63-6F-6D-2F-6B-6E-72-19-1A-17-0A-15-0A-13-74-79-70-65-2E-61-6E-6B-61-6D-61-2E-63-6F-6D-2F-6D-66-61-19-1A-17-0A-15-0A-13-74-79-70-65-2E-61-6E-6B-61-6D-61-2E-63-6F-6D-2F-6D-65-7A-19-1A-17-0A-15-0A-13-74-79-70-65-2E-61-6E-6B-61-6D-61-2E-63-6F-6D-2F-68-6E-76");
-                await Jondo.Protocol.NetworkMessage.WriteRawFrameAsync(stream, frame557);
-                Console.WriteLine("[Game Node] Sent Auth Accepted and Handshake Packets (frame557)");
-
-                byte[] klpFrame = NetworkEnvelope.ConvertHexStringToByteArray("1D-1A-1B-0A-19-0A-13-74-79-70-65-2E-61-6E-6B-61-6D-61-2E-63-6F-6D-2F-6B-6C-70-12-02-10-00");
-                await Jondo.Protocol.NetworkMessage.WriteRawFrameAsync(stream, klpFrame);
-                Console.WriteLine("[Game Node] Sent Character List (klp) - Empty [New Build]");
-            }
-            else
-            {
-                Console.WriteLine("[Game Node] Received Auth Request (ise)");
-                byte[] iuaFrame = NetworkEnvelope.ConvertHexStringToByteArray("28-0A-26-12-24-0A-13-74-79-70-65-2E-61-6E-6B-61-6D-61-2E-63-6F-6D-2F-69-75-61-12-0D-0A-02-14-23-10-06-18-A2-82-D8-B0-AF-1A");
-                await Jondo.Protocol.NetworkMessage.WriteRawFrameAsync(stream, iuaFrame);
-                Console.WriteLine("[Game Node] Sent Auth Accepted (iua) [Old Build]");
-                
-                byte[] isjFrame = NetworkEnvelope.ConvertHexStringToByteArray("19-0A-17-12-15-0A-13-74-79-70-65-2E-61-6E-6B-61-6D-61-2E-63-6F-6D-2F-69-75-6A");
-                await Jondo.Protocol.NetworkMessage.WriteRawFrameAsync(stream, isjFrame);
-                Console.WriteLine("[Game Node] Sent Character List (isj) - Empty [Old Build]");
-            }
-        }
-
         /// <summary>
         /// Character list requests from older client builds.
         ///

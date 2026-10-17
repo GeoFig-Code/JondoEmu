@@ -25,7 +25,7 @@ namespace Jondo.Unity.Tests.Combat
             var one = new FightInstance(1, 100, 0);
             var other = new FightInstance(2, 100, 0);
 
-            one.CastsThisTurn[(caster: 10L, spell: 161L)] = 3;
+            one.CastsThisTurn[(Caster: 10L, Spell: 161L)] = 3;
 
             Assert.False(other.CastsThisTurn.ContainsKey((10L, 161L)));
             Assert.Empty(other.CastsThisTurn);

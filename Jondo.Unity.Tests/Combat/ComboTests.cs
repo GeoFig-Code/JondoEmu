@@ -104,7 +104,7 @@ namespace Jondo.Unity.Tests.Combat
                 EffectEngine.Resolver(fight, bomba, Combo.LadderSpell, 1, bomba,
                                       EffectEngine.AlLanzar, fight.RoundNumber,
                                       celdaApuntada: bomba.CellId);
-                Assert.Single(bomba.Buffs.Estados.Where(escalera.Contains));
+                Assert.Single(bomba.Buffs.Estados, escalera.Contains);
             }
         }
 
@@ -161,7 +161,7 @@ namespace Jondo.Unity.Tests.Combat
                 EffectEngine.Resolver(fight, bomba, Combo.LadderSpell, 1, bomba,
                                       EffectEngine.AlLanzar, fight.RoundNumber,
                                       celdaApuntada: bomba.CellId);
-                Assert.Single(bomba.Buffs.Estados.Where(escalera.Contains));
+                Assert.Single(bomba.Buffs.Estados, escalera.Contains);
                 Assert.Equal(vez, Combo.LevelOf(bomba));
             }
         }

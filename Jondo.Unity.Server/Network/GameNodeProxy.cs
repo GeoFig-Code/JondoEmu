@@ -210,10 +210,10 @@ namespace Jondo.Unity.Server.Network
                 {
                     // The client presents the ticket handed to it by the connection server. From
                     // here on the session knows which account it serves, and answers it with the
-                    // burst that ends in the character list.
-                    isAuthenticated = true;
+                    // burst that ends in the character list. A valid ticket is the only way in.
                     if (HandleTicketPresentation(payload, ref sessionAccountId, ref sessionServerId))
                     {
+                        isAuthenticated = true;
                         // The same account in another connection goes, and its character is saved,
                         // before this one reads its characters.
                         int replaced = await SessionRegistry.CloseOthersOfAsync(session, TimeSpan.FromSeconds(10));
@@ -282,11 +282,6 @@ namespace Jondo.Unity.Server.Network
                     }
                     hasSentMapBlock = false;
                     Console.WriteLine("[Game Node] Client is going back: sent kqr and released the session.");
-                }
-                else if (!isAuthenticated && (payloadStr.Contains(Op.Uri(Op.Hmt)) || payloadStr.Contains(Op.Uri(Op.Ise)) || payloadStr.Contains("type.ankama.com/jtk") || payloadStr.Contains("type.ankama.com/knx") || payloadStr.Contains(Op.Uri(Op.Hoy))))
-                {
-                    isAuthenticated = true;
-                    await CharacterSelectionHandler.HandleAuthRequest(stream, payload, payloadStr);
                 }
                 // Careful: kqu no longer belongs here. In 3.6.10.10 it is a message pushed by the
                 // server inside the welcome burst, not a client request.

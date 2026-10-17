@@ -250,7 +250,7 @@ namespace Jondo.Unity.Tests.Network
             }
 
             Assert.Equal(2, bars.Count);
-            Assert.Single(bars.Where(bar => bar == WorldEntry.SpellBarLabel));
+            Assert.Single(bars, bar => bar == WorldEntry.SpellBarLabel);
 
             // And the RIGHT one of the two, which the count alone does not say. The label was
             // written backwards once, from a comment in the source that claimed "f6 for items and

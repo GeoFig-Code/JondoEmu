@@ -367,7 +367,7 @@ namespace Jondo.Unity.Launcher.UI
         private void AlPulsarSeccion(object? remitente, Avalonia.Interactivity.RoutedEventArgs e)
         {
             QuitarElAviso();
-            _seccion = (remitente as Button)?.Tag as string switch
+            _seccion = ((remitente as Button)?.Tag as string) switch
             {
                 "cuentas" => Seccion.Cuentas,
                 "ajustes" => Seccion.Ajustes,

@@ -81,7 +81,7 @@ namespace Jondo.Unity.Tests.World
             Dreams.OlvidarTodo();
             var s = Dreams.Crear(1, "Prueba", 200, 5, 100, 200);
 
-            var fuente = Assert.Single(s.Salas.Where(x => x.EsFuente));
+            var fuente = Assert.Single(s.Salas, x => x.EsFuente);
             Assert.Empty(fuente.Miembros);
             Assert.Equal(s.Salas.Max(x => x.Fila), fuente.Fila);
         }

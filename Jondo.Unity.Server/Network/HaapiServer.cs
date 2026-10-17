@@ -131,7 +131,7 @@ namespace Jondo.Unity.Server.Network
             // that is left here are the icons, which a stray request still asks for.
             if (path == "/favicon.ico" || path == "/icon.ico")
             {
-                await ServeLauncherStaticFileAsync(path, resp);
+                await ServeLauncherIconAsync(path == "/icon.ico" ? "icon.ico" : "favicon.ico", resp);
                 return;
             }
 
@@ -219,12 +219,15 @@ namespace Jondo.Unity.Server.Network
             }
         }
 
-        private static async Task ServeLauncherStaticFileAsync(string path, HttpListenerResponse resp)
+        /// <summary>
+        /// One of the two icons, out of launcher_assets. The caller names it with a literal, never
+        /// with the path asked for, so nothing from the request reaches the disk.
+        /// </summary>
+        private static async Task ServeLauncherIconAsync(string filename, HttpListenerResponse resp)
         {
             string assetsDir = Path.Combine(Paths.Root, "launcher_assets");
-            string filename = Path.GetFileName(path);
             string filePath = Path.Combine(assetsDir, filename);
-            if (!File.Exists(filePath) && (filename == "favicon.ico" || filename == "icon.ico"))
+            if (!File.Exists(filePath))
             {
                 filePath = Path.Combine(assetsDir, "favicon.ico");
             }
