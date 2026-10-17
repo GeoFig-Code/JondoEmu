@@ -457,7 +457,7 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>
         /// What rooms give: the twelve rewards the rooms of the captures' graphs offer, each with
-        /// the icon, the row and the rarity it always carries there.
+        /// the icon, the row and the rarity it always carries there, and the guide's thirteenth.
         /// </summary>
         /// <remarks>
         /// Counted over every room of every graph of the fifteen captures -- 14798 in 270 rooms,
@@ -480,7 +480,53 @@ namespace Jondo.Unity.Server.Managers
             new Reward { Id = 14812, Tag = 4, Points = 15 },                                             // "Puntos de sueño"
             new Reward { Id = 14811, Tag = 76, Points = 30 },                                            // "Bolsa de puntos de sueño"
             new Reward { Id = 14895, Tag = 154, Rarity = 1, Levels = 50 },                              // "50 niveles de soñador"
+            // "Sorts : +1 lancer par tour", the guide's minor bonus no capture shows: the client's
+            // reward 72, one 290 nested. Its icon and rarity are its siblings' of 157, INFERRED.
+            new Reward { Id = 14808, Tag = 72, Rarity = 2, Bonuses = new[] { new Bono(290, 1, true) } },
         };
+
+        /// <summary>
+        /// How often each reward is a room's, by its row of the client: the distinct rooms of
+        /// the captures' graphs that carry it -- 67 "Vitalidad", 50 "% daños", 45 "Fogosidad",
+        /// down to one "+1 lanzamiento por objetivo". They were drawn alike, and the spell
+        /// bonuses the captures meet once or twice in 290 rooms came out one room in twelve.
+        /// 72, never captured, is as rare as 157.
+        /// </summary>
+        private static readonly Dictionary<int, int> RoomRewardWeight = new()
+        {
+            [119] = 67, [133] = 50, [125] = 45, [118] = 41, [126] = 38, [4] = 32,
+            [127] = 5, [111] = 5, [140] = 2, [76] = 2, [154] = 2, [157] = 1, [72] = 1,
+        };
+
+        /// <summary>
+        /// The rewards a room of band I never gives: "certains bonus ne peuvent être obtenus qu'à
+        /// partir du palier 2 : sorts +2 portée maximale, -1 de relance, +1 lancer par tour, +1
+        /// lancer par cible, 30 points de rêve, 50 niveaux de songeur" -- and none of the 125
+        /// band-I rooms of the captures carries 111, 140, 157, 76 or 154.
+        /// </summary>
+        private static readonly HashSet<int> FromBandTwo = new() { 111, 140, 157, 76, 154, 72 };
+
+        /// <summary>"Le bonus « Sorts : -1 de relance » ne peut être obtenu qu'une seule fois par songe."</summary>
+        private const int OncePerDream = 140;
+
+        /// <summary>
+        /// A room's reward, drawn by <see cref="RoomRewardWeight"/> among those its band may give,
+        /// the once-a-dream one left out once a room of the dream has it.
+        /// </summary>
+        private static Reward DrawRoomReward(Sueno sueno, Sala sala, Random dado)
+        {
+            bool taken = sueno.Salas.Any(s => s != sala && s.Reward?.Tag == OncePerDream);
+            var pool = RoomRewards.Where(r => (sala.Franja > 1 || !FromBandTwo.Contains(r.Tag))
+                                              && !(taken && r.Tag == OncePerDream)).ToList();
+            int total = pool.Sum(r => RoomRewardWeight.GetValueOrDefault(r.Tag, 1));
+            int roll = dado.Next(total);
+            foreach (var reward in pool)
+            {
+                roll -= RoomRewardWeight.GetValueOrDefault(reward.Tag, 1);
+                if (roll < 0) return reward;
+            }
+            return pool[^1];
+        }
 
         // What a fountain sells and a favour gives -- the purse of ten points always last -- is
         // DreamCatalogue's, read from content/dreams/fountain.json.
@@ -859,7 +905,7 @@ namespace Jondo.Unity.Server.Managers
             Cargar();
             sala.Miembros.Clear();
             var dado = DiceOf(sueno, "storm", sala.Id, ++sala.Rerolls);
-            Poblar(sala, sueno.Nivel, sueno.Dificultad, dado, keepReward: true);
+            Poblar(sueno, sala, dado, keepReward: true);
 
             var mapas = MapasDeSala().Where(m => m != sala.MapaDeLaSala).ToList();
             if (mapas.Count > 0) sala.MapaDeLaSala = mapas[dado.Next(mapas.Count)];
@@ -1292,7 +1338,7 @@ namespace Jondo.Unity.Server.Managers
                 {
                     if (sala.EsFuente || sala.EsFinal || sala.EsFavor) continue;
                     if (sala.Miembros.Count > 0) continue;
-                    Poblar(sala, nivel, sueno.Dificultad, DiceOf(sueno, "room", sala.Id));
+                    Poblar(sueno, sala, DiceOf(sueno, "room", sala.Id));
                     sala.Goblin = GoblinOf(sueno, sala);
 
                     sala.Senalada = i == porFila.Count - 2 && sala.Id % 3 == 0;
@@ -2119,8 +2165,9 @@ namespace Jondo.Unity.Server.Managers
         /// not enough: the Dreams are played from level 50 and there are stretches of the world where there are
         /// no groups of that exact level.
         /// </remarks>
-        private static void Poblar(Sala sala, int nivel, int dificultad, Random dado, bool keepReward = false)
+        private static void Poblar(Sueno sueno, Sala sala, Random dado, bool keepReward = false)
         {
+            int nivel = sueno.Nivel;
             var candidatos = new List<(int Id, long MapaId, int Casilla, int Nivel, string Miembros)>();
 
             for (int banda = 20; banda <= 200 && candidatos.Count == 0; banda += 40)
@@ -2143,7 +2190,7 @@ namespace Jondo.Unity.Server.Managers
 
             // And what the room gives away, from the nine rewards the measured rooms offer.
             if (keepReward && sala.Reward != null) return;
-            sala.Reward = RoomRewards[dado.Next(RoomRewards.Length)];
+            sala.Reward = DrawRoomReward(sueno, sala, dado);
         }
 
         internal static void OlvidarTodo()

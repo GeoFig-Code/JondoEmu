@@ -100,6 +100,28 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
+        /// A room's reward: band I never gives the band-II ones, "-1 de relance" comes once a
+        /// dream at most, and the captures' common ones come far more often than the rare.
+        /// </summary>
+        [Fact]
+        public void Rooms_give_their_rewards_as_the_captures_do()
+        {
+            var counts = new Dictionary<int, int>();
+            for (int i = 0; i < 30; i++)
+            {
+                var dream = Whole(900_000_000_200 + i);
+                foreach (var room in dream.Salas.Where(r => r.Reward != null))
+                {
+                    if (room.Franja == 1) Assert.DoesNotContain(room.Reward!.Tag, new[] { 111, 140, 157, 76, 154, 72 });
+                    counts[room.Reward!.Tag] = counts.GetValueOrDefault(room.Reward.Tag) + 1;
+                }
+                Assert.True(dream.Salas.Count(r => r.Reward?.Tag == 140) <= 1);
+                Dreams.Olvidar(dream.CharacterId);
+            }
+            Assert.True(counts.GetValueOrDefault(119) > 5 * counts.GetValueOrDefault(157));
+        }
+
+        /// <summary>
         /// A dream's room fights with the dream's clocks -- 1,800 tenths to place, 900 a player's
         /// turn, the captures' -- and no challenges, and losing costs nothing.
         /// </summary>
