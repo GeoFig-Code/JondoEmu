@@ -132,6 +132,11 @@ namespace Jondo.Unity.Server.Handlers
         /// And discarding has no message of its own: in «Sueño III-descartar» and «paradoja I-descartar»
         /// the client directly sends f1 with the new difficulty. The «you already have a dream in
         /// progress» window is settled in the client; only the start reaches the server.
+        ///
+        /// A start is { f1: the code, f2: training, f3: the difficulty, f4: 1 }, the client's
+        /// own building of it (efs::djw, from the well's "Commencer"): the code and the training
+        /// box only when a code was typed -- or a trial chosen, whose code it is --, the
+        /// difficulty and the 1 always.
         /// </remarks>
         public static async Task StartOrDiscardAsync(NetworkStream stream, byte[] payload)
         {
@@ -140,6 +145,8 @@ namespace Jondo.Unity.Server.Handlers
 
             int dificultad = 0;
             bool continuar = false;
+            string? seed = null;
+            bool training = false;
 
             foreach (var field in ProtoMessage.Parse(ixf).Fields)
             {
@@ -147,12 +154,21 @@ namespace Jondo.Unity.Server.Handlers
 
                 if (field.FieldNumber == 1)
                 {
-                    // Starting: the difficulty goes in the inner f3.
+                    // Starting: the difficulty goes in the inner f3, a code in the f1 and the
+                    // training box in the f2.
                     foreach (var dentro in ProtoMessage.Parse(field.BytesValue).Fields)
                     {
                         if (dentro.FieldNumber == 3 && dentro.WireType == 0)
                         {
                             dificultad = (int)dentro.VarIntValue;
+                        }
+                        else if (dentro.FieldNumber == 1 && dentro.WireType == 2 && dentro.BytesValue != null)
+                        {
+                            seed = System.Text.Encoding.UTF8.GetString(dentro.BytesValue).Trim();
+                        }
+                        else if (dentro.FieldNumber == 2 && dentro.WireType == 0)
+                        {
+                            training = dentro.VarIntValue != 0;
                         }
                     }
                 }
@@ -190,12 +206,22 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            if (!string.IsNullOrEmpty(seed) && !Dreams.IsSeed(seed))
+            {
+                Console.WriteLine($"[Dreams] {yo} typed «{seed}», which is no dream's code.");
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildNotice(CommandTexts.Get("dream.bad_code", seed))));
+                return;
+            }
+
             var sueno = Dreams.Crear(yo, GameState.CharacterName, GameState.CharacterLevel,
-                                     dificultad, GameState.MapId, GameState.CellId, GameState.Breed);
+                                     dificultad, GameState.MapId, GameState.CellId, GameState.Breed,
+                                     seed, training);
             Persist(sueno);
 
-            Console.WriteLine($"[Dreams] {yo} starts at difficulty {dificultad}: " +
-                              $"{sueno.Salas.Count} rooms.");
+            Console.WriteLine($"[Dreams] {yo} starts at difficulty {dificultad}, code {sueno.Seed}" +
+                              (sueno.FromSouvenir ? " (a souvenir, no rewards" + (sueno.Training ? ", training)" : ")") : "") +
+                              $": {sueno.Salas.Count} rooms.");
 
             await EntrarEnSalaAsync(stream, sueno, 0);
 
@@ -387,7 +413,7 @@ namespace Jondo.Unity.Server.Handlers
                 return false;
             }
 
-            sala.Offers ??= Dreams.DrawFavor(sueno);
+            sala.Offers ??= Dreams.DrawFavor(sueno, sala);
             Persist(sueno);
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
@@ -858,7 +884,8 @@ namespace Jondo.Unity.Server.Handlers
             int wave = state.Cleared + 1;
             int level = state.Rules.BaseLevel + state.Rules.Step * state.Cleared;
             Console.WriteLine($"[Dreams] Fin du rêve: wave {state.Cleared} down, wave {wave} at level {level}.");
-            return (Dreams.FinalWave(wave), level, wave);
+            var dream = Dreams.De(state.CharacterId);
+            return (Dreams.FinalWave(wave, dream != null ? Dreams.DiceOf(dream, "wave", wave) : new Random()), level, wave);
         }
 
         /// <summary>
@@ -867,7 +894,8 @@ namespace Jondo.Unity.Server.Handlers
         /// it is won or its minimum of waves has fallen -- the dream fragments of the waves that
         /// fell. Null for a fight that is not a dream's.
         /// </summary>
-        internal sealed record DreamPay(int Difficulty, int Row, int LootBonus, bool Finished, int Waves, int Fragments);
+        internal sealed record DreamPay(int Difficulty, int Row, int LootBonus, bool Finished, int Waves, int Fragments,
+                                        bool Souvenir = false);
 
         internal static DreamPay? PayOf(Jondo.Unity.World.Fights.FightInstance fight, bool won)
         {
@@ -883,7 +911,8 @@ namespace Jondo.Unity.Server.Handlers
                 finished = won || waves >= final.Rules.MinWaves;
             }
             return new DreamPay(sueno.Dificultad, sala.Fila, sueno.Bonus, finished, waves,
-                                finished ? Dreams.FragmentsFor(sueno.Dificultad, waves) : 0);
+                                finished && !sueno.FromSouvenir ? Dreams.FragmentsFor(sueno.Dificultad, waves) : 0,
+                                sueno.FromSouvenir);
         }
 
         /// <summary>
@@ -931,14 +960,17 @@ namespace Jondo.Unity.Server.Handlers
         /// "Sueño III-pelear-morir-reaparecer en sala" shows -- the f17 gone after the death, the
         /// player back in the room. A dream that ends sends the player out, where he came from.
         /// </remarks>
-        internal static (long MapOut, int CellOut, string? Notice, bool Ended) AfterTheFight(
+        internal static (long MapOut, int CellOut, string? Notice, bool Ended, byte[]? Result) AfterTheFight(
             Jondo.Unity.World.Fights.FightInstance fight, bool won)
         {
             _finales.TryRemove(fight.FightId, out var final);
-            if (!Dreams.IsDreamMap(fight.RoleplayMapId)) return (0, 0, null, false);
+            if (!Dreams.IsDreamMap(fight.RoleplayMapId)) return (0, 0, null, false, null);
             var sueno = Dreams.De(GameState.CharacterId);
             var sala = sueno?.SalaActual;
-            if (sueno == null || sala == null || sala.MapaDeLaSala != fight.RoleplayMapId) return (0, 0, null, false);
+            if (sueno == null || sala == null || sala.MapaDeLaSala != fight.RoleplayMapId) return (0, 0, null, false, null);
+
+            // The time it took is the time of its fights: the result's "cumulatedDuration".
+            sueno.FightMs += Math.Max(0, (long)(DateTime.UtcNow - fight.StartedAt).TotalMilliseconds);
 
             if (final != null)
             {
@@ -947,23 +979,44 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     // The dream fragments of the waves were paid with the fight's spoils
                     // (FightHandler.PlanRewards); the notice says how many.
-                    int fragments = Dreams.FragmentsFor(sueno.Dificultad, cleared);
+                    int fragments = sueno.FromSouvenir ? 0 : Dreams.FragmentsFor(sueno.Dificultad, cleared);
+                    var result = ResultOf(sueno, fight, won: true, cleared);
                     var (map, cell) = End(sueno);
-                    return (map, cell, CommandTexts.Get("dream.completed", cleared, fragments), true);
+                    return (map, cell, CommandTexts.Get("dream.completed", cleared, fragments), true, result);
                 }
             }
 
-            if (won) return (0, 0, null, false);
+            if (won)
+            {
+                Persist(sueno);
+                return (0, 0, null, false, null);
+            }
 
             if (sueno.Arena > 0)
             {
-                sueno.Arena--;
+                // A training dream's sands are never spent: "un nombre infini".
+                if (!sueno.Training) sueno.Arena--;
                 Persist(sueno);
-                return (0, 0, CommandTexts.Get("dream.arena"), false);
+                return (0, 0, CommandTexts.Get("dream.arena"), false, null);
             }
 
+            var lost = ResultOf(sueno, fight, won: false, final?.Cleared ?? 0);
             var (outMap, outCell) = End(sueno);
-            return (outMap, outCell, CommandTexts.Get("dream.over"), true);
+            return (outMap, outCell, CommandTexts.Get("dream.over"), true, lost);
+        }
+
+        /// <summary>
+        /// The result window of a dream that ends (iya, DreamProtocol.BuildResult): its people --
+        /// the characters of the fight that ended it --, and the last wave of its end and the
+        /// round it fell on. How many dreams each has won is not kept: one, this one -- INFERRED.
+        /// </summary>
+        private static byte[] ResultOf(Dreams.Sueno sueno, Jondo.Unity.World.Fights.FightInstance fight, bool won, int waves)
+        {
+            var players = fight.Azul.Concat(fight.Rojo)
+                               .Where(f => !f.IsMonster && !f.EsInvocado && !f.EsIlusion && !f.IsBot)
+                               .Select(f => new DreamProtocol.ResultPlayer(f.Id, f.Name ?? "", f.Sex, f.Breed, 1))
+                               .ToList();
+            return DreamProtocol.BuildResult(sueno, won, players, waves, waves > 0 ? fight.RoundNumber : 0);
         }
 
         /// <summary>A dream over: forgotten, off the base, and where the player goes out to.</summary>

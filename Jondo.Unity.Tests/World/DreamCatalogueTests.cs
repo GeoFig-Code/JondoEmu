@@ -83,7 +83,7 @@ namespace Jondo.Unity.Tests.World
 
             for (int i = 0; i < 60; i++)
             {
-                var offers = DreamCatalogue.DrawFountain(dream, first);
+                var offers = DreamCatalogue.DrawFountain(dream, first, new Random(i));
                 Assert.Equal(5, offers.Count);
                 Assert.Equal(5, offers.Select(o => o.Tag).Distinct().Count());
                 Assert.All(offers, o => Assert.True(o.Price <= 15));
@@ -94,7 +94,7 @@ namespace Jondo.Unity.Tests.World
             var later = new Dreams.Sala { Id = 99, EsFuente = true, Franja = 2 };
             var seen = new HashSet<int>();
             for (int i = 0; i < 200; i++)
-                foreach (var offer in DreamCatalogue.DrawFountain(dream, later)) seen.Add(offer.Price);
+                foreach (var offer in DreamCatalogue.DrawFountain(dream, later, new Random(i))) seen.Add(offer.Price);
             Assert.Contains(25, seen);
         }
 

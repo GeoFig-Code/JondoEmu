@@ -9225,7 +9225,7 @@ namespace Jondo.Unity.Server.Handlers
 
             // A fight in a dream's room decides the dream: won at its end, lost without an arena.
             // Decided here, before the jru below names the map, for the same reason as a dungeon.
-            var (fueraDelSueno, casillaFuera, avisoDelSueno, suenoAcabado) = DreamHandler.AfterTheFight(fight, alliesAlive);
+            var (fueraDelSueno, casillaFuera, avisoDelSueno, suenoAcabado, resultadoDelSueno) = DreamHandler.AfterTheFight(fight, alliesAlive);
             if (fueraDelSueno != 0 && fueraDelSueno != back && MapManager.GetMapInfo(fueraDelSueno) != null)
             {
                 back = fueraDelSueno;
@@ -9245,6 +9245,9 @@ namespace Jondo.Unity.Server.Handlers
             if (suenoAcabado) { await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ixg)); DreamHandler.MarkLeft(); }
             if (avisoDelSueno != null)
                 await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildNotice(avisoDelSueno)));
+            // And the dream's result window, with its code to copy.
+            if (resultadoDelSueno != null)
+                await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Iya, resultadoDelSueno));
 
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kml));
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kmp));

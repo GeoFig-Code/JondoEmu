@@ -263,7 +263,7 @@ namespace Jondo.Unity.Tests.World
                     Assert.Equal(3, pay.Waves);
                     Assert.Equal(300, pay.Fragments);
 
-                    var (_, _, notice, ended) = DreamHandler.AfterTheFight(fight, won: false);
+                    var (_, _, notice, ended, _) = DreamHandler.AfterTheFight(fight, won: false);
                     Assert.True(ended);
                     Assert.Contains("3 oleada", notice);
                     Assert.Contains("300 retazo", notice);

@@ -539,6 +539,16 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>Whether the Rey Gob stands in this fountain. See <see cref="ReyGobOneIn"/>.</summary>
             public bool HasReyGob { get; set; }
 
+            /// <summary>
+            /// The offers drawn here so far, a fountain's or a favour's: each draw takes the next
+            /// throw of the dream's dice (<see cref="DiceOf"/>), so a dream replayed from its code
+            /// is offered the same.
+            /// </summary>
+            public int Draws { get; set; }
+
+            /// <summary>The astral storms that redrew this room's group, for the same reason.</summary>
+            public int Rerolls { get; set; }
+
             /// <summary>Whether the Rey Gob's favor -- the dream points times one and a half -- was taken here.</summary>
             public bool FavorTaken { get; set; }
 
@@ -618,6 +628,29 @@ namespace Jondo.Unity.Server.Managers
             public string Nombre { get; init; } = "";
             public int Nivel { get; init; }
             public int Dificultad { get; init; }
+
+            /// <summary>
+            /// The dream's code, its "souvenir": eight of A-Z and 0-9, the client's own alphabet
+            /// for one (InfiniteDreamHub.RandomSeed). Every draw of the dream comes from it, so
+            /// starting a dream with it makes the same rooms and offers again -- "Les salles de
+            /// songes et les bonus proposés seront alors exactement les mêmes".
+            /// </summary>
+            public string Seed { get; init; } = "";
+
+            /// <summary>
+            /// Started from a code: "un code permettant de recommencer ce même songe sans aucune
+            /// récompense (que ce soit xp ou drop)".
+            /// </summary>
+            public bool FromSouvenir { get; init; }
+
+            /// <summary>
+            /// The training mode of a code ("inp_dreamTraining"): "un nombre infini de Sable de
+            /// Draconiros vous permettant de recommencer une salle autant de fois que vous voulez".
+            /// </summary>
+            public bool Training { get; init; }
+
+            /// <summary>The time spent fighting in it, in milliseconds: the result's "cumulatedDuration".</summary>
+            public long FightMs { get; set; }
 
             [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
             public List<Sala> Salas { get; } = new List<Sala>();
@@ -811,10 +844,11 @@ namespace Jondo.Unity.Server.Managers
 
             Cargar();
             sala.Miembros.Clear();
-            Poblar(sala, sueno.Nivel, sueno.Dificultad, keepReward: true);
+            var dado = DiceOf(sueno, "storm", sala.Id, ++sala.Rerolls);
+            Poblar(sala, sueno.Nivel, sueno.Dificultad, dado, keepReward: true);
 
             var mapas = MapasDeSala().Where(m => m != sala.MapaDeLaSala).ToList();
-            if (mapas.Count > 0) lock (_azar) sala.MapaDeLaSala = mapas[_azar.Next(mapas.Count)];
+            if (mapas.Count > 0) sala.MapaDeLaSala = mapas[dado.Next(mapas.Count)];
         }
 
         /// <summary>The dream is over: it is forgotten, and with it the groups it left placed.</summary>
@@ -867,7 +901,7 @@ namespace Jondo.Unity.Server.Managers
                     conexion.Open();
 
                     var orden = conexion.CreateCommand();
-                    orden.CommandText = "SELECT Id, MapId, CellId, MembersJson FROM MapMobs;";
+                    orden.CommandText = "SELECT Id, MapId, CellId, MembersJson FROM MapMobs ORDER BY Id;";
 
                     using var lector = orden.ExecuteReader();
                     while (lector.Read())
@@ -947,7 +981,8 @@ namespace Jondo.Unity.Server.Managers
         /// and «10» without f9 --, so only what is in between is populated.
         /// </remarks>
         public static Sueno Crear(long characterId, string nombre, int nivel, int dificultad,
-                                  long mapaDeVuelta, int casillaDeVuelta, int breed = 0)
+                                  long mapaDeVuelta, int casillaDeVuelta, int breed = 0,
+                                  string? seed = null, bool training = false)
         {
             Cargar();
 
@@ -972,12 +1007,16 @@ namespace Jondo.Unity.Server.Managers
                 Arena = StartingArenas(Math.Clamp(dificultad, 1, MaximaDificultad)),
                 MapaDeVuelta = mapaDeVuelta,
                 CasillaDeVuelta = casillaDeVuelta,
+                Seed = IsSeed(seed) ? seed!.ToUpperInvariant() : NewSeed(),
+                FromSouvenir = IsSeed(seed),
+                Training = IsSeed(seed) && training,
             };
+            if (sueno.Training) sueno.Arena = TrainingSands;
 
             // Five rows: the entrance, three of between two and four rooms, and the last. The width
             // of the middle ones changes from one dream to another -- nine captures and seven
-            // different layouts -- so it is drawn, with a seed that makes the dream reproducible.
-            var dado = new Random(HashCode.Combine(characterId, cuenta));
+            // different layouts -- so it is drawn, from the dream's code.
+            var dado = DiceOf(sueno, "rows", 1);
 
             // The total of the three middle rows goes from seven to nine -- the measured dreams have
             // nine, ten or eleven rooms --, so drawing each row on its own will not do: three free
@@ -990,6 +1029,42 @@ namespace Jondo.Unity.Server.Managers
 
             _enCurso[characterId] = sueno;
             return sueno;
+        }
+
+        /// <summary>The alphabet and length of a dream's code: the client's own (InfiniteDreamHub.RandomSeed).</summary>
+        public const string SeedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        public const int SeedLength = 8;
+
+        /// <summary>The sands of a training dream, never spent: the SOFTCORE code's "99 Sables de Draconiros".</summary>
+        public const int TrainingSands = 99;
+
+        /// <summary>Whether a text is a dream's code: eight of the alphabet, either case.</summary>
+        public static bool IsSeed(string? seed)
+            => seed != null && seed.Length == SeedLength && seed.ToUpperInvariant().All(c => SeedChars.IndexOf(c) >= 0);
+
+        /// <summary>A new code, as the client draws one for its "random" button.</summary>
+        public static string NewSeed()
+        {
+            var chars = new char[SeedLength];
+            lock (_azar)
+                for (int i = 0; i < chars.Length; i++) chars[i] = SeedChars[_azar.Next(SeedChars.Length)];
+            return new string(chars);
+        }
+
+        /// <summary>
+        /// The dream's dice for one draw: from its code, what is drawn and where. FNV-1a and not
+        /// HashCode, which is salted per process: a code has to make the same dream after a
+        /// restart, or on another server.
+        /// </summary>
+        internal static Random DiceOf(Sueno sueno, string what, int a = 0, int b = 0)
+        {
+            ulong hash = 14695981039346656037UL;
+            foreach (string part in new[] { sueno.Seed, what, a.ToString(), b.ToString() })
+            {
+                foreach (char c in part) hash = (hash ^ c) * 1099511628211UL;
+                hash = (hash ^ 0xFF) * 1099511628211UL;
+            }
+            return new Random((int)(hash ^ (hash >> 32)));
         }
 
         /// <summary>
@@ -1005,7 +1080,7 @@ namespace Jondo.Unity.Server.Managers
             Cargar();
 
             if (sueno.Franja >= Bands) return;
-            var dado = new Random(HashCode.Combine(sueno.CharacterId, sueno.Cuenta, sueno.Franja));
+            var dado = DiceOf(sueno, "rows", sueno.Franja + 1);
             var anchos = AnchosDeLasFilas(dado, FightRowsOf(sueno.Franja + 1));
 
             sueno.Franja++;
@@ -1112,12 +1187,10 @@ namespace Jondo.Unity.Server.Managers
             {
                 bool favour;
                 int row, which;
-                lock (_azar)
-                {
-                    favour = _azar.Next(FavorBandsOutOf) < FavorBandsWith;
-                    row = 1 + _azar.Next(anchos.Length);
-                    which = _azar.Next(porFila[row].Count);
-                }
+                var dado = DiceOf(sueno, "favour", sueno.Franja);
+                favour = dado.Next(FavorBandsOutOf) < FavorBandsWith;
+                row = 1 + dado.Next(anchos.Length);
+                which = dado.Next(porFila[row].Count);
                 if (favour) porFila[row][which].EsFavor = true;
             }
 
@@ -1135,7 +1208,7 @@ namespace Jondo.Unity.Server.Managers
                     Id = siguiente++, Fila = filaBase++, EsFuente = true, Franja = sueno.Franja,
                     Cierre = sueno.Franja < Bands,
                 };
-                lock (_azar) laFuente.HasReyGob = _azar.Next(ReyGobOneIn) == 0;
+                laFuente.HasReyGob = DiceOf(sueno, "reygob", sueno.Franja).Next(ReyGobOneIn) == 0;
                 sueno.Salas.Add(laFuente);
                 porFila.Add(new List<Sala> { laFuente });
             }
@@ -1144,7 +1217,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 // And after band V's fountain, the end of the dream.
                 var fin = new Sala { Id = siguiente++, Fila = filaBase++, EsFinal = true, Franja = sueno.Franja, Senalada = true };
-                fin.Miembros.AddRange(FinalWave(1));
+                fin.Miembros.AddRange(FinalWave(1, DiceOf(sueno, "wave", 1)));
                 sueno.Salas.Add(fin);
                 porFila.Add(new List<Sala> { fin });
             }
@@ -1205,7 +1278,7 @@ namespace Jondo.Unity.Server.Managers
                 {
                     if (sala.EsFuente || sala.EsFinal || sala.EsFavor) continue;
                     if (sala.Miembros.Count > 0) continue;
-                    Poblar(sala, nivel, sueno.Dificultad);
+                    Poblar(sala, nivel, sueno.Dificultad, DiceOf(sueno, "room", sala.Id));
 
                     sala.Senalada = i == porFila.Count - 2 && sala.Id % 3 == 0;
                     sala.DreamPoints = sala.Senalada ? ClaseSenalada : sala.Fila >= FilaDeLaVenta ? ClaseDeLaVenta : ClaseNormal;
@@ -1249,8 +1322,8 @@ namespace Jondo.Unity.Server.Managers
             if (room.Miembros.Count > 0 || room.EsFinal)
                 dream.Bonus = LootBonusOf(dream.Dificultad, room.Fila, room.Senalada);
 
-            if (room.EsFuente && room.Offers == null) room.Offers = DreamCatalogue.DrawFountain(dream, room);
-            if (room.EsFavor && !room.FavorChosen && room.Offers == null) room.Offers = DrawFavor(dream);
+            if (room.EsFuente && room.Offers == null) room.Offers = DreamCatalogue.DrawFountain(dream, room, OffersDice(dream, room));
+            if (room.EsFavor && !room.FavorChosen && room.Offers == null) room.Offers = DrawFavor(dream, room);
             return room;
         }
 
@@ -1276,7 +1349,11 @@ namespace Jondo.Unity.Server.Managers
         /// window the client opens on them says "Gratis" where a fountain says its price
         /// (InfiniteDreamShopUi.BindRewardLine, "ui.shop.free").
         /// </summary>
-        internal static List<Reward> DrawFavor(Sueno dream) => DreamCatalogue.DrawFavour(dream, FavorBonusesOffered);
+        internal static List<Reward> DrawFavor(Sueno dream, Sala room)
+            => DreamCatalogue.DrawFavour(dream, FavorBonusesOffered, OffersDice(dream, room));
+
+        /// <summary>The dice of a room's next draw of offers: its fountain's or its favour's.</summary>
+        private static Random OffersDice(Sueno dream, Sala room) => DiceOf(dream, "offers", room.Id, room.Draws++);
 
         /// <summary>How many bonuses a favour offers before its purse: "3 bonus gratuits", the last the purse.</summary>
         public const int FavorBonusesOffered = 2;
@@ -1405,10 +1482,10 @@ namespace Jondo.Unity.Server.Managers
                 room.FavorChosen = true;
                 room.Offers = null;
             }
-            else if (DreamCatalogue.DrawOneForFountain(dream, room, room.Offers) is { } restock)
+            else if (DreamCatalogue.DrawOneForFountain(dream, room, room.Offers.Append(offer).ToList(), OffersDice(dream, room)) is { } restock)
             {
                 // "La fontaine se réapprovisionne immédiatement après un achat (un nouveau choix
-                // prend la place de celui que vous venez d'acheter)."
+                // prend la place de celui que vous venez d'acheter)." A new one: not the one bought.
                 room.Offers.Insert(Math.Clamp(place, 0, room.Offers.Count), restock);
             }
             return offer;
@@ -1426,12 +1503,12 @@ namespace Jondo.Unity.Server.Managers
         {
             if (room.EsFavor && !room.FavorChosen)
             {
-                room.Offers = DrawFavor(dream);
+                room.Offers = DrawFavor(dream, room);
                 return true;
             }
             if (room.EsFuente && room.Offers != null)
             {
-                room.Offers = DreamCatalogue.DrawFountain(dream, room);
+                room.Offers = DreamCatalogue.DrawFountain(dream, room, OffersDice(dream, room));
                 return true;
             }
             return false;
@@ -1654,7 +1731,7 @@ namespace Jondo.Unity.Server.Managers
             var libres = new List<long>(MapasDeSala());
             if (libres.Count == 0) return;
 
-            var dado = new Random(HashCode.Combine(sueno.CharacterId, sueno.Cuenta, sueno.Franja));
+            var dado = DiceOf(sueno, "maps", sueno.Franja);
             var fuentes = MapasDeFuente();
 
             foreach (var sala in sueno.Salas)
@@ -1921,7 +1998,7 @@ namespace Jondo.Unity.Server.Managers
         /// not enough: the Dreams are played from level 50 and there are stretches of the world where there are
         /// no groups of that exact level.
         /// </remarks>
-        private static void Poblar(Sala sala, int nivel, int dificultad, bool keepReward = false)
+        private static void Poblar(Sala sala, int nivel, int dificultad, Random dado, bool keepReward = false)
         {
             var candidatos = new List<(int Id, long MapaId, int Casilla, int Nivel, string Miembros)>();
 
@@ -1934,8 +2011,7 @@ namespace Jondo.Unity.Server.Managers
             }
             if (candidatos.Count == 0) return;
 
-            (int Id, long MapaId, int Casilla, int Nivel, string Miembros) elegido;
-            lock (_azar) elegido = candidatos[_azar.Next(candidatos.Count)];
+            var elegido = candidatos[dado.Next(candidatos.Count)];
 
             sala.Grupo = elegido.Id;
             sala.MapaId = elegido.MapaId;
@@ -1946,10 +2022,7 @@ namespace Jondo.Unity.Server.Managers
 
             // And what the room gives away, from the nine rewards the measured rooms offer.
             if (keepReward && sala.Reward != null) return;
-            lock (_azar)
-            {
-                sala.Reward = RoomRewards[_azar.Next(RoomRewards.Length)];
-            }
+            sala.Reward = RoomRewards[dado.Next(RoomRewards.Length)];
         }
 
         internal static void OlvidarTodo()
@@ -1978,10 +2051,10 @@ namespace Jondo.Unity.Server.Managers
         /// world's high groups, four fighters in the first wave and one more every two, up to
         /// eight. Each at its top grade: the wave's level is put on them when the fight builds them.
         /// </summary>
-        public static List<(int Monstruo, int Grado)> FinalWave(int wave)
+        public static List<(int Monstruo, int Grado)> FinalWave(int wave, Random dado)
         {
             Cargar();
-            var bosses = DungeonManager.All.Values.SelectMany(d => d.Bosses).Distinct().ToList();
+            var bosses = DungeonManager.All.Values.SelectMany(d => d.Bosses).Distinct().OrderBy(b => b).ToList();
             var bounties = Bounties();
             var strong = _strong ??= _grupos!.Where(g => g.Nivel >= 150).SelectMany(g => MiembrosDe(g.Miembros))
                                              .Select(m => m.Monstruo).Distinct().ToList();
@@ -1989,12 +2062,9 @@ namespace Jondo.Unity.Server.Managers
             int size = Math.Min(8, 4 + (wave - 1) / 2);
             int bossCount = Math.Min(3, 1 + (wave - 1) / 3);
             var members = new List<(int, int)>();
-            lock (_azar)
-            {
-                for (int i = 0; i < bossCount && bosses.Count > 0; i++) members.Add((bosses[_azar.Next(bosses.Count)], TopGrade));
-                if (wave % 2 == 1 && bounties.Count > 0) members.Add((bounties[_azar.Next(bounties.Count)], TopGrade));
-                while (members.Count < size && strong.Count > 0) members.Add((strong[_azar.Next(strong.Count)], TopGrade));
-            }
+            for (int i = 0; i < bossCount && bosses.Count > 0; i++) members.Add((bosses[dado.Next(bosses.Count)], TopGrade));
+            if (wave % 2 == 1 && bounties.Count > 0) members.Add((bounties[dado.Next(bounties.Count)], TopGrade));
+            while (members.Count < size && strong.Count > 0) members.Add((strong[dado.Next(strong.Count)], TopGrade));
             return members;
         }
 
@@ -2016,7 +2086,7 @@ namespace Jondo.Unity.Server.Managers
                 using var connection = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.WorldConnectionString);
                 connection.Open();
                 using var command = connection.CreateCommand();
-                command.CommandText = "SELECT Id, Data FROM MonsterTemplates;";
+                command.CommandText = "SELECT Id, Data FROM MonsterTemplates ORDER BY Id;";
                 using var reader = command.ExecuteReader();
                 while (reader.Read())
                 {

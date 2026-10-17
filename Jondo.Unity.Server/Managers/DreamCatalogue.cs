@@ -27,6 +27,10 @@ namespace Jondo.Unity.Server.Managers
     /// vous en récupérerez". Every reward is as likely as any other: the guide gives no odds,
     /// and the one fountain captured -- two commons, three epics -- cannot tell.
     /// </para>
+    /// <para>
+    /// The dice are the dream's (Dreams.DiceOf): a dream replayed from its code is offered the
+    /// same, "les bonus proposés seront alors exactement les mêmes".
+    /// </para>
     /// </remarks>
     public static class DreamCatalogue
     {
@@ -45,7 +49,6 @@ namespace Jondo.Unity.Server.Managers
         public const string Passive = "passive";
 
         private static readonly object _lock = new();
-        private static readonly Random _dice = new();
         private static Dictionary<int, Entry>? _rewards;
         private static List<(int Reward, int Price)> _fountain = new();
         private static List<int> _favour = new();
@@ -135,12 +138,12 @@ namespace Jondo.Unity.Server.Managers
             => dream != null && dream.Ganados.Any(b => b.Efecto == Dreams.PassiveEffect && SpecialOf(b.Valor) == special);
 
         /// <summary>A fountain's offers: as many as it shows, each one that may be offered there.</summary>
-        public static List<Dreams.Reward> DrawFountain(Dreams.Sueno dream, Dreams.Sala room)
+        public static List<Dreams.Reward> DrawFountain(Dreams.Sueno dream, Dreams.Sala room, Random dice)
         {
             var drawn = new List<Dreams.Reward>();
             while (drawn.Count < OffersPerFountain)
             {
-                var next = DrawOneForFountain(dream, room, drawn);
+                var next = DrawOneForFountain(dream, room, drawn, dice);
                 if (next == null) break;
                 drawn.Add(next);
             }
@@ -152,14 +155,13 @@ namespace Jondo.Unity.Server.Managers
         /// still on show. Null when nothing is left to offer.
         /// </summary>
         public static Dreams.Reward? DrawOneForFountain(Dreams.Sueno dream, Dreams.Sala room,
-                                                        IReadOnlyCollection<Dreams.Reward> onShow)
+                                                        IReadOnlyCollection<Dreams.Reward> onShow, Random dice)
         {
             var candidates = Fountain.Where(f => onShow.All(o => o.Tag != f.Reward)
                                                  && MayBeOffered(dream, room, f.Reward, f.Price))
                                      .ToList();
             if (candidates.Count == 0) return null;
-            (int Reward, int Price) pick;
-            lock (_dice) pick = candidates[_dice.Next(candidates.Count)];
+            var pick = candidates[dice.Next(candidates.Count)];
             return RewardOf(pick.Reward, pick.Price);
         }
 
@@ -167,18 +169,15 @@ namespace Jondo.Unity.Server.Managers
         /// A favour's three choices: two of its list, different ones, that the dream may still
         /// take, and the purse last.
         /// </summary>
-        public static List<Dreams.Reward> DrawFavour(Dreams.Sueno dream, int count)
+        public static List<Dreams.Reward> DrawFavour(Dreams.Sueno dream, int count, Random dice)
         {
             var pool = Favour.Where(r => MayBeOffered(dream, null, r, 0)).ToList();
             var drawn = new List<Dreams.Reward>();
-            lock (_dice)
+            while (drawn.Count < count && pool.Count > 0)
             {
-                while (drawn.Count < count && pool.Count > 0)
-                {
-                    int pick = pool[_dice.Next(pool.Count)];
-                    pool.Remove(pick);
-                    if (RewardOf(pick) is { } reward) drawn.Add(reward);
-                }
+                int pick = pool[dice.Next(pool.Count)];
+                pool.Remove(pick);
+                if (RewardOf(pick) is { } reward) drawn.Add(reward);
             }
             drawn.Add(Purse);
             return drawn;

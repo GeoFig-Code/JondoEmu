@@ -60,6 +60,7 @@ namespace Jondo.Unity.Server.Network
                 .VarIfNotZero(4, sueno.Tormentas);
             foreach (var bono in sueno.Ganados) dentro.Msg(7, BonusEntry(bono));
             dentro.Var(8, sueno.Nivel)
+                  .VarIfNotZero(10, sueno.DreamerLevels)
                   .Var(13, sueno.Dificultad)
                   .Var(14, 1)
                   .Var(15, 1)
@@ -147,6 +148,75 @@ namespace Jondo.Unity.Server.Network
                 .Var(6, sala.Fila)
                 .Var(7, sala.Senalada ? 1 : 0);
         }
+
+        /// <summary>A player of a dream's result: who, and how many of its dreams he has won.</summary>
+        public sealed record ResultPlayer(long Id, string Name, int Sex, int Breed, int Wins);
+
+        /// <summary>
+        /// The end of a dream, won or lost (iya): what the client's result window,
+        /// InfiniteDreamResultUi, is made of -- with the dream's code to copy, "à la fin de chaque
+        /// songe, que vous perdiez ou que vous gagniez, vous pouvez récupérer un code".
+        /// </summary>
+        /// <remarks>
+        /// No capture holds one. The fields are the client's reading of it, eft::xhd @0x181663580
+        /// into an InfiniteDreamResultInfo, the numbers its iya's own:
+        ///
+        /// <code>
+        ///   f1  the sands left (life)            f2  the difficulty (its intensity plus one)
+        ///   f3  the last wave killed             f4  the dreamer's level (scaledLevel)
+        ///   f5  the code                         f6  (repeated) one graph per band, as the izg's f16
+        ///   f7  (repeated) the bonuses, as the izg's f15 -- 3405 its spells, 792 its passives
+        ///   f10 storms left (reRoll)             f11 dream points (money)
+        ///   f12 the dreamer levels (bonusLevel)  f13 the global turn the last wave fell on
+        ///   f16 the time it took, in milliseconds (the window's TimeSpan.FromMilliseconds)
+        ///   f17 its owner, as the izg's f1: { f1 name, f2 sex, f3 id, f4 breed }
+        ///   f14 won  { f1 (repeated) { f3 a player as f17, f4 the dreams he has won } }
+        ///   f18 lost { f1 the room it ended in, as a string, f2 that room's kind }
+        /// </code>
+        ///
+        /// The window's "isWin" is whether f14 is the one set. Whose the dreams won count is is
+        /// the one player of f14 whose id is the reader's.
+        /// </remarks>
+        public static byte[] BuildResult(Dreams.Sueno sueno, bool won, IReadOnlyList<ResultPlayer> players,
+                                         int lastWave = 0, int lastWaveTurn = 0)
+        {
+            var iya = Pb.New()
+                .VarIfNotZero(1, sueno.Arena)
+                .Var(2, sueno.Dificultad)
+                .VarIfNotZero(3, lastWave)
+                .Var(4, sueno.Nivel)
+                .Str(5, sueno.Seed);
+            for (int band = 1; band <= sueno.Franja; band++) iya.Msg(6, Graph(sueno, band));
+            foreach (var bono in sueno.Ganados) iya.Msg(7, BonusEntry(bono));
+            iya.VarIfNotZero(10, sueno.Tormentas)
+               .VarIfNotZero(11, sueno.DreamPoints)
+               .VarIfNotZero(12, sueno.DreamerLevels)
+               .VarIfNotZero(13, lastWaveTurn)
+               .VarIfNotZero(16, sueno.FightMs)
+               .Msg(17, Player(sueno.CharacterId, sueno.Nombre, players.FirstOrDefault(p => p.Id == sueno.CharacterId)?.Sex ?? 0, sueno.Breed));
+
+            if (won)
+            {
+                var win = Pb.New();
+                foreach (var player in players)
+                    win.Msg(1, Pb.New().Msg(3, Player(player.Id, player.Name, player.Sex, player.Breed)).Var(4, player.Wins));
+                iya.Msg(14, win);
+            }
+            else
+            {
+                var room = sueno.SalaActual;
+                iya.Msg(18, Pb.New().Str(1, Texto(room?.Id ?? sueno.Actual)).VarIfNotZero(2, room == null ? 0 : KindOf(room)));
+            }
+            return iya.Build();
+        }
+
+        /// <summary>A dreamer as the result names him: the izg's f1, with his sex.</summary>
+        private static Pb Player(long id, string name, int sex, int breed)
+            => Pb.New().Str(1, name).VarIfNotZero(2, sex).Var(3, id).VarIfNotZero(4, breed);
+
+        /// <summary>A room's kind, the f5 of its body: see <see cref="TipoDeCombate"/>.</summary>
+        private static int KindOf(Dreams.Sala sala)
+            => sala.Fila == 0 ? 0 : sala.EsFuente ? TipoDeFuente : sala.EsFavor ? TipoDeFavor : sala.EsFinal ? TipoDeFinal : TipoDeCombate;
 
         /// <summary>For tests: a room's body as it goes in the graph.</summary>
         internal static byte[] BuildRoom(Dreams.Sala sala) => RoomBody(sala).Build();

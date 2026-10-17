@@ -132,10 +132,10 @@ namespace Jondo.Unity.Tests.World
             Dreams.OlvidarTodo();
             Dreams.Crear(Dreamer, "Prueba", 200, 1, 100, 200);
 
-            Assert.Equal(4, Dreams.FinalWave(1).Count);
-            Assert.Equal(5, Dreams.FinalWave(3).Count);
-            Assert.Equal(8, Dreams.FinalWave(9).Count);
-            Assert.Equal(8, Dreams.FinalWave(30).Count);
+            Assert.Equal(4, Dreams.FinalWave(1, new System.Random(1)).Count);
+            Assert.Equal(5, Dreams.FinalWave(3, new System.Random(1)).Count);
+            Assert.Equal(8, Dreams.FinalWave(9, new System.Random(1)).Count);
+            Assert.Equal(8, Dreams.FinalWave(30, new System.Random(1)).Count);
         }
 
         /// <summary>Brought to a level, a monster's life and characteristics grow with it; never down.</summary>
@@ -205,7 +205,7 @@ namespace Jondo.Unity.Tests.World
             }
             Assert.Null(DreamHandler.NextWave(fight));
 
-            var (map, cell, notice, ended) = DreamHandler.AfterTheFight(fight, won: true);
+            var (map, cell, notice, ended, _) = DreamHandler.AfterTheFight(fight, won: true);
             Assert.True(ended);
             Assert.Equal(100, map);
             Assert.Equal(200, cell);
@@ -225,7 +225,7 @@ namespace Jondo.Unity.Tests.World
             for (int wave = 2; wave <= 20; wave++)
                 Assert.Equal(300 + 15 * (wave - 1), DreamHandler.NextWave(fight)!.Value.Level);
 
-            var (_, _, notice, ended) = DreamHandler.AfterTheFight(fight, won: false);
+            var (_, _, notice, ended, _) = DreamHandler.AfterTheFight(fight, won: false);
             Assert.True(ended);
             Assert.Contains("completado", notice);
         });
@@ -241,7 +241,7 @@ namespace Jondo.Unity.Tests.World
             DreamHandler.OnFightCreated(fight);
             DreamHandler.NextWave(fight);
 
-            var (map, _, notice, ended) = DreamHandler.AfterTheFight(fight, won: false);
+            var (map, _, notice, ended, _) = DreamHandler.AfterTheFight(fight, won: false);
             Assert.True(ended);
             Assert.Equal(100, map);
             Assert.DoesNotContain("completado", notice);
@@ -258,7 +258,7 @@ namespace Jondo.Unity.Tests.World
             dream.Actual = room.Id;
             var fight = new FightInstance(7_000_004, room.MapaDeLaSala);
 
-            var (map, _, notice, ended) = DreamHandler.AfterTheFight(fight, won: false);
+            var (map, _, notice, ended, _) = DreamHandler.AfterTheFight(fight, won: false);
             Assert.False(ended);
             Assert.Equal(0, map);
             Assert.NotNull(notice);
@@ -266,7 +266,7 @@ namespace Jondo.Unity.Tests.World
             Assert.Same(dream, Dreams.De(Dreamer));
 
             // The second loss is the last.
-            (_, _, _, ended) = DreamHandler.AfterTheFight(fight, won: false);
+            (_, _, _, ended, _) = DreamHandler.AfterTheFight(fight, won: false);
             Assert.True(ended);
         });
 
@@ -280,7 +280,7 @@ namespace Jondo.Unity.Tests.World
 
             var result = DreamHandler.AfterTheFight(new FightInstance(7_000_005, room.MapaDeLaSala), won: true);
 
-            Assert.Equal((0L, 0, (string?)null, false), result);
+            Assert.Equal((0L, 0, (string?)null, false, (byte[]?)null), result);
             Assert.Same(dream, Dreams.De(Dreamer));
         });
     }

@@ -109,6 +109,8 @@ namespace Jondo.Unity.Server.Handlers
 
             bool won = fight.Azul.Concat(fight.Rojo).Any(f => !f.IsMonster && !f.EsInvocado && fight.HaGanado(f.Id));
             var dream = DreamHandler.PayOf(fight, won);
+            // A dream started from a code pays nothing: "sans aucune récompense (que ce soit xp ou drop)".
+            if (dream is { Souvenir: true }) return;
 
             var winners = new List<(Fighter Fighter, GameSession Session)>();
             foreach (var fighter in fight.Azul.Concat(fight.Rojo))
