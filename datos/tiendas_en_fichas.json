@@ -65,6 +65,36 @@
       "moneda": 20440,
       "preciosPorTipo": { "249": 15000, "250": 50000, "324": 100000 },
       "precio": 50000
+    },
+    "7839": {
+      "_quien": "Neru Stalar, the Dream Market: in dream fragments (32080), the guide's prices",
+      "moneda": 32080,
+      "precios": {
+        "32079": 2,
+        "21964": 30,
+        "32078": 50,
+        "21965": 60,
+        "21966": 120,
+        "21967": 240,
+        "21969": 480,
+        "21968": 960,
+        "34274": 1000
+      }
+    },
+    "8000": {
+      "_quien": "Gobribe, the Dream Market: in bags of dream fragments (34274), the guide's prices",
+      "moneda": 34274,
+      "precios": {
+        "32083": 5,
+        "32082": 7,
+        "32084": 8,
+        "32153": 9,
+        "28281": 10,
+        "32090": 10,
+        "27972": 10,
+        "32143": 20,
+        "32091": 40
+      }
     }
   }
 }

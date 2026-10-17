@@ -32,7 +32,13 @@
     "of them and runes, and nothing in the client's data drops or sells them.",
     "",
     "HAL YLANZA (NPC 2142), at the Temple of Alliances (115083777), sells the same, through",
-    "'alsoSoldBy': the client's data gives him the buy action (11), as it does Gremia."
+    "'alsoSoldBy': the client's data gives him the buy action (11), as it does Gremia.",
+    "",
+    "The Dream Market's two vendors, NEXT TO THE WELL OF DREAMS: Neru Stalar (7839) and Gobribe",
+    "(8000), whose catalogues and prices are the dofuspourlesnoobs guide's 'Songes infinis' (its",
+    "two vendor tables). They charge in tokens, datos/tiendas_en_fichas.json: Neru Stalar in",
+    "dream fragments (32080), what the end of a dream pays, and sells their bag of a thousand",
+    "(34274); Gobribe in those bags."
   ],
   "shops": [
     {
@@ -170,6 +176,70 @@
         {
           "gid": 27935,
           "price": 1
+        }
+      ]
+    },
+    {
+      "npc": 7839,
+      "items": [
+        {
+          "gid": 32079
+        },
+        {
+          "gid": 21964
+        },
+        {
+          "gid": 32078
+        },
+        {
+          "gid": 21965
+        },
+        {
+          "gid": 21966
+        },
+        {
+          "gid": 21967
+        },
+        {
+          "gid": 21969
+        },
+        {
+          "gid": 21968
+        },
+        {
+          "gid": 34274
+        }
+      ]
+    },
+    {
+      "npc": 8000,
+      "items": [
+        {
+          "gid": 32083
+        },
+        {
+          "gid": 32082
+        },
+        {
+          "gid": 32084
+        },
+        {
+          "gid": 32153
+        },
+        {
+          "gid": 28281
+        },
+        {
+          "gid": 32090
+        },
+        {
+          "gid": 27972
+        },
+        {
+          "gid": 32143
+        },
+        {
+          "gid": 32091
         }
       ]
     }

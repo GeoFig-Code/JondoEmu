@@ -34,7 +34,11 @@
     "Draconiros was briefly written here before it turned out datos/npcs_reales.json already",
     "carried him - map 238553348, cell 206, orientation 3. He was invisible because his room had",
     "no way in, not because he was unplaced, and restating a measurement in the authored layer",
-    "would have hidden that."
+    "would have hidden that.",
+    "",
+    "The Dream Market's two vendors, on its map 238683394 ('Dream Market', left of the well's):",
+    "Neru Stalar (7839) on cell 258, in front of the market's stall, and Gobribe (8000) beside him",
+    "on 276, both facing 1. INFERRED: no capture goes there; the guide says they are there."
   ],
   "spawns": [
     {
@@ -498,6 +502,18 @@
       "npc": 7701,
       "cell": 287,
       "orientation": 3
+    },
+    {
+      "map": 238683394,
+      "npc": 7839,
+      "cell": 258,
+      "orientation": 1
+    },
+    {
+      "map": 238683394,
+      "npc": 8000,
+      "cell": 276,
+      "orientation": 1
     }
   ]
 }
