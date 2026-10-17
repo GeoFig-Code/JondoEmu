@@ -18,6 +18,7 @@ namespace Jondo.Unity.Tests.World
     /// alliance needs one; the alliance's name and emblem potions, which nothing gives either; and
     /// the alliances' tax collector potions and prisms.
     /// </remarks>
+    [Collection("npc shops")]
     public class GuildVendorTests
     {
         [Fact]

@@ -8,6 +8,7 @@ namespace Jondo.Unity.Tests.World
     /// The Dream Market's two vendors: Neru Stalar sells in dream fragments, what the end of a
     /// dream pays, and Gobribe in their bags -- the guide's two tables, item for item.
     /// </summary>
+    [Collection("npc shops")]
     public class DreamMarketTests
     {
         private const int NeruStalar = 7839, Gobribe = 8000;
