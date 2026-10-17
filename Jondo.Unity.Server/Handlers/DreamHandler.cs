@@ -587,7 +587,7 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>The izg of a dream, with the bestiary of the room one stands in.</summary>
         private static byte[] StateOf(Dreams.Sueno sueno)
             => DreamProtocol.BuildDreamState(sueno, BestiaryOf(sueno.SalaActual,
-                   sueno.SalaActual?.EsFinal == true ? Dreams.FinalRulesOf(sueno.Dificultad).BaseLevel : 0));
+                   sueno.SalaActual?.EsFinal == true ? Dreams.FinalRulesOf(sueno.Dificultad).BaseLevel : Dreams.MonsterLevel(sueno)));
 
         // ═══════════════════════════════════════════════════════════════════
         //  The bestiary
@@ -923,6 +923,10 @@ namespace Jondo.Unity.Server.Handlers
             var sueno = DreamOf(fight) ?? Dreams.De(GameState.CharacterId);
             var sala = sueno?.SalaActual;
             if (sueno == null || sala == null || sala.MapaDeLaSala != fight.RoleplayMapId) return;
+
+            // A room's monsters at the dream's level: "votre niveau et celui des monstres augmentent".
+            if (!sala.EsFinal)
+                foreach (var monster in fight.Rojo) Dreams.ScaleTo(monster, Dreams.MonsterLevel(sueno));
 
             if (DreamCatalogue.Holds(sueno, DreamCatalogue.AlliesPlayFirst)) fight.BlueTakesInitiative = true;
             if (DreamCatalogue.Holds(sueno, DreamCatalogue.PlaceAnywhere))

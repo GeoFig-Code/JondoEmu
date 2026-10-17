@@ -59,7 +59,7 @@ namespace Jondo.Unity.Server.Network
                 .Str(3, sueno.Nombre)
                 .VarIfNotZero(4, sueno.Tormentas);
             foreach (var bono in sueno.Ganados) dentro.Msg(7, BonusEntry(bono));
-            dentro.Var(8, sueno.Nivel)
+            dentro.Var(8, Dreams.DreamerLevel(sueno))
                   .VarIfNotZero(10, sueno.DreamerLevels)
                   .Var(13, sueno.Dificultad)
                   .Var(14, 1)
@@ -184,7 +184,7 @@ namespace Jondo.Unity.Server.Network
                 .VarIfNotZero(1, sueno.Arena)
                 .Var(2, sueno.Dificultad)
                 .VarIfNotZero(3, lastWave)
-                .Var(4, sueno.Nivel)
+                .Var(4, Dreams.DreamerLevel(sueno))
                 .Str(5, sueno.Seed);
             for (int band = 1; band <= sueno.Franja; band++) iya.Msg(6, Graph(sueno, band));
             foreach (var bono in sueno.Ganados) iya.Msg(7, BonusEntry(bono));
@@ -429,7 +429,7 @@ namespace Jondo.Unity.Server.Network
             izg.VarIfNotZero(17, sueno.Arena)
                .VarIfNotZero(18, fightPending || fountain || favourPending ? 1 : 0)
                .VarIfNotZero(19, fightPending || favourPending ? 0 : 1)
-               .Var(20, sueno.Nivel)
+               .Var(20, Dreams.DreamerLevel(sueno))
                .Var(22, sueno.BaseBonus);
 
             return izg.Build();

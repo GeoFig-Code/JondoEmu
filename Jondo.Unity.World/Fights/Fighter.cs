@@ -42,7 +42,13 @@ namespace Jondo.Unity.World.Fights
         /// A player's Omega levels are left out; <see cref="Level"/> stays the real one, for what
         /// the client draws. A monster keeps its own level, since Omega is a character's thing.
         /// </summary>
-        public int StatLevel => IsMonster ? Level : System.Math.Min(Level, MaxLevelWithStats);
+        public int StatLevel => ScaledLevel > 0 ? ScaledLevel : IsMonster ? Level : System.Math.Min(Level, MaxLevelWithStats);
+
+        /// <summary>
+        /// The level the formulas read instead, when a fight puts one: a dream's dreamer level --
+        /// "les effets liés à votre niveau augmentent également avec votre niveau de songeur".
+        /// </summary>
+        public int ScaledLevel { get; set; }
 
         public int LookBoneId { get; set; }
         public string Look { get; set; } = "";

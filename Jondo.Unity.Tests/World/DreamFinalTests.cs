@@ -147,15 +147,57 @@ namespace Jondo.Unity.Tests.World
             Dreams.ScaleTo(monster, 250);
 
             Assert.Equal(250, monster.Level);
-            Assert.Equal(2500, monster.MaxHP);
-            Assert.Equal(2500, monster.CurrentHP);
+            Assert.Equal(3630, monster.MaxHP);
+            Assert.Equal(3630, monster.CurrentHP);
             Assert.Equal(500, monster.Strength);
             Assert.Equal(750, monster.Initiative);
             Assert.Equal(8, monster.CurrentAP);
 
             Dreams.ScaleTo(monster, 120);
             Assert.Equal(250, monster.Level);
-            Assert.Equal(2500, monster.MaxHP);
+            Assert.Equal(3630, monster.MaxHP);
+        }
+
+        /// <summary>
+        /// The life of the captures' bestiaries, to the point: a grade's life brought to the
+        /// dream's level as the real server brings it.
+        /// </summary>
+        [Theory]
+        [InlineData(50, 580, 200, 5510)]     // 209, grade 5
+        [InlineData(20, 130, 200, 5480)]     // 924
+        [InlineData(90, 5400, 200, 19760)]   // 173, a boss
+        [InlineData(47, 520, 303, 7410)]     // 153
+        [InlineData(70, 900, 303, 6710)]     // 371
+        [InlineData(50, 630, 303, 8120)]     // 7192
+        [InlineData(120, 2400, 303, 7460)]   // 3854
+        public void A_life_is_the_bestiary_s(int level, int life, int to, int expected)
+        {
+            var monster = new Fighter { Level = level, MaxHP = life, CurrentHP = life };
+            Dreams.ScaleTo(monster, to);
+            Assert.Equal(expected, monster.MaxHP);
+        }
+
+        /// <summary>
+        /// The dream's level: 200 in band I at any difficulty, then the guide's levels a band --
+        /// 23 or 24 in a Rêve 1, 35 in a Cauchemar 3 --; the dreamer's adds the levels gained.
+        /// </summary>
+        [Fact]
+        public void The_dream_s_level_goes_up_a_band_at_a_time()
+        {
+            Interactives.Initialize();
+            var reve = Dreams.Crear(900_000_000_051, "Prueba", 150, 1, 100, 200);
+            var cauchemar = Dreams.Crear(900_000_000_052, "Prueba", 200, 10, 100, 200);
+            Assert.Equal(200, Dreams.BandLevel(reve, 1));
+            Assert.Equal(200, Dreams.BandLevel(cauchemar, 1));
+            Assert.InRange(Dreams.BandLevel(reve, 2), 223, 224);
+            Assert.InRange(Dreams.BandLevel(reve, 5), 292, 296);
+            Assert.Equal(340, Dreams.BandLevel(cauchemar, 5));
+
+            reve.DreamerLevels = 50;
+            Assert.Equal(250, Dreams.DreamerLevel(reve));
+            Assert.Equal(200, Dreams.MonsterLevel(reve));
+            Dreams.Olvidar(900_000_000_051);
+            Dreams.Olvidar(900_000_000_052);
         }
 
         /// <summary>The end fight in the dream's last room: its wave at its level, and one fighting the end.</summary>
@@ -194,7 +236,7 @@ namespace Jondo.Unity.Tests.World
 
             DreamHandler.OnFightCreated(fight);
             Assert.Equal(250, fight.Rojo[0].Level);
-            Assert.Equal(1250, fight.Rojo[0].MaxHP);
+            Assert.Equal(1170, fight.Rojo[0].MaxHP);   // 1,000 at 200, by the bestiaries' curve
 
             foreach (int level in new[] { 255, 260, 265, 270 })
             {

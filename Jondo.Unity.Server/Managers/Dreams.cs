@@ -2225,16 +2225,67 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// A fighter brought to a level: its life and its characteristics by the ratio of the
-        /// levels, its points and resistances as they are. The guide says the dream's monsters
-        /// grow with the dreamer and the end's are 250 and more; the grades stop around 200, so
-        /// this is how they get there. Not the game's own scaling, which is not known.
+        /// The dream's level -- its dreamer's and its monsters' -- in a band: "le niveau du
+        /// songeur sera toujours fixé à 200 au palier I", and each band adds the guide's levels
+        /// for the difficulty, "23 ou 24" a band in a Rêve 1 up to 35 in a Cauchemar 3. Measured:
+        /// the long capture's Rêve 1 goes from 200 to 224 at its first fountain, and the
+        /// invitation's Paradoxe 1, in band V, fights monsters of 303.
         /// </summary>
+        /// <remarks>
+        /// Where the guide gives two figures -- "25 ou 26" -- each band draws one of the two from
+        /// the dream's code, as likely as the half: INFERRED, the guide does not say how.
+        /// </remarks>
+        public static int BandLevel(Sueno sueno, int band)
+        {
+            double per = LevelsPerBand[Math.Clamp(sueno.Dificultad, 1, MaximaDificultad)];
+            int whole = (int)Math.Floor(per);
+            double half = per - whole;
+            int level = FirstBandLevel;
+            for (int b = 2; b <= band; b++)
+                level += whole + (half > 0 && DiceOf(sueno, "level", b).NextDouble() < half ? 1 : 0);
+            return level;
+        }
+
+        /// <summary>The levels a band adds, by difficulty 1 to 10: the guide's "Évolution du niveau des monstres par palier".</summary>
+        private static readonly double[] LevelsPerBand = { 0, 23.5, 24.5, 25, 25.5, 26.5, 27, 27.5, 30, 32.5, 35 };
+
+        /// <summary>Band I's level, whatever the difficulty.</summary>
+        public const int FirstBandLevel = 200;
+
+        /// <summary>
+        /// The level the dream's monsters are brought to where it stands. Its dreamer levels do
+        /// not count: "les monstres ne seront pas impactés si vous gagnez des niveaux de cette
+        /// manière".
+        /// </summary>
+        public static int MonsterLevel(Sueno sueno) => BandLevel(sueno, sueno.Franja);
+
+        /// <summary>
+        /// The dreamer's level: the band's and the dreamer levels gained -- the izg's f20, 353 in
+        /// the invitation capture where its monsters are 303 and its f14, the levels gained, 50.
+        /// What a character's level-bound effects go by in a dream's fights: summons, push
+        /// damage, shields.
+        /// </summary>
+        public static int DreamerLevel(Sueno sueno) => MonsterLevel(sueno) + sueno.DreamerLevels;
+
+        /// <summary>
+        /// A fighter brought to a level: its life by the curve the dreams' bestiaries measure,
+        /// its characteristics by the ratio of the levels, its points and resistances as they
+        /// are; never down -- "un monstre ne peut pas avoir un niveau inférieur à celui qu'il a
+        /// dans le Monde des Douze".
+        /// </summary>
+        /// <remarks>
+        /// The life, over the bestiaries of the captures: the grade's times (200 / its level) to
+        /// the 1.625 up to level 200, and from there times (level / 200) to the 0.732, rounded
+        /// down to ten. It gives every one of them to the point: 209 at grade 5, 580 at level 50,
+        /// is 5,510 at 200; 924, 130 at level 20, 5,480; the boss 173, 5,400 at 90, 19,760; 153,
+        /// 520 at 47, is 7,410 at 303, 371 6,710, 7192 8,120 and 3854 7,460. The characteristics
+        /// the bestiary does not list: they still follow the ratio of the levels, INFERRED.
+        /// </remarks>
         public static void ScaleTo(Fighter fighter, int level)
         {
             if (fighter.Level <= 0 || level <= fighter.Level) { fighter.Level = Math.Max(fighter.Level, level); return; }
             double ratio = (double)level / fighter.Level;
-            fighter.MaxHP = (int)Math.Round(fighter.MaxHP * ratio);
+            fighter.MaxHP = (int)(Math.Floor(fighter.MaxHP * LifeFactor(fighter.Level, level) / 10.0) * 10);
             fighter.CurrentHP = fighter.MaxHP;
             fighter.Strength = (int)Math.Round(fighter.Strength * ratio);
             fighter.Intelligence = (int)Math.Round(fighter.Intelligence * ratio);
@@ -2242,6 +2293,15 @@ namespace Jondo.Unity.Server.Managers
             fighter.Agility = (int)Math.Round(fighter.Agility * ratio);
             fighter.Initiative = (int)Math.Round(fighter.Initiative * ratio);
             fighter.Level = level;
+        }
+
+        /// <summary>How much a life grows from one level to another: see <see cref="ScaleTo"/>.</summary>
+        internal static double LifeFactor(int from, int to)
+        {
+            double factor = 1;
+            if (from < FirstBandLevel) factor *= Math.Pow(Math.Min(to, FirstBandLevel) / (double)from, 1.625);
+            if (to > FirstBandLevel) factor *= Math.Pow(to / (double)Math.Max(from, FirstBandLevel), 0.732);
+            return factor;
         }
     }
 }

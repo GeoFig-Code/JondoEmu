@@ -99,6 +99,22 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(Dreams.ReyGob, room.Goblin);
         }
 
+        /// <summary>
+        /// A dream's room fights with the dream's clocks -- 1,800 tenths to place, 900 a player's
+        /// turn, the captures' -- and no challenges, and losing costs nothing.
+        /// </summary>
+        [Fact]
+        public void A_dream_fight_has_the_dream_s_clocks()
+        {
+            var rules = Jondo.Unity.World.Fights.FightRules.EnUnSueno;
+            Assert.Equal(1800, rules.RelojDeColocacion);
+            Assert.Equal(900, rules.PlayerTurn);
+            Assert.False(rules.HayRetos);
+            Assert.False(rules.DefeatCosts);
+            Assert.True(rules.ReparteBotin);
+            Assert.Equal(0, Jondo.Unity.World.Fights.FightRules.ContraMonstruos.PlayerTurn);
+        }
+
         /// <summary>The goblins' accepting replies carry the client's actions: their own power and 4037, hiding them.</summary>
         [Fact]
         public void The_goblins_say_their_power()

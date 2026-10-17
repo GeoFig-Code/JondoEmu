@@ -78,6 +78,9 @@
         /// </summary>
         public virtual int EndsAtRound => 0;
 
+        /// <summary>A player's turn, in tenths of a second; zero for the usual one.</summary>
+        public virtual int PlayerTurn => 0;
+
         /// <summary>Whether the kaa carries a countdown. It is deduced from the clock: it is not another decision.</summary>
         public bool KaaConCuentaAtras => RelojDeColocacion > 0;
 
@@ -116,6 +119,32 @@
         /// lasts, and nothing is won but the prism falling.
         /// </summary>
         public static readonly FightRules ContraPrisma = new Prisma();
+
+        /// <summary>A room of an Infinite Dream: against monsters, with the dream's clocks and no challenges.</summary>
+        public static readonly FightRules EnUnSueno = new Sueno();
+
+        /// <summary>
+        /// Against monsters, with the dream's clocks: three minutes to place -- "vous avez 3
+        /// minutes de temps de préparation", the 1,796 tenths left in the long capture's kaa --
+        /// and a player's turn of ninety seconds -- "le temps du tour de jeu a été augmenté. Il est
+        /// désormais de 90 secondes", the 900 of its jzc, where monsters keep their 290 and summons
+        /// their 150. And no challenges: "les modificateurs et les challenges ont disparu", and
+        /// none in the captures. Losing costs nothing: "vous ne perdez pas non plus d'énergie".
+        /// </summary>
+        private sealed class Sueno : FightRules
+        {
+            public override bool HayRetos => false;
+            public override int RelojDeColocacion => 1800;
+            public override int TipoDelKam => 4;
+            public override bool EnfrenteHayMonstruos => true;
+            public override bool ReparteBotin => true;
+            public override bool PagaElKoliseo => false;
+            public override bool BorraElGrupoAlGanar => true;
+            public override bool AvanzaDeSala => true;
+            public override bool DefeatCosts => false;
+            public override int PlayerTurn => 900;
+            public override string Nombre => "in a dream";
+        }
 
         /// <summary>
         /// The kam's type 9: the client's fight types draw 1, 5 and 9 with the same icon

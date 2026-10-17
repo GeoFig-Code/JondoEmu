@@ -70,6 +70,8 @@ namespace Jondo.Unity.Server.Handlers
             // and not the monster, because the bag that gets hit and the one the master composes
             // are the same creatures and it makes no difference which way you go in.
             if (Managers.Kanojedo.IsDojo(mapId)) fight.Reglas = FightRules.Entrenamiento;
+            // A dream's room has the dream's clocks and no challenges.
+            if (Managers.Dreams.IsDreamMap(mapId)) fight.Reglas = FightRules.EnUnSueno;
             if (rules != null) fight.Reglas = rules;
 
             // The group's contextual id IS its MobId, the same one that travels in the jss and the
@@ -732,6 +734,8 @@ namespace Jondo.Unity.Server.Handlers
                 var applied = Managers.Dreams.ApplyTo(playerFighter, dream);
                 if (applied.Count > 0)
                     Program.LogDebug($"[Dreams] Bonuses in the fight: {string.Join(", ", applied)}.");
+                // And his level-bound effects at the dreamer's level: summons, push damage, shields.
+                playerFighter.ScaledLevel = Managers.Dreams.DreamerLevel(dream);
             }
 
             // The attitudes his items give him: the six dofus and the trophies each give a
@@ -2976,7 +2980,7 @@ namespace Jondo.Unity.Server.Handlers
                 ? Network.FightProtocol.SummonTurnDeciseconds
                 : fighter.IsMonster
                     ? Network.FightProtocol.MonsterTurnDeciseconds
-                    : Network.FightProtocol.PlayerTurnDeciseconds;
+                    : fight.Reglas.PlayerTurn > 0 ? fight.Reglas.PlayerTurn : Network.FightProtocol.PlayerTurnDeciseconds;
 
             // A turn of his, or of a summon he drives, for the per-turn averages of the end.
             if (!fighter.IsMonster || Dueno(fight, fighter) != null)
