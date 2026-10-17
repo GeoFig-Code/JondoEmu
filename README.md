@@ -472,10 +472,17 @@ Entered from the Plano Astral's well: a dream of 26 rooms in depth, walked band 
 - ✅ Five bands with fountains, dream favours, fights and the **Fin du rêve** in waves
 - ✅ Rewards, dream points, bonuses and dreamer levels shown in the HUD
 - ✅ Dream loot and dream fragments
-- ✅ The fountains' shop, astral storms, Draconiros arenas
+- ✅ The fountains' shop and the dream favours with the guide's whole catalogue
+- ✅ Dream spells cast from their bar, with charges and a shared cooldown
+- ✅ Every bonus works in fights, for summons too; passives like Vent Arrière and Suelta
+- ✅ The dreamer's level and the monsters' rise band by band
+- ✅ Goblins: Bog, Gobledore, Gobserico and the Rey Gob
+- ✅ Dream codes: replay a dream, training mode, the result window at the end
+- ✅ Astral storms, Draconiros arenas, three-minute placement and 90-second turns
+- ✅ The Dream Market: Neru Stalar and Gobribe
 - ✅ A dream is saved and resumed after a disconnection or a restart
 - ✅ `.sueno [row]` for administrators
-- ❌ The effects of the spells the shop sells; the dream market
+- ❌ The trials' own rules; dreams in a group
 
 ### 🪙 Jondo Coin
 
