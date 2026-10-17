@@ -59,12 +59,16 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A characteristic a ride item gives, by level: up to each level, so much per level.</summary>
         public sealed record Evolution(int Action, IReadOnlyList<(int UpTo, double PerLevel)> Ranges);
 
+        /// <summary>A capture net: the spell it gives, the wild rides it takes, how far around and how many times each.</summary>
+        public sealed record CaptureNet(int Item, int Spell, IReadOnlyList<int> Wild, int Radius, int Multiplier);
+
         private sealed record Document(int GateType, IReadOnlyList<Paddock> Paddocks,
                                        IReadOnlyList<PaddockGauge> Gauges, IReadOnlyDictionary<int, Ride> Rides,
                                        IReadOnlyDictionary<int, Ride> RidesByItem, IReadOnlyList<Species> Species,
                                        IReadOnlyList<RideGauge> RideGauges,
                                        IReadOnlyDictionary<int, IReadOnlyList<Evolution>> Evolutions,
-                                       double XpCoefficient, double XpExponent, int MaxLevel);
+                                       double XpCoefficient, double XpExponent, int MaxLevel,
+                                       IReadOnlyList<CaptureNet> Nets, IReadOnlyDictionary<int, int> WildRides);
 
         private static Document? _document;
         private static readonly object _lock = new();
@@ -128,6 +132,15 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A ride's highest level.</summary>
         public static int MaxLevel => Loaded.MaxLevel;
 
+        /// <summary>The capture net an item is, or null.</summary>
+        public static CaptureNet? NetByItem(int gid) => Loaded.Nets.FirstOrDefault(n => n.Item == gid);
+
+        /// <summary>The capture net whose spell that is, or null.</summary>
+        public static CaptureNet? NetBySpell(int spell) => spell == 0 ? null : Loaded.Nets.FirstOrDefault(n => n.Spell == spell);
+
+        /// <summary>The ride a wild monster is caught as ("Dragopavo almendrado salvaje" → "Dragopavo almendrado"), or null.</summary>
+        public static Ride? RideOfWild(int monster) => Loaded.WildRides.TryGetValue(monster, out int ride) ? RideOf(ride) : null;
+
         /// <summary>
         /// The experience a ride has at a level: the client's formula 111, roundToNearest(3.795 ·
         /// lvl^2.329), which its breeding window asks for the bar of the level it is at and of the next.
@@ -161,6 +174,8 @@ namespace Jondo.Unity.Server.Managers
             var species = new List<Species>();
             var rideGauges = new List<RideGauge>();
             var evolutions = new Dictionary<int, IReadOnlyList<Evolution>>();
+            var nets = new List<CaptureNet>();
+            var wildRides = new Dictionary<int, int>();
             double coefficient = 0, exponent = 0;
             int maxLevel = 0;
             int gateType = 0;
@@ -168,7 +183,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 Console.WriteLine($"[Breeding] {path} not found: no paddock can be opened. Generate it with tools/extract_breeding.py.");
                 return new Document(gateType, paddocks, gauges, rides, new Dictionary<int, Ride>(), species, rideGauges,
-                                    evolutions, 0, 0, 1);
+                                    evolutions, 0, 0, 1, nets, wildRides);
             }
 
             try
@@ -225,6 +240,14 @@ namespace Jondo.Unity.Server.Managers
                                  .Select(x => (x[0].GetInt32(), x[1].GetDouble())).ToList()))
                             .ToList();
                     }
+                if (root.TryGetProperty("captureNets", out var ns))
+                    foreach (var n in ns.EnumerateArray())
+                        nets.Add(new CaptureNet(n.GetProperty("item").GetInt32(), n.GetProperty("spell").GetInt32(),
+                                                n.GetProperty("wild").EnumerateArray().Select(w => w.GetInt32()).ToList(),
+                                                n.GetProperty("radius").GetInt32(), n.GetProperty("multiplier").GetInt32()));
+                if (root.TryGetProperty("wildRides", out var wr))
+                    foreach (var w in wr.EnumerateObject())
+                        if (int.TryParse(w.Name, out int monster)) wildRides[monster] = w.Value.GetInt32();
                 if (root.TryGetProperty("rideExperience", out var xp) && xp.ValueKind == JsonValueKind.Object)
                 {
                     coefficient = xp.GetProperty("coefficient").GetDouble();
@@ -242,7 +265,7 @@ namespace Jondo.Unity.Server.Managers
             foreach (var ride in rides.Values)
                 if (ride.Item > 0) byItem[ride.Item] = ride;
             return new Document(gateType, paddocks, gauges, rides, byItem, species, rideGauges, evolutions,
-                                coefficient, exponent, Math.Max(1, maxLevel));
+                                coefficient, exponent, Math.Max(1, maxLevel), nets, wildRides);
         }
     }
 }

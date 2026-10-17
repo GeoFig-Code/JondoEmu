@@ -341,7 +341,7 @@ An alliance is made of characters, not guilds.
 - ✅ The paddock gauges: fuel, two on at a time, serenity, love, maturity, stamina and experience
 - ✅ Rides that level up to 200, their characteristics growing with their level
 - ✅ Mating with its preview, mákinas and genetichas; cloning and extraction
-- ❌ Catching wild rides with nets
+- ✅ Catching wild rides with nets: the net in the consumables slot gives its spell, once a fight
 - ✅ Characteristic points, with scrolled characteristics kept apart
 <img width="708" height="1048" alt="image" src="https://github.com/user-attachments/assets/b07f0ac2-f701-4f3a-82e2-c04f884d696d" />
 

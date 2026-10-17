@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace Jondo.Unity.Server.Managers
 {
@@ -40,6 +41,22 @@ namespace Jondo.Unity.Server.Managers
             }
 
             return Build(conocidos, SpellChoices.Bar);
+        }
+
+        /// <summary>
+        /// The bar of the fight: <see cref="Current"/>, and the spell the net of the combat
+        /// consumables' slot gives for it (RideCapture), on the first free slot.
+        /// </summary>
+        public static Layout ForFight(int breed, int level, long accountId)
+        {
+            var layout = Current(breed, level, accountId);
+            int net = RideCapture.SpellOfEquippedNet();
+            if (net == 0 || layout.Spells.Any(s => s.Spell == net)) return layout;
+            layout.Spells.Add((net, 1));
+            var taken = layout.Bar.Select(b => b.Slot).ToHashSet();
+            int slot = Enumerable.Range(1, SlotCount - 1).FirstOrDefault(s => !taken.Contains(s));
+            if (slot > 0) layout.Bar.Add((slot, net));
+            return layout;
         }
 
         /// <summary>

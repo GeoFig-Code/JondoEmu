@@ -751,7 +751,7 @@ namespace Jondo.Unity.Server.Handlers
             // last. See ClassPassives for what is measured and what is read off the names.
             var propios = Managers.ClassPassives.ForFight(
                 GameState.Breed,
-                Managers.FightSpellLayout.Current(GameState.Breed, GameState.CharacterLevel,
+                Managers.FightSpellLayout.ForFight(GameState.Breed, GameState.CharacterLevel,
                                                   SessionContext.Current.AccountId).Spells);
             int pasivo = Managers.ClassPassives.PassiveOf(GameState.Breed);
             foreach (var (hechizo, grado) in propios)
@@ -2459,7 +2459,7 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             var character = DatabaseManager.GetCharacterById(me);
-            var spellLayout = Managers.FightSpellLayout.Current(character?.Breed ?? 0,
+            var spellLayout = Managers.FightSpellLayout.ForFight(character?.Breed ?? 0,
                                                                  GameState.CharacterLevel,
                                                                  SessionContext.Current.AccountId);
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jyy,
@@ -2721,7 +2721,7 @@ namespace Jondo.Unity.Server.Handlers
             // it in its f6. It used to be read from the shortcut bar, which can be half filled, and
             // that is why the client showed every spell during placement -- its own, from before --
             // and went blank at the start of the turn, when our short list finally reached it.
-            var spellLayout = Managers.FightSpellLayout.Current(character?.Breed ?? 0,
+            var spellLayout = Managers.FightSpellLayout.ForFight(character?.Breed ?? 0,
                                                                  GameState.CharacterLevel,
                                                                  SessionContext.Current.AccountId);
             var spells = spellLayout.Spells;
@@ -4121,6 +4121,13 @@ namespace Jondo.Unity.Server.Handlers
                 dreamGrade = held.Value.Grade;
             }
 
+            // A domestication spell, the one a capture net gives, is cast once a fight (RideCapture).
+            if (!Managers.RideCapture.MayCast(fight, caster, spell))
+            {
+                Program.LogDebug($"[Fight] {caster.Id} has cast domestication spell {spell} already in this fight.");
+                return;
+            }
+
             var limites = dreamGrade > 0 ? LimitesDeGrado(spell, dreamGrade) : LimitesDelQueLanza(caster, spell);
             int cost = limites.Cost, spellLevel = limites.LevelId, grade = limites.Grade;
 
@@ -4284,6 +4291,9 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             caster.LanzadosEsteTurno[spell] = esteTurno + 1;
+            // A capture net's spell spends the net and marks the wild rides it reaches (RideCapture).
+            if (Managers.RideCapture.IsDomestication(spell))
+                await Managers.RideCapture.CastAsync(stream, fight, caster, spell, cell);
             if (aQuien != 0) caster.LanzadosPorObjetivo[(spell, aQuien)] = sobreEse + 1;
             // Casting gives an invisible one away: his enemies see where the spell came from.
             if (Managers.MonsterTactics.IsInvisible(caster)) caster.LastSeenCell = caster.CellId;
@@ -8928,6 +8938,9 @@ namespace Jondo.Unity.Server.Handlers
             // And the goals of the guild raid he is in, when it was fought on one of its floors.
             await Managers.GuildRaidManager.FightEndedAsync(fight, GameState.CharacterId, won);
 
+            // And the wild rides he caught with his net, in his bag if the fight was won.
+            await Managers.RideCapture.FightEndedAsync(stream, fight, GameState.CharacterId, won);
+
             // And this is where it is applied. On the wire it does NOT travel broken down: the
             // percentage only exists inside the placement's ldd, and the final figure arrives with
             // the bonus already added. The 68 jyg of the captures were reviewed and there is no slot
@@ -9540,7 +9553,7 @@ namespace Jondo.Unity.Server.Handlers
             if (!GameState.IsInFight || !Managers.SpellTable.IsLoaded || GetCurrentFight() == null)
                 return;
 
-            var layout = Managers.FightSpellLayout.Current(GameState.Breed,
+            var layout = Managers.FightSpellLayout.ForFight(GameState.Breed,
                                                            GameState.CharacterLevel,
                                                            SessionContext.Current.AccountId);
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jyy,
