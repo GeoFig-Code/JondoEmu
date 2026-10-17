@@ -87,7 +87,7 @@ namespace Jondo.Unity.Tests.World
             Assert.False(room.Cobrada);
 
             Dreams.Enter(dream, room.Id, out _);
-            Assert.Equal(points + room.DreamPoints, dream.DreamPoints);
+            Assert.Equal(points + room.DreamPoints + (room.Reward?.Points ?? 0), dream.DreamPoints);   // it pays again, its reward too
             Dreams.Olvidar(dream.CharacterId);
         }
 
