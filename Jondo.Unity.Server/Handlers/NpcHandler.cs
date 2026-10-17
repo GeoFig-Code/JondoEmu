@@ -929,6 +929,19 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // A dream goblin's power: the client's actions his accepting reply carries -- "Dejar
+            // que Gobserico extermine a los monstruos de la sala actual por ti", 4037 and 4033.
+            // It ends the conversation and is done (DreamHandler.GoblinPowerAsync).
+            if (elegidaAhora != null && DreamHandler.CarriesGoblinPower(elegidaAhora.Parameters))
+            {
+                CerrarConversacion();
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Kld, ConnectionProtocol.BuildDialogClosed(
+                        ConnectionProtocol.NpcDialogCloseReason)));
+                await DreamHandler.GoblinPowerAsync(stream, elegidaAhora.Parameters);
+                return;
+            }
+
             if (elegidaAhora != null && elegidaAhora.StartsQuest != 0)
             {
                 await Managers.Quests.StartAsync(stream, elegidaAhora.StartsQuest);

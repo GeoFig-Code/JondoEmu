@@ -464,7 +464,7 @@ namespace Jondo.Unity.Server.Managers
         /// placed ones' were, and the Rey Gob came out with no template, no look, and the question
         /// mark for a face.
         /// </summary>
-        private static readonly int[] PlacedLater = { Dreams.ReyGob, Dreams.FavorNpc };
+        private static readonly int[] PlacedLater = { Dreams.ReyGob, Dreams.Bog, Dreams.Gobledore, Dreams.Gobserico, Dreams.FavorNpc };
 
         public static Template? TemplateOf(int npcId)
             => _templates.TryGetValue(npcId, out var template) ? template
@@ -540,6 +540,25 @@ namespace Jondo.Unity.Server.Managers
                 _byMap[mapId] = here;
                 return spawn;
             }
+        }
+
+        /// <summary>
+        /// Takes a dream's NPC off a room map -- a goblin whose power was taken, or one another
+        /// dream left there --, returning the actors taken off.
+        /// </summary>
+        public static List<long> QuitarDelSueno(long mapId, int npcId)
+        {
+            var gone = new List<long>();
+            lock (_byMap)
+            {
+                if (!_byMap.TryGetValue(mapId, out var list)) return gone;
+                var here = new List<Spawn>(list);
+                foreach (var spawn in here.Where(s => s.NpcId == npcId)) gone.Add(spawn.ContextualId);
+                if (gone.Count == 0) return gone;
+                here.RemoveAll(s => s.NpcId == npcId);
+                _byMap[mapId] = here;
+            }
+            return gone;
         }
 
         /// <summary>Takes an NPC off its map until the server stops. False when it was not there.</summary>

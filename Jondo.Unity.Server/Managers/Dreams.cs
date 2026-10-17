@@ -536,8 +536,22 @@ namespace Jondo.Unity.Server.Managers
             /// </summary>
             public List<Reward>? Offers { get; set; }
 
-            /// <summary>Whether the Rey Gob stands in this fountain. See <see cref="ReyGobOneIn"/>.</summary>
-            public bool HasReyGob { get; set; }
+            /// <summary>
+            /// The goblin standing in this room, by his NPC template -- <see cref="Bog"/>,
+            /// <see cref="Gobledore"/>, <see cref="Gobserico"/> or <see cref="ReyGob"/> -- or 0.
+            /// See <see cref="GoblinOf"/>.
+            /// </summary>
+            public int Goblin { get; set; }
+
+            /// <summary>Whether his power was taken: "quand vous utilisez son pouvoir, le Gobelin disparaît".</summary>
+            public bool GoblinGone { get; set; }
+
+            /// <summary>Whether the Rey Gob stands here: the dreams saved before the other goblins say it so.</summary>
+            public bool HasReyGob
+            {
+                get => Goblin == ReyGob;
+                set { if (value) Goblin = ReyGob; }
+            }
 
             /// <summary>
             /// The offers drawn here so far, a fountain's or a favour's: each draw takes the next
@@ -1208,7 +1222,7 @@ namespace Jondo.Unity.Server.Managers
                     Id = siguiente++, Fila = filaBase++, EsFuente = true, Franja = sueno.Franja,
                     Cierre = sueno.Franja < Bands,
                 };
-                laFuente.HasReyGob = DiceOf(sueno, "reygob", sueno.Franja).Next(ReyGobOneIn) == 0;
+                laFuente.Goblin = GoblinOf(sueno, laFuente);
                 sueno.Salas.Add(laFuente);
                 porFila.Add(new List<Sala> { laFuente });
             }
@@ -1279,6 +1293,7 @@ namespace Jondo.Unity.Server.Managers
                     if (sala.EsFuente || sala.EsFinal || sala.EsFavor) continue;
                     if (sala.Miembros.Count > 0) continue;
                     Poblar(sala, nivel, sueno.Dificultad, DiceOf(sueno, "room", sala.Id));
+                    sala.Goblin = GoblinOf(sueno, sala);
 
                     sala.Senalada = i == porFila.Count - 2 && sala.Id % 3 == 0;
                     sala.DreamPoints = sala.Senalada ? ClaseSenalada : sala.Fila >= FilaDeLaVenta ? ClaseDeLaVenta : ClaseNormal;
@@ -1955,6 +1970,112 @@ namespace Jondo.Unity.Server.Managers
             var puertas = DoorsOf(sala.MapaDeLaSala);
             if (cual < 0 || cual >= puertas.Count) return 0;
             return puertas[cual].Id;
+        }
+
+        /// <summary>
+        /// The dream's goblins, by their NPC templates, each with his power -- the action his
+        /// accepting reply carries beside 4037 HideDreamNpc, "le Gobelin disparaît":
+        ///
+        ///   7853 Bog        4032 RerollDreamRoom                "Reroll les objets proposés dans la Fontaine"
+        ///   7849 Gobledore  4034 TeleportToPrecedentDreamRoom   "vous fait retourner dans la salle des portails précédente"
+        ///   7848 Gobserico  4033 ClearDreamRoom                 "vous fait passer directement à la salle suivante"
+        ///   7850 Rey Gob    4035 MultiplyCurrentResourceDream   "multiplie vos points de rêve par 1.5"
+        ///
+        /// Their dialogues are the client's own templates', in content/npcs/dialogues.json.
+        /// </summary>
+        public const int Bog = 7853;
+        public const int Gobledore = 7849;
+        public const int Gobserico = 7848;
+
+        /// <summary>
+        /// A room's goblin, drawn from the dream's code: "ces PNJ sont assez rares mais vous
+        /// pouvez en croiser plusieurs pendant votre run". Bog only at a fountain, Gobledore and
+        /// Gobserico only where there are monsters, the Rey Gob at either and "beaucoup plus
+        /// rare"; none at the end, and none in a dream from a code -- "les Gobelins ne peuvent
+        /// pas apparaître lors des souvenirs".
+        /// </summary>
+        /// <remarks>
+        /// The odds are INFERRED, the guide gives none: at a fountain the Rey Gob one in
+        /// <see cref="ReyGobOneIn"/>, else Bog one in <see cref="BogOneIn"/>; in a fight room a
+        /// goblin one in <see cref="GoblinOneIn"/>, the Rey Gob one of those in
+        /// <see cref="ReyGobAmongGoblins"/>, else Gobledore or Gobserico alike.
+        /// </remarks>
+        public static int GoblinOf(Sueno sueno, Sala sala)
+        {
+            if (sueno.FromSouvenir || sala.EsFinal || sala.EsFavor || sala.Fila == 0) return 0;
+            var dado = DiceOf(sueno, "goblin", sala.Id);
+            if (sala.EsFuente)
+            {
+                if (dado.Next(ReyGobOneIn) == 0) return ReyGob;
+                return dado.Next(BogOneIn) == 0 ? Bog : 0;
+            }
+            if (sala.Miembros.Count == 0 || dado.Next(GoblinOneIn) != 0) return 0;
+            if (dado.Next(ReyGobAmongGoblins) == 0) return ReyGob;
+            return dado.Next(2) == 0 ? Gobledore : Gobserico;
+        }
+
+        public const int BogOneIn = 3;
+        public const int GoblinOneIn = 8;
+        public const int ReyGobAmongGoblins = 6;
+
+        /// <summary>The four goblins.</summary>
+        public static readonly int[] Goblins = { Bog, Gobledore, Gobserico, ReyGob };
+
+        /// <summary>
+        /// Gobserico's power, 4033 ClearDreamRoom: "ce Gobelin s'occupe du groupe de monstre
+        /// présent dans la salle et vous pouvez avancer sans l'affronter". The room is won, its
+        /// group off the map; the group's actor is returned for the client to be told. 0 when
+        /// there was no fight to take.
+        /// </summary>
+        public static long ClearRoom(Sala sala)
+        {
+            if (sala.Miembros.Count == 0 || sala.Hecha) return 0;
+            sala.Hecha = true;
+            long group = sala.Plantado;
+            if (group != 0) MobSpawnManager.RemoveMobGroup(sala.MapaDeLaSala, group);
+            sala.Plantado = 0;
+            return group;
+        }
+
+        /// <summary>
+        /// Gobledore's power, 4034 TeleportToPrecedentDreamRoom: back to the room before -- the
+        /// one of the path that opens onto this one -- "pour récupérer une seconde fois un bonus
+        /// de portail ou changer d'embranchement". The room left keeps its fight, off its map,
+        /// and pays its portal bonus again the next time it is entered. Null when there is no
+        /// room before.
+        /// </summary>
+        public static Sala? GoBack(Sueno dream)
+        {
+            var here = dream.SalaActual;
+            if (here == null) return null;
+            var before = dream.Visited.Where(id => id != here.Id).Select(dream.Buscar)
+                                      .FirstOrDefault(r => r != null && r.Salidas.Contains(here.Id));
+            if (before == null) return null;
+
+            if (here.Plantado != 0)
+            {
+                MobSpawnManager.RemoveMobGroup(here.MapaDeLaSala, here.Plantado);
+                here.Plantado = 0;
+            }
+            here.Cobrada = false;
+            dream.Visited.Remove(here.Id);
+            dream.Visited.Remove(before.Id);
+            dream.Actual = before.Id;
+            return before;
+        }
+
+        /// <summary>
+        /// Where a goblin stands. At a fountain the Rey Gob's cell, measured; in a fight room the
+        /// walkable cell nearest to it that is no door's -- INFERRED, no capture meets one there.
+        /// </summary>
+        public static int GoblinCell(Sala sala)
+        {
+            if (sala.EsFuente) return CasillaDelReyGob;
+            var doors = DoorsOf(sala.MapaDeLaSala).Select(d => d.Cell).ToHashSet();
+            if (MapManager.IsCellWalkable(sala.MapaDeLaSala, CasillaDelReyGob) && !doors.Contains(CasillaDelReyGob))
+                return CasillaDelReyGob;
+            int near = MapManager.GetNearestWalkableCell(sala.MapaDeLaSala, CasillaDelReyGob);
+            return near > 0 ? near : CasillaDelReyGob;
         }
 
         /// <summary>The Dream Favour's Rey Gob, and where he is placed.</summary>

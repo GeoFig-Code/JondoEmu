@@ -350,9 +350,11 @@ namespace Jondo.Unity.Server.Handlers
             // The group is placed BEFORE the map change: the jss the client asks for right after
             // is the one carrying the actors, and a group placed a moment late does not appear
             // until the room is entered again.
-            if (sala.EsFuente) { if (sala.HasReyGob) PlantarLaTienda(sala); }
-            else if (sala.EsFavor) PlantFavorNpc(sala);
-            else PlantarElGrupo(sala);
+            // A room won keeps its group off: re-entered -- a dream continued, Gobledore's way
+            // back -- it planted it again, a fight already won to be fought.
+            if (sala.EsFavor) PlantFavorNpc(sala);
+            else if (!sala.EsFuente && !sala.Hecha) PlantarElGrupo(sala);
+            PlantGoblin(sala);
 
             int aterriza = await TeleportHandler.ToMapAsync(stream, mapa, 0);
 
@@ -363,19 +365,88 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Puts the vendor on the Dream Fountain.
+        /// Puts the room's goblin on its map, when there is one and his power was not taken --
+        /// the goblins another dream left on this map taken off first: the room maps are shared.
         /// </summary>
         /// <remarks>
-        /// No new protocol is needed: the Dreams' fountain is an NPC, full stop. It is placed like
-        /// any other and the dialogue engine does the rest; what it offers is written in its answer,
-        /// with the percentage of points it gives.
+        /// No new protocol is needed: a goblin is an NPC, full stop. It is placed like any other
+        /// and the dialogue engine does the rest; what his accepting reply does is the actions it
+        /// carries (<see cref="GoblinPowerAsync"/>).
         /// </remarks>
-        private static void PlantarLaTienda(Dreams.Sala sala)
+        private static void PlantGoblin(Dreams.Sala sala)
         {
             if (sala.MapaDeLaSala == 0) return;
+            foreach (int goblin in Dreams.Goblins) Managers.Npcs.QuitarDelSueno(sala.MapaDeLaSala, goblin);
+            if (sala.Goblin == 0 || sala.GoblinGone) return;
 
-            Managers.Npcs.PonerDelSueno(sala.MapaDeLaSala, Dreams.ReyGob,
-                                        Dreams.CasillaDelReyGob, Dreams.OrientacionDelReyGob);
+            Managers.Npcs.PonerDelSueno(sala.MapaDeLaSala, sala.Goblin,
+                                        Dreams.GoblinCell(sala), Dreams.OrientacionDelReyGob);
+        }
+
+        // The client's dream actions a goblin's reply carries (its ActionId).
+        internal const int RerollDreamRoom = 4032;
+        internal const int ClearDreamRoom = 4033;
+        internal const int TeleportToPrecedentDreamRoom = 4034;
+        internal const int MultiplyCurrentResourceDream = 4035;
+        internal const int HideDreamNpc = 4037;
+
+        /// <summary>Whether a reply carries a goblin's power: one of the client's actions 4032 to 4037.</summary>
+        internal static bool CarriesGoblinPower(IReadOnlyList<long> actions)
+            => actions.Any(a => a is >= RerollDreamRoom and <= HideDreamNpc);
+
+        /// <summary>
+        /// A goblin's accepted power: the actions of his reply, the client's own. 4037
+        /// HideDreamNpc takes him off ("le Gobelin disparaît"); 4032 renews the room -- the
+        /// fountain's offers, or a fight's group as a storm does; 4033 wins it; 4034 goes back to
+        /// the room before. 4035, the Rey Gob's, is the reply's dream points (NpcHandler).
+        /// </summary>
+        internal static async Task GoblinPowerAsync(NetworkStream stream, IReadOnlyList<long> actions)
+        {
+            var sueno = Dreams.De(GameState.CharacterId);
+            var sala = sueno?.SalaActual;
+            if (sueno == null || sala == null || sala.Goblin == 0 || sala.GoblinGone)
+            {
+                Console.WriteLine($"[Dreams] No goblin of {GameState.CharacterId}'s dream to take a power from here.");
+                return;
+            }
+            int goblin = sala.Goblin;
+
+            if (actions.Contains(HideDreamNpc))
+            {
+                sala.GoblinGone = true;
+                foreach (long actor in Managers.Npcs.QuitarDelSueno(sala.MapaDeLaSala, goblin))
+                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.BuildActorRemoved(actor));
+            }
+
+            if (actions.Contains(ClearDreamRoom))
+            {
+                long group = Dreams.ClearRoom(sala);
+                if (group != 0)
+                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.BuildActorRemoved(group));
+            }
+
+            if (actions.Contains(TeleportToPrecedentDreamRoom) && Dreams.GoBack(sueno) is { } before)
+            {
+                Console.WriteLine($"[Dreams] Goblin {goblin}: back from room {sala.Id} to room {before.Id}.");
+                await EntrarEnSalaAsync(stream, sueno, before.Id);
+                return;
+            }
+
+            if (actions.Contains(RerollDreamRoom))
+            {
+                if (sala.EsFuente || sala.EsFavor) Dreams.RerollOffers(sueno, sala);
+                else if (sala.Miembros.Count > 0 && !sala.Hecha)
+                {
+                    Dreams.Reroll(sueno, sala);
+                    Console.WriteLine($"[Dreams] Goblin {goblin}: room {sala.Id} rerolled.");
+                    await EntrarEnSalaAsync(stream, sueno, sala.Id);
+                    return;
+                }
+            }
+
+            Console.WriteLine($"[Dreams] Goblin {goblin}'s power in room {sala.Id}: {string.Join(", ", actions)}.");
+            Persist(sueno);
+            await RefrescarEstadoAsync(stream);
         }
 
         /// <summary>

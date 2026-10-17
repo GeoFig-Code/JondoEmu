@@ -2214,6 +2214,111 @@
         }
       ],
       "_byHand": true
+    },
+    {
+      "npc": 7853,
+      "map": 0,
+      "opening": 59715,
+      "lines": [
+        {
+          "message": 59715,
+          "choices": [
+            {
+              "reply": 82320,
+              "next": 59990
+            }
+          ]
+        },
+        {
+          "message": 59990,
+          "choices": [
+            {
+              "reply": 82318,
+              "params": [
+                4037,
+                4032
+              ]
+            },
+            {
+              "reply": 82319
+            }
+          ]
+        }
+      ],
+      "_byHand": true
+    },
+    {
+      "npc": 7849,
+      "map": 0,
+      "opening": 59711,
+      "lines": [
+        {
+          "message": 59711,
+          "choices": [
+            {
+              "reply": 81703,
+              "next": 59991
+            }
+          ]
+        },
+        {
+          "message": 59991,
+          "choices": [
+            {
+              "reply": 82321,
+              "next": 59992
+            }
+          ]
+        },
+        {
+          "message": 59992,
+          "choices": [
+            {
+              "reply": 82322,
+              "params": [
+                4037,
+                4034
+              ]
+            },
+            {
+              "reply": 82323
+            }
+          ]
+        }
+      ],
+      "_byHand": true
+    },
+    {
+      "npc": 7848,
+      "map": 0,
+      "opening": 59708,
+      "lines": [
+        {
+          "message": 59708,
+          "choices": [
+            {
+              "reply": 81702,
+              "next": 59993
+            }
+          ]
+        },
+        {
+          "message": 59993,
+          "choices": [
+            {
+              "reply": 82324,
+              "params": [
+                4037,
+                4033
+              ]
+            },
+            {
+              "reply": 82325
+            }
+          ]
+        }
+      ],
+      "_byHand": true
     }
   ]
 }
