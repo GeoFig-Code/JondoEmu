@@ -1291,7 +1291,8 @@ namespace Jondo.Unity.Server.Network
             {
                 declaration.Msg(usable ? 4 : 3, Pb.New()
                     .Var(1, action.SkillInstanceId)
-                    .Var(2, action.SkillId));
+                    .Var(2, action.SkillId)
+                    .VarIfNotZero(3, action.SkillNameId));
             }
 
             jss.Msg(11, declaration

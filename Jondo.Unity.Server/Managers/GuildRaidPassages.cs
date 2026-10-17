@@ -39,6 +39,21 @@ namespace Jondo.Unity.Server.Managers
     /// back, on the zone's most central map; each way back, to the hub beside its zone's portal.
     /// They are the client's type 232 "Portal" with skill 114, as the world's portals are. The hub
     /// is the raid's entrance (GuildRaidManager.EntryMapOf).
+    ///
+    /// The Santuario's last zone, the castle, is ten rooms in a row from the hub to the tower,
+    /// joined by doors (graphic 800448) and arches (44035). An element that joins two rooms stands
+    /// in both maps' data -- the arch of [16,15] is the one the garden of [15,15] sees -- so each
+    /// leads to the other map it stands in (<see cref="CastleOf"/>). Two doors stand in one map
+    /// alone: the hub's, into the first room, and the tower's at [17,10] ("la porte vers la tour en
+    /// [17,10]", the guide), each with the arch it comes out by on the map beside. The tower's
+    /// foot ([16,9]) has two stairs: down to the dungeons, where the Reina is, and up to the top,
+    /// where the Princesa is ("descendre les escaliers", "montez les escaliers").
+    ///
+    /// Each of these carries the name the client's SkillNamesDataRoot keeps for it -- 378 to 381
+    /// "Hacia la obra monocromática"..., 382 "Hacia la entrada del santuario", 386 "Pasar al
+    /// pasillo", 389 "Pasar a la torre de la Princesa y de la Reina", 387 "Dirigirse a los
+    /// calabozos", 388 "Dirigirse a las alturas de la torre" -- which no element of the world's
+    /// uses. Which element carries which is INFERRED from the names: no capture enters a raid.
     /// </remarks>
     public static class GuildRaidPassages
     {
@@ -75,8 +90,35 @@ namespace Jondo.Unity.Server.Managers
             [140026] = 4,      // Patio de Efedra, the chessboard
         };
 
+        /// <summary>The names the client keeps for the portals to each zone, by zone (SkillNamesDataRoot).</summary>
+        private static readonly IReadOnlyDictionary<int, int> ZonePortalName = new Dictionary<int, int>
+        {
+            [1] = 378,     // Hacia la obra monocromática
+            [2] = 381,     // Hacia el enclave de los protectores
+            [3] = 380,     // Hacia la reserva de Belladona
+            [4] = 379,     // Hacia el patio de Efedra
+        };
+
         /// <summary>A Santuario zone's way back to the hub, showing the hub's statue.</summary>
         public const int ReturnPortalGfx = 140021;
+
+        /// <summary>"Hacia la entrada del santuario", the ways back's name.</summary>
+        private const int ReturnPortalName = 382;
+
+        /// <summary>The castle's doors, the hub's and the tower's among them.</summary>
+        public const int DoorGfx = 800448;
+
+        /// <summary>The tower's stairs: down to the dungeons and back, up to the top and back.</summary>
+        public const int DungeonStairsGfx = 140025;
+        public const int TopStairsGfx = 140024;
+        public const int TopLandingGfx = 800399;
+
+        /// <summary>The castle's names: "Interactuar con la puerta", "Pasar al pasillo", "Pasar a la torre...", the stairs'.</summary>
+        private const int DoorName = 385;
+        private const int CorridorDoorName = 386;
+        private const int TowerDoorName = 389;
+        private const int DungeonStairsName = 387;
+        private const int TopStairsName = 388;
 
         /// <summary>The client's interactive type 232, "Portal".</summary>
         public const int PortalType = 232;
@@ -121,7 +163,7 @@ namespace Jondo.Unity.Server.Managers
             return reader.Read() ? (reader.GetInt32(0), reader.GetInt32(1)) : null;
         }
 
-        private static InteractiveTeleport Route(Spot from, Spot to, int type, int skill) => new InteractiveTeleport
+        private static InteractiveTeleport Route(Spot from, Spot to, int type, int skill, int name = 0) => new InteractiveTeleport
         {
             SourceMapId = from.MapId,
             ElementId = from.Element.Id,
@@ -129,6 +171,7 @@ namespace Jondo.Unity.Server.Managers
             GfxId = from.Element.Gfx,
             InteractiveType = type,
             SkillId = skill,
+            SkillNameId = name,
             DestinationMapId = to.MapId,
             DestinationCellId = to.Element.Cell,
             SourceVersion = "raid",
@@ -169,10 +212,11 @@ namespace Jondo.Unity.Server.Managers
                 if (backs.Count == 0) continue;
 
                 // The way in: to the way back on the zone's most central map.
-                yield return Route(portal, Arrival(kind, zone, backs), PortalType, TeleportManager.UseSkill);
+                yield return Route(portal, Arrival(kind, zone, backs), PortalType, TeleportManager.UseSkill,
+                                   ZonePortalName.TryGetValue(zone, out int name) ? name : 0);
 
                 // And every way back to the hub, beside this zone's portal.
-                foreach (var back in backs) yield return Route(back, portal, PortalType, TeleportManager.UseSkill);
+                foreach (var back in backs) yield return Route(back, portal, PortalType, TeleportManager.UseSkill, ReturnPortalName);
             }
         }
 
@@ -252,13 +296,108 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        /// <summary>Every lift, passage and ladder of the raids' floors, both ways, and the Santuario's portals.</summary>
+        /// <summary>
+        /// The castle's ways: its rooms' doors and arches, the hub's door and the tower's, and the
+        /// tower's stairs. Nothing for a raid without a hub.
+        /// </summary>
+        /// <remarks>
+        /// An element standing in two of the castle's maps leads from each map where it stands
+        /// inside -- not on an edge cell, where the client repeats a neighbour's -- to the other,
+        /// landing where the same element stands there, or else where the way back stands. One
+        /// standing on edges alone ([17,10]'s arch, seen from [18,11]) is pressed where it stands.
+        /// </remarks>
+        public static IEnumerable<InteractiveTeleport> CastleOf(RaidKind kind)
+        {
+            if (kind == null || HubOf(kind) is not { } hub) yield break;
+            int castle = kind.Floors.Count;
+            var spots = SpotsOf(kind, DoorGfx).Concat(SpotsOf(kind, PassageGfx)).Where(s => s.Floor == castle).ToList();
+            var tower = StairsOf(kind);
+
+            foreach (var element in spots.GroupBy(s => s.Element.Id))
+            {
+                var seen = element.ToList();
+                if (seen.Select(s => s.MapId).Distinct().Count() < 2) continue;
+                var inside = seen.Where(s => !OnEdge(s.Element)).ToList();
+                foreach (var from in inside.Count > 0 ? inside : seen)
+                {
+                    var others = seen.Where(s => s.MapId != from.MapId).ToList();
+                    var to = others.FirstOrDefault(s => !OnEdge(s.Element)) ?? others.First();
+                    yield return Route(from, LandingOn(spots, to, from.MapId), PassageType, TeleportManager.UseSkill,
+                                       from.Element.Gfx == DoorGfx ? DoorName : 0);
+                }
+            }
+
+            // The doors standing in one map alone, each with the arch beside it on the next map.
+            var lone = spots.GroupBy(s => s.Element.Id).Where(g => g.Count() == 1).Select(g => g.First())
+                            .Where(s => !OnEdge(s.Element)).ToList();
+            foreach (var door in lone.Where(s => s.Element.Gfx == DoorGfx))
+            {
+                var arch = lone.Where(s => s.Element.Gfx == PassageGfx && s.MapId != door.MapId && Distance(door, s) <= PassageReach)
+                               .OrderBy(s => Distance(door, s)).ThenBy(s => s.MapId).FirstOrDefault();
+                if (arch == null) continue;
+                int name = door.MapId == hub.MapId ? CorridorDoorName : arch.MapId == tower?.Down.MapId ? TowerDoorName : DoorName;
+                yield return Route(door, arch, PassageType, TeleportManager.UseSkill, name);
+                yield return Route(arch, door, PassageType, TeleportManager.UseSkill);
+            }
+
+            // The tower's stairs, from its foot and back.
+            if (tower == null) yield break;
+            if (tower.Dungeon != null)
+            {
+                yield return Route(tower.Down, tower.Dungeon, LadderType, DownSkill, DungeonStairsName);
+                yield return Route(tower.Dungeon, tower.Down, LadderType, UpSkill);
+            }
+            if (tower.Top != null)
+            {
+                yield return Route(tower.Up, tower.Top, LadderType, UpSkill, TopStairsName);
+                yield return Route(tower.Top, tower.Up, LadderType, DownSkill);
+            }
+        }
+
+        /// <summary>The tower's stairs: down and up from its foot, and where each arrives.</summary>
+        private sealed record Stairs(Spot Down, Spot Up, Spot Dungeon, Spot Top);
+
+        /// <summary>The castle's tower: its foot is the map holding both stairs. Null for a raid without one.</summary>
+        private static Stairs StairsOf(RaidKind kind)
+        {
+            if (kind == null || kind.Floors.Count == 0) return null;
+            int castle = kind.Floors.Count;
+            var stairs = SpotsOf(kind, DungeonStairsGfx).Concat(SpotsOf(kind, TopStairsGfx)).Concat(SpotsOf(kind, TopLandingGfx))
+                                 .Where(s => s.Floor == castle && !OnEdge(s.Element)).ToList();
+            var foot = stairs.GroupBy(s => s.MapId).OrderBy(g => g.Key)
+                             .FirstOrDefault(g => g.Any(s => s.Element.Gfx == DungeonStairsGfx) && g.Any(s => s.Element.Gfx == TopStairsGfx));
+            if (foot == null) return null;
+            return new Stairs(foot.First(s => s.Element.Gfx == DungeonStairsGfx),
+                              foot.First(s => s.Element.Gfx == TopStairsGfx),
+                              stairs.FirstOrDefault(s => s.Element.Gfx == DungeonStairsGfx && s.MapId != foot.Key),
+                              stairs.FirstOrDefault(s => s.Element.Gfx == TopLandingGfx));
+        }
+
+        /// <summary>Where a castle way lands: the element there, or else the way back to where it came from.</summary>
+        private static Spot LandingOn(List<Spot> spots, Spot there, long cameFrom)
+        {
+            if (!OnEdge(there.Element)) return there;
+            var back = spots.Where(s => s.MapId == there.MapId && !OnEdge(s.Element)
+                                        && spots.Any(o => o.Element.Id == s.Element.Id && o.MapId == cameFrom))
+                            .OrderBy(s => s.Element.Id).FirstOrDefault();
+            return back ?? there;
+        }
+
+        /// <summary>
+        /// The tower's maps: its foot, its dungeons -- where the Reina is -- and its top -- where the
+        /// Princesa is --, 0 for one the data lacks. Null for a raid without a tower.
+        /// </summary>
+        public static (long Foot, long Dungeon, long Top)? TowerOf(RaidKind kind)
+            => StairsOf(kind) is { } tower ? (tower.Down.MapId, tower.Dungeon?.MapId ?? 0, tower.Top?.MapId ?? 0) : null;
+
+        /// <summary>Every lift, passage and ladder of the raids' floors, both ways, and the Santuario's portals and castle.</summary>
         public static List<InteractiveTeleport> Derive()
         {
             var routes = new List<InteractiveTeleport>();
             foreach (var kind in Raids.All)
             {
                 routes.AddRange(PortalsOf(kind));
+                routes.AddRange(CastleOf(kind));
                 routes.AddRange(LaddersOf(kind));
                 routes.AddRange(HatchOf(kind));
 

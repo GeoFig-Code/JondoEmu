@@ -19,6 +19,13 @@ namespace Jondo.Unity.Server.Managers
         public int GfxId { get; init; }
         public int InteractiveType { get; init; }
         public int SkillId { get; init; }
+
+        /// <summary>
+        /// What the client calls the skill, a row of its SkillNamesDataRoot -- "Pasar al pasillo",
+        /// "Dirigirse a los calabozos" -- instead of the skill's own name; 0 for the skill's.
+        /// </summary>
+        public int SkillNameId { get; init; }
+
         public long DestinationMapId { get; init; }
         public int DestinationCellId { get; init; }
         public string SourceVersion { get; init; } = "";

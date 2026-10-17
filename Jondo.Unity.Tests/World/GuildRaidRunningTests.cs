@@ -155,20 +155,19 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
-        /// A fight won moves the goals of what it beat: the Princesa Maldita's, and in the castle,
-        /// the Santuario's last zone, the corridor's count of monsters.
+        /// A fight won moves the goals of what it beat: the Princesa Maldita's. The corridor's
+        /// count moves only for its rooms' fights (GuildRaidCastleTests).
         /// </summary>
         [Fact]
         public async Task Fights_won_move_the_goals()
         {
             var (_, gardens) = await Launched(Raids.EternalGardens);
             await GuildRaidManager.AdvanceByFightAsync(gardens, 5, new Dictionary<int, int> { [8285] = 3, [8279] = 1 });
-            Assert.Equal(4, gardens.GoalAt(GuildRaidManager.CorridorGoal));
             Assert.Equal(1, gardens.GoalAt(10));
             Assert.Equal(10_000, gardens.Score);
 
             await GuildRaidManager.AdvanceByFightAsync(gardens, 2, new Dictionary<int, int> { [8285] = 5 });
-            Assert.Equal(4, gardens.GoalAt(GuildRaidManager.CorridorGoal));      // not the castle
+            Assert.Equal(0, gardens.GoalAt(GuildRaidManager.CorridorGoal));      // no corridor room
             await GuildRaidManager.FinishAsync(gardens, RaidInstance.Ending.TimeUp);
             GuildRaidBoard.Forget();
 

@@ -127,8 +127,10 @@ namespace Jondo.Unity.Server.Handlers
             // In the Gigalodón's abyss, the darkness of the floor makes its monsters stronger.
             Managers.GuildRaidDarkness.Boost(fight, GameState.CharacterId);
 
-            // The Santuario's guardians are fought by four players at most.
+            // The Santuario's guardians are fought by four players at most; its corridor alone,
+            // its monsters with their protectors' bonuses, and its tower by eight.
             Managers.GuildRaidGuardians.OnFightCreated(fight);
+            Managers.GuildRaidSanctuary.OnFightCreated(fight);
 
             // A tax collector or a prism attacked: the fight learns whose it is, and its fighter
             // what it is.

@@ -99,11 +99,13 @@ namespace Jondo.Unity.Server.Managers
             // The Santuario's health, full (the guides).
             if (Raids.Of(raid.RaidId)?.Health is int health and > 0) raid.SetHealth(health);
 
-            // The Santuario's guardians in the middle of their zones, and its colour drawn.
+            // The Santuario's guardians in the middle of their zones, and its colour drawn; its
+            // castle's corridor with its monsters alone, and the bosses in the tower.
             if (raid.RaidId == Raids.EternalGardens)
             {
                 GuildRaidGuardians.DrawColour(raid, Random.Shared);
                 GuildRaidGuardians.Place(Raids.Of(raid.RaidId));
+                GuildRaidSanctuary.Populate(Raids.Of(raid.RaidId), Random.Shared);
             }
 
             // The Gigalodón's first floor starts fully lit; it fades from here (the guides).
@@ -204,8 +206,8 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>
         /// The Santuario's goal 9, "Vencer a todos los monstruos del pasillo" (sixty): every monster
-        /// beaten in its last zone, the Castillo del santuario, where its corridor leads to the
-        /// Princesa and the Reina.
+        /// beaten in its castle's corridor, the rooms between its hub and the tower of the Princesa
+        /// and the Reina (GuildRaidSanctuary).
         /// </summary>
         public const int CorridorGoal = 9;
 
@@ -278,7 +280,7 @@ namespace Jondo.Unity.Server.Managers
                 if (monster.EsInvocado || monster.MonsterId <= 0) continue;
                 beaten[monster.MonsterId] = (beaten.TryGetValue(monster.MonsterId, out int n) ? n : 0) + 1;
             }
-            await AdvanceByFightAsync(raid, floor, beaten, fight.DefenderLeaderId);
+            await AdvanceByFightAsync(raid, floor, beaten, fight.DefenderLeaderId, fight.RoleplayMapId);
 
             var fighters = fight.Azul.Concat(fight.Rojo).Where(f => !f.IsMonster && !f.EsInvocado && !f.EsIlusion)
                                 .Select(f => f.Id).ToList();
@@ -420,9 +422,12 @@ namespace Jondo.Unity.Server.Managers
             if (left <= 0) await FinishAsync(raid, RaidInstance.Ending.OutOfHealth);
         }
 
-        /// <summary>What a fight won on a raid's floor moves: the goals of the monsters beaten, and those of the floor.</summary>
+        /// <summary>
+        /// What a fight won on a raid's floor moves: the goals of the monsters beaten, and those of
+        /// the floor -- or of the map it was fought from, for the Santuario's corridor.
+        /// </summary>
         public static async Task AdvanceByFightAsync(RaidInstance raid, int floor, IReadOnlyDictionary<int, int> beaten,
-                                                     long beatenGroup = 0)
+                                                     long beatenGroup = 0, long mapId = 0)
         {
             var kind = Raids.Of(raid.RaidId);
             foreach (var (monster, goals) in KillGoals(raid.RaidId))
@@ -431,7 +436,7 @@ namespace Jondo.Unity.Server.Managers
                 foreach (int goal in goals) await AdvanceGoalAsync(raid, goal, raid.GoalAt(goal) + count);
             }
 
-            if (raid.RaidId == Raids.EternalGardens && kind != null && floor == kind.Floors.Count)
+            if (raid.RaidId == Raids.EternalGardens && GuildRaidSanctuary.CastleOf(kind)?.InCorridor(mapId) == true)
                 await AdvanceGoalAsync(raid, CorridorGoal, raid.GoalAt(CorridorGoal) + beaten.Values.Sum());
 
             if (raid.RaidId == Raids.Gigalodon && floor == 1 && kind != null)
@@ -507,6 +512,17 @@ namespace Jondo.Unity.Server.Managers
         {
             var raid = RaidOf(characterId);
             if (raid == null) return false;
+
+            // The Santuario's corridor and tower, closed until the goals they wait for are met.
+            if (GuildRaidSanctuary.ClosedBy(raid, targetMapId) is { } waited)
+            {
+                if (stream != null)
+                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                        ConnectionProtocol.Push(Jondo.Unity.Protocol.Op.Lqn, ConnectionProtocol.BuildNotice(
+                            CommandTexts.Get("raid.way.closed", (object)waited.Name))));
+                return true;
+            }
+
             int floor = Raids.Of(raid.RaidId)?.FloorOf(SubAreaOf(targetMapId)) ?? 0;
             if (floor <= 1 || raid.IsOpen(floor)) return false;
             var opener = OpenerOf(raid.RaidId, floor);

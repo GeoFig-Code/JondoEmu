@@ -165,6 +165,9 @@ namespace Jondo.Unity.Server.Handlers
                     await GuildRaidExecrabe.PressAsync(stream, GameState.CharacterId, mapId,
                                                        interactive.Element.Id, action.SkillId);
                     break;
+                case InteractiveActionKind.RaidManuscript:
+                    await GuildRaidSanctuary.TearAsync(stream, GameState.CharacterId, mapId, interactive.Element.Id);
+                    break;
                 default:
                     throw new InvalidOperationException($"Unhandled interactive action: {action.Kind}.");
             }

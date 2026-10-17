@@ -280,6 +280,29 @@ namespace Jondo.Unity.Server
                 .ToList();
             if (raidArenas.Count > 0) return raidArenas[(int)(Math.Abs(roleplayMapId) % raidArenas.Count)];
 
+            // The Santuario's arenas have a square: each of its maps fought on has a twin, a map
+            // without a name on the same square of the same zone with the arena flags -- the Obra's
+            // [22,8] is fought on 238294018, the tower's dungeons on 238295313 --, and the castle's
+            // corridor rooms, with none, fight on the zone's two arenas no map is twin to, the
+            // bare boards the guides speak of ("Les maps de combat du Corridor n'ont aucun
+            // obstacle"). Only raids: 57 such twins stand in 21 subareas of the world, whose fights
+            // the measured rule below already places.
+            if (Jondo.Unity.World.Content.Raids.BySubArea(info.SubAreaId) != null)
+            {
+                var positioned = Maps.Values
+                    .Where(m => m.SubAreaId == info.SubAreaId && m.MapId != roleplayMapId
+                             && !(m.PosX == 0 && m.PosY == 0) && string.IsNullOrEmpty(m.Name) && m.Flags == ArenaFlags)
+                    .OrderBy(m => m.MapId)
+                    .ToList();
+                var twins = positioned.Where(m => m.PosX == info.PosX && m.PosY == info.PosY).Select(m => m.MapId).ToList();
+                if (twins.Count > 0) return twins[(int)(Math.Abs(roleplayMapId) % twins.Count)];
+
+                var named = Maps.Values.Where(m => m.SubAreaId == info.SubAreaId && !string.IsNullOrEmpty(m.Name))
+                                       .Select(m => (m.PosX, m.PosY)).ToHashSet();
+                var loose = positioned.Where(m => !named.Contains((m.PosX, m.PosY))).Select(m => m.MapId).ToList();
+                if (loose.Count > 0) return loose[(int)(Math.Abs(roleplayMapId) % loose.Count)];
+            }
+
             // Do NOT return the roleplay map here for outdoor maps: the reference capture proves
             // the opposite. The Incarnam fight at (-2,-3) -- an OUTDOOR map with real coordinates,
             // 154010883 -- was fought in arena 153891076. Proof: 6 out of 6 fighter positions are

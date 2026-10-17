@@ -286,11 +286,14 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The Luminarium puzzle, the key fragments, the light bands and their monster boost, the salt
   deposits, the luminomachines, the Exécrabe's forms and statues, the treasure chest and the Gigalodón
 - ✅ The Sanctuary: its hub, its 20 health, its four guardians and their unlocking scripts
+- ✅ The Sanctuary's castle: the corridor's doors and the tower's stairs, opened by the guardians and
+  the corridor; sixty monsters fought alone with their protectors' bonuses; the Reina and the Princesa
+- ✅ The Sanctuary's arenas, the manuscript's five pages and the client's own names for its ways
 - ✅ The final score screen, the weekly frieze rewards and the raids ladder
 - ✅ Monster aggression inside raids
 - ❌ The light bands are not drawn: the client only plays map stagings inside fights
 - ❌ The Sanctuary's four enigmas, for the same reason; the guardians stand from the start
-- ❌ The Defensor's double turn, the corridor's and the bosses' rules
+- ❌ The Defensor's double turn and the bosses' scripted rules (the Reina's dungeons, the Princesa's flower)
 - ❌ Podium ornaments and titles; guild experience moving the guild level
 
 ### 🔱 Alliances

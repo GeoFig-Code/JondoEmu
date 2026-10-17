@@ -61,6 +61,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The Cangrancio's statues, levers of its enigma (GuildRaidExecrabe).</summary>
         RaidStatue,
 
+        /// <summary>The Santuario's manuscript, whose pages are torn one per zone (GuildRaidSanctuary).</summary>
+        RaidManuscript,
+
         /// <summary>A paddock's gate: it opens the breeding window on its paddock (BreedingHandler).</summary>
         PaddockGate,
     }
@@ -68,16 +71,24 @@ namespace Jondo.Unity.Server.Managers
     /// <summary>A skill offered by an interactive element.</summary>
     public sealed class InteractiveAction
     {
-        internal InteractiveAction(InteractiveActionKind kind, int skillId, int skillInstanceId)
+        internal InteractiveAction(InteractiveActionKind kind, int skillId, int skillInstanceId, int skillNameId = 0)
         {
             Kind = kind;
             SkillId = skillId;
             SkillInstanceId = skillInstanceId;
+            SkillNameId = skillNameId;
         }
 
         public InteractiveActionKind Kind { get; }
         public int SkillId { get; }
         public int SkillInstanceId { get; }
+
+        /// <summary>
+        /// The name the client gives the skill, a row of its SkillNamesDataRoot, or 0 for the
+        /// skill's own: the f3 of the skill in the jss, which the client looks up before the
+        /// skill's name (ens::badj).
+        /// </summary>
+        public int SkillNameId { get; }
     }
 
     /// <summary>
@@ -100,13 +111,16 @@ namespace Jondo.Unity.Server.Managers
         public int Type { get; }
         public IReadOnlyList<InteractiveAction> Actions => _actions;
 
-        internal void Add(InteractiveActionKind kind, int skillId)
+        internal void Add(InteractiveActionKind kind, int skillId) => AddNamed(kind, skillId, 0);
+
+        /// <summary>An action whose skill the client shows by one of its SkillNamesDataRoot names.</summary>
+        internal void AddNamed(InteractiveActionKind kind, int skillId, int skillNameId)
         {
             // The first action keeps exactly the historical uid. If a future element offers
             // several, the following ones get the contiguous uids still free.
             int instance = Interactives.SkillInstanceOf(Element.Id);
             while (ContainsInstance(instance)) instance++;
-            _actions.Add(new InteractiveAction(kind, skillId, instance));
+            _actions.Add(new InteractiveAction(kind, skillId, instance, skillNameId));
         }
 
         /// <summary>
@@ -331,9 +345,8 @@ namespace Jondo.Unity.Server.Managers
             // staircase or a door. All are declared alike and resolved by their ElementId.
             foreach (var route in TeleportManager.All)
             {
-                Register(route.SourceMapId,
-                         new Interactives.Element(route.ElementId, route.SourceCellId, route.GfxId),
-                         route.InteractiveType, InteractiveActionKind.Teleport, route.SkillId);
+                Declared(route.SourceMapId, new Interactives.Element(route.ElementId, route.SourceCellId, route.GfxId),
+                         route.InteractiveType).AddNamed(InteractiveActionKind.Teleport, route.SkillId, route.SkillNameId);
             }
 
             // The marketplace counters, by element and not by graphic: Brakmar's five share one
@@ -425,6 +438,15 @@ namespace Jondo.Unity.Server.Managers
                     Register(statues.MapId, statue, GuildRaidExecrabe.StatueType, InteractiveActionKind.RaidStatue,
                              GuildRaidExecrabe.StatueSkill);
                 }
+            }
+
+            // And the Santuario's manuscript, a page on each of its zones: "Arrancar una página".
+            foreach (var (manuscriptMap, manuscript, _) in GuildRaidSanctuary.Manuscripts(
+                         Jondo.Unity.World.Content.Raids.Of(Jondo.Unity.World.Content.Raids.EternalGardens)))
+            {
+                if (_byElement.ContainsKey((manuscriptMap, manuscript.Id))) continue;
+                Declared(manuscriptMap, manuscript, GuildRaidSanctuary.ManuscriptType)
+                    .AddNamed(InteractiveActionKind.RaidManuscript, GuildRaidSanctuary.ManuscriptSkill, GuildRaidSanctuary.TearPageName);
             }
 
             foreach (long mapId in Interactives.MapIds)
