@@ -137,7 +137,7 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(143, favor.Offers[2].Tag);
             Assert.Equal(10, favor.Offers[2].Points);
             Assert.NotEqual(favor.Offers[0].Tag, favor.Offers[1].Tag);
-            Assert.All(favor.Offers.Take(2), o => Assert.Contains(o, Dreams.FavorBonuses));
+            Assert.All(favor.Offers.Take(2), o => Assert.Contains(o.Tag, DreamCatalogue.Favour));
             Assert.All(favor.Offers, o => Assert.Equal(0, o.Price));
 
             var izg = Fields(DreamProtocol.BuildDreamState(dream));
@@ -172,7 +172,7 @@ namespace Jondo.Unity.Tests.World
             Assert.Null(Var(izg, 18));
             Assert.Equal(1, Var(izg, 19));
 
-            Assert.Null(Dreams.Buy(dream, Dreams.FavorPurse.Tag, out refusal));
+            Assert.Null(Dreams.Buy(dream, DreamCatalogue.Purse.Tag, out refusal));
             Assert.Contains("chosen", refusal);
 
             // Entering again -- a dream continued -- offers nothing more.
@@ -188,7 +188,7 @@ namespace Jondo.Unity.Tests.World
             Dreams.Enter(dream, favor.Id, out _);
             int points = dream.DreamPoints;
 
-            Assert.NotNull(Dreams.Buy(dream, Dreams.FavorPurse.Tag, out _));
+            Assert.NotNull(Dreams.Buy(dream, DreamCatalogue.Purse.Tag, out _));
             Assert.Equal(points + 10, dream.DreamPoints);
             Assert.Equal(points + 10, Var(Fields(DreamProtocol.BuildDreamState(dream)), 11));
         }
@@ -203,22 +203,22 @@ namespace Jondo.Unity.Tests.World
             var (dream, favor) = WithAFavor();
             Dreams.Enter(dream, favor.Id, out _);
 
-            Assert.True(Dreams.RerollFavor(favor));
+            Assert.True(Dreams.RerollOffers(dream, favor));
             Assert.Equal(3, favor.Offers!.Count);
-            Assert.Equal(Dreams.FavorPurse.Tag, favor.Offers[2].Tag);
+            Assert.Equal(DreamCatalogue.Purse.Tag, favor.Offers[2].Tag);
 
             Dreams.Buy(dream, favor.Offers[0].Tag, out _);
-            Assert.False(Dreams.RerollFavor(favor));
+            Assert.False(Dreams.RerollOffers(dream, favor));
         }
 
         /// <summary>The purse is the client's reward 143: ten dream-point actions.</summary>
         [Fact]
         public void The_purse_is_the_client_s_reward_143()
         {
-            var row = DreamData.RewardOf(Dreams.FavorPurse.Tag);
+            var row = DreamData.RewardOf(DreamCatalogue.Purse.Tag);
             Assert.NotNull(row);
             Assert.All(row!.Actions, a => Assert.Equal(DreamData.DreamPointAction, a));
-            Assert.Equal(Dreams.FavorPurse.Points, row.Actions.Count);
+            Assert.Equal(DreamCatalogue.Purse.Points, row.Actions.Count);
         }
 
         /// <summary>

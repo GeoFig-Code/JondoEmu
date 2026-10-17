@@ -104,21 +104,41 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>A spell's type in the client's Spells table; 0 when unknown.</summary>
         public static int TypeOf(int spell)
-            => spell <= 0 ? 0 : _typeOf.GetOrAdd(spell, id =>
+            => spell <= 0 ? 0 : _typeOf.GetOrAdd(spell, id => Scalar("SELECT TypeId FROM Spells WHERE Id = $id;", id));
+
+        /// <summary>
+        /// A spell's icon in the client's Spells table: what a fountain's offer of it is drawn
+        /// with -- 15389 for Psst Psst and 15382 for Arenero, as the captured offers carry.
+        /// </summary>
+        public static int IconOf(int spell)
+            => spell <= 0 ? 0 : _iconOf.GetOrAdd(spell, id => Scalar("SELECT IconId FROM Spells WHERE Id = $id;", id));
+
+        /// <summary>
+        /// The level a reward teaches of a spell: its grade 1 -- 85231 of Psst Psst and 83685 of
+        /// Arenero, as the captured offers carry. 0 when unknown.
+        /// </summary>
+        public static int FirstLevelOf(int spell)
+            => spell <= 0 ? 0 : _firstLevel.GetOrAdd(spell, id =>
+                Scalar("SELECT Id FROM SpellLevels WHERE SpellId = $id ORDER BY Grade LIMIT 1;", id));
+
+        private static readonly ConcurrentDictionary<int, int> _iconOf = new();
+        private static readonly ConcurrentDictionary<int, int> _firstLevel = new();
+
+        private static int Scalar(string sql, int id)
+        {
+            try
             {
-                try
-                {
-                    using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
-                    connection.Open();
-                    using var command = connection.CreateCommand();
-                    command.CommandText = "SELECT TypeId FROM Spells WHERE Id = $id;";
-                    command.Parameters.AddWithValue("$id", id);
-                    return command.ExecuteScalar() is long type ? (int)type : 0;
-                }
-                catch (Exception)
-                {
-                    return 0;
-                }
-            });
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = sql;
+                command.Parameters.AddWithValue("$id", id);
+                return command.ExecuteScalar() is long value ? (int)value : 0;
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
+        }
     }
 }

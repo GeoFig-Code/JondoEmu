@@ -1112,6 +1112,12 @@ namespace Jondo.Unity.World.Fights
             }
         }
 
+        /// <summary>
+        /// Whether the blue side plays first whatever the initiatives: a dream's "Viento a
+        /// Favor", "Garantiza que el equipo aliado tome la iniciativa del combate".
+        /// </summary>
+        public bool BlueTakesInitiative { get; set; }
+
         public List<Fighter> BuildAlternatingTurnOrder()
         {
             // Summons are NOT ordered by initiative: they go stuck to whoever placed them, and only those
@@ -1128,7 +1134,7 @@ namespace Jondo.Unity.World.Fights
 
             int team0BestInit = team0Sorted.FirstOrDefault()?[0].Initiative ?? 0;
             int team1BestInit = team1Sorted.FirstOrDefault()?[0].Initiative ?? 0;
-            bool team0First = team0BestInit >= team1BestInit;
+            bool team0First = BlueTakesInitiative || team0BestInit >= team1BestInit;
 
             for (int i = 0; i < maxCount; i++)
             {

@@ -87,11 +87,20 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public int DamageDealtPercent { get; set; } = 100;
 
-        /// <summary>Rounds taken off the cooldown of every spell it casts: a dream's "-1 reactivation".</summary>
-        public int CooldownReduction { get; set; }
+        /// <summary>
+        /// What every spell it casts is modified by, whatever the spell: a dream's "Sorts : +1
+        /// Portée maximale" (281), "-1 de relance" (286), "+1 lancer par tour" (290) or "par
+        /// cible" (291), "-1 Portée minimale" (295). The rows a buff puts on one spell are its
+        /// Buffs'; these hold the whole fight.
+        /// </summary>
+        public Dictionary<SpellAspect, int> EverySpell { get; } = new Dictionary<SpellAspect, int>();
 
-        /// <summary>Casts more on the same target for every spell that caps them: a dream's "+1 cast per target".</summary>
-        public int ExtraCastsPerTarget { get; set; }
+        /// <summary>The same for its weapon: a dream's "Armes : +1 Portée maximale" (3281) and "+1 lancer(s) par tour" (3290).</summary>
+        public Dictionary<SpellAspect, int> WeaponModifiers { get; } = new Dictionary<SpellAspect, int>();
+
+        /// <summary>What <see cref="EverySpell"/> -- or for spell 0, the weapon, <see cref="WeaponModifiers"/> -- holds for an aspect.</summary>
+        public int AllSpellsModifier(int spell, SpellAspect aspect)
+            => (spell == 0 ? WeaponModifiers : EverySpell).TryGetValue(aspect, out int value) ? value : 0;
 
         /// <summary>
         /// Turns this fighter plays on the other side: effect 3107, "Cambia el bando del objetivo"

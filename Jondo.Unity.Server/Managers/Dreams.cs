@@ -482,40 +482,8 @@ namespace Jondo.Unity.Server.Managers
             new Reward { Id = 14895, Tag = 154, Rarity = 1, Levels = 50 },                              // "50 niveles de soñador"
         };
 
-        /// <summary>
-        /// The dream favour's third choice, always the last: "L'un des 3 choix (le dernier) est
-        /// forcément une petite bourse qui donne 10 points de rêve", the guide says. It is the
-        /// client's reward 143, "Bolsa de puntos de sueño", ten dream-point actions.
-        /// </summary>
-        /// <remarks>
-        /// Its icon is INFERRED: 14811, the icon of reward 76, the thirty-point "Bolsa de puntos
-        /// de sueño" of the same name. No capture shows 143 on the wire.
-        /// </remarks>
-        internal static readonly Reward FavorPurse = new Reward { Id = 14811, Tag = 143, Points = 10 };
-
-        /// <summary>
-        /// What the dream favour draws its two free bonuses from: the bonuses of the captures whose
-        /// values are measured and that a fight here knows how to apply (<see cref="ApplyTo"/>) --
-        /// the rooms' eight and the shop's critical hits. The guide: "un choix entre 3 bonus
-        /// gratuits". Which rewards the real favour draws from is not captured.
-        /// </summary>
-        internal static readonly Reward[] FavorBonuses =
-            RoomRewards.Where(r => r.Bonuses.Count > 0)
-                       .Append(new Reward { Id = 14813, Tag = 124, Rarity = 2, Bonuses = new[] { new Bono(115, 25) } })
-                       .ToArray();
-
-        /// <summary>
-        /// What the fountain sells: the five offers of the one fountain of the captures, in their
-        /// order, 15 dream points each. The long capture's room 9, twice with the same five.
-        /// </summary>
-        internal static readonly Reward[] ShopOffers =
-        {
-            new Reward { Id = 14798, Tag = 65, Price = 15, Bonuses = new[] { new Bono(2971, 20), new Bono(2844, 40) } },
-            new Reward { Id = 15389, Tag = 149, Rarity = 2, Price = 15, Bonuses = new[] { new Bono(3405, 85231) } },
-            new Reward { Id = 14799, Tag = 103, Price = 15, Bonuses = new[] { new Bono(2850, 100), new Bono(2852, 100) } },
-            new Reward { Id = 15382, Tag = 89, Rarity = 2, Price = 15, Bonuses = new[] { new Bono(3405, 83685) } },
-            new Reward { Id = 14813, Tag = 124, Rarity = 2, Price = 15, Bonuses = new[] { new Bono(115, 25) } },  // % critical
-        };
+        // What a fountain sells and a favour gives -- the purse of ten points always last -- is
+        // DreamCatalogue's, read from content/dreams/fountain.json.
 
         public sealed class Sala
         {
@@ -710,6 +678,13 @@ namespace Jondo.Unity.Server.Managers
             /// </remarks>
             [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
             public List<Bono> Ganados { get; } = new List<Bono>();
+
+            /// <summary>
+            /// The rewards gained, by their client row, in the order they came: what a reward
+            /// offered "une seule fois par songe" is checked against.
+            /// </summary>
+            [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+            public List<int> RewardsTaken { get; } = new List<int>();
 
             /// <summary>Which band he is on, starting with I.</summary>
             /// <remarks>
@@ -1274,8 +1249,8 @@ namespace Jondo.Unity.Server.Managers
             if (room.Miembros.Count > 0 || room.EsFinal)
                 dream.Bonus = LootBonusOf(dream.Dificultad, room.Fila, room.Senalada);
 
-            if (room.EsFuente && room.Offers == null) room.Offers = new List<Reward>(ShopOffers);
-            if (room.EsFavor && !room.FavorChosen && room.Offers == null) room.Offers = DrawFavor();
+            if (room.EsFuente && room.Offers == null) room.Offers = DreamCatalogue.DrawFountain(dream, room);
+            if (room.EsFavor && !room.FavorChosen && room.Offers == null) room.Offers = DrawFavor(dream);
             return room;
         }
 
@@ -1291,31 +1266,17 @@ namespace Jondo.Unity.Server.Managers
             dream.Arena += reward.Sand;
             dream.DreamerLevels += reward.Levels;
             foreach (var bonus in reward.Bonuses) Gain(dream, bonus);
+            if (reward.Tag != 0) dream.RewardsTaken.Add(reward.Tag);
         }
 
         /// <summary>
-        /// The three choices of a dream favour: two bonuses drawn from <see cref="FavorBonuses"/>,
+        /// The three choices of a dream favour: two drawn from the guide's list of favours,
         /// different ones, and the purse of ten dream points last -- "Le choix n°3 est toujours
-        /// une petite bourse de 10 Points de rêve". All three free: the shop window the client
-        /// opens on them says "Gratis" where a fountain says its price
+        /// une petite bourse de 10 Points de rêve" (DreamCatalogue). All three free: the shop
+        /// window the client opens on them says "Gratis" where a fountain says its price
         /// (InfiniteDreamShopUi.BindRewardLine, "ui.shop.free").
         /// </summary>
-        internal static List<Reward> DrawFavor()
-        {
-            var pool = FavorBonuses.ToList();
-            var drawn = new List<Reward>();
-            lock (_azar)
-            {
-                while (drawn.Count < FavorBonusesOffered && pool.Count > 0)
-                {
-                    var pick = pool[_azar.Next(pool.Count)];
-                    drawn.Add(pick);
-                    pool.RemoveAll(r => r.Tag == pick.Tag);
-                }
-            }
-            drawn.Add(FavorPurse);
-            return drawn;
-        }
+        internal static List<Reward> DrawFavor(Sueno dream) => DreamCatalogue.DrawFavour(dream, FavorBonusesOffered);
 
         /// <summary>How many bonuses a favour offers before its purse: "3 bonus gratuits", the last the purse.</summary>
         public const int FavorBonusesOffered = 2;
@@ -1437,27 +1398,43 @@ namespace Jondo.Unity.Server.Managers
 
             dream.DreamPoints -= offer.Price;
             Pay(dream, offer);
+            int place = room.Offers.IndexOf(offer);
             room.Offers.Remove(offer);
             if (favour)
             {
                 room.FavorChosen = true;
                 room.Offers = null;
             }
+            else if (DreamCatalogue.DrawOneForFountain(dream, room, room.Offers) is { } restock)
+            {
+                // "La fontaine se réapprovisionne immédiatement après un achat (un nouveau choix
+                // prend la place de celui que vous venez d'acheter)."
+                room.Offers.Insert(Math.Clamp(place, 0, room.Offers.Count), restock);
+            }
             return offer;
         }
 
         /// <summary>
-        /// The astral storm on a dream favour not yet chosen: its two bonuses drawn again, the
-        /// purse still last. The client's reward 24, "Tormenta astral": "Permite reiniciar todos
-        /// los monstruos presentes en una sala, todos los artículos de la fuente, así como el
-        /// favor", and the guide: a Tempête astrale rerolls the favour's options. False where
-        /// there is no favour to reroll.
+        /// The astral storm on a fountain, or on a dream favour not yet chosen: its offers drawn
+        /// again, the favour's purse still last. The client's reward 24, "Tormenta astral":
+        /// "Permite reiniciar todos los monstruos presentes en una sala, todos los artículos de la
+        /// fuente, así como el favor", and the guide: "La Tempête permet également de renouveler
+        /// les bonus proposés dans une Fontaine ou une Faveur Onirique". False where there is
+        /// nothing to renew.
         /// </summary>
-        public static bool RerollFavor(Sala room)
+        public static bool RerollOffers(Sueno dream, Sala room)
         {
-            if (!room.EsFavor || room.FavorChosen) return false;
-            room.Offers = DrawFavor();
-            return true;
+            if (room.EsFavor && !room.FavorChosen)
+            {
+                room.Offers = DrawFavor(dream);
+                return true;
+            }
+            if (room.EsFuente && room.Offers != null)
+            {
+                room.Offers = DreamCatalogue.DrawFountain(dream, room);
+                return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -1499,26 +1476,63 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public const int PassiveEffect = 792;
 
-        // The effects of the rooms' and the shop's bonuses that a fight knows how to apply.
+        // The bonuses' effects that are not one characteristic more.
         private const int ActionPointsEffect = 111;
         private const int MovementPointsEffect = 128;
-        private const int RangeEffect = 117;
-        private const int SpellsMaxRangeEffect = 281;
-        private const int SpellsCooldownEffect = 286;
-        private const int SpellsCastsPerTargetEffect = 291;
-        private const int CriticalEffect = 115;
         private const int VitalityPercentEffect = 2844;
         private const int DamagePercentEffect = 4041;
+        private const int FinalHealsPercentEffect = 2971;
+        private const int WeaponMaxRangeEffect = 3281;
+        private const int WeaponCastsPerTurnEffect = 3290;
+
+        // The characteristics, by the client's StatId, that a bonus moves in a way of its own.
+        private const int CriticalCharacteristic = 18;
+        private const int RangeCharacteristic = 19;
+        private const int ResistPercentCharacteristic = 101;
+        private const int DealtHealMultiplier = 143;
 
         /// <summary>
-        /// The dream's bonuses on a fighter of one of its rooms: they are fight bonuses, and the
-        /// dream's guide says so -- "bonuses apply during combat". Returns what was applied, and
-        /// leaves out what a fight here cannot do yet: the spells of the shop (3405), and the
-        /// few f15 effects no room of ours gives.
+        /// The client's "...InitialPercent" characteristics and the one each is a percent of:
+        /// TackleBlockInitialPercent 132 of tackle, TackleEvadeInitialPercent 133 of escape,
+        /// ApAttack/MpAttackInitialPercent 136/137 of the AP and MP removal,
+        /// DodgeAp/MpLostProbabilityInitialPercent 138/139 of the dodges. "Tous les bonus sont un
+        /// pourcentage permettant d'augmenter vos dégâts, votre retrait, votre tacle, etc … de
+        /// manière proportionnelle."
+        /// </summary>
+        private static readonly Dictionary<int, int> InitialPercentOf = new()
+        {
+            [132] = Tackle.TackleCharacteristic,
+            [133] = Tackle.EscapeCharacteristic,
+            [136] = EffectEngine.RetiraPA,
+            [137] = EffectEngine.RetiraPM,
+            [138] = EffectEngine.EsquivaPA,
+            [139] = EffectEngine.EsquivaPM,
+        };
+
+        /// <summary>
+        /// The dream's bonuses on a fighter of one of its rooms -- one of its people, or one of
+        /// their summons: "Les compagnons et les invocations profiteront également de ces bonus".
+        /// They are fight bonuses: "bonuses apply during combat". Returns what was applied. The
+        /// spells (3405) and passives (792) are not applied here: the spells are cast from the
+        /// dream's bar, the passives cast on the fighter like an item's attitude.
         /// </summary>
         /// <remarks>
-        /// "+N maximum range" with no spell named (281) is the range of every spell, which is what
-        /// the fighter's own range is. "% vitality" is of the life the fighter starts with.
+        /// <para>
+        /// Most are one characteristic more, the one the client's effect catalogue names, with
+        /// the sign its description starts with (DatabaseManager.EffectMeta): "% daños distancia"
+        /// on the ranged multiplier, "-10% de erosión" taking ten off it, "+2 invocaciones" on
+        /// the summons. The "% of the initial" ones -- "% vitalidad", "% placaje", "% huida",
+        /// "% retirada" and "% esquiva de PA/PM" -- add that percent of what the fighter starts
+        /// the fight with; "% resistencia" (101) is on each of the five elements.
+        /// </para>
+        /// <para>
+        /// The nested ones are modifiers of every spell -- "Sorts : +1 Portée maximale" -- or of
+        /// the weapon -- "Armes : +1 lancer(s) par tour" --, held by the fighter for the fight
+        /// (<see cref="Fighter.EverySpell"/>); the real server tells the client of them with one
+        /// hnd per spell as the fight starts. 2971, "Aumenta un #1% las curas finales
+        /// ocasionadas", goes on the client's DealtHealMultiplier (143), whatever its catalogue
+        /// row says: it names the flat heals (49), and the text is what the player reads.
+        /// </para>
         /// </remarks>
         public static List<string> ApplyTo(Fighter fighter, Sueno dream)
         {
@@ -1526,33 +1540,70 @@ namespace Jondo.Unity.Server.Managers
             foreach (var bonus in dream.Ganados)
             {
                 int v = bonus.Valor;
-                switch (bonus.Efecto)
-                {
-                    case ActionPointsEffect:
-                        fighter.MaxAP += v; fighter.CurrentAP += v; break;
-                    case MovementPointsEffect:
-                        fighter.MaxMP += v; fighter.CurrentMP += v; break;
-                    case RangeEffect:
-                    case SpellsMaxRangeEffect:
-                        fighter.Range += v; break;
-                    case CriticalEffect:
-                        fighter.CriticalBonus += v; break;
-                    case VitalityPercentEffect:
-                        int extra = (int)Math.Round(fighter.MaxHP * v / 100.0);
-                        fighter.MaxHP += extra; fighter.CurrentHP += extra; break;
-                    case DamagePercentEffect:
-                        fighter.DamageDealtPercent += v; break;
-                    case SpellsCooldownEffect:
-                        fighter.CooldownReduction += v; break;
-                    case SpellsCastsPerTargetEffect:
-                        fighter.ExtraCastsPerTarget += v; break;
-                    default:
-                        continue;
-                }
+                if (!ApplyOne(fighter, bonus.Efecto, v, bonus.Anidado)) continue;
                 applied.Add($"{bonus.Efecto}:{v}");
             }
             return applied;
         }
+
+        private static bool ApplyOne(Fighter fighter, int effect, int v, bool nested)
+        {
+            switch (effect)
+            {
+                case PassiveEffect:
+                case DreamSpells.LearnEffect:
+                    return false;
+                case ActionPointsEffect:
+                    fighter.MaxAP += v; fighter.CurrentAP += v; return true;
+                case MovementPointsEffect:
+                    fighter.MaxMP += v; fighter.CurrentMP += v; return true;
+                case VitalityPercentEffect:
+                    int extra = (int)Math.Round(fighter.MaxHP * v / 100.0);
+                    fighter.MaxHP += extra; fighter.CurrentHP += extra; return true;
+                case DamagePercentEffect:
+                    fighter.DamageDealtPercent += v; return true;
+                case FinalHealsPercentEffect:
+                    fighter.Otras[DealtHealMultiplier] = fighter.Otra(DealtHealMultiplier) + v; return true;
+                case WeaponMaxRangeEffect:
+                    Add(fighter.WeaponModifiers, SpellAspect.AlcanceMaximo, v); return true;
+                case WeaponCastsPerTurnEffect:
+                    Add(fighter.WeaponModifiers, SpellAspect.CastsPerTurnUp, v); return true;
+            }
+
+            if (nested)
+            {
+                if (!Enum.IsDefined(typeof(SpellAspect), effect) || effect == (int)SpellAspect.Nada) return false;
+                Add(fighter.EverySpell, (SpellAspect)effect, v);
+                return true;
+            }
+
+            var (characteristic, sign) = DatabaseManager.EffectMeta(effect);
+            if (characteristic <= 0) return false;
+            int amount = (sign == 0 ? 1 : sign) * v;
+            switch (characteristic)
+            {
+                case CriticalCharacteristic:
+                    fighter.CriticalBonus += amount; break;
+                case RangeCharacteristic:
+                    fighter.Range += amount; break;
+                case ResistPercentCharacteristic:
+                    fighter.NeutralResPct += amount; fighter.EarthResPct += amount; fighter.FireResPct += amount;
+                    fighter.WaterResPct += amount; fighter.AirResPct += amount;
+                    break;
+                default:
+                    if (InitialPercentOf.TryGetValue(characteristic, out int of))
+                    {
+                        int initial = fighter.Otra(of);
+                        fighter.Otras[of] = initial + (int)Math.Round(initial * amount / 100.0);
+                    }
+                    else fighter.Otras[characteristic] = fighter.Otra(characteristic) + amount;
+                    break;
+            }
+            return true;
+        }
+
+        private static void Add(Dictionary<SpellAspect, int> modifiers, SpellAspect aspect, int v)
+            => modifiers[aspect] = (modifiers.TryGetValue(aspect, out int had) ? had : 0) + v;
 
         private static readonly ConcurrentDictionary<int, bool> _bosses = new();
 

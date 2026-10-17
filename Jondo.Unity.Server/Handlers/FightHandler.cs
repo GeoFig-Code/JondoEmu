@@ -1344,7 +1344,7 @@ namespace Jondo.Unity.Server.Handlers
         /// The cells a fight on this arena is placed from: the fight-walkable ones, or the inner
         /// walkable ones of the map when it has none.
         /// </summary>
-        private static List<int> PlacementGround(long arenaMapId)
+        internal static List<int> PlacementGround(long arenaMapId)
         {
             var enCombate = MapManager.GetFightWalkable(arenaMapId);
             return enCombate != null && enCombate.Count > 0
@@ -2776,6 +2776,12 @@ namespace Jondo.Unity.Server.Handlers
             Program.LogDebug($"[Fight] Fight #{fight.FightId} starts: " +
                              $"{everyone.Count} fighters, first {fight.CurrentFighter?.Id}.");
 
+            // What he carries for every spell -- a dream's "Sorts : +1 Portée maximale" -- for his
+            // client to draw and allow.
+            if (yoMismo != null)
+                await SendEverySpellModifiersAsync(packet => WriteFrameAsync(stream, packet), fight, yoMismo,
+                                                   spells.Select(s => s.Spell));
+
             // In an arena fight the client greys its leave button out until the server unlocks
             // giving up, and nothing did: against JondoBots there was no way out but losing. The
             // kme it then sends is the one AbandonAsync already answers.
@@ -2792,6 +2798,33 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         private const int FirstRound = 1;
+
+        /// <summary>
+        /// What a fighter carries for every spell (<see cref="Fighter.EverySpell"/>), told to the
+        /// client the way the real server tells it: one hnd per spell, the weapon left out, for
+        /// each modifier the hnd has a number for. Measured in the long dream capture: once the
+        /// dream's "+1 alcance máximo" (281) was gained, every fight opened with 29 hnd
+        /// "f2 1, f3 1, f4 12" right after the jxb, one for each of the jyy's 30 entries but the
+        /// weapon's, in the jyy's order. The cast interval's (286) has no number and stays the
+        /// server's alone, as a buff's does.
+        /// </summary>
+        internal static async Task SendEverySpellModifiersAsync(Func<byte[], Task> send, FightInstance fight,
+                                                                Fighter who, IEnumerable<int> spells)
+        {
+            var aspects = who.EverySpell.Where(m => m.Value != 0).Select(m => m.Key).ToList();
+            if (aspects.Count == 0) return;
+            var list = spells.Where(s => s != 0).Distinct().ToList();
+            foreach (var aspect in aspects)
+            {
+                if (Managers.SpellModifiers.OnTheWire(aspect) is not { } wire) continue;
+                foreach (int spell in list)
+                {
+                    await send(ConnectionProtocol.Push(Op.Hnd, Network.FightProtocol.BuildSpellModifier(
+                        who.Id, wire.Kind, spell,
+                        Managers.SpellModifiers.Total(who, spell, aspect, fight.RoundNumber), wire.Action)));
+                }
+            }
+        }
 
         /// <summary>
         /// Whether giving up is open from the first turn: a Koliseo fight where this character is
@@ -4107,7 +4140,8 @@ namespace Jondo.Unity.Server.Handlers
                 // when checking whether the spell reaches.
                 //
                 // Minimum range is NOT touched: 19 extends how far you reach, not from where.
-                // A weapon's range is its own and nothing makes it longer.
+                // A weapon's range is its own and nothing makes it longer but a dream's "Armes :
+                // +1 Portée maximale", which SpellModifiers.Range adds.
                 int maximo = spell == 0 ? limites.AlcanceMaximo
                            : limites.AlcanceMaximo
                            + caster.Range
@@ -4204,11 +4238,10 @@ namespace Jondo.Unity.Server.Handlers
             // needed, and that is not hooked up yet.
             caster.LanzadosPorObjetivo.TryGetValue((spell, aQuien), out int sobreEse);
             int porObjetivo = Managers.SpellModifiers.CastsPerTarget(caster, spell, limites.PorObjetivo, fight.RoundNumber);
-            int topePorObjetivo = porObjetivo > 0 ? porObjetivo + caster.ExtraCastsPerTarget : 0;
-            if (aQuien != 0 && topePorObjetivo > 0 && sobreEse >= topePorObjetivo)
+            if (aQuien != 0 && porObjetivo > 0 && sobreEse >= porObjetivo)
             {
                 Program.LogDebug($"[Fight] Spell {spell} has already been cast {sobreEse} " +
-                                 $"time(s) on {aQuien}, and the cap is {topePorObjetivo}.");
+                                 $"time(s) on {aQuien}, and the cap is {porObjetivo}.");
                 return;
             }
 
@@ -4252,8 +4285,7 @@ namespace Jondo.Unity.Server.Handlers
             // Versatile (do not repeat an action) and the two about finishing off before changing target.
             await ChallengeWatcher.CastAsync(stream, fight, caster, spell, victim,
                                              esteTurno + 1);
-            int intervalo = Math.Max(0, Managers.SpellModifiers.CastInterval(caster, spell, limites.Intervalo, fight.RoundNumber)
-                                        - caster.CooldownReduction);
+            int intervalo = Managers.SpellModifiers.CastInterval(caster, spell, limites.Intervalo, fight.RoundNumber);
             if (intervalo > 0) caster.Recarga[spell] = intervalo;
             // Each ally whose wait it set is told, as the cooldown effects tell their bearer (jxc).
             foreach (var ally in ApplyGlobalCooldown(fight, caster, spell, limites.GlobalCooldown, intervalo))
@@ -4483,6 +4515,11 @@ namespace Jondo.Unity.Server.Handlers
             // in the carousel.
             Managers.Summons.Characteristics(invocado, receta, quienInvoca);
 
+            // In a dream, its people's summons fight with its bonuses too: "Les compagnons et les
+            // invocations profiteront également de ces bonus".
+            if (quienInvoca.TeamId == FightInstance.Azules && DreamHandler.DreamOf(fight) is { } dreamOfTheSummoner)
+                Managers.Dreams.ApplyTo(invocado, dreamOfTheSummoner);
+
             fight.Invocar(invocado, quienInvoca);
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
@@ -4510,6 +4547,8 @@ namespace Jondo.Unity.Server.Handlers
                     await WriteFrameAsync(sesion.Stream, ConnectionProtocol.Push(Op.Jyy,
                         Network.FightProtocol.BuildSummonSpellBar(invocado.Id, quienInvoca.Id,
                                                                   receta.Hechizos)));
+                    await SendEverySpellModifiersAsync(packet => WriteFrameAsync(sesion.Stream, packet), fight,
+                                                       invocado, receta.Hechizos.Select(h => h.Spell));
                 });
             }
 

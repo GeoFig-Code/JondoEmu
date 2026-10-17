@@ -387,7 +387,7 @@ namespace Jondo.Unity.Server.Handlers
                 return false;
             }
 
-            sala.Offers ??= Dreams.DrawFavor();
+            sala.Offers ??= Dreams.DrawFavor(sueno);
             Persist(sueno);
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
@@ -705,8 +705,8 @@ namespace Jondo.Unity.Server.Handlers
         /// It used to take the player to the room's first exit, fight or no fight.
         ///
         /// Not in a fight: pressed there, the map changed under a fight still going on. Not with
-        /// none left, and not where there is no group to change -- renewing a fountain's offers
-        /// is its other use, and there are only the five measured ones to offer.
+        /// none left, and not where there is no group to change. At a fountain or a favour it
+        /// renews the offers instead: see <see cref="Dreams.RerollOffers"/>.
         /// </remarks>
         public static async Task AstralStormAsync(NetworkStream stream)
         {
@@ -715,12 +715,13 @@ namespace Jondo.Unity.Server.Handlers
 
             var actual = sueno.SalaActual;
 
-            // At a favour not chosen yet the storm draws its two bonuses again: the client's own
-            // text for it, "reiniciar ... así como el favor", and the favour window's reroll
-            // button ("ui.infiniteDreams.rerollFavor"). Its answer is INFERRED to be the izg with
-            // the new three, as the storm on a fight answers with the izg of the new group.
-            if (actual != null && actual.EsFavor && Network.SessionContext.State.FightId == 0
-                && sueno.Tormentas > 0 && Dreams.RerollFavor(actual))
+            // At a fountain, or a favour not chosen yet, the storm draws the offers again: the
+            // client's own text for it, "reiniciar ... todos los artículos de la fuente, así como
+            // el favor", and the favour window's reroll button ("ui.infiniteDreams.rerollFavor").
+            // Its answer is INFERRED to be the izg with the new offers, as the storm on a fight
+            // answers with the izg of the new group.
+            if (actual != null && (actual.EsFavor || actual.EsFuente) && Network.SessionContext.State.FightId == 0
+                && sueno.Tormentas > 0 && Dreams.RerollOffers(sueno, actual))
             {
                 sueno.Tormentas--;
                 Persist(sueno);
@@ -728,7 +729,7 @@ namespace Jondo.Unity.Server.Handlers
                     ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Izj, DreamProtocol.BuildStorm()));
-                Console.WriteLine($"[Dreams] Astral storm on the favour of room {actual.Id}: " +
+                Console.WriteLine($"[Dreams] Astral storm on the offers of room {actual.Id}: " +
                                   $"{string.Join(", ", actual.Offers!.Select(o => o.Tag))}; {sueno.Tormentas} left.");
                 return;
             }
@@ -813,15 +814,28 @@ namespace Jondo.Unity.Server.Handlers
         private static readonly ConcurrentDictionary<long, FinalFight> _finales = new();
 
         /// <summary>
-        /// A fight has just been built. On the dream's last room it is the Fin du rêve: its first
-        /// wave is brought to its level, and its waves are counted from here.
+        /// A fight has just been built in a dream's room. Its two passives whose spell does
+        /// nothing are done here (DreamCatalogue's special): with Viento a Favor the dream's side
+        /// plays first, with Suelta it is placed anywhere -- its placement cells every cell of the
+        /// arena the monsters' are not. And on the dream's last room it is the Fin du rêve: its
+        /// first wave is brought to its level, and its waves are counted from here.
         /// </summary>
         internal static void OnFightCreated(Jondo.Unity.World.Fights.FightInstance fight)
         {
             if (!Dreams.IsDreamMap(fight.RoleplayMapId)) return;
-            var sueno = Dreams.De(GameState.CharacterId);
+            var sueno = DreamOf(fight) ?? Dreams.De(GameState.CharacterId);
             var sala = sueno?.SalaActual;
-            if (sueno == null || sala == null || !sala.EsFinal || sala.MapaDeLaSala != fight.RoleplayMapId) return;
+            if (sueno == null || sala == null || sala.MapaDeLaSala != fight.RoleplayMapId) return;
+
+            if (DreamCatalogue.Holds(sueno, DreamCatalogue.AlliesPlayFirst)) fight.BlueTakesInitiative = true;
+            if (DreamCatalogue.Holds(sueno, DreamCatalogue.PlaceAnywhere))
+            {
+                var red = fight.RedPlacementCells.ToHashSet();
+                var anywhere = FightHandler.PlacementGround(fight.MapId).Where(c => !red.Contains(c)).OrderBy(c => c).ToList();
+                if (anywhere.Count > 0) fight.SetPlacementCells(anywhere, fight.RedPlacementCells.ToList());
+            }
+
+            if (!sala.EsFinal) return;
 
             var rules = Dreams.FinalRulesOf(sueno.Dificultad);
             foreach (var monster in fight.Rojo) Dreams.ScaleTo(monster, rules.BaseLevel);

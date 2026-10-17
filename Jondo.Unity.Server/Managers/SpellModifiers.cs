@@ -75,15 +75,18 @@ namespace Jondo.Unity.Server.Managers
         public static bool PinsAValue(SpellAspect aspect)
             => aspect is SpellAspect.MaxRangeSet or SpellAspect.MinRangeSet;
 
-        /// <summary>What the hnd of this aspect carries for a spell right now: the pin, or the sum.</summary>
+        /// <summary>
+        /// What the hnd of this aspect carries for a spell right now: the pin, or the sum -- the
+        /// spell's live rows and what the fighter carries for every spell (a dream's).
+        /// </summary>
         public static int Total(Fighter who, int spell, SpellAspect aspect, int round)
             => PinsAValue(aspect)
                 ? who.Buffs.FijadoDelHechizo(spell, aspect, round) ?? 0
-                : who.Buffs.DelHechizo(spell, aspect, round);
+                : who.Buffs.DelHechizo(spell, aspect, round) + who.AllSpellsModifier(spell, aspect);
 
-        /// <summary>Whether a live row of this aspect still holds for the spell.</summary>
+        /// <summary>Whether a live row of this aspect, or the fighter's own for every spell, still holds for the spell.</summary>
         public static bool Holds(Fighter who, int spell, SpellAspect aspect, int round)
-            => who.Buffs.TieneDelHechizo(spell, aspect, round);
+            => who.Buffs.TieneDelHechizo(spell, aspect, round) || who.AllSpellsModifier(spell, aspect) != 0;
 
         // ─── What the cast honours ─────────────────────────────────────────────────
 
@@ -101,6 +104,10 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static (int Min, int Max) Range(Fighter caster, int spell, int min, int max, int round)
         {
+            // And what the fighter carries for every spell or for its weapon: a dream's "+1
+            // Portée maximale" and "-1 Portée minimale".
+            max += caster.AllSpellsModifier(spell, SpellAspect.AlcanceMaximo);
+            min -= caster.AllSpellsModifier(spell, SpellAspect.MinRangeDown);
             min -= caster.Buffs.DelHechizo(spell, SpellAspect.MinRangeDown, round);
             max -= caster.Buffs.DelHechizo(spell, SpellAspect.MaxRangeDown, round);
             int? pinnedMin = caster.Buffs.FijadoDelHechizo(spell, SpellAspect.MinRangeSet, round);
@@ -110,21 +117,28 @@ namespace Jondo.Unity.Server.Managers
             return (Math.Max(0, min), Math.Max(0, max));
         }
 
-        /// <summary>Casts per turn: the level's cap plus 290. No cap stays no cap.</summary>
+        /// <summary>Casts per turn: the level's cap plus 290, the spell's and every spell's. No cap stays no cap.</summary>
         public static int CastsPerTurn(Fighter caster, int spell, int levelCap, int round)
-            => levelCap > 0 ? levelCap + caster.Buffs.DelHechizo(spell, SpellAspect.CastsPerTurnUp, round) : 0;
+            => levelCap > 0
+                ? levelCap + caster.Buffs.DelHechizo(spell, SpellAspect.CastsPerTurnUp, round)
+                           + caster.AllSpellsModifier(spell, SpellAspect.CastsPerTurnUp)
+                : 0;
 
-        /// <summary>Casts per target: the level's cap plus 291. No cap stays no cap.</summary>
+        /// <summary>Casts per target: the level's cap plus 291, the spell's and every spell's. No cap stays no cap.</summary>
         public static int CastsPerTarget(Fighter caster, int spell, int levelCap, int round)
-            => levelCap > 0 ? levelCap + caster.Buffs.DelHechizo(spell, SpellAspect.CastsPerTargetUp, round) : 0;
+            => levelCap > 0
+                ? levelCap + caster.Buffs.DelHechizo(spell, SpellAspect.CastsPerTargetUp, round)
+                           + caster.AllSpellsModifier(spell, SpellAspect.CastsPerTargetUp)
+                : 0;
 
         /// <summary>The critical chance a spell's own rows add: 287.</summary>
         public static int Critical(Fighter caster, int spell, int round)
             => caster.Buffs.DelHechizo(spell, SpellAspect.CriticalUp, round);
 
-        /// <summary>The cast interval, less 286.</summary>
+        /// <summary>The cast interval, less 286, the spell's and every spell's.</summary>
         public static int CastInterval(Fighter caster, int spell, int levelInterval, int round)
-            => Math.Max(0, levelInterval - caster.Buffs.DelHechizo(spell, SpellAspect.CastIntervalDown, round));
+            => Math.Max(0, levelInterval - caster.Buffs.DelHechizo(spell, SpellAspect.CastIntervalDown, round)
+                                         - caster.AllSpellsModifier(spell, SpellAspect.CastIntervalDown));
 
         /// <summary>
         /// What the aimed cell has to be: the level's two flags, a 314 switching "occupied" on and a

@@ -66,12 +66,13 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(8, fighter.CurrentAP);
             Assert.Equal(5, fighter.MaxMP);
             Assert.Equal(5, fighter.CurrentMP);
-            Assert.Equal(3, fighter.Range);
+            Assert.Equal(2, fighter.Range);
+            Assert.Equal(1, fighter.EverySpell[SpellAspect.AlcanceMaximo]);
             Assert.Equal(1200, fighter.MaxHP);
             Assert.Equal(1200, fighter.CurrentHP);
             Assert.Equal(105, fighter.DamageDealtPercent);
-            Assert.Equal(1, fighter.CooldownReduction);
-            Assert.Equal(1, fighter.ExtraCastsPerTarget);
+            Assert.Equal(1, fighter.EverySpell[SpellAspect.CastIntervalDown]);
+            Assert.Equal(1, fighter.EverySpell[SpellAspect.CastsPerTargetUp]);
             Assert.Equal(25, fighter.CriticalBonus);
         }
 

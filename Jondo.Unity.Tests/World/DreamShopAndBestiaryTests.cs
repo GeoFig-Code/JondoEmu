@@ -26,7 +26,24 @@ namespace Jondo.Unity.Tests.World
 
         private static List<ProtoField> Fields(byte[] message) => ProtoMessage.Parse(message).Fields.ToList();
 
-        /// <summary>The five offers of the long capture's fountain, byte for byte and in their order.</summary>
+        /// <summary>A reward of the catalogue at its fountain price.</summary>
+        private static Dreams.Reward Offer(int reward)
+            => DreamCatalogue.RewardOf(reward, DreamCatalogue.Fountain.Single(f => f.Reward == reward).Price)!;
+
+        /// <summary>A dream at its first fountain, showing the capture's five offers.</summary>
+        private static (Dreams.Sueno Dream, Dreams.Sala Fountain) AtTheCapturedFountain()
+        {
+            var dream = New();
+            var fountain = dream.Salas.First(r => r.EsFuente);
+            Dreams.Enter(dream, fountain.Id, out _);
+            fountain.Offers = new[] { 65, 149, 103, 89, 124 }.Select(Offer).ToList();
+            return (dream, fountain);
+        }
+
+        /// <summary>
+        /// The five offers of the long capture's fountain, byte for byte and in their order, as
+        /// the catalogue makes them: its rewards 65, 149, 103, 89 and 124 at their prices.
+        /// </summary>
         [Fact]
         public void The_shop_is_the_bytes_of_the_capture()
         {
@@ -38,19 +55,18 @@ namespace Jondo.Unity.Tests.World
                 "080010001a0b0a0720e58d0558cd1a1001200028003802400f48967850595800",
                 "080010001a080a04201958731001200028003802400f48dd73507c5800",
             };
-            Assert.Equal(measured, Dreams.ShopOffers.Select(o => Convert.ToHexString(DreamProtocol.BuildReward(o)).ToLowerInvariant()));
+            Assert.Equal(measured, new[] { 65, 149, 103, 89, 124 }.Select(r =>
+                Convert.ToHexString(DreamProtocol.BuildReward(Offer(r))).ToLowerInvariant()));
         }
 
         /// <summary>
-        /// At a fountain the izg carries what the shop has left, one f6 each; buying takes the
-        /// price off the dream points, adds the bonuses and takes the offer out.
+        /// At a fountain the izg carries what the shop shows, one f6 each; buying takes the
+        /// price off the dream points, adds the bonuses, and another offer takes its place.
         /// </summary>
         [Fact]
         public void The_fountain_sells_what_it_has_for_dream_points()
         {
-            var dream = New();
-            var fountain = dream.Salas.First(r => r.EsFuente);
-            Dreams.Enter(dream, fountain.Id, out _);
+            var (dream, fountain) = AtTheCapturedFountain();
             Assert.Equal(5, Fields(DreamProtocol.BuildDreamState(dream)).Count(f => f.FieldNumber == 6));
 
             // Five dream points for a price of fifteen: nothing.
@@ -64,13 +80,15 @@ namespace Jondo.Unity.Tests.World
             Assert.NotNull(bought);
             Assert.Equal(5, dream.DreamPoints);
             Assert.Contains(dream.Ganados, b => b.Efecto == 115 && b.Valor == 25);
-            Assert.Equal(4, Fields(DreamProtocol.BuildDreamState(dream)).Count(f => f.FieldNumber == 6));
+            Assert.Equal(5, Fields(DreamProtocol.BuildDreamState(dream)).Count(f => f.FieldNumber == 6));
+            Assert.DoesNotContain(fountain.Offers!, o => o.Tag == 124);
 
-            // And by its place in the shop: the first one left, with its two bonuses.
+            // And by its place in the shop: the first one, with its two bonuses.
             dream.DreamPoints = 15;
             Assert.Equal(14798, Dreams.Buy(dream, 0, out _)!.Id);
             Assert.Equal(0, dream.DreamPoints);
-            Assert.Equal(3, dream.Salas.First(r => r.EsFuente).Offers!.Count);
+            Assert.Equal(5, fountain.Offers!.Count);
+            Assert.Equal(new[] { 124, 65 }, dream.RewardsTaken);
         }
 
         /// <summary>
@@ -80,9 +98,7 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_client_buys_by_the_f10()
         {
-            var dream = New();
-            var fountain = dream.Salas.First(r => r.EsFuente);
-            Dreams.Enter(dream, fountain.Id, out _);
+            var (dream, _) = AtTheCapturedFountain();
             dream.DreamPoints = 35;
 
             var bought = Dreams.Buy(dream, 149, out _);

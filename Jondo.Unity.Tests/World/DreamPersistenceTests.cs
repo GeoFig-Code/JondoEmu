@@ -55,7 +55,9 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(room.Miembros, again.Miembros);
             Assert.Equal(room.MapaDeLaSala, again.MapaDeLaSala);
             Assert.Equal(room.Reward!.Id, again.Reward!.Id);
-            Assert.Equal(4, back.Buscar(fountain.Id)!.Offers!.Count);
+            Assert.Equal(fountain.Offers!.Select(o => o.Tag), back.Buscar(fountain.Id)!.Offers!.Select(o => o.Tag));
+            Assert.Equal(dream.RewardsTaken, back.RewardsTaken);
+            Assert.NotEmpty(back.RewardsTaken);
 
             // And it says the same to the client.
             Assert.Equal(DreamProtocol.BuildDreamState(dream), DreamProtocol.BuildDreamState(back));

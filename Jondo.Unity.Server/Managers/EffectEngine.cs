@@ -593,6 +593,12 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>84, «Empuje» (push): the pusher's FLAT addition. The percentage is 158.</summary>
         private const int DanoDeEmpuje = 84;
 
+        /// <summary>158, PushDamagePercent: the pusher's push damage in percent.</summary>
+        private const int DanoDeEmpujePorCiento = 158;
+
+        /// <summary>143, DealtHealMultiplier: the healer's final heals in percent, over 100.</summary>
+        private const int DealtHealMultiplier = 143;
+
         /// <summary>85, «Empuje (fijo)» (fixed push): the receiver's FLAT subtraction.</summary>
         private const int ResistenciaAlEmpuje = 85;
 
@@ -677,6 +683,12 @@ namespace Jondo.Unity.Server.Managers
                                  pushed.Buffs.De(ResistenciaAlEmpuje, round);
 
                 damage = DanoDeColision(pusher.StatLevel, pushDamage, resistance, push.BlockedCells);
+
+                // And the pusher's push damage in percent (158, PushDamagePercent): a dream's
+                // "Carambolage", "+100% de daño de empuje". INFERRED to multiply the whole of it.
+                int pushPercent = pusher.Otra(DanoDeEmpujePorCiento) + pusher.Buffs.De(DanoDeEmpujePorCiento, round);
+                if (pushPercent != 0 && damage > 0)
+                    damage = Math.Max(0, (int)Math.Round(damage * (100 + pushPercent) / 100.0));
 
                 // And if what stopped him was another fighter, that one pays half. Walls do not pay.
                 if (damage > 0 && push.Stop == Jondo.Unity.World.Maps.Zone.PushStop.Fighter)
@@ -5018,6 +5030,12 @@ namespace Jondo.Unity.Server.Managers
             // same percent, PortalNetwork.BonusPercent.
             if (combat != null && combat.PortalBonusPercent != 0)
                 points = Math.Max(0, (int)Math.Round(points * (100 + combat.PortalBonusPercent) / 100.0));
+
+            // The healer's final heals in percent, the client's DealtHealMultiplier (143) -- a
+            // dream's "Aumenta un 20% las curas finales ocasionadas" -- last, as the damage's own.
+            int healMultiplier = 100 + caster.Otra(DealtHealMultiplier) + caster.Buffs.De(DealtHealMultiplier, round);
+            if (healMultiplier != 100)
+                points = Math.Max(0, (int)Math.Round(points * healMultiplier / 100.0));
 
             if (effect.Delay > 0)
             {
