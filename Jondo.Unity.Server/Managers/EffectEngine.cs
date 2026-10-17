@@ -1033,6 +1033,21 @@ namespace Jondo.Unity.Server.Managers
         private const int TeletransportaOIntercambia = 1101;
         private const int RecargaMenos = 1036;
         private const int RecargaFijada = 1045;
+
+        /// <summary>"#1: +#3 de reactivación": a spell's cooldown raised (CharacterAddSpellCooldown).</summary>
+        private const int RecargaMas = 1035;
+
+        /// <summary>
+        /// "Consomme #3 ressource de songe" (ConsumeDreamResource): a dream spell's charge spent.
+        /// Spent once per cast, where the cast is paid (DreamSpells); nothing to put on anybody.
+        /// </summary>
+        public const int ConsumeDreamResource = 4004;
+
+        /// <summary>"Retira el efecto #2" (CharacterDispellRawSpellEffect): the rows of one effect, by its uid.</summary>
+        public const int RetiraElEfecto = 2406;
+
+        /// <summary>"Cambia el bando del objetivo" (ChangeEntityTeam): Domi Reversi, until its next turn.</summary>
+        public const int CambiaDeBando = 3107;
         public const int ActivaLasRunas = 2023;
         public const int ActivaLosGlifos = 1026;
 
@@ -3117,9 +3132,13 @@ namespace Jondo.Unity.Server.Managers
                 if (t == "P") { ownSummonsOnly = true; continue; }
                 if (t == "p") { notOwnSummons = true; continue; }
 
-                // h: the caster's summoner, which is how a bomb's Encendimiento reaches the
-                // Tymador -- the capture's jxm of effect 296 is cast by bomb -9 on the player.
-                if (t == "h") { alInvocador = true; continue; }
+                // h: the caster's side's characters, as CumpleLaMascara reads it -- Terraplenado's
+                // "h,m,d,H,M,D" is everybody but the summons, Consuelo counts "cada luchador
+                // aliado" on "h,m,d", and Agrupación "obliga a todos los luchadores aliados a
+                // desplazarse" on it. It reached only the caster's summoner, which is how a bomb's
+                // Encendimiento reaches the Tymador -- the capture's jxm of effect 296 is cast by
+                // bomb -9 on the player --, and the summoner is still reached: he is one of them.
+                if (t == "h") { alInvocador = true; aJugadoresAliados = true; continue; }
 
                 // THE KINDS, IN TWO CASES. The catalogue pairs a lower-case letter with an
                 // upper-case one and the sheets say which side each is:
@@ -3686,14 +3705,47 @@ namespace Jondo.Unity.Server.Managers
             if (efecto.EffectId == TeletransportaOIntercambia)
                 return TeletransportarConTelefrag(combate, quienLanza, quienLanza, celdaApuntada, hechizo, grado, efecto);
 
-            // A spell's cooldown: cut by #3 (1036), or set to #3 (1045).
-            if (efecto.EffectId == RecargaMenos || efecto.EffectId == RecargaFijada)
+            // A dream spell's charge: spent with the cast, not put on the target.
+            if (efecto.EffectId == ConsumeDreamResource) return null;
+
+            // Turned to the other side until its next turn (see Fighter.TurnsOnTheOtherSide). The
+            // row still goes on the bearer, as any other: it is what the client lists on it.
+            if (efecto.EffectId == CambiaDeBando && sobre != null && sobre.IsAlive)
+                sobre.TurnsOnTheOtherSide = Math.Max(sobre.TurnsOnTheOtherSide, Math.Max(1, efecto.DiceSide));
+
+            // One effect's rows taken off the bearer, by the effect's uid: its #3.
+            if (efecto.EffectId == RetiraElEfecto)
             {
-                if (sobre == null || efecto.DiceNum <= 0) return null;
-                sobre.Recarga.TryGetValue(efecto.DiceNum, out int queda);
-                sobre.Recarga[efecto.DiceNum] = efecto.EffectId == RecargaFijada
-                    ? Math.Max(0, efecto.Value)
-                    : Math.Max(0, queda - Math.Max(0, efecto.Value));
+                if (sobre == null || efecto.Value == 0) return null;
+                if (efecto.Delay > 0) return Pendiente(combate, quienLanza, sobre, hechizo, grado, efecto, ronda);
+                var quitados = sobre.Buffs.QuitarDelEfecto(efecto.Value);
+                if (quitados.Count == 0) return null;
+                return new Outcome
+                {
+                    Sobre = sobre, Efecto = efecto, HechizoOrigen = hechizo, NivelOrigen = grado,
+                    BuffsQuitados = quitados,
+                };
+            }
+
+            // A spell's cooldown: cut by #3 (1036), raised by #3 (1035), or set to #3 (1045). #1 is
+            // the spell; a cut with none is of every spell -- Absolución's "-12 de reactivación" on
+            // all its allies.
+            if (efecto.EffectId == RecargaMenos || efecto.EffectId == RecargaMas || efecto.EffectId == RecargaFijada)
+            {
+                if (sobre == null) return null;
+                if (efecto.DiceNum <= 0)
+                {
+                    if (efecto.EffectId != RecargaMenos || sobre.Recarga.Count == 0) return null;
+                    foreach (int cual in sobre.Recarga.Keys.ToList())
+                        sobre.Recarga[cual] = Math.Max(0, sobre.Recarga[cual] - Math.Max(0, efecto.Value));
+                }
+                else
+                {
+                    sobre.Recarga.TryGetValue(efecto.DiceNum, out int queda);
+                    sobre.Recarga[efecto.DiceNum] = efecto.EffectId == RecargaFijada ? Math.Max(0, efecto.Value)
+                        : efecto.EffectId == RecargaMas ? queda + Math.Max(0, efecto.Value)
+                        : Math.Max(0, queda - Math.Max(0, efecto.Value));
+                }
                 return new Outcome
                 {
                     Sobre = sobre, Caster = quienLanza, Efecto = efecto,

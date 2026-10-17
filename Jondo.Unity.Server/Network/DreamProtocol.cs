@@ -212,15 +212,18 @@ namespace Jondo.Unity.Server.Network
         internal static byte[] BuildBeast(Beast beast) => BeastEntry(beast).Build();
 
         /// <summary>
-        /// A bonus: { f1 { f4: value, f11: effect }, f2: 1 }, or with the value inside an f6 for
-        /// the effects whose text names a spell. The f15 of the izg and the f3 of a room's group.
+        /// A bonus: { f1 { f4: value, f11: effect }, f2: how many }, or with the value inside an f6
+        /// for the effects whose text names a spell. The f15 of the izg and the f3 of a room's group.
         /// </summary>
         private static Pb BonusEntry(Dreams.Bono bono)
         {
             var dentro = Pb.New();
-            if (bono.Anidado) dentro.Msg(6, Pb.New().VarIfNotZero(1, bono.Valor));
+            // A dream passive (792) names its spell and grade: f6 { f2: the spell, f3: 1 }, as the
+            // invitation capture's two do -- 31735 "Muñecas de Sadida" and 31752 "Revolución".
+            if (bono.Efecto == Dreams.PassiveEffect) dentro.Msg(6, Pb.New().Var(2, bono.Valor).Var(3, 1));
+            else if (bono.Anidado) dentro.Msg(6, Pb.New().VarIfNotZero(1, bono.Valor));
             else dentro.Var(4, bono.Valor);
-            return Pb.New().Msg(1, dentro.Var(11, bono.Efecto)).Var(2, 1);
+            return Pb.New().Msg(1, dentro.Var(11, bono.Efecto)).Var(2, bono.Count);
         }
 
         /// <summary>

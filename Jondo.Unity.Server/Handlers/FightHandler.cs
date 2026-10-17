@@ -722,9 +722,12 @@ namespace Jondo.Unity.Server.Handlers
             RellenarLaFicha(playerFighter);
 
             // In a dream's room, the dream's bonuses: they are the dream's and they apply to its
-            // fights, not to the character outside them.
+            // fights, not to the character outside them -- to every one of its people, the owner
+            // and whoever came with him ("Les compagnons et les invocations profiteront également
+            // de ces bonus"); only the owner got them.
             var dream = Managers.Dreams.De(GameState.CharacterId);
-            if (dream != null && dream.SalaActual?.MapaDeLaSala == fight.RoleplayMapId)
+            if (dream?.SalaActual?.MapaDeLaSala != fight.RoleplayMapId) dream = DreamHandler.DreamOf(fight);
+            if (dream != null)
             {
                 var applied = Managers.Dreams.ApplyTo(playerFighter, dream);
                 if (applied.Count > 0)
@@ -754,6 +757,16 @@ namespace Jondo.Unity.Server.Handlers
                 playerFighter.Buffs.PonerActitud(hechizo);
             }
             if (pasivo != 0) playerFighter.Buffs.PonerActitud(pasivo);
+
+            // And the dream's passives, cast on him the same way (see Dreams.PassiveEffect).
+            if (dream != null)
+            {
+                foreach (var bonus in dream.Ganados)
+                {
+                    if (bonus.Efecto == Managers.Dreams.PassiveEffect && bonus.Valor > 0)
+                        playerFighter.Buffs.PonerActitud(bonus.Valor);
+                }
+            }
 
             if (playerFighter.Buffs.Actitudes.Count > 0)
             {
@@ -2150,6 +2163,28 @@ namespace Jondo.Unity.Server.Handlers
                         .Count(f => f != null && !f.IsAlive && !f.EsInvocado && !f.EsIlusion);
         }
 
+        /// <summary>
+        /// A spell's global cooldown, laid on the caster's allies: the client's SpellLevels
+        /// GlobalCooldown, -1 for the spell's own interval and more than 0 for that many rounds.
+        /// Two Fecas cannot both cast Tregua in a row, and a dream spell cast by one of the dream's
+        /// people waits for all of them ("tous les sorts ont un intervalle de relance global").
+        /// An ally already waiting longer keeps his wait. Returns the allies whose wait changed.
+        /// </summary>
+        internal static List<Fighter> ApplyGlobalCooldown(FightInstance fight, Fighter caster, int spell, int globalCooldown, int interval)
+        {
+            var changed = new List<Fighter>();
+            int rounds = globalCooldown < 0 ? interval : globalCooldown;
+            if (spell == 0 || globalCooldown == 0 || rounds <= 0) return changed;
+            foreach (var ally in fight.Aliados(caster.Id))
+            {
+                if (ally == null || ally == caster || ally.IsMonster) continue;
+                if (ally.Recarga.TryGetValue(spell, out int waiting) && waiting >= rounds) continue;
+                ally.Recarga[spell] = rounds;
+                changed.Add(ally);
+            }
+            return changed;
+        }
+
         /// <summary>The cast limits of whoever is casting: a summon's own grade, a player's by level.</summary>
         private static LimitesDelHechizo LimitesDelQueLanza(Fighter caster, int spell)
         {
@@ -3225,6 +3260,17 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // Turned to the other side (Domi Reversi, 3107): this turn is played for the side that
+            // turned it, so not against it, and then it is its own again. Nothing of how the real
+            // server plays it for that side is captured: it plays nothing.
+            if (fighter.TurnsOnTheOtherSide > 0)
+            {
+                fighter.TurnsOnTheOtherSide--;
+                Program.LogDebug($"[Fight] {fighter.Id} plays this turn on the other side: it is passed.");
+                await PassTurnAsync(stream);
+                return;
+            }
+
             // A monster's summon plays itself, as its summoner does: nobody's client plays it.
             // Handed on at once before, whatever it could do.
             var invocador = fighter.EsInvocado ? fight.Buscar(fighter.Invocador) : null;
@@ -4018,7 +4064,25 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
-            var limites = LimitesDelQueLanza(caster, spell);
+            // A dream spell is cast at the grade its reward taught, and only while the dream fought
+            // in holds it -- by any of its people (see DreamSpells). The usual lookup took the
+            // highest grade, one of the spell's own sub-casts: Psst Psst did nothing at its grade
+            // 3 and Palma Ancestral killed outright at its grade 2.
+            Managers.Dreams.Sueno? dreamOfTheSpell = null;
+            int dreamGrade = 0;
+            if (spell != 0 && !caster.EsInvocado && Managers.DreamSpells.IsDreamSpell(spell))
+            {
+                dreamOfTheSpell = DreamHandler.DreamOf(fight);
+                var held = dreamOfTheSpell == null ? null : Managers.DreamSpells.Held(dreamOfTheSpell, spell);
+                if (held == null)
+                {
+                    Program.LogDebug($"[Fight] Dream spell {spell}: the dream of this fight does not hold it.");
+                    return;
+                }
+                dreamGrade = held.Value.Grade;
+            }
+
+            var limites = dreamGrade > 0 ? LimitesDeGrado(spell, dreamGrade) : LimitesDelQueLanza(caster, spell);
             int cost = limites.Cost, spellLevel = limites.LevelId, grade = limites.Grade;
 
             // RANGE, which was not checked anywhere along the live path: anything could be cast at
@@ -4191,6 +4255,23 @@ namespace Jondo.Unity.Server.Handlers
             int intervalo = Math.Max(0, Managers.SpellModifiers.CastInterval(caster, spell, limites.Intervalo, fight.RoundNumber)
                                         - caster.CooldownReduction);
             if (intervalo > 0) caster.Recarga[spell] = intervalo;
+            // Each ally whose wait it set is told, as the cooldown effects tell their bearer (jxc).
+            foreach (var ally in ApplyGlobalCooldown(fight, caster, spell, limites.GlobalCooldown, intervalo))
+            {
+                var hisSession = SessionRegistry.FindByCharacter(ally.Id);
+                if (hisSession != null)
+                    await hisSession.SendAsync(ConnectionProtocol.Push(Op.Jxc,
+                        Network.FightProtocol.BuildCooldowns(ally.Id, RecargasDe(ally))));
+            }
+
+            // A dream spell with charges spends one: its effect 4004, "Consomme #3 ressource de
+            // songe". The dream's bar is told at once, the last charge taking the spell off it.
+            if (dreamOfTheSpell != null && Managers.DreamSpells.HasCharges(spell)
+                && Managers.DreamSpells.Consume(dreamOfTheSpell, spell))
+            {
+                DreamHandler.Persist(dreamOfTheSpell);
+                await DreamHandler.SendStateToOwnerAsync(dreamOfTheSpell);
+            }
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                 Network.FightProtocol.BuildSequenceStart(caster.Id,
@@ -9162,7 +9243,8 @@ namespace Jondo.Unity.Server.Handlers
             int Cost, int LevelId, int Grade,
             int PorTurno, int PorObjetivo, int Intervalo, int EsperaInicial,
             int CriticoPropio, int AlcanceMinimo = 0, int AlcanceMaximo = 0,
-            bool NeedFreeCell = false, bool NeedTakenCell = false, int Flags = 0);
+            bool NeedFreeCell = false, bool NeedTakenCell = false, int Flags = 0,
+            int GlobalCooldown = 0);
 
         /// <summary>
         /// The casting limits, which come from the same SpellLevels columns the cost comes from:
@@ -9192,7 +9274,7 @@ namespace Jondo.Unity.Server.Handlers
                 command.CommandText =
                     "SELECT APCost, Id, Grade, MaxCastPerTurn, MaxCastPerTarget, " +
                     "MinCastInterval, InitialCooldown, CriticalHitProbability, " +
-                    "MinRange, MaxRange, NeedFreeCell, NeedTakenCell, Flags FROM SpellLevels " +
+                    "MinRange, MaxRange, NeedFreeCell, NeedTakenCell, Flags, GlobalCooldown FROM SpellLevels " +
                     "WHERE SpellId = $id AND MinPlayerLevel <= $lvl ORDER BY Grade DESC LIMIT 1;";
                 command.Parameters.AddWithValue("$id", spellId);
                 command.Parameters.AddWithValue("$lvl", nivel);
@@ -9211,7 +9293,8 @@ namespace Jondo.Unity.Server.Handlers
                         reader.IsDBNull(9) ? 0 : (int)reader.GetInt64(9),
                         !reader.IsDBNull(10) && reader.GetInt64(10) != 0,
                         !reader.IsDBNull(11) && reader.GetInt64(11) != 0,
-                        reader.IsDBNull(12) ? 0 : (int)reader.GetInt64(12));
+                        reader.IsDBNull(12) ? 0 : (int)reader.GetInt64(12),
+                        reader.IsDBNull(13) ? 0 : (int)reader.GetInt64(13));
                 }
             }
             catch (Exception ex)
@@ -9245,7 +9328,7 @@ namespace Jondo.Unity.Server.Handlers
                 command.CommandText =
                     "SELECT APCost, Id, Grade, MaxCastPerTurn, MaxCastPerTarget, " +
                     "MinCastInterval, InitialCooldown, CriticalHitProbability, " +
-                    "MinRange, MaxRange, NeedFreeCell, NeedTakenCell, Flags FROM SpellLevels " +
+                    "MinRange, MaxRange, NeedFreeCell, NeedTakenCell, Flags, GlobalCooldown FROM SpellLevels " +
                     "WHERE SpellId = $id AND Grade = $grade LIMIT 1;";
                 command.Parameters.AddWithValue("$id", spellId);
                 command.Parameters.AddWithValue("$grade", exactGrade);
@@ -9264,7 +9347,8 @@ namespace Jondo.Unity.Server.Handlers
                         reader.IsDBNull(9) ? 0 : (int)reader.GetInt64(9),
                         !reader.IsDBNull(10) && reader.GetInt64(10) != 0,
                         !reader.IsDBNull(11) && reader.GetInt64(11) != 0,
-                        reader.IsDBNull(12) ? 0 : (int)reader.GetInt64(12));
+                        reader.IsDBNull(12) ? 0 : (int)reader.GetInt64(12),
+                        reader.IsDBNull(13) ? 0 : (int)reader.GetInt64(13));
                 }
             }
             catch (Exception ex)

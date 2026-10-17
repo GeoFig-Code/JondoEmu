@@ -253,7 +253,7 @@ namespace Jondo.Unity.World.Fights
         /// «alliesAlive», which is only true if whoever asks is on blue. With the side
         /// up front it can no longer be written the wrong way round without noticing.
         /// </remarks>
-        public bool SigueVivo(int equipo) => Bando(equipo).Exists(f => f.IsAlive);
+        public bool SigueVivo(int equipo) => Bando(equipo).Exists(f => f.IsAlive && f.TurnsOnTheOtherSide <= 0);
 
         /// <summary>Whether whoever asks won. Also false for whoever was not there.</summary>
         public bool HaGanado(long fighterId)
@@ -1335,8 +1335,10 @@ namespace Jondo.Unity.World.Fights
             // Summons do NOT count for knowing whether a side is still standing: killing the rival's
             // beacon does not win a fight. When whoever placed them dies they all drop on the
             // spot, so in practice this is a belt on top of the braces.
-            bool team0Alive = Azul.Any(f => f.IsAlive && !f.EsInvocado);
-            bool team1Alive = Rojo.Any(f => f.IsAlive && !f.EsInvocado);
+            // Nor does one turned to the other side (Domi Reversi): "si l'ennemi ciblé est le seul
+            // monstre en vie, vous gagnez automatiquement le combat".
+            bool team0Alive = Azul.Any(f => f.IsAlive && !f.EsInvocado && f.TurnsOnTheOtherSide <= 0);
+            bool team1Alive = Rojo.Any(f => f.IsAlive && !f.EsInvocado && f.TurnsOnTheOtherSide <= 0);
 
             if (!team1Alive)
             {

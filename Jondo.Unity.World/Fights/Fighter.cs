@@ -94,6 +94,13 @@ namespace Jondo.Unity.World.Fights
         public int ExtraCastsPerTarget { get; set; }
 
         /// <summary>
+        /// Turns this fighter plays on the other side: effect 3107, "Cambia el bando del objetivo"
+        /// -- Domi Reversi's, until its next turn. Meanwhile it does not stand for its own side,
+        /// and its turn is not played against the side that turned it.
+        /// </summary>
+        public int TurnsOnTheOtherSide { get; set; }
+
+        /// <summary>
         /// General fixed damage (characteristic 16). It is added at the end of the calculation, after
         /// multiplying by the elemental characteristic and the power.
         /// </summary>

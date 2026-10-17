@@ -358,12 +358,23 @@ namespace Jondo.Unity.Server.Managers
         /// </remarks>
         public sealed class Bono
         {
-            public Bono(int efecto, int valor, bool anidado = false)
+            public Bono(int efecto, int valor, bool anidado = false, int count = 1)
             {
                 Efecto = efecto;
                 Valor = valor;
                 Anidado = anidado;
+                Count = Math.Max(1, count);
             }
+
+            /// <summary>
+            /// How many of it: the f2 the 196 captured bonuses all carry at 1. The dream's spell bar
+            /// writes it beside a spell as "x2" from two on (InfiniteDreamSpellBar.UpdateSpells):
+            /// the charges of a dream spell taught twice, Oblivion's or Domi Reversi's.
+            /// </summary>
+            public int Count { get; }
+
+            /// <summary>The same bonus with another count.</summary>
+            public Bono WithCount(int count) => new Bono(Efecto, Valor, Anidado, count);
 
             /// <summary>The effect catalogue's id: the f11.</summary>
             public int Efecto { get; }
@@ -1456,6 +1467,15 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static void Gain(Sueno dream, Bono bonus)
         {
+            // A dream spell taught again is one more of it: one more charge of Oblivion.
+            if (bonus.Efecto == DreamSpells.LearnEffect)
+            {
+                int held = dream.Ganados.FindIndex(b => b.Efecto == bonus.Efecto && b.Valor == bonus.Valor);
+                if (held < 0) dream.Ganados.Add(bonus);
+                else dream.Ganados[held] = dream.Ganados[held].WithCount(dream.Ganados[held].Count + bonus.Count);
+                return;
+            }
+
             int same = Adds(bonus.Efecto)
                 ? dream.Ganados.FindIndex(b => b.Efecto == bonus.Efecto && b.Anidado == bonus.Anidado)
                 : -1;
@@ -1471,7 +1491,13 @@ namespace Jondo.Unity.Server.Managers
         /// Whether two of an effect add up: not 792, whose value is not a quantity, nor 3405,
         /// the shop's spells, whose "value" is which one.
         /// </summary>
-        private static bool Adds(int effect) => effect != 792 && effect != 3405;
+        private static bool Adds(int effect) => effect != PassiveEffect && effect != DreamSpells.LearnEffect;
+
+        /// <summary>
+        /// A dream passive: its value the passive spell (the client's type 4105), cast on each of
+        /// the dream's fighters before the first turn like an item's attitude.
+        /// </summary>
+        public const int PassiveEffect = 792;
 
         // The effects of the rooms' and the shop's bonuses that a fight knows how to apply.
         private const int ActionPointsEffect = 111;

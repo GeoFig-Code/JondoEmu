@@ -857,18 +857,7 @@ namespace Jondo.Unity.Server.Handlers
 
         internal static DreamPay? PayOf(Jondo.Unity.World.Fights.FightInstance fight, bool won)
         {
-            if (!Dreams.IsDreamMap(fight.RoleplayMapId)) return null;
-
-            // The dream fought in: the first of its people's whose room is on this fight's map.
-            Dreams.Sueno? sueno = null;
-            foreach (var fighter in fight.Azul.Concat(fight.Rojo))
-            {
-                if (fighter.IsMonster) continue;
-                var dream = Dreams.De(fighter.Id);
-                if (dream?.SalaActual?.MapaDeLaSala != fight.RoleplayMapId) continue;
-                sueno = dream;
-                break;
-            }
+            var sueno = DreamOf(fight);
             var sala = sueno?.SalaActual;
             if (sueno == null || sala == null) return null;
 
@@ -881,6 +870,40 @@ namespace Jondo.Unity.Server.Handlers
             }
             return new DreamPay(sueno.Dificultad, sala.Fila, sueno.Bonus, finished, waves,
                                 finished ? Dreams.FragmentsFor(sueno.Dificultad, waves) : 0);
+        }
+
+        /// <summary>
+        /// The dream a fight is fought in: the first of its people's whose room is on the fight's
+        /// map. Null for a fight that is not a dream's.
+        /// </summary>
+        internal static Dreams.Sueno? DreamOf(Jondo.Unity.World.Fights.FightInstance fight)
+        {
+            if (fight == null || !Dreams.IsDreamMap(fight.RoleplayMapId)) return null;
+            foreach (var fighter in fight.Azul.Concat(fight.Rojo))
+            {
+                if (fighter.IsMonster) continue;
+                var dream = Dreams.De(fighter.Id);
+                if (dream?.SalaActual?.MapaDeLaSala == fight.RoleplayMapId) return dream;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// The dream's state to its owner, wherever the change came from -- a charge spent by
+        /// another of its people, say. Only on a dream's map, as <see cref="RefrescarEstadoAsync"/>.
+        /// </summary>
+        internal static async Task SendStateToOwnerAsync(Dreams.Sueno sueno)
+        {
+            var owner = SessionRegistry.FindByCharacter(sueno.CharacterId);
+            if (owner == null || !Dreams.IsDreamMap(owner.State.MapId)) return;
+            try
+            {
+                await owner.SendAsync(ConnectionProtocol.Push(Op.Izg, StateOf(sueno)));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Dreams] The state could not reach {sueno.CharacterId}: {ex.Message}");
+            }
         }
 
         /// <summary>

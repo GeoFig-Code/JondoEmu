@@ -490,6 +490,23 @@ namespace Jondo.Unity.World.Fights
         }
 
         /// <summary>
+        /// The rows one effect of a spell left, by the effect's uid: effect 2406, "Retira el efecto
+        /// #2". Presencia Inquietante takes its own -20 % and +20 % of size off a round later so.
+        /// </summary>
+        public List<Buff> QuitarDelEfecto(int effectUid)
+        {
+            var quitados = _puestos.FindAll(e => e.EffectUid == effectUid);
+            if (effectUid == 0 || quitados.Count == 0) return new List<Buff>();
+            _puestos.RemoveAll(e => e.EffectUid == effectUid);
+            foreach (var quitado in quitados)
+            {
+                if (quitado.Estado == 0 || quitado.EffectId == Jondo.Unity.World.Combat.EffectSupport.DisableState) continue;
+                if (!SigueHabiendo(quitado.Estado)) _estados.Remove(quitado.Estado);
+            }
+            return quitados;
+        }
+
+        /// <summary>
         /// The rows of one grade of a spell, its states and its hooks at that grade: effect 1406.
         /// Aguja takes its own poison's grade 6 off so, and leaves every other grade alone.
         /// </summary>
