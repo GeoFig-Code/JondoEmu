@@ -267,6 +267,7 @@ namespace Jondo.Unity.Server.Managers
             GuildRaidGuardians.Forget(fight.FightId);
             GuildRaidEnclave.Forget(fight.FightId);
             GuildRaidEfedra.Forget(fight.FightId);
+            GuildRaidReina.Forget(fight.FightId);
             if (!fight.Reglas.ReparteBotin) return;
             var raid = RaidOf(characterId);
             if (raid == null) return;

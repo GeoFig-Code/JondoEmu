@@ -47,7 +47,8 @@ namespace Jondo.Unity.Server.Managers
 
         private sealed record Document(IReadOnlyDictionary<long, IReadOnlyList<(int Id, string Name)>> Maps,
                                        IReadOnlyDictionary<long, IReadOnlyList<(string Name, int Cell, int Element)>> Elements,
-                                       IReadOnlyDictionary<long, IReadOnlyList<(string Name, int Cell)>> Objects);
+                                       IReadOnlyDictionary<long, IReadOnlyList<(string Name, int Cell)>> Objects,
+                                       IReadOnlyDictionary<long, (IReadOnlyList<int> Red, IReadOnlyList<int> Blue)> Placement);
 
         private static Document? _document;
         private static readonly object _lock = new();
@@ -75,10 +76,11 @@ namespace Jondo.Unity.Server.Managers
             var maps = new Dictionary<long, IReadOnlyList<(int Id, string Name)>>();
             var elements = new Dictionary<long, IReadOnlyList<(string Name, int Cell, int Element)>>();
             var objects = new Dictionary<long, IReadOnlyList<(string Name, int Cell)>>();
+            var placement = new Dictionary<long, (IReadOnlyList<int>, IReadOnlyList<int>)>();
             if (!File.Exists(path))
             {
                 Console.WriteLine($"[Raids] {Path.GetFileName(path)} is missing: the raids' maps will show none of their hidden pieces.");
-                return new Document(maps, elements, objects);
+                return new Document(maps, elements, objects, placement);
             }
             try
             {
@@ -108,12 +110,21 @@ namespace Jondo.Unity.Server.Managers
                         objects[mapId] = map.Value.EnumerateArray().Select(o => (o[0].GetString() ?? "", o[1].GetInt32())).ToList();
                     }
                 }
+                if (json.RootElement.TryGetProperty("placement", out var marked))
+                {
+                    foreach (var map in marked.EnumerateObject())
+                    {
+                        if (!long.TryParse(map.Name, out long mapId)) continue;
+                        placement[mapId] = (map.Value[0].EnumerateArray().Select(c => c.GetInt32()).ToList(),
+                                            map.Value[1].EnumerateArray().Select(c => c.GetInt32()).ToList());
+                    }
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[Raids] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
-            return new Document(maps, elements, objects);
+            return new Document(maps, elements, objects, placement);
         }
 
         // ─── The data ───────────────────────────────────────────────────────────────────────
@@ -135,6 +146,14 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static IReadOnlyList<(string Name, int Cell)> ObjectsOf(long mapId)
             => Loaded.Objects.TryGetValue(mapId, out var objects) ? objects : Array.Empty<(string, int)>();
+
+        /// <summary>
+        /// The placement a raid map flags for itself, red and blue, or null: the players' side is the
+        /// red -- four red cells and one blue on the guardians' arenas, four and Belladona's one on
+        /// the chess's, one red in the corridor's, two in each of the Reina's jails.
+        /// </summary>
+        public static (IReadOnlyList<int> Red, IReadOnlyList<int> Blue)? PlacementOf(long mapId)
+            => Loaded.Placement.TryGetValue(mapId, out var marked) ? marked : null;
 
         /// <summary>What <see cref="IdOf"/> gives for a name the map has no sequence for: 0 is a uniqueId ("Light_0").</summary>
         public const int None = -1;

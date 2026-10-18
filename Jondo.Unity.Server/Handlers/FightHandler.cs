@@ -100,6 +100,15 @@ namespace Jondo.Unity.Server.Handlers
             // and GeneratePlacementCells would get the map's data for good.
             fight.GeneratePlacementCells(PlacementGround(arenaMapId));
 
+            // A raid arena that flags its own placement is placed as its map says when the group
+            // fits its side: the Reina's two cells in each of her jails, the chess's four, the
+            // Gigalodón's. The guardians' arenas have one blue cell, for the guardian alone.
+            if (Managers.GuildRaidStagings.PlacementOf(arenaMapId) is { } marked
+                && marked.Red.Count > 0 && marked.Blue.Count >= mobGroup.Members.Count)
+            {
+                fight.SetPlacementCells(marked.Red, marked.Blue);
+            }
+
             // The four elementals IN FULL: what the player has put in points plus what the
             // equipment gives. They are worked out up here because initiative needs them whole.
             var playerFighter = BuildPlayerFighter(fight);
@@ -2713,6 +2722,9 @@ namespace Jondo.Unity.Server.Handlers
                     var stream = first.Stream;
                     await CascadaDePasivosAsync(stream, fight);
 
+                    // The Reina's jails: their monsters and Floráculos, the cages closed.
+                    await Managers.GuildRaidReina.OnFightStartedAsync(stream, fight);
+
                     // A fight a raid's enigma says is lost from its start -- a wrong protector of the
                     // Enclave's -- ends here, before the first turn.
                     if (Managers.GuildRaidEnclave.LostFromTheStart(fight))
@@ -4573,6 +4585,38 @@ namespace Jondo.Unity.Server.Handlers
         /// same machinery as the dofus attitudes. That is why the Survival Beacon heals itself and the
         /// Tactical one pushes by itself without a line written about either.
         /// </summary>
+        /// <summary>A creature brought onto the board by a fighter, as its summon, at a cell or the nearest free one.</summary>
+        internal static Task<Fighter> SummonAsync(NetworkStream stream, FightInstance fight, Fighter summoner,
+                                                  int template, int grade, int cell)
+            => InvocarAsync(stream, fight, summoner, template, grade, cell);
+
+        /// <summary>A fighter moved to a cell, or the free one nearest it, as a teleport the board sees.</summary>
+        internal static async Task TeleportNearAsync(FightInstance fight, Fighter who, int cell)
+        {
+            int to = Occupied(fight, cell) ? CasillaLibreCerca(fight, cell) : cell;
+            if (to < 0 || to == who.CellId) return;
+            who.MoverA(to);
+            CarriedFollows(fight, who);
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe, Network.FightProtocol.BuildTeleport(who.Id, who.Id, to)));
+        }
+
+        /// <summary>A fighter healed up to his whole life, as a heal of the author's.</summary>
+        internal static async Task HealFullyAsync(NetworkStream stream, FightInstance fight, Fighter who, Fighter author)
+        {
+            int missing = who.MaxHP - who.CurrentHP;
+            if (missing <= 0 || !who.IsAlive) return;
+            who.CurrentHP = who.MaxHP;
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe, Network.FightProtocol.BuildHeal(author.Id, missing, who.Id)));
+            await RefrescarLaVidaAsync(stream, fight, who, author);
+        }
+
+        /// <summary>What a spell left on a fighter, taken off, each row's end told to the board.</summary>
+        internal static async Task RemoveSpellRowsAsync(FightInstance fight, Fighter who, int spell)
+        {
+            foreach (var row in who.Buffs.QuitarDelHechizo(spell))
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jya, Network.FightProtocol.BuildBuffGone(who.Id, row.Numero)));
+        }
+
         private static async Task<Fighter> InvocarAsync(NetworkStream stream, FightInstance fight,
                                                Fighter quienInvoca, int plantilla, int grado,
                                                int celdaApuntada,
@@ -7022,10 +7066,13 @@ namespace Jondo.Unity.Server.Handlers
         /// A staging of the fight's map played, by its name, in a sequence of its own (jwe 2192). False
         /// when the map has none so called.
         /// </summary>
-        internal static async Task<bool> PlayStagingAsync(FightInstance fight, Fighter author, string name)
+        internal static Task<bool> PlayStagingAsync(FightInstance fight, Fighter author, string name)
+            => PlayStagingAsync(fight, author, Managers.GuildRaidStagings.IdOf(fight.MapId, name));
+
+        /// <summary>The same by the staging's uniqueId on the fight's map.</summary>
+        internal static async Task<bool> PlayStagingAsync(FightInstance fight, Fighter author, int staging)
         {
-            int staging = Managers.GuildRaidStagings.IdOf(fight.MapId, name);
-            if (staging == Managers.GuildRaidStagings.None || author == null) return false;
+            if (staging < 0 || author == null || !Managers.GuildRaidStagings.Of(fight.MapId).Any(s => s.Id == staging)) return false;
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                 Network.FightProtocol.BuildSequenceStart(author.Id, Network.FightProtocol.ActionSequence)));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
@@ -8214,6 +8261,9 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             if (muerto != null) await DispararLosDeUnaMuerteAsync(stream, fight, muerto);
+
+            // The last of the Reina's jail monsters opens her jails.
+            await Managers.GuildRaidReina.OnDeathAsync(stream, fight, muerto);
 
             if (muerto == null || muerto.EsInvocado) return;
 
