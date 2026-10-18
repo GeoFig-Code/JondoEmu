@@ -251,6 +251,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The seven marketplaces — resources, equipment, consumables, runes, creatures, souls and
   cosmetics — across **40 counters**, the breeders' village's four among them: browse, buy lots of 1, 10, 100 or 1000, sell for the 2 % tax,
   take a lot back, change its price, the sales history
+- ✅ Item tooltips show the average price items sell for in the marketplaces
 - ❌ Merchant mode: the 3.6 client has no screen for it
 
 ### 💬 Social

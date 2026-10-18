@@ -373,6 +373,14 @@ namespace Jondo.Unity.Tests.Economy
             await Buy(buyer, offer.Id, 2200, 10);
             Assert.Equal(20, Bag(buyer).Single().Quantity);
             Assert.Equal(new long[] { 198, 0, 21760, 0 }, MarketplaceListings.OffersOf(House(RuneHouse), 1523).Single().Prices);
+
+            // And the item tooltips' average prices (ivi, the answer to ivp) have the rune at
+            // what it sells for, as the seller's window does.
+            var ivi = ProtoMessage.Parse(MarketplaceHandler.BuildAveragePrices()).Fields
+                .Select(f => ProtoMessage.Parse(f.BytesValue).Fields).ToList();
+            var rune = Assert.Single(ivi, e => e.Single(x => x.FieldNumber == 1).VarIntValue == 1523);
+            Assert.Equal(MarketplaceListings.AveragePrice(1523), rune.Single(x => x.FieldNumber == 2).VarIntValue);
+            Assert.True(MarketplaceListings.AveragePrice(1523) > 0);
         }
 
         /// <summary>Too few kamas buys nothing, and a price no longer on offer neither.</summary>

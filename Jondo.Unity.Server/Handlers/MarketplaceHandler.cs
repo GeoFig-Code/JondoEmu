@@ -262,6 +262,23 @@ namespace Jondo.Unity.Server.Handlers
                 gid, MarketplaceListings.AveragePrice(gid), MarketplaceListings.LowestPrices(house, gid)));
         }
 
+        /// <summary>
+        /// ivp: the average prices the item tooltips show, asked on entering the world and again
+        /// when the client's copy is old. ivi { f2 [ { 1 item, 2 average } ] } -- the real
+        /// server's answer to every one of the captures' 140 ivp. The client replaces its whole
+        /// table with it (elx), so an item missing from it reads «average price unavailable».
+        /// </summary>
+        public static Task AveragePricesAsync(NetworkStream stream)
+            => Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push("ivi", BuildAveragePrices()));
+
+        internal static byte[] BuildAveragePrices()
+        {
+            var ivi = Pb.New();
+            foreach (var (gid, price) in MarketplaceListings.AveragePrices())
+                ivi.Msg(2, Pb.New().Var(1, gid).Var(2, price));
+            return ivi.Build();
+        }
+
         // ─── Buying ─────────────────────────────────────────────────────────────────────────
 
         /// <summary>

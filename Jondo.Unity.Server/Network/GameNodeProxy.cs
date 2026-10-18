@@ -586,6 +586,13 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr == Op.Uri("kqd")) await FriendsHandler.UnblockAsync(stream, payload);
                 else if (payloadStr == Op.Uri(Op.Kpa)) await FriendsHandler.IgnoreAsync(stream, payload);
                 else if (payloadStr == Op.Uri("kpl")) await FriendsHandler.UnignoreAsync(stream, payload);
+                // The item tooltips' average prices.
+                else if (payloadStr == Op.Uri("ivp")) await MarketplaceHandler.AveragePricesAsync(stream);
+                else if (payloadStr == Op.Uri("hom"))
+                {
+                    // The spouse's information, asked with the contact lists: nobody here is
+                    // married, and the real server answers nothing to a player who is not.
+                }
                 else if (payloadStr == Op.Uri("kon"))
                 {
                     // The window's own setting, sent as it opens. The real server answers nothing.

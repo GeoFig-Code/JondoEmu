@@ -44,7 +44,7 @@ in the 756 captures and the client's senders in Ghidra.
 | `hir` | the zaap trip's cost to a map, asked on arrival and by the autopilot | `him` { map, kamas } | **fixed** |
 | `knm`, `kno`, `kny` | the contact lists, asked on entering the world and when the window opens | `kqg` (mutual friends), `koj` (contacts), `koi` (blocked) | **fixed**, with adding (`koq`, `kok`, `kpa`) and removing (`kog`, `kqd`, `kpl`): see `FriendsHandler` |
 | `kon` | the friends window's setting { f2 }, as it opens | nothing | **fixed** (taken silently) |
-| `hom` | the account's statistics | `ivi`, ~9,700 id/value pairs | missing |
+| `hom` | the spouse's information (its answer, `hol`, has the spouse's name, level, look and guild) | nothing, to a player who is not married | **fixed** (taken silently) |
 | `ido` | starting a quest from an item or a poster (the "se busca" posters' 1563-1565) | `kld` | missing |
 | `idv` | a quest objective validated { objective, -1 }, sometimes moving the player | the map change | missing |
 | `jwm`, `jth` | the shop: claiming purchases and gifts | `jwj`, items | missing |
@@ -54,7 +54,7 @@ in the 756 captures and the client's senders in Ghidra.
 | `kmr` | world entry | `kml`, `kmp`, `ktz`, `iom` | not needed (sent unasked) |
 | `krv` | world entry, with a request id | `mgz`, `kqp` | left unanswered on purpose |
 | `lqf` | the map's load time in ms, after `lqc` | nothing | not needed |
-| `ivp` | a periodic notice (the client's hour loop) | nothing | not needed |
+| `ivp` | the average prices of the item tooltips, on entering the world and when the client's copy is old | `ivi` { f2 [ item, price ] } (~9,700 items), to all 140 of the captures' `ivp` | **fixed**: the marketplaces' sales |
 | `jlh` | in the guild window | nothing | unknown, no answer expected |
 | `med`, `mdw`, `mdt` | in the alliance window (no capture) | unknown | unknown |
 | `kjw`, `jaq` | no capture | unknown | unknown |

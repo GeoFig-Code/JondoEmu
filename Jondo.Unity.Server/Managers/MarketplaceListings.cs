@@ -378,6 +378,36 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
+        /// <summary>
+        /// The average price of one of every item that has ever sold here, reckoned as
+        /// <see cref="AveragePrice"/> does it: what the client's item tooltips show.
+        /// </summary>
+        public static IReadOnlyList<(int Gid, long Price)> AveragePrices()
+        {
+            var prices = new List<(int, long)>();
+            try
+            {
+                lock (Gate)
+                {
+                    using var connection = Open();
+                    using var command = connection.CreateCommand();
+                    command.CommandText = "SELECT Gid, SUM(Price), SUM(Quantity) FROM MarketplaceSales GROUP BY Gid ORDER BY Gid;";
+                    using var reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        if (reader.IsDBNull(1) || reader.IsDBNull(2)) continue;
+                        long price = reader.GetInt64(1), quantity = reader.GetInt64(2);
+                        if (quantity > 0 && price / quantity > 0) prices.Add((reader.GetInt32(0), price / quantity));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Marketplaces] Could not read the average prices: {ex.Message}");
+            }
+            return prices;
+        }
+
         // ─── Selling ────────────────────────────────────────────────────────────────────────
 
         /// <summary>The lots an account has on sale in a marketplace, oldest first.</summary>
