@@ -62,6 +62,7 @@ namespace Jondo.Unity.Server.Handlers
             GameState.CurrentFightMobId = mobGroup.MobId;
 
             long fightId = System.Threading.Interlocked.Increment(ref _nextFightId);
+            if (arenaMapId <= 0) arenaMapId = Managers.GuildRaidGuardians.ArenaOf(mobGroup, mapId);
             if (arenaMapId <= 0) arenaMapId = MapManager.ResolveArenaMapId(mapId);
             var fight = new FightInstance(fightId, mapId, arenaMapId);
 
@@ -3274,6 +3275,7 @@ namespace Jondo.Unity.Server.Handlers
             await ReconciliarLosMurosAsync(stream, fight, fireOnBirth: false);
             await QuitarLosGlifosCaducadosAsync(fight, fighter);
             await DispararLosGlifosAsync(stream, fight, fighter, alPisar: false);
+            if (await EffectEndedTheFightAsync(stream, fight)) return;
 
             // AND IF IT KILLED HIM, THE TURN STILL HAS TO MOVE ON. This returned bare, and a
             // bare return from here leaves the fight dead in the water: nobody starts the clock,
@@ -3751,7 +3753,24 @@ namespace Jondo.Unity.Server.Handlers
 
             await ReconciliarLosMurosAsync(stream, fight);
             await DispararLosGlifosAsync(stream, fight, walker, alPisar: true, skipWalls: true);
+            if (await EffectEndedTheFightAsync(stream, fight)) return;
             if (!walker.IsAlive) await CheckFightOverAsync(stream, fight);
+        }
+
+        /// <summary>
+        /// An effect of the action just over ended the fight (3402): the side it was not won for
+        /// falls at once, as giving up does. True when it did.
+        /// </summary>
+        internal static async Task<bool> EffectEndedTheFightAsync(NetworkStream stream, FightInstance fight)
+        {
+            int winner = fight.WonByEffect;
+            if (winner < 0) return false;
+            fight.WonByEffect = -1;
+            if (fight.FinPendiente != 0) return true;
+            var player = TodosLosCombatientes(fight).FirstOrDefault(f => f != null && !f.IsMonster && !f.EsInvocado);
+            Program.LogDebug($"[Fight] An effect ends fight #{fight.FightId}, won by team {winner}.");
+            await SideFallsAsync(stream, fight, players: player == null || player.TeamId != winner);
+            return true;
         }
 
         /// <summary>
@@ -4503,6 +4522,7 @@ namespace Jondo.Unity.Server.Handlers
             Program.LogDebug($"[Fight] Casts spell {spell} (grade {spellLevel}) at cell " +
                              $"{cell} for {cost} AP; {caster.CurrentAP} left.");
 
+            if (await EffectEndedTheFightAsync(stream, fight)) return;
             if (await CheckFightOverAsync(stream, fight, cierre)) return;
 
             // A chess piece's move: on its cell, it is placed (GuildRaidEfedra).
@@ -6313,6 +6333,7 @@ namespace Jondo.Unity.Server.Handlers
                     Disparo(c.Caster ?? quienLanza, Managers.EffectEngine.AlPonerEscudo, c.Sobre);
                 }
                 if (c.AcabaElTurno) fight.EndTurnRequested = true;
+                if (c.EndsTheFight && fight.WonByEffect < 0) fight.WonByEffect = c.Efecto.DiceNum;
 
                 // A steal hands its points over as a row of its own on the caster (Steals), which
                 // the points branch above has already put in his hand.
@@ -8260,6 +8281,7 @@ namespace Jondo.Unity.Server.Handlers
                 Program.LogDebug($"[AI] {monster.Id} casts {action.Spell.Id} at {action.Target.Id} " +
                                  $"(cell {action.TargetCell}) from {monster.CellId}, score {action.Score:0.0}.");
                 await MonsterCastAsync(stream, fight, monster, action.Spell, action.Target, action.TargetCell);
+                if (await EffectEndedTheFightAsync(stream, fight)) return;
                 // What the cast changed -- a creature summoned, someone pushed or dead -- is on the
                 // board the next step is weighed on.
                 board = BoardOf(fight);
@@ -8500,6 +8522,7 @@ namespace Jondo.Unity.Server.Handlers
             await ReconciliarLosMurosAsync(stream, fight);
             await DispararLosGlifosAsync(stream, fight, monster, alPisar: true,
                                          skipWalls: true);
+            if (await EffectEndedTheFightAsync(stream, fight)) return false;
             if (!monster.IsAlive)
             {
                 await EndMonsterTurnAsync(stream, fight);

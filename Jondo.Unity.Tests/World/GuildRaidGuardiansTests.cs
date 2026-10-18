@@ -90,11 +90,12 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
-        /// Any companion and any glyph is the right one: the "== N" and "&lt; 5" checks go through,
-        /// once a fight each; the "!= N" and "&gt; 4" ones never, so the fight is never lost to them.
+        /// With nothing to go by -- no raid behind the fight --, any companion and any glyph is the
+        /// right one: the "== N" and "&lt; 5" checks go through, once a fight each; the "!= N" and
+        /// "&gt; 4" ones never. GuildRaidGuardianChecksTests has what a raid makes of them.
         /// </summary>
         [Fact]
-        public void Any_companion_and_any_glyph_is_the_right_one()
+        public void With_nothing_to_go_by_the_freeing_branch_goes_through()
         {
             Assert.True(GuildRaidGuardians.CheckVerdict(32101));      // mob == 2
             Assert.False(GuildRaidGuardians.CheckVerdict(32105));     // mob != 2
@@ -152,6 +153,73 @@ namespace Jondo.Unity.Tests.World
             {
                 GuildRaidGuardians.Forget(fight.FightId);
             }
+        }
+
+        /// <summary>
+        /// With the Enclave's statue a Trilipán (2), a Muguetégida falling first is the wrong one: its
+        /// "mob != 4" ends the fight for the defenders (3402) and the Vigilante stays invulnerable.
+        /// The Trilipán falling first frees it, and nothing ends.
+        /// </summary>
+        [Fact]
+        public async Task The_wrong_companion_first_ends_the_vigilante_s_fight()
+        {
+            var guild = GuildStore.Create(7001, "Jondo", 165, 8, 16744448, 9476018);
+            GuildStore.SpendGuildKamas(guild.Id, -1000);
+            var raid = await GuildRaidManager.LaunchAsync(GuildRaidBoard.Purchase(7001, Raids.EternalGardens).Raid);
+            raid.Add(7001);
+            raid.Set(GuildRaidEnclave.StatueVariable, 2);
+
+            foreach (var (first, frees) in new[] { (8287, false), (8285, true) })
+            {
+                var fight = new FightInstance(first, 1);
+                fight.AddPlayer(new Fighter { Id = 7001, TeamId = 0, CellId = 200, MaxHP = 5000, CurrentHP = 5000 });
+                var vigilante = new Fighter { Id = -1, TeamId = 1, CellId = 300, MaxHP = 20000, CurrentHP = 20000, IsMonster = true,
+                                              MonsterId = GuildRaidGuardians.Vigilante };
+                vigilante.Buffs.PonerEstado(GuildRaidGuardians.Invulnerable);
+                var fallen = new Fighter { Id = -2, TeamId = 1, CellId = 301, MaxHP = 6000, CurrentHP = 6000, IsMonster = true, MonsterId = first };
+                fight.AddMonster(vigilante);
+                fight.AddMonster(fallen);
+                GuildRaidGuardians.OnFightCreated(fight);
+                try
+                {
+                    fallen.CurrentHP = 0;
+                    await FightHandler.CaenSusInvocadosAsync(null, fight, fallen);
+                    Assert.Equal(!frees, vigilante.Buffs.TieneEstado(GuildRaidGuardians.Invulnerable));
+                    Assert.Equal(frees ? -1 : FightInstance.Rojos, fight.WonByEffect);
+                }
+                finally
+                {
+                    GuildRaidGuardians.Forget(fight.FightId);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The wrong branches' 3402 ends the fight for the defenders: the Guardián's "o_hint_1 &gt; 4"
+        /// on the player who stepped, the Vigilante's EndFight on the attacker casting it; and once the
+        /// action is over the players' side falls.
+        /// </summary>
+        [Fact]
+        public async Task The_wrong_branches_end_the_fight_for_the_defenders()
+        {
+            var fight = new FightInstance(23, 1);
+            var player = new Fighter { Id = 7001, TeamId = 0, CellId = 200, MaxHP = 5000, CurrentHP = 5000 };
+            fight.AddPlayer(player);
+            var guardian = new Fighter { Id = -1, TeamId = 1, CellId = 300, MaxHP = 20000, CurrentHP = 20000, IsMonster = true,
+                                         MonsterId = GuildRaidGuardians.Guardian };
+            fight.AddMonster(guardian);
+
+            var wrongGlyph = EffectEngine.Resolver(fight, guardian, 32068, 1, player, EffectEngine.AlLanzar, 1, celdaApuntada: player.CellId);
+            Assert.Contains(wrongGlyph, o => o.EndsTheFight && o.Efecto.DiceNum == FightInstance.Rojos);
+            var endFight = EffectEngine.Resolver(fight, player, 32110, 1, player, EffectEngine.AlLanzar, 1, celdaApuntada: player.CellId);
+            Assert.Contains(endFight, o => o.EndsTheFight && o.Sobre == player);
+
+            Assert.False(await FightHandler.EffectEndedTheFightAsync(null, fight));
+            fight.WonByEffect = FightInstance.Rojos;
+            Assert.True(await FightHandler.EffectEndedTheFightAsync(null, fight));
+            Assert.False(player.IsAlive);
+            Assert.True(guardian.IsAlive);
+            Assert.Equal(-1, fight.WonByEffect);
         }
 
         /// <summary>

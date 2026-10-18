@@ -58,15 +58,19 @@ namespace Jondo.Unity.Server.Managers
     ///   The Guardián carries "Check délock" (32090) and lays its eight "Glyphe Indice" (o_hint_1
     ///   to 8). A step on one casts its "o_hint_N &lt; 5" -- one more on the counter of states,
     ///   that glyph gone -- or its "o_hint_N &gt; 4", which ends the fight. The fourth step frees
-    ///   it and takes the other glyphs away. Where they go is the server's: spread over the board.
+    ///   it and takes the other glyphs away.
     ///
-    /// Which companion and which glyphs are right is, in the guides, what the Enclave's and the
-    /// Obra's enigmas showed -- the Guardián's glyphs, "pour chaque glyphe correspond un objet",
-    /// those of the objects whose maps had a flower; the Vigilante's companion, the kind of the
-    /// statue the Enclave raises (GuildRaidEnclave.StatueVariable). Until that is wired, any
-    /// companion and any glyph is right (his call, 2026-10-10): the "== N" and "&lt; 5" versions go
-    /// through, the others never.
-    /// A glyph's check goes to every attacker on the board; it counts once.
+    /// Which companion and which glyphs are right is what the Enclave's and the Obra's enigmas
+    /// showed (DPLN). "mob" is the kind of the statue the Enclave raised
+    /// (GuildRaidEnclave.StatueVariable, numbered as the checks number the companions): the first
+    /// companion to fall frees the Vigilante if it is of that kind, and ends the fight otherwise.
+    /// The Guardián's glyphs, "pour chaque glyphe correspond un objet (placé à côté)": its arena is
+    /// the Enclave's centre's twin that has the pedestals' eight objects drawn on it
+    /// (<see cref="ArenaOf"/>), a glyph is laid beside each, and "o_hint_N" is below 5 for the
+    /// four objects whose maps had the Obra's flowers. Where the data leaves a raid nothing to go
+    /// by -- no statue, no objects --, the right branch goes through, as before.
+    /// A glyph's check goes to every attacker on the board; it counts once. The wrong branches end
+    /// the fight with the client's 3402, lost by the players (FightHandler.EffectEndedTheFightAsync).
     /// </remarks>
     public static class GuildRaidGuardians
     {
@@ -249,6 +253,19 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
+        /// <summary>
+        /// The arena of a fight against the Guardián: the map of its zone with the pedestals' eight
+        /// objects drawn on it, one beside each of its glyphs. 0 for any other group, or none such.
+        /// </summary>
+        public static long ArenaOf(MobSpawnManager.MobGroup group, long mapId)
+        {
+            if (group?.Members.Any(m => m.Monster.Id == Guardian) != true) return 0;
+            int objects = GuildRaidMonochrome.WorkOf(Raids.Of(Raids.EternalGardens))?.Objects.Count ?? 0;
+            if (objects == 0) return 0;
+            return DatabaseManager.MapsOfSubArea(GuildRaidManager.SubAreaOf(mapId)).OrderBy(m => m)
+                                  .FirstOrDefault(m => GuildRaidStagings.ObjectsOf(m).Select(o => o.Name).Distinct().Count() >= objects);
+        }
+
         /// <summary>Draws the raid's colour, which the Centinela's obelisks and spells follow.</summary>
         public static int DrawColour(RaidInstance raid, Random dice)
         {
@@ -296,16 +313,50 @@ namespace Jondo.Unity.Server.Managers
             return chosen;
         }
 
-        /// <summary>The fight has begun: the Guardián lays its eight glyphs.</summary>
+        /// <summary>
+        /// The fight has begun: the Guardián lays its eight glyphs -- each beside one of the arena's
+        /// objects, the object o_hint_N stands for, or spread over the board where it has none.
+        /// </summary>
         internal static async Task OnFightStartedAsync(NetworkStream stream, FightInstance fight)
         {
             var guardian = fight?.Rojo.FirstOrDefault(m => m.IsAlive && m.IsMonster && m.MonsterId == Guardian);
             if (guardian == null) return;
             var taken = new HashSet<int>(fight.Azul.Concat(fight.Rojo).Where(f => f.IsAlive).Select(f => f.CellId));
-            var cells = GlyphCells(MapManager.GetFightWalkable(fight.MapId), taken, GlyphSpells.Count, Random.Shared);
+            var walkable = MapManager.GetFightWalkable(fight.MapId);
+            var objects = GuildRaidStagings.ObjectsOf(fight.MapId).GroupBy(o => o.Name).Select(g => g.First())
+                                           .OrderBy(o => o.Name, StringComparer.Ordinal).Take(GlyphSpells.Count).ToList();
+            List<int> cells;
+            if (objects.Count == GlyphSpells.Count)
+            {
+                cells = BesideCells(walkable, taken, objects.Select(o => o.Cell).ToList());
+                _hints[fight.FightId] = objects.Select(o => o.Name).ToList();
+            }
+            else cells = GlyphCells(walkable, taken, GlyphSpells.Count, Random.Shared);
             for (int i = 0; i < cells.Count; i++)
                 await Handlers.FightHandler.CastAtAsync(stream, fight, guardian, GlyphSpells[i], 1, cells[i]);
-            Program.LogDebug($"[Raids] The Guardián lays its {cells.Count} glyphs on {string.Join(", ", cells)}.");
+            Program.LogDebug($"[Raids] The Guardián lays its {cells.Count} glyphs on {string.Join(", ", cells)}" +
+                             (objects.Count == GlyphSpells.Count ? $", beside {string.Join(", ", objects.Select(o => o.Name))}." : "."));
+        }
+
+        /// <summary>The object each of a fight's glyphs stands beside, by o_hint_N - 1.</summary>
+        private static readonly ConcurrentDictionary<long, IReadOnlyList<string>> _hints = new();
+
+        /// <summary>
+        /// A free cell beside each object, in order: the walkable cell nearest it that no one stands
+        /// on and no glyph before took.
+        /// </summary>
+        public static List<int> BesideCells(IEnumerable<int> walkable, ISet<int> taken, IReadOnlyList<int> objects)
+        {
+            var free = (walkable ?? Enumerable.Empty<int>()).Where(c => !taken.Contains(c)).OrderBy(c => c).ToList();
+            var chosen = new List<int>();
+            foreach (int cell in objects)
+            {
+                var near = free.Where(c => !chosen.Contains(c))
+                               .OrderBy(c => Jondo.Unity.World.Maps.MapGeometry.Distance(c, cell)).ThenBy(c => c)
+                               .Cast<int?>().FirstOrDefault();
+                if (near is int beside) chosen.Add(beside);
+            }
+            return chosen;
         }
 
         /// <summary>
@@ -324,19 +375,59 @@ namespace Jondo.Unity.Server.Managers
         private static readonly ConcurrentDictionary<(long Fight, int Check), byte> _counted = new();
 
         /// <summary>
-        /// Whether a check's cast goes through: a failing one never, a passing one once a fight --
-        /// a glyph's goes to every attacker on the board and is one step all the same.
+        /// Whether a check's cast goes through: the one whose condition holds for the fight's raid --
+        /// "mob == 2" with the Enclave's statue of kind 2, "o_hint_3 &lt; 5" with the third glyph's
+        /// object a flower's --, once a fight: a glyph's goes to every attacker on the board and is
+        /// one step all the same. With nothing to go by, the freeing branch goes through.
         /// </summary>
         public static bool Passes(FightInstance fight, int check)
         {
-            if (CheckVerdict(check) != true) return false;
+            bool? branch = CheckVerdict(check);
+            if (branch == null) return false;
+            if (!(Holds(fight, check) ?? branch.Value)) return false;
             return fight == null || _counted.TryAdd((fight.FightId, check), 0);
         }
 
-        /// <summary>A fight is over: its counted checks go.</summary>
+        /// <summary>
+        /// Whether a check's condition holds for the fight's raid, by its admin name; null when the
+        /// raid has nothing to say -- no statue raised, no objects beside the glyphs, no flowers.
+        /// </summary>
+        public static bool? Holds(FightInstance fight, int check) => Holds(RaidOf(fight), fight?.FightId ?? 0, check);
+
+        /// <summary>The same, for a raid and a fight by its id (and for the tests).</summary>
+        internal static bool? Holds(RaidInstance raid, long fightId, int check)
+        {
+            if (raid == null) return null;
+            string admin = AdminNameOf(check);
+            var mob = Regex.Match(admin, @"^mob\s*(==|!=)\s*(\d+)");
+            if (mob.Success)
+            {
+                int statue = (int)raid.Get(GuildRaidEnclave.StatueVariable);
+                if (statue == 0) return null;
+                bool same = statue == int.Parse(mob.Groups[2].Value);
+                return mob.Groups[1].Value == "==" ? same : !same;
+            }
+            var hint = Regex.Match(admin, @"^o_hint_(\d+)\s*(<|>)");
+            if (hint.Success)
+            {
+                int n = int.Parse(hint.Groups[1].Value);
+                var flowers = GuildRaidMonochrome.FlowerObjects(raid);
+                if (!_hints.TryGetValue(fightId, out var objects) || n < 1 || n > objects.Count || flowers.Count == 0)
+                    return null;
+                bool right = flowers.Contains(objects[n - 1]);
+                return hint.Groups[2].Value == "<" ? right : !right;
+            }
+            return null;
+        }
+
+        /// <summary>The glyphs of a fight laid as given: o_hint_N beside objects[N - 1] (for the tests).</summary>
+        internal static void SetHints(long fightId, IReadOnlyList<string> objects) => _hints[fightId] = objects;
+
+        /// <summary>A fight is over: its counted checks and its glyphs' objects go.</summary>
         public static void Forget(long fightId)
         {
             foreach (var key in _counted.Keys.Where(k => k.Fight == fightId).ToList()) _counted.TryRemove(key, out _);
+            _hints.TryRemove(fightId, out _);
         }
 
         private static readonly ConcurrentDictionary<int, string> _adminNames = new();
@@ -403,10 +494,15 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The colour of the raid a fight is fought in, or 0.</summary>
         public static int ColourOf(FightInstance fight)
         {
-            if (fight == null) return 0;
-            var player = fight.Azul.Concat(fight.Rojo).FirstOrDefault(f => !f.IsMonster && !f.EsInvocado);
-            var raid = player == null ? null : GuildRaidManager.RaidOf(player.Id);
+            var raid = RaidOf(fight);
             return raid == null ? 0 : (int)raid.Get(ColourVariable);
+        }
+
+        /// <summary>The raid a fight is fought in, by its first player, or null.</summary>
+        private static RaidInstance RaidOf(FightInstance fight)
+        {
+            var player = fight?.Azul.Concat(fight.Rojo).FirstOrDefault(f => !f.IsMonster && !f.EsInvocado);
+            return player == null ? null : GuildRaidManager.RaidOf(player.Id);
         }
     }
 }

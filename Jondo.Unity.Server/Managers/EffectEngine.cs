@@ -38,6 +38,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The caster's turn ends once this cast has gone out (effect 1031).</summary>
         public bool AcabaElTurno { get; init; }
 
+        /// <summary>The fight ends once this action is over, won by the team its die names (effect 3402).</summary>
+        public bool EndsTheFight { get; init; }
+
         /// <summary>
         /// Whether this row comes out of a spell's CRITICAL list: the jxm carries it as its f9.
         /// A critical cast runs the whole chain on the critical lists, and a spell with none
@@ -4104,6 +4107,18 @@ namespace Jondo.Unity.Server.Managers
                     Sobre = sobre, Caster = quienLanza, Efecto = efecto,
                     HechizoOrigen = hechizo, NivelOrigen = grado,
                     Lanza = true, CasillaDesde = deDonde, CasillaHasta = celdaApuntada,
+                };
+            }
+
+            if (efecto.EffectId == EffectSupport.EndsTheFight)
+            {
+                // Nothing on the fighter either: the fight ends once the action that set it off is
+                // over (FightHandler.EffectEndedTheFightAsync).
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    EndsTheFight = true,
                 };
             }
 

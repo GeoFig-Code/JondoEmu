@@ -112,6 +112,13 @@ namespace Jondo.Unity.World.Combat
         public const int EndsTheTurn = 1031;
 
         /// <summary>
+        /// 3402, the fight ends -- an ActionId of the client's, in the data only on the Santuario
+        /// guardians' wrong branches (the Vigilante's wrong companion, the Guardián's wrong glyph),
+        /// both "n1": won by team 1, the defenders, as the guide has those fights lost.
+        /// </summary>
+        public const int EndsTheFight = 3402;
+
+        /// <summary>
         /// 2027, "Toma el control de la entidad": a row on a summon that makes it its owner's to
         /// play (Fighter.PlaysOnItsOwn). The Steamer's Evolución III lays it on his turrets,
         /// the Sram's Doble on the double, Dominio de Invocaciones on the summons -- row 248585

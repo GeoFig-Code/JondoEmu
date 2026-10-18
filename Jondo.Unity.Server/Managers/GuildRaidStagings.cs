@@ -46,7 +46,8 @@ namespace Jondo.Unity.Server.Managers
         public const string LifeLost = "Perte pv";
 
         private sealed record Document(IReadOnlyDictionary<long, IReadOnlyList<(int Id, string Name)>> Maps,
-                                       IReadOnlyDictionary<long, IReadOnlyList<(string Name, int Cell, int Element)>> Elements);
+                                       IReadOnlyDictionary<long, IReadOnlyList<(string Name, int Cell, int Element)>> Elements,
+                                       IReadOnlyDictionary<long, IReadOnlyList<(string Name, int Cell)>> Objects);
 
         private static Document? _document;
         private static readonly object _lock = new();
@@ -73,10 +74,11 @@ namespace Jondo.Unity.Server.Managers
         {
             var maps = new Dictionary<long, IReadOnlyList<(int Id, string Name)>>();
             var elements = new Dictionary<long, IReadOnlyList<(string Name, int Cell, int Element)>>();
+            var objects = new Dictionary<long, IReadOnlyList<(string Name, int Cell)>>();
             if (!File.Exists(path))
             {
                 Console.WriteLine($"[Raids] {Path.GetFileName(path)} is missing: the raids' maps will show none of their hidden pieces.");
-                return new Document(maps, elements);
+                return new Document(maps, elements, objects);
             }
             try
             {
@@ -98,12 +100,20 @@ namespace Jondo.Unity.Server.Managers
                                              .ToList();
                     }
                 }
+                if (json.RootElement.TryGetProperty("objects", out var placed))
+                {
+                    foreach (var map in placed.EnumerateObject())
+                    {
+                        if (!long.TryParse(map.Name, out long mapId)) continue;
+                        objects[mapId] = map.Value.EnumerateArray().Select(o => (o[0].GetString() ?? "", o[1].GetInt32())).ToList();
+                    }
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[Raids] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
-            return new Document(maps, elements);
+            return new Document(maps, elements, objects);
         }
 
         // ─── The data ───────────────────────────────────────────────────────────────────────
@@ -118,6 +128,13 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static IReadOnlyList<(string Name, int Cell, int Element)> ElementsOf(long mapId)
             => Loaded.Elements.TryGetValue(mapId, out var elements) ? elements : Array.Empty<(string, int, int)>();
+
+        /// <summary>
+        /// The pedestals' objects a map has drawn for good, and where: the Guardián's arena has the
+        /// eight, one beside each of its glyphs (tools/extract_raid_stagings.py).
+        /// </summary>
+        public static IReadOnlyList<(string Name, int Cell)> ObjectsOf(long mapId)
+            => Loaded.Objects.TryGetValue(mapId, out var objects) ? objects : Array.Empty<(string, int)>();
 
         /// <summary>What <see cref="IdOf"/> gives for a name the map has no sequence for: 0 is a uniqueId ("Light_0").</summary>
         public const int None = -1;

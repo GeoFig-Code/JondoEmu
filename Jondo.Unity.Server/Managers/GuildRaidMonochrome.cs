@@ -196,6 +196,14 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Whether the enigma is solved for a raid.</summary>
         public static bool Solved(RaidInstance raid) => raid != null && raid.GoalAt(Goal) >= 1;
 
+        /// <summary>The objects whose maps had a raid's flowers: the Guardián's right glyphs (GuildRaidGuardians).</summary>
+        public static IReadOnlyList<string> FlowerObjects(RaidInstance raid)
+        {
+            var work = raid == null ? null : WorkOf(Raids.Of(raid.RaidId));
+            if (work == null) return Array.Empty<string>();
+            return raid.SequenceOf(FlowersSequence).Where(f => f >= 0 && f < work.Objects.Count).Select(f => work.Objects[f]).ToList();
+        }
+
         /// <summary>Whether a flower is offered to a raid: one of its four, standing there.</summary>
         public static bool Offers(RaidInstance raid, long mapId, int elementId) => PedestalOf(raid, mapId, elementId) >= 0;
 
