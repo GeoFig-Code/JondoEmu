@@ -104,6 +104,7 @@ namespace Jondo.Unity.Server.Managers
             int light = raid.LightAt(floor, DateTimeOffset.UtcNow);
             int spell = TierFor(light);
             fight.DarknessTier = spell;
+            if (floor <= Luminomachine.Machines) fight.RaidLight = Math.Clamp(light, 0, Luminomachine.MostLight);
             if (spell == 0) return 0;
 
             int boosted = 0;

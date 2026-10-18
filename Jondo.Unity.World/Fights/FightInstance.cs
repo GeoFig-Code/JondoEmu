@@ -300,6 +300,9 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public int DarknessTier { get; set; }
 
+        /// <summary>The band of light, 0 to 4, of the Gigalodón's floor this fight began on, or -1 outside one.</summary>
+        public int RaidLight { get; set; } = -1;
+
         /// <summary>The most people a side may have in this fight, or 0 for the usual (the Santuario's guardians: 4).</summary>
         public int PeopleCap { get; set; }
 

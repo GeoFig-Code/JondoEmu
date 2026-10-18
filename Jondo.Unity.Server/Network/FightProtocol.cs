@@ -1894,6 +1894,21 @@ namespace Jondo.Unity.Server.Network
                 .Msg(27, Pb.New().Var(1, quien).Var(2, hasta))
                 .Build();
 
+        /// <summary>A map staging played inside a fight's sequence: the action of effect 2192, TriggerStaging.</summary>
+        public const int TriggerStaging = 2192;
+
+        /// <summary>
+        /// A map staging played in a fight (jwe with f14 = 2192): <c>f15 { f1: intensity %, f2: the
+        /// sequence waits for it to end, f3: the staging's uniqueId on the fight's map }</c>. Read in
+        /// Ghidra: fmc hands the f15 to gqk, which plays it through the staging service as hpm does.
+        /// </summary>
+        public static byte[] BuildTriggerStaging(long author, int staging, int intensity = 100, bool wait = false)
+            => Pb.New()
+                .Var(3, author)
+                .Var(14, TriggerStaging)
+                .Msg(15, Pb.New().Var(1, intensity).VarIfNotZero(2, wait ? 1 : 0).Var(3, staging))
+                .Build();
+
         /// <summary>
         /// Someone has died (jwe with f14 = 103): <c>f4 { f1: who }</c>.
         /// </summary>

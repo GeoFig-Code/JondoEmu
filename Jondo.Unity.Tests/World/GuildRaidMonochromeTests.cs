@@ -114,7 +114,7 @@ namespace Jondo.Unity.Tests.World
             Assert.True(GuildRaidMonochrome.Solved(raid));
             Assert.Equal(2000, raid.Score);
             Assert.Equal(Gardens.Health - 1, raid.Health);
-            foreach (long map in Obra.Maps.Where(m => GuildRaidStagings.IdOf(m, GuildRaidMonochrome.Colouring) != 0))
+            foreach (long map in Obra.Maps.Where(m => GuildRaidStagings.Has(m, GuildRaidMonochrome.Colouring)))
             {
                 Assert.Contains(GuildRaidStagings.IdOf(map, "Couleur_bleu"), GuildRaidStagings.Standing(raid, map));
                 Assert.Contains(GuildRaidStagings.IdOf(map, GuildRaidMonochrome.Colouring), GuildRaidStagings.Standing(raid, map));

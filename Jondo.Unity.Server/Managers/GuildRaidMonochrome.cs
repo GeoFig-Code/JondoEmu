@@ -114,7 +114,7 @@ namespace Jondo.Unity.Server.Managers
             long centre = 0;
             foreach (long map in maps)
             {
-                if (GuildRaidStagings.IdOf(map, string.Format(StepDone, 1)) != 0) centre = map;
+                if (GuildRaidStagings.Has(map, string.Format(StepDone, 1))) centre = map;
                 foreach (var (_, name) in GuildRaidStagings.Of(map))
                 {
                     if (!name.StartsWith(FlowerPrefix)) continue;
@@ -128,8 +128,8 @@ namespace Jondo.Unity.Server.Managers
             var enclave = DatabaseManager.MapsOfSubArea(kind.Floors[PedestalZone - 1]).OrderBy(m => m).ToList();
             for (int pedestal = 1; pedestal <= Pedestals && objects.Count > 0; pedestal++)
             {
-                var showing = enclave.Where(map => objects.All(o => GuildRaidStagings.IdOf(map, OnPedestal(o, pedestal, false)) != 0
-                                                                 && GuildRaidStagings.IdOf(map, OnPedestal(o, pedestal, true)) != 0))
+                var showing = enclave.Where(map => objects.All(o => GuildRaidStagings.Has(map, OnPedestal(o, pedestal, false))
+                                                                 && GuildRaidStagings.Has(map, OnPedestal(o, pedestal, true))))
                                      .ToList();
                 if (showing.Count > 0) pedestalMaps[pedestal] = showing;
             }

@@ -342,6 +342,7 @@ namespace Jondo.Unity.Server.Handlers
 
             await DecirleAsync(stream, CommandTexts.Get("light.lit", compra.Floor, luz, compra.Cost));
             await GuildRaidHandler.TellRunningStateAsync(GameState.CharacterId);
+            await Managers.GuildRaidLights.MachineUsedAsync(GameState.CharacterId, compra.Floor);
         }
 
         /// <summary>

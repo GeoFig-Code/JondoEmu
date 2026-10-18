@@ -6904,6 +6904,29 @@ namespace Jondo.Unity.Server.Handlers
 
             // And what a raid's guardian lays on the board: the Guardián's glyphs.
             await Managers.GuildRaidGuardians.OnFightStartedAsync(stream, fight);
+
+            // And on the Gigalodón's floors, the arena lit as the floor was (GuildRaidLights).
+            await LightTheArenaAsync(fight);
+        }
+
+        /// <summary>
+        /// A Sima arena lit to its floor's band: the staging played in a sequence of its own, as a
+        /// spell's effect 2192 would play it. The arena's data draws it dark.
+        /// </summary>
+        private static async Task LightTheArenaAsync(FightInstance fight)
+        {
+            string light = Managers.GuildRaidLights.ArenaLight(fight);
+            int staging = light == null ? Managers.GuildRaidStagings.None : Managers.GuildRaidStagings.IdOf(fight.MapId, light);
+            var author = fight.CurrentFighter ?? TodosLosCombatientes(fight).FirstOrDefault(f => f != null);
+            if (staging == Managers.GuildRaidStagings.None || author == null) return;
+
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
+                Network.FightProtocol.BuildSequenceStart(author.Id, Network.FightProtocol.ActionSequence)));
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                Network.FightProtocol.BuildTriggerStaging(author.Id, staging)));
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
+                Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), author.Id, Network.FightProtocol.ActionSequence)));
+            Program.LogDebug($"[Raids] Arena {fight.MapId} of fight #{fight.FightId} lit with {light}.");
         }
 
         /// <summary>

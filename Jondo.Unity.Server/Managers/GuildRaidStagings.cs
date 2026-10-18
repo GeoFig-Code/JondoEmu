@@ -119,13 +119,19 @@ namespace Jondo.Unity.Server.Managers
         public static IReadOnlyList<(string Name, int Cell, int Element)> ElementsOf(long mapId)
             => Loaded.Elements.TryGetValue(mapId, out var elements) ? elements : Array.Empty<(string, int, int)>();
 
-        /// <summary>The uniqueId a map gives a sequence by its name, or 0 when the map has none so called.</summary>
+        /// <summary>What <see cref="IdOf"/> gives for a name the map has no sequence for: 0 is a uniqueId ("Light_0").</summary>
+        public const int None = -1;
+
+        /// <summary>The uniqueId a map gives a sequence by its name, or <see cref="None"/> when the map has none so called.</summary>
         public static int IdOf(long mapId, string name)
         {
             foreach (var (id, sequence) in Of(mapId))
                 if (sequence == name) return id;
-            return 0;
+            return None;
         }
+
+        /// <summary>Whether a map has a sequence so called.</summary>
+        public static bool Has(long mapId, string name) => IdOf(mapId, name) != None;
 
         // ─── What stands ────────────────────────────────────────────────────────────────────
 
@@ -140,7 +146,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A staging kept standing on a map for a raid: shown again to whoever loads the map.</summary>
         public static void Keep(RaidInstance raid, long mapId, int id)
         {
-            if (raid == null || id == 0) return;
+            if (raid == null || id == None) return;
             var ids = _standing.GetOrAdd(raid.Id, _ => new()).GetOrAdd(mapId, _ => new List<int>());
             lock (ids)
             {
@@ -175,7 +181,7 @@ namespace Jondo.Unity.Server.Managers
         public static async Task PlayAsync(RaidInstance raid, long mapId, string name, bool keep)
         {
             int id = IdOf(mapId, name);
-            if (raid == null || id == 0) return;
+            if (raid == null || id == None) return;
             if (keep) Keep(raid, mapId, id);
             await TellRaidOnMapAsync(raid, mapId, ConnectionProtocol.Push(Op.Hpm, BuildPlay(id, FromStart)));
         }
@@ -190,6 +196,9 @@ namespace Jondo.Unity.Server.Managers
             var raid = GuildRaidManager.RaidOf(characterId);
             foreach (int id in Standing(raid, mapId))
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Hpm, BuildPlay(id, AtEnd)));
+
+            // And on the Sima's floors, their light.
+            if (raid != null) await GuildRaidLights.OnMapLoadedAsync(stream, raid, mapId);
         }
 
         /// <summary>The raid's red flash for a life lost, on whichever of its maps its members stand.</summary>
@@ -201,7 +210,7 @@ namespace Jondo.Unity.Server.Managers
                 var session = SessionRegistry.FindByCharacter(member);
                 if (session == null || session.State.IsInFight) continue;
                 int id = IdOf(session.State.MapId, LifeLost);
-                if (id != 0) await session.SendAsync(ConnectionProtocol.Push(Op.Hpm, BuildPlay(id, FromStart)));
+                if (id != None) await session.SendAsync(ConnectionProtocol.Push(Op.Hpm, BuildPlay(id, FromStart)));
             }
         }
 

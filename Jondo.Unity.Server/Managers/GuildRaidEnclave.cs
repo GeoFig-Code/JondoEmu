@@ -145,11 +145,11 @@ namespace Jondo.Unity.Server.Managers
         private static Work Read(RaidKind kind)
         {
             var maps = DatabaseManager.MapsOfSubArea(kind.Floors[Zone - 1]).OrderBy(m => m)
-                                      .Where(m => GuildRaidStagings.IdOf(m, GardenStatue(1, 1, 1)) != 0).ToList();
-            long centre = maps.FirstOrDefault(m => GuildRaidStagings.IdOf(m, FinalStatue(1)) != 0);
+                                      .Where(m => GuildRaidStagings.Has(m, GardenStatue(1, 1, 1))).ToList();
+            long centre = maps.FirstOrDefault(m => GuildRaidStagings.Has(m, FinalStatue(1)));
             var patio = DatabaseManager.MapsOfSubArea(kind.Floors[BoardZone - 1]).OrderBy(m => m).ToList();
             var boards = new Dictionary<int, Board>();
-            foreach (long map in patio.Where(m => GuildRaidStagings.IdOf(m, SquareOn(1, 1)) != 0))
+            foreach (long map in patio.Where(m => GuildRaidStagings.Has(m, SquareOn(1, 1))))
             {
                 var board = ReadBoard(map);
                 if (board != null) boards[board.Index] = board;

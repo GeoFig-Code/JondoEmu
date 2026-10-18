@@ -122,6 +122,17 @@ namespace Jondo.Unity.World.Content
             return (int)Math.Max(0, light.Level - faded);
         }
 
+        /// <summary>
+        /// How long until a floor's band fades to the one below; the longest wait there is when it
+        /// is dark already, or its light was only ever written as a variable.
+        /// </summary>
+        public TimeSpan UntilFade(int floor, DateTimeOffset now)
+        {
+            if (!_lights.TryGetValue(floor, out var light) || LightAt(floor, now) <= 0) return TimeSpan.MaxValue;
+            long faded = now <= light.Since ? 0 : (now - light.Since).Ticks / LightStep.Ticks;
+            return light.Since + TimeSpan.FromTicks(LightStep.Ticks * (faded + 1)) - now;
+        }
+
         /// <summary>Sets a floor's light from now: it starts fading again at this band.</summary>
         public void SetLight(int floor, int level, DateTimeOffset now)
         {

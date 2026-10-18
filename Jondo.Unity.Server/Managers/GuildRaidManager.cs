@@ -53,6 +53,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Whether any raid is running: the darkness' sweep stops when none is.</summary>
         public static bool AnyRunning => _running.Values.Any(r => r.Running);
 
+        /// <summary>The raids running now.</summary>
+        public static IReadOnlyList<RaidInstance> RunningRaids => _running.Values.Where(r => r.Running).ToList();
+
         /// <summary>The raid this character is IN, which is not the same.</summary>
         public static RaidInstance RaidOf(long characterId)
         {
@@ -111,8 +114,13 @@ namespace Jondo.Unity.Server.Managers
                 GuildRaidSanctuary.Populate(Raids.Of(raid.RaidId), Random.Shared);
             }
 
-            // The Gigalodón's first floor starts fully lit; it fades from here (the guides).
-            if (Raids.Of(raid.RaidId)?.HasLight == true) raid.SetLight(1, Luminomachine.MostLight, raid.StartedUtc);
+            // The Gigalodón's first floor starts fully lit; it fades from here (the guides), and its
+            // maps show it (GuildRaidLights).
+            if (Raids.Of(raid.RaidId)?.HasLight == true)
+            {
+                raid.SetLight(1, Luminomachine.MostLight, raid.StartedUtc);
+                GuildRaidLights.EnsureSweeping();
+            }
 
             foreach (var participant in board.Participants.ToList())
             {
@@ -653,6 +661,7 @@ namespace Jondo.Unity.Server.Managers
             _running.TryRemove(raid.Id, out _);
             GuildRaidLuminarium.Forget(raid);
             GuildRaidStagings.Forget(raid);
+            GuildRaidLights.Forget(raid);
 
             foreach (long member in raid.Members.ToList())
             {
