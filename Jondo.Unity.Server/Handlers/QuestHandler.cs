@@ -78,6 +78,40 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
+        /// The «start the quest» button of a document (ido { f1 quest }): a wanted poster, a
+        /// book's page. The client's document window sends it (ScrollUI.OnStartQuest), and so
+        /// does a quest link inside the text, followed by kla to close the window.
+        /// </summary>
+        /// <remarks>
+        /// «carteles de se busca» presses it on the three posters of Astrub, quests 1563 to 1565,
+        /// all three already started: the real server answers lqn { 1, 626 }, «No puedes empezar
+        /// una misión ya empezada», and the kld that closes the window. The start itself is
+        /// <see cref="Quests.StartAsync"/>, under the same conditions as from an NPC. Only with a
+        /// document open: the button exists nowhere else.
+        /// </remarks>
+        public static async Task StartFromDocumentAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? ido = ConnectionProtocol.ReadPayload(payload, "ido");
+            if (ido == null || !SessionContext.State.DocumentOpen) return;
+
+            int questId = Field(ido, 1);
+            if (questId == 0) return;
+
+            if (Quests.Log?.Active(questId) == true)
+            {
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, AlreadyStarted)));
+                return;
+            }
+
+            if (!await Quests.StartAsync(stream, questId))
+                Console.WriteLine($"[Quests] {SessionContext.State.CharacterName} cannot start quest {questId} from a document.");
+        }
+
+        /// <summary>Info 626, a warning: «No puedes empezar una misión ya empezada».</summary>
+        public const int AlreadyStarted = 626;
+
+        /// <summary>
         /// One varint field, or zero.
         /// </summary>
         /// <remarks>

@@ -45,7 +45,7 @@ in the 756 captures and the client's senders in Ghidra.
 | `knm`, `kno`, `kny` | the contact lists, asked on entering the world and when the window opens | `kqg` (mutual friends), `koj` (contacts), `koi` (blocked) | **fixed**, with adding (`koq`, `kok`, `kpa`) and removing (`kog`, `kqd`, `kpl`): see `FriendsHandler` |
 | `kon` | the friends window's setting { f2 }, as it opens | nothing | **fixed** (taken silently) |
 | `hom` | the spouse's information (its answer, `hol`, has the spouse's name, level, look and guild) | nothing, to a player who is not married | **fixed** (taken silently) |
-| `ido` | starting a quest from an item or a poster (the "se busca" posters' 1563-1565) | `kld` | missing |
+| `ido` | a document's «start the quest» button: a wanted poster, a book (the "se busca" posters' 1563-1565) | the start, or `lqn` 626 «No puedes empezar una misión ya empezada»; `kla` brings the `kld` | **fixed** |
 | `idv` | a quest objective validated { objective, -1 }, sometimes moving the player | the map change | missing |
 | `jwm`, `jth` | the shop: claiming purchases and gifts | `jwj`, items | missing |
 | `kwd` | character creation's random name | `kvk` { name } | missing |

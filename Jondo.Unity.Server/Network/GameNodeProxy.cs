@@ -586,6 +586,8 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr == Op.Uri("kqd")) await FriendsHandler.UnblockAsync(stream, payload);
                 else if (payloadStr == Op.Uri(Op.Kpa)) await FriendsHandler.IgnoreAsync(stream, payload);
                 else if (payloadStr == Op.Uri("kpl")) await FriendsHandler.UnignoreAsync(stream, payload);
+                // A document's «start the quest» button.
+                else if (payloadStr == Op.Uri("ido")) await QuestHandler.StartFromDocumentAsync(stream, payload);
                 // The item tooltips' average prices.
                 else if (payloadStr == Op.Uri("ivp")) await MarketplaceHandler.AveragePricesAsync(stream);
                 else if (payloadStr == Op.Uri("hom"))
