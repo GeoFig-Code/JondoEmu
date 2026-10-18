@@ -42,8 +42,8 @@ in the 756 captures and the client's senders in Ghidra.
 |---|---|---|---|
 | `jqe` | the walk cut short on a cell (a new click on the way) | nothing | **fixed**: the character stands on that cell, and the cut walk's passage no longer fires |
 | `hir` | the zaap trip's cost to a map, asked on arrival and by the autopilot | `him` { map, kamas } | **fixed** |
-| `knm`, `kno`, `kny` | the contact lists, asked on entering the world | `kqg` (contacts), `koj`, `koi` | missing: friends, enemies and ignored |
-| `kon` | the friends window's setting { f2 } | `lqn` 205 | missing (friends) |
+| `knm`, `kno`, `kny` | the contact lists, asked on entering the world and when the window opens | `kqg` (mutual friends), `koj` (contacts), `koi` (blocked) | **fixed**, with adding (`koq`, `kok`, `kpa`) and removing (`kog`, `kqd`, `kpl`): see `FriendsHandler` |
+| `kon` | the friends window's setting { f2 }, as it opens | nothing | **fixed** (taken silently) |
 | `hom` | the account's statistics | `ivi`, ~9,700 id/value pairs | missing |
 | `ido` | starting a quest from an item or a poster (the "se busca" posters' 1563-1565) | `kld` | missing |
 | `idv` | a quest objective validated { objective, -1 }, sometimes moving the player | the map change | missing |
@@ -58,3 +58,9 @@ in the 756 captures and the client's senders in Ghidra.
 | `jlh` | in the guild window | nothing | unknown, no answer expected |
 | `med`, `mdw`, `mdt` | in the alliance window (no capture) | unknown | unknown |
 | `kjw`, `jaq` | no capture | unknown | unknown |
+
+The Ankama friends -- the window's first section -- are not game messages: they go to the chat
+service (`ChatServer`, Spin over TLS on 6337), which only answered the login, with a frame length that left
+out its own header and the type byte, so the client hung up at once. It now speaks the transport and the
+friends' requests and events. And `kpa`, «ignore» in 3.6, still went to the character-list branch of an
+earlier protocol, which answered it with a character list.

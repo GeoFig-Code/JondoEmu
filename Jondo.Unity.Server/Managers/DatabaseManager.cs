@@ -2386,6 +2386,49 @@ namespace Jondo.Unity.Server
             }
         }
 
+        /// <summary>The account of the character so named, connected or not; zero if nobody bears it.</summary>
+        public static long AccountIdOfCharacterName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return 0;
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT AccountId FROM Characters WHERE Name = $n COLLATE NOCASE LIMIT 1;";
+                command.Parameters.AddWithValue("$n", name.Trim());
+                return command.ExecuteScalar() is long accountId ? accountId : 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DatabaseManager] Could not look up the character «{name}»: {ex.Message}");
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// The account that goes by that nickname, ignoring case; zero if none does. Only the id and the
+        /// nickname are read: what the friends window searches with is what other players see.
+        /// </summary>
+        public static long AccountIdOfNickname(string nickname)
+        {
+            if (string.IsNullOrWhiteSpace(nickname)) return 0;
+            try
+            {
+                using var connection = new SqliteConnection(AuthConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT Id FROM Accounts WHERE Nickname = $n COLLATE NOCASE LIMIT 1;";
+                command.Parameters.AddWithValue("$n", nickname.Trim());
+                return command.ExecuteScalar() is long accountId ? accountId : 0;
+            }
+            catch (Exception)
+            {
+                // No auth.db yet (first start, or the CI): nobody to find.
+                return 0;
+            }
+        }
+
         public static bool LoadCharacter(long characterId)
         {
             using var connection = new SqliteConnection(WorldConnectionString);

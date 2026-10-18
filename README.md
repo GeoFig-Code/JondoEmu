@@ -259,7 +259,10 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Level-up window, with the new spells added to the bar
 <img width="2560" height="1514" alt="image" src="https://github.com/user-attachments/assets/490997fc-1300-4a29-9963-32077efdf0dd" />
 
-- ✅ Private messages and the friends list
+- ✅ Private messages
+- ✅ Friends window: contacts, mutual friends seen playing (character, level, class, in a fight), blocked and ignored players
+- ✅ Ankama friends: invite by nickname and tag, accept or refuse, see them connected
+- ✅ Blocked and ignored players cannot whisper to you, and you do not hear them on the map
 - ✅ Parties — invite, accept, refuse, leave, hand over the lead, kick, follow the leader
 - ✅ Trading with another player: items and kamas
 - ✅ Commands answer in Spanish, English or French

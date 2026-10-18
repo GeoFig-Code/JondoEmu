@@ -145,6 +145,7 @@ namespace Jondo.Unity.Server.Network
 
                         long gone = sesion.State.CharacterId;
                         SessionRegistry.Unregister(sesion);
+                        await Handlers.FriendsHandler.LeftAsync(sesion.AccountId);
                         if (gone != 0)
                         {
                             try { await Handlers.GuildRaidHandler.OnLeaveWorldAsync(gone); }
@@ -285,7 +286,7 @@ namespace Jondo.Unity.Server.Network
                 }
                 // Careful: kqu no longer belongs here. In 3.6.10.10 it is a message pushed by the
                 // server inside the welcome burst, not a client request.
-                else if (payloadStr.Contains(Op.Uri(Op.Jto)) || payloadStr.Contains("type.ankama.com/kpc") || payloadStr.Contains(Op.Uri(Op.Ksx)) || payloadStr.Contains(Op.Uri(Op.Kpa)))
+                else if (payloadStr.Contains(Op.Uri(Op.Jto)) || payloadStr.Contains("type.ankama.com/kpc") || payloadStr.Contains(Op.Uri(Op.Ksx)))
                 {
                     await CharacterSelectionHandler.HandleCharacterListRequest(stream, payload, payloadStr, sessionAccountId, sessionServerId);
                 }
@@ -573,6 +574,21 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr.Contains("type.ankama.com/hir"))
                 {
                     await ZaapTravelHandler.TellCostAsync(stream, payload);
+                }
+                // The friends window's in-game lists, and adding to and removing from them. kpa used
+                // to be the character list request of an earlier protocol; in 3.6 it is «ignore».
+                else if (payloadStr == Op.Uri("knm")) await FriendsHandler.SendMutualAsync(stream);
+                else if (payloadStr == Op.Uri("kno")) await FriendsHandler.SendContactsAsync(stream);
+                else if (payloadStr == Op.Uri("kny")) await FriendsHandler.SendBlockedAsync(stream);
+                else if (payloadStr == Op.Uri("koq")) await FriendsHandler.AddContactAsync(stream, payload);
+                else if (payloadStr == Op.Uri("kog")) await FriendsHandler.RemoveContactAsync(stream, payload);
+                else if (payloadStr == Op.Uri("kok")) await FriendsHandler.BlockAsync(stream, payload);
+                else if (payloadStr == Op.Uri("kqd")) await FriendsHandler.UnblockAsync(stream, payload);
+                else if (payloadStr == Op.Uri(Op.Kpa)) await FriendsHandler.IgnoreAsync(stream, payload);
+                else if (payloadStr == Op.Uri("kpl")) await FriendsHandler.UnignoreAsync(stream, payload);
+                else if (payloadStr == Op.Uri("kon"))
+                {
+                    // The window's own setting, sent as it opens. The real server answers nothing.
                 }
                 else if (payloadStr.Contains("type.ankama.com/jqe"))
                 {
@@ -1882,6 +1898,9 @@ namespace Jondo.Unity.Server.Network
 
             // His guild raid sees him connected, and a running one comes back with its panel.
             await Handlers.GuildRaidHandler.OnEnterWorldAsync(chosen.Id);
+
+            // His mutual friends see him playing.
+            await Handlers.FriendsHandler.AnnouncePresenceAsync(SessionContext.Current.AccountId);
 
             // And the server's welcome line, if its settings have one.
             if (!string.IsNullOrWhiteSpace(ServerSettings.Current.WelcomeMessage))

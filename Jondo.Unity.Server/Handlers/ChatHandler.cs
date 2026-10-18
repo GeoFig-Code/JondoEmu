@@ -52,7 +52,7 @@ namespace Jondo.Unity.Server.Handlers
                 // map channel crossed the two and each group read the other.
                 int oidos = await SessionRegistry.BroadcastToMapAsync(
                     SessionContext.State.MapId, echoPacket, SessionContext.Current.Id,
-                    SessionContext.State.FightId);
+                    SessionContext.State.FightId, SessionContext.Current.AccountId);
                 Console.WriteLine($"[Chat] Handed to {oidos} more player(s) on map " +
                                   $"{SessionContext.State.MapId}.");
             }

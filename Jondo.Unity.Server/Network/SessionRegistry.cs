@@ -240,11 +240,14 @@ namespace Jondo.Unity.Server.Network
         /// </remarks>
         public static async Task<int> BroadcastToMapAsync(long mapId, byte[] packet,
                                                            Guid? exceptSessionId = null,
-                                                           long? fightId = null)
+                                                           long? fightId = null,
+                                                           long speakerAccountId = 0)
         {
+            // Whoever blocked or ignores the speaker does not hear him.
             var targets = OnMap(mapId)
                 .Where(s => !exceptSessionId.HasValue || s.Id != exceptSessionId.Value)
                 .Where(s => Hears(s.State.FightId, fightId))
+                .Where(s => speakerAccountId == 0 || !Managers.Contacts.Shuts(s.AccountId, speakerAccountId))
                 .ToArray();
 
             var results = await Task.WhenAll(targets.Select(async target =>

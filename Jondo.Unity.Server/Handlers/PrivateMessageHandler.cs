@@ -96,6 +96,14 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // Who blocked or ignores him does not hear him.
+            if (Contacts.Shuts(destino.AccountId, SessionContext.Current.AccountId))
+            {
+                await RefuseAsync(stream);
+                Console.WriteLine($"[Private] {from} whispers to «{target}», who keeps him away.");
+                return;
+            }
+
             string cuando = DateTimeOffset.Now.ToString("yyyy-MM-ddTHH:mm:sszzz");
 
             // To the receiver: the other is whoever writes to him.
