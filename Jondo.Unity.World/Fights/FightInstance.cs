@@ -118,7 +118,7 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public bool TurnAwaitingConfirmation
         {
-            get { lock (_candadoDelTurno) return _turnoAtendido != (RoundNumber, CurrentTurnIndex, CurrentFighter?.Id ?? 0); }
+            get { lock (_candadoDelTurno) return _turnoAtendido != (RoundNumber, TurnSlot, CurrentFighter?.Id ?? 0); }
         }
 
         /// <summary>
@@ -288,7 +288,16 @@ namespace Jondo.Unity.World.Fights
 
         public List<Fighter> TurnOrder { get; private set; } = new List<Fighter>();
         public int CurrentTurnIndex { get; private set; } = 0;
-        public Fighter CurrentFighter => TurnOrder.Count > 0 ? TurnOrder[CurrentTurnIndex] : null;
+        public Fighter CurrentFighter => PlayingAdditional?.Fighter ?? OnTheOrder;
+
+        /// <summary>The fighter at the order's current place: the current one but for an additional turn (4059).</summary>
+        private Fighter OnTheOrder => TurnOrder.Count > 0 ? TurnOrder[CurrentTurnIndex] : null;
+
+        /// <summary>
+        /// What tells this turn from the others of its round, for attending it once: its place in
+        /// the order, or past it for an additional turn -- which may come at its own fighter's place.
+        /// </summary>
+        public int TurnSlot => PlayingAdditional != null ? -1 - CurrentTurnIndex : CurrentTurnIndex;
 
         public int WinnerTeamId { get; private set; } = -1;
 
@@ -539,7 +548,7 @@ namespace Jondo.Unity.World.Fights
 
             // The one playing right now keeps playing: the list is rebuilt but whose turn it is
             // is kept, otherwise the turn goes to the next one in the middle of an action.
-            var jugando = CurrentFighter;
+            var jugando = OnTheOrder;
             TurnOrder = BuildAlternatingTurnOrder();
             if (jugando != null && TurnOrder.Contains(jugando))
             {
@@ -579,7 +588,7 @@ namespace Jondo.Unity.World.Fights
         /// </remarks>
         public void RebuildTurnOrderKeepingCurrent()
         {
-            var jugando = CurrentFighter;
+            var jugando = OnTheOrder;
             TurnOrder = BuildAlternatingTurnOrder();
 
             if (jugando != null && TurnOrder.Contains(jugando))
@@ -1291,9 +1300,30 @@ namespace Jondo.Unity.World.Fights
             CheckFightEnd();
             if (State == FightState.Ended) return null;
 
+            // An additional turn just played: the order goes on from where it stood.
+            if (PlayingAdditional != null)
+            {
+                PlayingAdditional = null;
+                _timelineChanged = true;
+            }
+
             int attempts = 0;
             do
             {
+                // An additional turn comes behind the fighter it follows -- or where that one, dead,
+                // would have played --, and at the latest before the round turns over.
+                if (Additional is { } extra && (OnTheOrder?.Id == extra.After || CurrentTurnIndex + 1 >= TurnOrder.Count))
+                {
+                    Additional = null;
+                    if (extra.Fighter.IsAlive)
+                    {
+                        PlayingAdditional = extra;
+                        extra.Fighter.StartTurn(RoundNumber);
+                        return extra.Fighter;
+                    }
+                    _timelineChanged = true;
+                }
+
                 CurrentTurnIndex++;
                 if (CurrentTurnIndex >= TurnOrder.Count)
                 {
@@ -1325,13 +1355,61 @@ namespace Jondo.Unity.World.Fights
             }
 
             CurrentFighter.StartTurn(RoundNumber);
+            ScheduleAdditional(CurrentFighter);
             return CurrentFighter;
+        }
+
+        // ─── Turns played twice a round (4059) ──────────────────────────────────
+
+        /// <summary>
+        /// A fighter's additional turn in a round: who plays it, behind whose turn it comes, and the
+        /// id the client's timeline knows it by (jzu's additional entry, jzc's f3).
+        /// </summary>
+        public sealed record AdditionalTurn(Fighter Fighter, long After, string Id);
+
+        /// <summary>The fighters who play twice a round, by how far into the rest of the round their second turn comes, in percent.</summary>
+        public Dictionary<long, int> TwiceARound { get; } = new();
+
+        /// <summary>The additional turn still to come this round, or null.</summary>
+        public AdditionalTurn Additional { get; private set; }
+
+        /// <summary>The additional turn being played now, or null.</summary>
+        public AdditionalTurn PlayingAdditional { get; private set; }
+
+        /// <summary>The additional turn the timeline shows: to come, or being played.</summary>
+        public AdditionalTurn AdditionalShown => PlayingAdditional ?? Additional;
+
+        private bool _timelineChanged;
+
+        /// <summary>Whether an additional turn came into the timeline or left it since the last time this was asked.</summary>
+        public bool TakeTimelineChange()
+        {
+            bool changed = _timelineChanged;
+            _timelineChanged = false;
+            return changed;
+        }
+
+        /// <summary>A fighter plays twice a round from now on, its second turn that far, in percent, into the rest of the round.</summary>
+        public void PlayTwiceARound(long fighterId, int percent) => TwiceARound[fighterId] = Math.Clamp(percent, 0, 100);
+
+        /// <summary>
+        /// A fighter who plays twice a round starts its turn: its second comes behind the fighter
+        /// that far into the rest of the round -- after two of four, at 50 % -- and right behind
+        /// its own when there is nobody between.
+        /// </summary>
+        private void ScheduleAdditional(Fighter fighter)
+        {
+            if (fighter == null || !TwiceARound.TryGetValue(fighter.Id, out int percent)) return;
+            var rest = TurnOrder.Skip(CurrentTurnIndex + 1).Where(f => f.IsAlive && f.Id != fighter.Id).ToList();
+            int between = (int)Math.Round(rest.Count * percent / 100.0, MidpointRounding.AwayFromZero);
+            Additional = new AdditionalTurn(fighter, between == 0 ? fighter.Id : rest[between - 1].Id, $"{fighter.Id}_{RoundNumber}");
+            _timelineChanged = true;
         }
 
         public bool RebuildTurnOrderOnFighterDeath()
         {
             var oldOrder = TurnOrder.ToList();
-            var currentFighter = CurrentFighter;
+            var currentFighter = OnTheOrder;
             TurnOrder = BuildAlternatingTurnOrder();
             if (currentFighter != null && TurnOrder.Contains(currentFighter))
             {

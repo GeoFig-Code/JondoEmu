@@ -41,6 +41,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The fight ends once this action is over, won by the team its die names (effect 3402).</summary>
         public bool EndsTheFight { get; init; }
 
+        /// <summary>The caster plays twice a round from now on, its second turn this far into the round, in percent (effect 4059).</summary>
+        public int PlaysTwice { get; init; }
+
         /// <summary>
         /// Whether this row comes out of a spell's CRITICAL list: the jxm carries it as its f9.
         /// A critical cast runs the whole chain on the critical lists, and a spell with none
@@ -2419,6 +2422,20 @@ namespace Jondo.Unity.Server.Managers
                     && !string.Equals(trigger, AlLanzar, StringComparison.OrdinalIgnoreCase)
                     && PlayerSpells.Contains(spell))
                 {
+                    continue;
+                }
+
+                // "Plays twice a round" (4059) is the caster's whoever its mask names -- the
+                // Defensor's names its enemies on its own cell, where none stands --: once, on him,
+                // for the fight's order to take (FightInstance.TwiceARound).
+                if (efecto.EffectId == EffectSupport.PlaysTwice)
+                {
+                    fuera.Add(new Outcome
+                    {
+                        Sobre = caster, Caster = caster, Efecto = efecto,
+                        HechizoOrigen = spell, NivelOrigen = grade,
+                        PlaysTwice = efecto.Value > 0 ? efecto.Value : 50,
+                    });
                     continue;
                 }
 

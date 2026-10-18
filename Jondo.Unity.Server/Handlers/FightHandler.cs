@@ -1010,7 +1010,7 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jzu,
-                Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
+                TeamsOf(fight)));
 
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jwq,
                 Network.FightProtocol.BuildPlacementDone()));
@@ -2356,7 +2356,7 @@ namespace Jondo.Unity.Server.Handlers
                     await otro.SendAsync(ConnectionProtocol.Push(Op.Jwe,
                         Network.FightProtocol.BuildDeath(quitter.Id, quitter.Id)));
                     await otro.SendAsync(ConnectionProtocol.Push(Op.Jzu,
-                        Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
+                        TeamsOf(fight)));
                     await otro.SendAsync(ConnectionProtocol.Push(Op.Jwi,
                         Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), author,
                                                                Network.FightProtocol.SurrenderSequence)));
@@ -2499,7 +2499,7 @@ namespace Jondo.Unity.Server.Handlers
                 Network.FightProtocol.BuildFightOption(FightInstance.Azules, FightInstance.OptionSecret,
                     fight.OptionOn(FightInstance.Azules, FightInstance.OptionSecret), fight.FightId)));
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jzu,
-                Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
+                TeamsOf(fight)));
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jwq,
                 Network.FightProtocol.BuildBuffSync(LiveBuffFrames(fight))));
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jrk,
@@ -3058,7 +3058,7 @@ namespace Jondo.Unity.Server.Handlers
             // In a challenge both clients answer and the work of opening the turn is a single one.
             // The second jwz is let go without doing anything: otherwise expired summons are undone
             // twice and the points are given back twice.
-            if (!fight.AtenderElTurnoUnaVez(fight.RoundNumber, fight.CurrentTurnIndex, fighter.Id)) return;
+            if (!fight.AtenderElTurnoUnaVez(fight.RoundNumber, fight.TurnSlot, fighter.Id)) return;
 
             int duration = fighter.EsInvocado
                 ? Network.FightProtocol.SummonTurnDeciseconds
@@ -3078,9 +3078,15 @@ namespace Jondo.Unity.Server.Handlers
             // And what he kept of the turn he passed (FightProtocol.SavedAfter): in the f4, and on
             // the clock.
             int carried = KeepsTurnTime(fighter) ? fighter.SavedTurnTime : 0;
+
+            // A turn played twice a round (4059) came into the timeline or left it: the list again
+            // first, so the turn below finds its entry.
+            if (fight.TakeTimelineChange()) await ReenviarLaListaAsync(stream, fight);
+
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzc,
                 Network.FightProtocol.BuildTurnStart(fighter.Id, duration,
-                                                     fight.CurrentTurnIndex, fight.RoundNumber, carried)));
+                                                     fight.CurrentTurnIndex, fight.RoundNumber, carried,
+                                                     fight.PlayingAdditional?.Id)));
             fight.LastAnnouncedTurn = new FightInstance.AnnouncedTurn(
                 fighter.Id, fight.CurrentTurnIndex, fight.RoundNumber, duration, DateTime.UtcNow, carried);
 
@@ -5497,7 +5503,7 @@ namespace Jondo.Unity.Server.Handlers
         private static async Task ReenviarLaListaAsync(NetworkStream stream, FightInstance fight)
         {
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzu,
-                Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
+                TeamsOf(fight)));
         }
 
         /// <summary>
@@ -5513,6 +5519,15 @@ namespace Jondo.Unity.Server.Handlers
         /// first player first (293213045026 then 302677754146, and the first jzc is for
         /// 293213045026), and the fight-start jxb keeps the same order.
         /// </remarks>
+        /// <summary>A fight's jzu: its carousel, with the additional turn to come or being played behind whom it follows.</summary>
+        private static byte[] TeamsOf(FightInstance fight)
+        {
+            var extra = fight.AdditionalShown;
+            return extra == null
+                ? Network.FightProtocol.BuildTeams(CarouselOrder(fight))
+                : Network.FightProtocol.BuildTeams(CarouselOrder(fight), extra.Fighter.Id, extra.After, extra.Id);
+        }
+
         private static List<long> CarouselOrder(FightInstance fight)
         {
             var ids = new List<long>();
@@ -6334,6 +6349,7 @@ namespace Jondo.Unity.Server.Handlers
                 }
                 if (c.AcabaElTurno) fight.EndTurnRequested = true;
                 if (c.EndsTheFight && fight.WonByEffect < 0) fight.WonByEffect = c.Efecto.DiceNum;
+                if (c.PlaysTwice > 0 && c.Caster != null) fight.PlayTwiceARound(c.Caster.Id, c.PlaysTwice);
 
                 // A steal hands its points over as a row of its own on the caster (Steals), which
                 // the points branch above has already put in his hand.
@@ -9682,8 +9698,10 @@ namespace Jondo.Unity.Server.Handlers
 
             // If this one closes the lap, a new round starts and it has to be said: the jxz is what
             // makes the little number of the carousel go up, and without it it stays stuck at 1 forever.
-            bool wasLast = fight.CurrentTurnIndex >= fight.TurnOrder.Count - 1;
+            // By the round itself: an additional turn (4059) may still come at the end of the order.
+            int roundBefore = fight.RoundNumber;
             fight.NextTurn();
+            bool wasLast = fight.RoundNumber != roundBefore;
 
             if (wasLast)
             {

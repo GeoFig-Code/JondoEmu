@@ -119,6 +119,15 @@ namespace Jondo.Unity.World.Combat
         public const int EndsTheFight = 3402;
 
         /// <summary>
+        /// 4059, the caster plays twice a round: the Defensor de la Reserva's once its companions
+        /// are gone ("EC:&lt;1:g"), "n1 s1 v50". The guide: "il joue deux fois son tour par tour ... une
+        /// première fois au début du tour puis une deuxième fois au milieu du tour (après 2
+        /// personnages)" -- the value is how far into the round the second turn comes, in percent.
+        /// Not in the client's ActionIds: the server plays it, and the timeline shows it from jzu.
+        /// </summary>
+        public const int PlaysTwice = 4059;
+
+        /// <summary>
         /// 2027, "Toma el control de la entidad": a row on a summon that makes it its owner's to
         /// play (Fighter.PlaysOnItsOwn). The Steamer's Evolución III lays it on his turrets,
         /// the Sram's Doble on the double, Dominio de Invocaciones on the summons -- row 248585

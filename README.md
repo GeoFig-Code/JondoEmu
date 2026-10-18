@@ -307,7 +307,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The guardians remember the enigmas: the Vigilante is freed only by the Enclave statue's kind
   falling first, the Guardián's glyphs lie beside their objects and only the flowers' four are safe;
   a wrong one ends the fight
-- ❌ The Defensor's double turn and the bosses' scripted rules (the Reina's dungeons, the Princesa's flower)
+- ✅ The Defensor plays twice a round once its companions are gone, its second turn shown in the
+  timeline
+- ❌ The bosses' scripted rules (the Reina's dungeons, the Princesa's flower)
 - ❌ Podium ornaments and titles; guild experience moving the guild level
 
 ### 🔱 Alliances

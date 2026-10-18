@@ -557,10 +557,12 @@ namespace Jondo.Unity.Server.Network
         /// turn says what position whoever plays it holds.
         /// </summary>
         /// <param name="carried">The tenths he kept from his last turn (f4): see <see cref="SavedAfter"/>.</param>
-        public static byte[] BuildTurnStart(long fighterId, int deciseconds, int index, int round, int carried = 0)
+        public static byte[] BuildTurnStart(long fighterId, int deciseconds, int index, int round, int carried = 0,
+                                            string additional = null)
             => Pb.New()
                 .Var(1, fighterId)
                 .Var(2, deciseconds)
+                .StrIfNotEmpty(3, additional)
                 .VarIfNotZero(4, carried)
                 .VarIfNotZero(7, index)
                 .VarIfNotZero(8, round)
@@ -2211,6 +2213,30 @@ namespace Jondo.Unity.Server.Network
             }
             return jzu.Build();
         }
+
+        /// <summary>
+        /// The same with a fighter's additional turn behind the fighter it follows, or at the end
+        /// when that one is not listed: the entry's other kind, f2 { f1 { f1: who, f2: the turn's
+        /// id } }, which the client's timeline draws as an additional turn
+        /// (TimelineFighterData.isAdditional, additionalTurnId; fix.iir, read in the client). The
+        /// same id goes in the jzc's f3 of that turn.
+        /// </summary>
+        public static byte[] BuildTeams(IEnumerable<long> fighters, long additionalOf, long after, string additionalId)
+        {
+            var jzu = Pb.New();
+            bool placed = false;
+            foreach (long fighter in fighters)
+            {
+                jzu.Msg(2, Pb.New().Msg(3, Pb.New().Var(2, fighter)));
+                if (placed || fighter != after) continue;
+                jzu.Msg(2, AdditionalEntry(additionalOf, additionalId));
+                placed = true;
+            }
+            if (!placed) jzu.Msg(2, AdditionalEntry(additionalOf, additionalId));
+            return jzu.Build();
+        }
+
+        private static Pb AdditionalEntry(long fighter, string id) => Pb.New().Msg(1, Pb.New().Var(1, fighter).Str(2, id ?? ""));
 
         /// <summary>
         /// Where one can be placed (kba).

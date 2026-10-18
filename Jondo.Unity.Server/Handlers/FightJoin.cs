@@ -574,7 +574,7 @@ namespace Jondo.Unity.Server.Handlers
             if (regrown.Added.Count == 0)
             {
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzu,
-                    Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
+                    TeamsOf(fight)));
             }
 
             await ToTheMapAsync(fight, ConnectionProtocol.Push(Op.Kmu,
@@ -661,7 +661,7 @@ namespace Jondo.Unity.Server.Handlers
                         IdentityOf(monster),
                         isMonster: true)));
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzu,
-                    Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
+                    TeamsOf(fight)));
             }
 
             Program.LogDebug($"[Dungeon] Fight #{fight.FightId} now has {added.Count} monsters " +
@@ -934,7 +934,7 @@ namespace Jondo.Unity.Server.Handlers
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzw,
                 FightJoinProtocol.BuildTeamMemberRemoved(fight.FightId, team, me)));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jzu,
-                Network.FightProtocol.BuildTeams(CarouselOrder(fight))));
+                TeamsOf(fight)));
 
             if (team >= 0 && fight.PeopleIn(team) > 0)
             {
