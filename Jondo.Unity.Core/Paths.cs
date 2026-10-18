@@ -617,7 +617,11 @@ namespace Jondo.Unity.Launcher
             return Path.Combine(destino, filename);
         }
 
-        /// <summary>Warns if the same database exists in two places. See ResolveWritable.</summary>
+        /// <summary>The loose copies already warned about: WorldDb is resolved on every connection.</summary>
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _warnedCopies =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Warns, once per copy, if the same database exists in two places. See ResolveWritable.</summary>
         private static void AvisarDeCopias(string filename, string usada)
         {
             foreach (string sub in SubFolders)
@@ -625,6 +629,7 @@ namespace Jondo.Unity.Launcher
                 string otra = Combine(Root, Path.Combine(sub, filename));
                 if (!File.Exists(otra)) continue;
                 if (string.Equals(otra, usada, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!_warnedCopies.TryAdd(otra, 0)) continue;
 
                 Console.WriteLine($"[Paths] WATCH OUT: there is another {filename} in {otra}. {usada} is used " +
                                   "and that other one is left untouched; delete the one that is not needed.");
