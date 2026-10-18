@@ -100,6 +100,10 @@ namespace JondoFix
                 ["quantity"] = L("Cantidad", "Quantity", "Quantité"),
                 ["max"] = L("Dar · características MÁXIMAS", "Give · MAX stats", "Donner · stats MAX"),
                 ["random"] = L("Dar · características ALEATORIAS", "Give · RANDOM stats", "Donner · stats ALÉATOIRES"),
+                ["gift"] = L("Regalar · ventana de regalos", "Gift · gifts window", "Offrir · fenêtre des cadeaux"),
+                ["gifted"] = L("{0} x{1} regalado a la cuenta de {2}: lo recoge en la ventana de regalos.",
+                               "{0} x{1} gifted to {2}'s account: it is in the gifts window.",
+                               "{0} x{1} offert au compte de {2} : il est dans la fenêtre des cadeaux."),
                 ["to"] = L("Para: {0}", "To: {0}", "Pour : {0}"),
                 ["me"] = L("mi personaje", "my character", "mon personnage"),
                 ["refresh"] = L("Actualizar conectados", "Refresh connected", "Actualiser les connectés"),
@@ -608,7 +612,10 @@ namespace JondoFix
             var max = Button(Do(() => Give(false)), T("max"), null, true);
             max.style.marginRight = new StyleLength(12f);
             buttons.Add(max);
-            buttons.Add(Button(Do(() => Give(true)), T("random"), null, true));
+            var random = Button(Do(() => Give(true)), T("random"), null, true);
+            random.style.marginRight = new StyleLength(12f);
+            buttons.Add(random);
+            buttons.Add(Button(Do(Gift), T("gift"), null, true));
             column.Add(buttons);
 
             _status = Label("");
@@ -1458,6 +1465,59 @@ namespace JondoFix
                     }
                     catch { }
                     said = T("given", item.Name, quantity, who, T(random ? "mode.random" : "mode.max"));
+                }
+                else said = Refusal(code, body);
+
+                _toUnity.Enqueue(() => Say(said));
+            });
+        }
+
+        /// <summary>
+        /// The same item as a gift: it waits on the account, in the shop's gifts window, until
+        /// one of its characters takes it (POST /api/regalo).
+        /// </summary>
+        private static void Gift()
+        {
+            if (_selected == null)
+            {
+                Say(T("pick"));
+                return;
+            }
+
+            string token = Token();
+            if (token.Length == 0)
+            {
+                Say(T("no_token"));
+                return;
+            }
+
+            if (!int.TryParse((_quantity?.text ?? "1").Trim(), out int quantity) || quantity < 1) quantity = 1;
+
+            var item = _selected;
+            string target = _target;
+            var request = new Dictionary<string, object>
+            {
+                ["token"] = token,
+                ["personaje"] = target,
+                ["objeto"] = item.Id,
+                ["cantidad"] = quantity,
+            };
+
+            Say(T("sending"));
+            Task.Run(async () =>
+            {
+                var (code, body) = await PostAsync("regalo", request);
+                string said;
+                if (code == 200)
+                {
+                    string who = target;
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(body);
+                        who = doc.RootElement.GetProperty("personaje").GetString() ?? target;
+                    }
+                    catch { }
+                    said = T("gifted", item.Name, quantity, who);
                 }
                 else said = Refusal(code, body);
 

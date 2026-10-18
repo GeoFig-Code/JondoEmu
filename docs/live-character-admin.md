@@ -89,6 +89,7 @@ token. "The caller's" is the character his account has in the world.
 | `POST /api/carcel` | `{ "personaje" }` | Ten minutes in the GM prison, the caller to the corridor beside the cell. |
 | `POST /api/liberar` | `{ "personaje" }` | Out before his time, back where he was taken from (at his next login if he is offline). |
 | `POST /api/presos` | — | `{ presos: [{ nombre, quedan, conectado }] }`, `quedan` in seconds. |
+| `POST /api/regalo` | `{ "personaje", "objeto", "cantidad" }`, `personaje` empty for the caller's own | `{ personaje, regalo }`: a gift on that character's account, in the shop's gifts window until one of its characters takes it. |
 | `POST /api/coordenadas` | `{ "x", "y" }` | `{ mapa }`: the map `.teleport [x,y]` would take. |
 | `POST /api/buscar-mapas` | `{ "texto" }` | `{ mapas: [{ mapa, x, y, zona, subzona, exterior }] }`: up to 60 maps whose area or subarea has every word typed (accents and case aside), or at coordinates `x,y`, or whose id has the digits typed; outdoor ones first. |
 | `POST /api/ficha` | `{ "personaje" }`, empty for the caller's own | `{ personaje, nivel, vitalidad, sabiduria, fuerza, inteligencia, suerte, agilidad, kamas }`: what the character tab fills its fields with. |

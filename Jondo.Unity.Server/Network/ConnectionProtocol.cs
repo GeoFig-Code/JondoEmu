@@ -215,7 +215,7 @@ namespace Jondo.Unity.Server.Network
                 Push(Op.Kqp, Pb.New().Var(1, 1).Build()),
                 Push(Op.Kqp),
                 Push(Op.Kvi, BuildCharactersList(characters)),
-                Push(Op.Jtg, BuildGiftCatalogue()),
+                Push(Op.Jtg, Handlers.GiftHandler.BuildList(characters.Count > 0 ? characters[0].AccountId : SessionContext.Current.AccountId)),
             };
 
         /// <summary>
@@ -294,16 +294,6 @@ namespace Jondo.Unity.Server.Network
             if (withList) burst.AddRange(CharacterListFrames(characters));
             return burst;
         }
-
-        /// <summary>
-        /// Catalogue of gift items attached to the account (jtg). It closes the burst in all three
-        /// captures, right after the character list.
-        ///
-        /// It goes out empty, which is what it means here: the message is a repeated field and our
-        /// accounts own no gifts. The entries are not invented, only the envelope is real:
-        ///   f3 (repeated) { f1 { f2: name, f3 { ...item... }, f6 { ...description... } }, f2: id }
-        /// </summary>
-        public static byte[] BuildGiftCatalogue() => Array.Empty<byte>();
 
         /// <summary>How often the server synchronizes the clock with the client.</summary>
         private const int SyncRate = 120;

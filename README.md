@@ -252,6 +252,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
   cosmetics — across **40 counters**, the breeders' village's four among them: browse, buy lots of 1, 10, 100 or 1000, sell for the 2 % tax,
   take a lot back, change its price, the sales history
 - ✅ Item tooltips show the average price items sell for in the marketplaces
+- ✅ The shop's gifts window: take a gift, or all of them, with any of the account's characters
 - ❌ Merchant mode: the 3.6 client has no screen for it
 
 ### 💬 Social
@@ -699,6 +700,8 @@ the «[!] Sorts admins» set — and every attitude of the game.
 - **Search** the client's catalogue by name, type, id or level range; filter by category and type.
 - **Give · MAX stats** or **Give · RANDOM stats**, to yourself or any connected character, up to 100
   at a time. `.item <id> [quantity] random` does the same from the chat.
+- **Gift**: the item waits on that player's account, in the shop's gifts window, for any of its
+  characters to take.
 
 ### Character
 

@@ -586,6 +586,9 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr == Op.Uri("kqd")) await FriendsHandler.UnblockAsync(stream, payload);
                 else if (payloadStr == Op.Uri(Op.Kpa)) await FriendsHandler.IgnoreAsync(stream, payload);
                 else if (payloadStr == Op.Uri("kpl")) await FriendsHandler.UnignoreAsync(stream, payload);
+                // The shop's gifts: one, or all of them, to a character.
+                else if (payloadStr == Op.Uri("jwm")) await GiftHandler.ClaimAsync(stream, payload);
+                else if (payloadStr == Op.Uri("jth")) await GiftHandler.ClaimAllAsync(stream, payload);
                 // A quest no longer followed.
                 else if (payloadStr == Op.Uri("idv")) QuestHandler.Unfollow(payload);
                 // A document's «start the quest» button.

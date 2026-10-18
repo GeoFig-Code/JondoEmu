@@ -129,6 +129,7 @@ namespace Jondo.Unity.Server.Network
                     case Prefijo + "carcel": return ConRol(cuerpo, Roles.Administrador, cuenta => Carcel(cuerpo, cuenta));
                     case Prefijo + "liberar": return ConRol(cuerpo, Roles.Administrador, cuenta => Liberar(cuerpo, cuenta));
                     case Prefijo + "presos": return ConRol(cuerpo, Roles.Administrador, Presos);
+                    case Prefijo + "regalo": return ConRol(cuerpo, Roles.Administrador, cuenta => Regalo(cuerpo, cuenta));
                     case Prefijo + "coordenadas": return ConRol(cuerpo, Roles.Administrador, _ => Coordenadas(cuerpo));
                     case Prefijo + "buscar-mapas": return ConRol(cuerpo, Roles.Administrador, _ => BuscarMapas(cuerpo));
                     case Prefijo + "ficha": return ConRol(cuerpo, Roles.Administrador, cuenta => Ficha(cuerpo, cuenta));

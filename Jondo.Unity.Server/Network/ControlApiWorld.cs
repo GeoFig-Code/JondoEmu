@@ -175,6 +175,37 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
+        /// POST /api/regalo: a gift for the account of a connected character -- or the
+        /// administrator's own, with no name --, waiting in the shop's gifts window until one of its
+        /// characters takes it (<see cref="Handlers.GiftHandler"/>).
+        /// <code>  { personaje, objeto, cantidad } -> { personaje, regalo }  </code>
+        /// </summary>
+        private static Respuesta Regalo(string cuerpo, long administrador)
+        {
+            string name = Texto(cuerpo, "personaje");
+            var target = name.Length > 0 ? SessionRegistry.FindByName(name) : OwnCharacter(administrador);
+            if (target == null || !target.IsInWorld) return Mal(404, "personaje-desconectado");
+
+            int gid = (int)Numero(cuerpo, "objeto");
+            int quantity = (int)Math.Clamp(Numero(cuerpo, "cantidad"), 1, 1000);
+            if (gid <= 0 || !DatabaseManager.TryGetItemTemplateEffects(gid, out _)) return Mal(400, "objeto-desconocido");
+
+            var (title, description) = target.State.Language switch
+            {
+                "en" => ("A gift from the administration", "Take it from the gifts window with whichever character you like."),
+                "fr" => ("Un cadeau de l'administration", "Récupérez-le dans la fenêtre des cadeaux avec le personnage de votre choix."),
+                _ => ("Un regalo de la administración", "Recógelo en la ventana de regalos con el personaje que quieras."),
+            };
+            int id = Gifts.Grant(target.AccountId, gid, quantity, title, description);
+            if (id == 0) return Mal(500, "regalo");
+
+            Handlers.GiftHandler.TellAsync(target.AccountId).Wait(TimeSpan.FromSeconds(5));
+            ActivityJournal.Current.Write("admin.gift", administrador, target.CharacterId,
+                new { gift = id, account = target.AccountId, gid, quantity });
+            return Bien(new { bien = true, personaje = target.State.CharacterName, regalo = id });
+        }
+
+        /// <summary>
         /// POST /api/coordenadas: the map at these coordinates, the one ".teleport [x,y]" takes
         /// (<see cref="MapLookup.AtCoordinates"/>). <code>  { x, y } -> { mapa }  </code>
         /// </summary>
