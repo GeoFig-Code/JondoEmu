@@ -1,0 +1,114 @@
+{
+ "_comentario": [
+  "Redes de transporte cuyas paradas y tarifa nombra el cliente: los karts de la ruta 666.",
+  "Paradas: las pistas de la categoria 9 con el mismo nombre; vehiculo: el elemento de cada",
+  "parada cuyo grafico solo esta en paradas de la red; tarifa: el texto que nombra al",
+  "conductor y un precio. Generado con tools/extraer_transportes.py; no se edita a mano.",
+  "INFERIDO: una parada lleva a cualquier otra de su red por la tarifa, con la ventana del zaapi."
+ ],
+ "redes": [
+  {
+   "nombre": "Kart de Nodoymas",
+   "pistaTexto": 1128956,
+   "coste": 100,
+   "textoCoste": 1125660,
+   "paradas": [
+    {
+     "mapa": 172232704,
+     "elemento": 538775,
+     "casilla": 257,
+     "gfx": 74982,
+     "subzona": 280,
+     "x": -24,
+     "y": 29,
+     "pista": 3672,
+     "mapas": [
+      172232704
+     ]
+    },
+    {
+     "mapa": 173018113,
+     "elemento": 539084,
+     "casilla": 258,
+     "gfx": 74982,
+     "subzona": 57,
+     "x": -24,
+     "y": 17,
+     "pista": 3673,
+     "mapas": [
+      173018113
+     ]
+    },
+    {
+     "mapa": 171966474,
+     "elemento": 538778,
+     "casilla": 386,
+     "gfx": 74982,
+     "subzona": 526,
+     "x": -27,
+     "y": 4,
+     "pista": 3674,
+     "mapas": [
+      171966474,
+      171966986
+     ]
+    },
+    {
+     "mapa": 173019141,
+     "elemento": 538785,
+     "casilla": 458,
+     "gfx": 74983,
+     "subzona": 57,
+     "x": -22,
+     "y": 21,
+     "pista": 3675,
+     "mapas": [
+      173019141,
+      173019653
+     ]
+    },
+    {
+     "mapa": 171968018,
+     "elemento": 539085,
+     "casilla": 408,
+     "gfx": 74983,
+     "subzona": 526,
+     "x": -24,
+     "y": 12,
+     "pista": 3676,
+     "mapas": [
+      171967506,
+      171968018
+     ]
+    },
+    {
+     "mapa": 171705355,
+     "elemento": 539086,
+     "casilla": 401,
+     "gfx": 74983,
+     "subzona": 522,
+     "x": -26,
+     "y": 0,
+     "pista": 3677,
+     "mapas": [
+      171705355,
+      171705867
+     ]
+    },
+    {
+     "mapa": 171706884,
+     "elemento": 538780,
+     "casilla": 397,
+     "gfx": 74983,
+     "subzona": 522,
+     "x": -23,
+     "y": -7,
+     "pista": 3678,
+     "mapas": [
+      171706884
+     ]
+    }
+   ]
+  }
+ ]
+}

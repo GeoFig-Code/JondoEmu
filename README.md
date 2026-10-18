@@ -209,6 +209,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 <img width="2560" height="1484" alt="image" src="https://github.com/user-attachments/assets/472e09f2-a49d-431e-8935-f60355457cdd" />
 
 - ✅ Boats
+- ✅ The karts of route 666 in the Landas de Sidimote: seven stops, 100 kamas a trip
 - ✅ **16 temporal anomalies** with their 120-minute countdown
 <img width="2560" height="1514" alt="image" src="https://github.com/user-attachments/assets/942d4d71-9711-45f1-9156-5381f7ad14b8" />
 

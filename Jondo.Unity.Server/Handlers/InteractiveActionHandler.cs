@@ -121,6 +121,9 @@ namespace Jondo.Unity.Server.Handlers
                 case InteractiveActionKind.Zaapi:
                     await ZaapiTravelHandler.OpenAsync(stream, interactive.Element, action.SkillId);
                     break;
+                case InteractiveActionKind.Transport:
+                    await TransportTravelHandler.OpenAsync(stream, interactive.Element, action.SkillId);
+                    break;
                 case InteractiveActionKind.Bin:
                     await BinHandler.OpenAsync(stream, interactive.Element.Id, action.SkillId);
                     break;

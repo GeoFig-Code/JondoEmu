@@ -150,8 +150,17 @@ namespace Jondo.Unity.Server.Handlers
                 // so a waypoint cannot be required here. Requiring it was the bug that made zaapi
                 // travel go nowhere.
                 target = chosen;
-                cost = Zaapis.Cost;
-                what = $"zaapi to map {target}";
+                if (Transports.On(from) is { } kart && Transports.StopAt(kart.Network, target) != null)
+                {
+                    // A kart's stop: along its network, at its fare (Transports).
+                    cost = target == kart.Stop.MapId ? 0 : kart.Network.Cost;
+                    what = $"«{kart.Network.Name}» to map {target}";
+                }
+                else
+                {
+                    cost = Zaapis.Cost;
+                    what = $"zaapi to map {target}";
+                }
             }
             else
             {
@@ -188,6 +197,8 @@ namespace Jondo.Unity.Server.Handlers
             // side or behind it, hidden by its drawing, and beside cell 0 where the map has none.
             var zaap = Interactives.ZaapElements(target);
             var arrival = zaap.Count > 0 ? zaap[0] : Zaapis.ElementsOn(target).FirstOrDefault();
+            if (arrival.Id == 0 && Transports.On(target) is { } stop && stop.Stop.MapId == target)
+                arrival = stop.Stop.Vehicle;
             Jondo.Unity.Server.Network.SessionContext.State.CellId = arrival.Id != 0
                 ? FightHandler.CellBeside(target, arrival.Cell)
                 : MapManager.GetNearestWalkableCell(target, TeleportHandler.MapCentre);

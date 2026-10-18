@@ -13,6 +13,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The short transport inside Bonta and Brakmar.</summary>
         Zaapi,
 
+        /// <summary>A kart of route 666: its network's stops in the zaapi's window (Transports).</summary>
+        Transport,
+
         /// <summary>The bin: the public store of what people throw away.</summary>
         Bin,
 
@@ -256,6 +259,16 @@ namespace Jondo.Unity.Server.Managers
                 foreach (var element in Zaapis.ElementsOn(mapId))
                     Register(mapId, element, Zaapis.Type, InteractiveActionKind.Zaapi, Zaapis.UseSkill);
             }
+
+            // The karts of route 666, on their stop and on the neighbour whose border shows them.
+            foreach (var network in Transports.Networks)
+                foreach (var stop in network.Stops)
+                    foreach (long mapId in stop.Maps)
+                        foreach (var vehicle in Transports.VehiclesOn(mapId))
+                        {
+                            if (_byElement.ContainsKey((mapId, vehicle.Id))) continue;
+                            Register(mapId, vehicle, Transports.Type, InteractiveActionKind.Transport, Transports.UseSkill);
+                        }
 
             foreach (long mapId in Interactives.MapIds)
             {
