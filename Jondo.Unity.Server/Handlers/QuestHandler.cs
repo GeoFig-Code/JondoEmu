@@ -58,13 +58,14 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// The client asks about one of its quests (iec): f1 quest.
+        /// The client follows one of its quests (iec): f1 quest, f2 the objective or -1 for all.
         /// </summary>
         /// <remarks>
-        /// Seen 7 times across 4 captures, always right after a quest starts, and always carrying
-        /// the quest that just started plus a second field of -1. Answering it with the current
-        /// step is what the client is plainly waiting for; the -1 is not understood and is left
-        /// alone rather than given a meaning it has not earned.
+        /// Seen 7 times across 4 captures, always right after a quest starts -- the client follows a
+        /// quest as it starts -- and always with -1: its quest tracker (epw) sends it when a quest
+        /// or an objective is followed, and idv when it no longer is (epm.basn). Answered with the
+        /// current step, which is what the box draws, and kept so the box comes back on entering
+        /// the world (<see cref="FollowedQuests"/>).
         /// </remarks>
         public static async Task DetailAsync(NetworkStream stream, byte[] payload)
         {
@@ -74,7 +75,20 @@ namespace Jondo.Unity.Server.Handlers
             int questId = Field(iec, 1);
             if (questId == 0) return;
 
+            if (Quests.Log?.Active(questId) == true) FollowedQuests.Follow(SessionContext.State.CharacterId, questId);
             await Quests.SendStepAsync(stream, questId);
+        }
+
+        /// <summary>
+        /// The client no longer follows a quest (idv): f1 quest, f2 -1. The real server answers
+        /// nothing («barco hacia vulkania», five of them).
+        /// </summary>
+        public static void Unfollow(byte[] payload)
+        {
+            byte[]? idv = ConnectionProtocol.ReadPayload(payload, "idv");
+            if (idv == null) return;
+            int questId = Field(idv, 1);
+            if (questId != 0) FollowedQuests.Unfollow(SessionContext.State.CharacterId, questId);
         }
 
         /// <summary>

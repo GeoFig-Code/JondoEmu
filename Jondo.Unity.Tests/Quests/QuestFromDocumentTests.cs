@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Jondo.Unity.Launcher;
 using Jondo.Unity.Protocol;
@@ -25,6 +26,7 @@ namespace Jondo.Unity.Tests.Quests
 
         private static void Forget()
         {
+            FollowedQuests.Unfollow(Character, Poster);
             using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
             connection.Open();
             using var command = connection.CreateCommand();
@@ -68,6 +70,20 @@ namespace Jondo.Unity.Tests.Quests
                         Assert.Equal(ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, QuestHandler.AlreadyStarted), body);
                         break;
                     }
+
+                    // Followed (iec), the box comes back with it on entering the world (iel); no
+                    // longer followed (idv), it does not.
+                    await QuestHandler.DetailAsync(pipe.ToClient, ConnectionProtocol.Push(Op.Iec,
+                        Pb.New().Var(1, Poster).Var(2, -1).Build()));
+                    await pipe.Next(Op.Idu);
+                    await QuestEngine.SendJournalAsync(pipe.ToClient);
+                    await pipe.Next(Op.Idr);
+                    var iel = ProtoMessage.Parse(await pipe.Next(Op.Iel)).Fields;
+                    var entry = ProtoMessage.Parse(Assert.Single(iel).BytesValue);
+                    Assert.Equal(Poster, entry.Fields.Single(f => f.FieldNumber == 3).VarIntValue);
+
+                    QuestHandler.Unfollow(ConnectionProtocol.Push("idv", Pb.New().Var(1, Poster).Var(2, -1).Build()));
+                    Assert.DoesNotContain(Poster, FollowedQuests.Of(Character));
                 }
             }
             finally

@@ -93,6 +93,20 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
+        /// The followed quests' box (iel): f1, one per quest, the same entry as the journal's in
+        /// progress. Measured on the world-entry capture's frame, quests 1869 and 2406.
+        /// </summary>
+        public static byte[] BuildFollowed(
+            IEnumerable<(int Quest, int Step, IReadOnlyList<int> Objectives, IReadOnlyCollection<int> Done)> followed)
+        {
+            // BuildJournal's f1 entries, without its lists of finished quests.
+            var iel = Pb.New();
+            foreach (var field in ProtoMessage.Parse(BuildJournal(followed, Array.Empty<int>())).Fields)
+                if (field.FieldNumber == 1) iel.Bytes(1, field.BytesValue);
+            return iel.Build();
+        }
+
+        /// <summary>
         /// A step has been validated (idz).
         ///
         ///   f1: quest id

@@ -924,6 +924,20 @@ namespace Jondo.Unity.Server.Managers
                 ConnectionProtocol.Push(Op.Idr, QuestProtocol.BuildJournal(doing, finished)));
 
             Console.WriteLine($"[Quests] Journal sent: {doing.Count} in progress, {finished.Count} done.");
+
+            // And the followed quests' box, which the client fills from its own message (iel), in
+            // the order they were taken up. Only those still in progress: a finished one leaves it.
+            var followed = new List<(int, int, IReadOnlyList<int>, IReadOnlyCollection<int>)>();
+            foreach (int questId in FollowedQuests.Of(SessionContext.State.CharacterId))
+            {
+                int at = doing.FindIndex(d => d.Item1 == questId);
+                if (at >= 0) followed.Add(doing[at]);
+            }
+            if (followed.Count > 0)
+            {
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Iel, QuestProtocol.BuildFollowed(followed)));
+            }
         }
 
         /// <summary>

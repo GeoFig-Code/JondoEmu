@@ -163,14 +163,14 @@ namespace Jondo.Unity.Server.Network
             // had the last word. Right after starting a quest it was seen, because the
             // live ief adds it; on logging in again, it disappeared.
             //
-            // Nothing goes in its place for now: a new character follows none, and the client
-            // puts in the box the ones it has started.
+            // In its place goes the character's own box, with the journal: Managers.Quests.
+            // SendJournalAsync, from what it followed (FollowedQuests).
             Op.Iel,
 
-            // And that account's counters: 9,694 id and value pairs, with ids from 44 to 34,352 and
-            // values in the hundreds of millions. It is what the client draws in the statistics panel,
-            // and they are that account's: games played, monsters killed, kamas earned. 87,878 bytes,
-            // 88 % of everything that was still being copied as is. A new account has none.
+            // And that server's average prices: 9,694 item and price pairs, items 44 to 34,352 -- the
+            // answer to the client's ivp, which the item tooltips read (the client's elx). 87,878
+            // bytes, 88 % of everything that was still being copied as is. In its place goes ours,
+            // from this server's marketplaces, when the client asks: MarketplaceHandler.AveragePricesAsync.
             Op.Ivi,
 
             // And THE SAME JOURNAL AGAIN, whole and in a single frame. Removing only the idu changed

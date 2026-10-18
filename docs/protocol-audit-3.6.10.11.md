@@ -46,7 +46,7 @@ in the 756 captures and the client's senders in Ghidra.
 | `kon` | the friends window's setting { f2 }, as it opens | nothing | **fixed** (taken silently) |
 | `hom` | the spouse's information (its answer, `hol`, has the spouse's name, level, look and guild) | nothing, to a player who is not married | **fixed** (taken silently) |
 | `ido` | a document's «start the quest» button: a wanted poster, a book (the "se busca" posters' 1563-1565) | the start, or `lqn` 626 «No puedes empezar una misión ya empezada»; `kla` brings the `kld` | **fixed** |
-| `idv` | a quest objective validated { objective, -1 }, sometimes moving the player | the map change | missing |
+| `idv` | a quest no longer followed { quest, -1 } (`iec` follows one) | nothing | **fixed**: the followed quests come back in `iel` on entering the world |
 | `jwm`, `jth` | the shop: claiming purchases and gifts | `jwj`, items | missing |
 | `kwd` | character creation's random name | `kvk` { name } | missing |
 | `koc`, `koe`, `kpb` | requests on entering the world | guild information, or nothing | not needed (sent unasked) |
