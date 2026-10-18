@@ -131,6 +131,7 @@ namespace Jondo.Unity.Server.Handlers
             // its monsters with their protectors' bonuses, and its tower by eight.
             Managers.GuildRaidGuardians.OnFightCreated(fight);
             Managers.GuildRaidEnclave.OnFightCreated(fight);
+            Managers.GuildRaidEfedra.OnFightCreated(fight);
             Managers.GuildRaidSanctuary.OnFightCreated(fight);
 
             // A tax collector or a prism attacked: the fight learns whose it is, and its fighter
@@ -2805,9 +2806,12 @@ namespace Jondo.Unity.Server.Handlers
             // Enclave's -- ends here, before the first turn.
             if (Managers.GuildRaidEnclave.LostFromTheStart(fight))
             {
-                await LoseAtOnceAsync(stream, fight);
+                if (fight.FinPendiente == 0) await LoseAtOnceAsync(stream, fight);
                 return;
             }
+
+            // Belladona's chess: the players turned into its pieces, its glyphs laid (once a fight).
+            await Managers.GuildRaidEfedra.OnFightStartedAsync(stream, fight);
 
             await AskToConfirmAsync(stream, fight);
         }
@@ -2816,10 +2820,17 @@ namespace Jondo.Unity.Server.Handlers
         /// A fight lost at once: the side with the players dies inside one sequence, as giving up
         /// does (AbandonAsync), and the result screen follows the client's acknowledgement.
         /// </summary>
-        internal static async Task LoseAtOnceAsync(NetworkStream stream, FightInstance fight)
+        internal static Task LoseAtOnceAsync(NetworkStream stream, FightInstance fight) => SideFallsAsync(stream, fight, players: true);
+
+        /// <summary>
+        /// A side of a fight falls at once -- the players' or the one against them --, inside one
+        /// sequence as giving up does, and the result screen follows the client's acknowledgement.
+        /// </summary>
+        internal static async Task SideFallsAsync(NetworkStream stream, FightInstance fight, bool players)
         {
             var player = TodosLosCombatientes(fight).FirstOrDefault(f => f != null && !f.IsMonster && !f.EsInvocado);
-            var losers = player == null ? new List<Fighter>() : fight.Aliados(player.Id).Where(f => f.IsAlive).ToList();
+            var side = player == null ? new List<Fighter>() : players ? fight.Aliados(player.Id) : fight.Enemigos(player.Id);
+            var losers = side.Where(f => f.IsAlive).ToList();
             if (losers.Count == 0) return;
             var author = (fight.CurrentFighter ?? losers[0]).Id;
             PararElReloj(fight);
@@ -2837,7 +2848,7 @@ namespace Jondo.Unity.Server.Handlers
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                 Network.FightProtocol.BuildSequenceEnd(closure, author, Network.FightProtocol.SurrenderSequence)));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jxh, Network.FightProtocol.BuildConfirmTurn(author)));
-            Program.LogDebug($"[Fight] Fight #{fight.FightId} is lost from its start.");
+            Program.LogDebug($"[Fight] Fight #{fight.FightId}: the {(players ? "players'" : "other")} side falls at once.");
             await CheckFightOverAsync(stream, fight, closure, alreadyAsked: true);
         }
 
@@ -3257,6 +3268,9 @@ namespace Jondo.Unity.Server.Handlers
             // CurrentHP.
             await RefrescarLaVidaAsync(stream, fight, fighter, fighter);
 
+            // Belladona's chess ends as her fourth turn begins (GuildRaidEfedra).
+            if (await Managers.GuildRaidEfedra.QueenTurnAsync(stream, fight, fighter)) return;
+
             // Where he starts from and with how many MP: it is what is needed to judge, at the end,
             // the position challenges and the spend-exactly-one-MP one. It goes AFTER giving back
             // the points.
@@ -3634,6 +3648,9 @@ namespace Jondo.Unity.Server.Handlers
 
             var walker = fight.CurrentFighter;
             if (walker == null || !walker.ControlledBy(GameState.CharacterId)) return;
+
+            // A chess piece does not walk: it moves by its spell (GuildRaidEfedra).
+            if (!Managers.GuildRaidEfedra.MayWalk(fight, walker)) return;
 
             var (_, corners, facing) = Network.FightProtocol.ReadMove(payload);
             if (corners.Count < 2) return;
@@ -4159,6 +4176,13 @@ namespace Jondo.Unity.Server.Handlers
                 dreamGrade = held.Value.Grade;
             }
 
+            // A piece of Belladona's chess casts only its move, where it reaches, and the blessing (GuildRaidEfedra).
+            if (!Managers.GuildRaidEfedra.MayCast(fight, caster, spell, cell))
+            {
+                Program.LogDebug($"[Fight] {caster.Id} is a chess piece; spell {spell} at {cell} is not its move.");
+                return;
+            }
+
             // A domestication spell, the one a capture net gives, is cast once a fight (RideCapture).
             if (!Managers.RideCapture.MayCast(fight, caster, spell))
             {
@@ -4448,6 +4472,9 @@ namespace Jondo.Unity.Server.Handlers
                              $"{cell} for {cost} AP; {caster.CurrentAP} left.");
 
             if (await CheckFightOverAsync(stream, fight, cierre)) return;
+
+            // A chess piece's move: on its cell, it is placed (GuildRaidEfedra).
+            await Managers.GuildRaidEfedra.AfterCastAsync(stream, fight, caster);
 
             // "Hace pasar de turno" (1031): the turn ends right behind the cast, as the jyt of
             // the Tymadura capture does, with the illusions already placed.
@@ -6916,17 +6943,27 @@ namespace Jondo.Unity.Server.Handlers
         private static async Task LightTheArenaAsync(FightInstance fight)
         {
             string light = Managers.GuildRaidLights.ArenaLight(fight);
-            int staging = light == null ? Managers.GuildRaidStagings.None : Managers.GuildRaidStagings.IdOf(fight.MapId, light);
             var author = fight.CurrentFighter ?? TodosLosCombatientes(fight).FirstOrDefault(f => f != null);
-            if (staging == Managers.GuildRaidStagings.None || author == null) return;
+            if (light == null || author == null) return;
+            if (await PlayStagingAsync(fight, author, light))
+                Program.LogDebug($"[Raids] Arena {fight.MapId} of fight #{fight.FightId} lit with {light}.");
+        }
 
+        /// <summary>
+        /// A staging of the fight's map played, by its name, in a sequence of its own (jwe 2192). False
+        /// when the map has none so called.
+        /// </summary>
+        internal static async Task<bool> PlayStagingAsync(FightInstance fight, Fighter author, string name)
+        {
+            int staging = Managers.GuildRaidStagings.IdOf(fight.MapId, name);
+            if (staging == Managers.GuildRaidStagings.None || author == null) return false;
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                 Network.FightProtocol.BuildSequenceStart(author.Id, Network.FightProtocol.ActionSequence)));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildTriggerStaging(author.Id, staging)));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                 Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), author.Id, Network.FightProtocol.ActionSequence)));
-            Program.LogDebug($"[Raids] Arena {fight.MapId} of fight #{fight.FightId} lit with {light}.");
+            return true;
         }
 
         /// <summary>

@@ -49,6 +49,10 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static Layout ForFight(int breed, int level, long accountId)
         {
+            // A piece of Belladona's chess plays its move and the blessing, nothing else (GuildRaidEfedra).
+            if (GuildRaidEfedra.SpellsFor(Network.SessionContext.State.CharacterId) is { } chess)
+                return Build(chess.Select(s => new SpellTable.KnownSpell(s.Spell, s.Spell, s.Grade)).ToList(), null);
+
             var layout = Current(breed, level, accountId);
             int net = RideCapture.SpellOfEquippedNet();
             if (net == 0 || layout.Spells.Any(s => s.Spell == net)) return layout;

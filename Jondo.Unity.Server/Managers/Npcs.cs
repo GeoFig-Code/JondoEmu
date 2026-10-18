@@ -351,6 +351,10 @@ namespace Jondo.Unity.Server.Managers
                 {
                     Poner(chest.MapId, Jondo.Unity.World.Content.RaidChest.NpcId, chest.Cell);
                 }
+
+                // And Belladona, beside her chessboard in the Patio de Efedra (GuildRaidEfedra).
+                if (GuildRaidEfedra.NpcPlace() is { } belladona)
+                    Poner(belladona.MapId, GuildRaidEfedra.Npc, belladona.Cell);
             }
             catch (Exception ex)
             {

@@ -527,8 +527,11 @@ namespace Jondo.Unity.Server.Managers
             if (protector.MonsterId != RightProtector(raid)) _wrongFights[fight.FightId] = 0;
         }
 
-        /// <summary>Whether a fight starting is lost at once (and it is no longer marked).</summary>
-        public static bool LostFromTheStart(FightInstance fight) => fight != null && _wrongFights.TryRemove(fight.FightId, out _);
+        /// <summary>Whether a fight starting is lost at once: asked once a player, as the fight's start is.</summary>
+        public static bool LostFromTheStart(FightInstance fight) => fight != null && _wrongFights.ContainsKey(fight.FightId);
+
+        /// <summary>A fight over: its mark goes.</summary>
+        public static void Forget(long fightId) => _wrongFights.TryRemove(fightId, out _);
 
         /// <summary>A fight won: the right protector beaten is the goal's other step.</summary>
         public static async Task BeatenAsync(RaidInstance raid, IReadOnlyDictionary<int, int> beaten)

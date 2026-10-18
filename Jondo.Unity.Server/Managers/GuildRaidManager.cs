@@ -111,6 +111,7 @@ namespace Jondo.Unity.Server.Managers
                 GuildRaidEnclave.Draw(raid, Random.Shared);
                 GuildRaidEnclave.Populate(Raids.Of(raid.RaidId), Random.Shared);
                 GuildRaidBelladona.Draw(raid, Random.Shared);
+                GuildRaidEfedra.Draw(raid, Random.Shared);
                 GuildRaidGuardians.Place(Raids.Of(raid.RaidId));
                 GuildRaidSanctuary.Populate(Raids.Of(raid.RaidId), Random.Shared);
             }
@@ -232,7 +233,12 @@ namespace Jondo.Unity.Server.Managers
         {
             // The Cangrancio's goal is met by its statues' enigma, not by beating it (GuildRaidExecrabe).
             int enigma = GuildRaidExecrabe.EnigmaGoal(raidId)?.Id ?? 0;
-            var goals = GuildRaidCatalogue.GoalsOf(raidId).Where(g => g.Id != enigma).ToList();
+            // And the Santuario's four enigmas by their own rules: the Belladona the Reserva's goal
+            // names is the chess's, whose goal is the Patio's (GuildRaidEfedra).
+            var enigmas = raidId == Raids.EternalGardens
+                ? new[] { GuildRaidMonochrome.Goal, GuildRaidEnclave.Goal, GuildRaidBelladona.Goal, GuildRaidEfedra.Goal }
+                : Array.Empty<int>();
+            var goals = GuildRaidCatalogue.GoalsOf(raidId).Where(g => g.Id != enigma && !enigmas.Contains(g.Id)).ToList();
             var named = goals.SelectMany(g => g.Monsters ?? Array.Empty<int>()).GroupBy(m => m)
                              .Where(g => g.Count() == 1).Select(g => g.Key).ToHashSet();
             var byMonster = new Dictionary<int, List<int>>();
@@ -255,6 +261,8 @@ namespace Jondo.Unity.Server.Managers
         {
             GuildRaidExecrabe.Forget(fight.FightId);
             GuildRaidGuardians.Forget(fight.FightId);
+            GuildRaidEnclave.Forget(fight.FightId);
+            GuildRaidEfedra.Forget(fight.FightId);
             if (!fight.Reglas.ReparteBotin) return;
             var raid = RaidOf(characterId);
             if (raid == null) return;
@@ -461,8 +469,13 @@ namespace Jondo.Unity.Server.Managers
             if (raid.RaidId == Raids.EternalGardens && GuildRaidSanctuary.CastleOf(kind)?.InCorridor(mapId) == true)
                 await AdvanceGoalAsync(raid, CorridorGoal, raid.GoalAt(CorridorGoal) + beaten.Values.Sum());
 
-            // The Enclave's protector, the one its statue and the raid's colour name.
-            if (raid.RaidId == Raids.EternalGardens) await GuildRaidEnclave.BeatenAsync(raid, beaten);
+            // The Enclave's protector, the one its statue and the raid's colour name; and the
+            // chess's Belladona, the Patio's game won.
+            if (raid.RaidId == Raids.EternalGardens)
+            {
+                await GuildRaidEnclave.BeatenAsync(raid, beaten);
+                await GuildRaidEfedra.BeatenAsync(raid, beaten);
+            }
 
             if (raid.RaidId == Raids.Gigalodon && floor == 1 && kind != null)
             {

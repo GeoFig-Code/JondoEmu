@@ -179,6 +179,19 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // Nor Belladona: her chess, its rules or her spite once beaten (GuildRaidEfedra).
+            if (npc.NpcId == Managers.GuildRaidEfedra.Npc)
+            {
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Ioc, ConnectionProtocol.BuildNpcDialog(mapId, npc.ContextualId)));
+                var (question, replies) = Managers.GuildRaidEfedra.DialogueFor(GameState.CharacterId);
+                SessionContext.State.OpenDialogueNpcId = npc.NpcId;
+                SessionContext.State.OpenDialogueMapId = mapId;
+                SessionContext.State.OpenDialogueMessage = question;
+                await PreguntarAsync(stream, question, replies);
+                return;
+            }
+
             // The kanojedo's master puch: the six levels, and then how many.
             if (npc.NpcId == Kanojedo.MasterNpc)
             {
@@ -821,6 +834,24 @@ namespace Jondo.Unity.Server.Handlers
                 Luminomachine.Owns(reply))
             {
                 await MachineReplyAsync(stream, reply);
+                return;
+            }
+
+            // Belladona: the rules bring her pieces out; the challenge, her game; the rest, goodbye.
+            if (SessionContext.State.OpenDialogueNpcId == Managers.GuildRaidEfedra.Npc && Managers.GuildRaidEfedra.Owns(reply))
+            {
+                if (reply == Managers.GuildRaidEfedra.AskRules)
+                {
+                    var (question, replies) = await Managers.GuildRaidEfedra.RulesAsync(GameState.CharacterId);
+                    SessionContext.State.OpenDialogueMessage = question;
+                    await PreguntarAsync(stream, question, replies);
+                    return;
+                }
+                CerrarConversacion();
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Kld, ConnectionProtocol.BuildDialogClosed(ConnectionProtocol.NpcDialogCloseReason)));
+                if (reply == Managers.GuildRaidEfedra.Challenge)
+                    await Managers.GuildRaidEfedra.ChallengeAsync(stream, GameState.CharacterId);
                 return;
             }
 

@@ -79,6 +79,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A ball of a Reserva board, a letter or a number of the shot (GuildRaidBelladona).</summary>
         RaidCannonBall,
 
+        /// <summary>A piece or a decoy of Belladona's chessboards in the Reserva (GuildRaidEfedra).</summary>
+        RaidChessPiece,
+
         /// <summary>A paddock's gate: it opens the breeding window on its paddock (BreedingHandler).</summary>
         PaddockGate,
     }
@@ -508,6 +511,17 @@ namespace Jondo.Unity.Server.Managers
                     if (_byElement.ContainsKey((board.MapId, ball.Id))) continue;
                     Declared(board.MapId, ball, GuildRaidBelladona.BallType)
                         .AddNamed(InteractiveActionKind.RaidCannonBall, GuildRaidBelladona.BallSkill, GuildRaidBelladona.Fire);
+                }
+            }
+
+            // And Belladona's chessboards in the Reserva: their pieces and their decoys.
+            if (GuildRaidEfedra.WorkOf(Jondo.Unity.World.Content.Raids.Of(Jondo.Unity.World.Content.Raids.EternalGardens)) is { } patio)
+            {
+                foreach (var board in patio.Boards)
+                foreach (var piece in Interactives.ElementsOf(board.MapId).Where(e => board.Pieces.ContainsKey(e.Id) || board.Decoys.ContainsKey(e.Id)))
+                {
+                    if (_byElement.ContainsKey((board.MapId, piece.Id))) continue;
+                    Register(board.MapId, piece, GuildRaidEfedra.PieceType, InteractiveActionKind.RaidChessPiece, GuildRaidEfedra.PieceSkill);
                 }
             }
 

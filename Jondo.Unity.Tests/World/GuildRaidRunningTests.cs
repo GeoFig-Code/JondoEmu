@@ -136,7 +136,8 @@ namespace Jondo.Unity.Tests.World
 
         /// <summary>
         /// The goals a fight moves, from the monsters their names name: the Santuario's four
-        /// guardians, its Princesa and Reina and Belladona; the Gigalodón's Mureine ("Morreina"). The
+        /// guardians, its Princesa and Reina; the Gigalodón's Mureine ("Morreina"). Belladona, whom the
+        /// Reserva's goal names, is the Patio's chess (GuildRaidEfedra). The
         /// Exécrabe ("Cangrancio") is named by goal 16, which its statues meet, and the Gigalodón by
         /// fifteen damage goals: beating either moves none.
         /// </summary>
@@ -147,7 +148,7 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(new[] { 5 }, gardens[8316]);
             Assert.Equal(new[] { 10 }, gardens[8279]);
             Assert.Equal(new[] { 11 }, gardens[8278]);
-            Assert.Equal(new[] { 3 }, gardens[8246]);
+            Assert.False(gardens.ContainsKey(8246));
             var abyss = GuildRaidManager.KillGoals(Raids.Gigalodon);
             Assert.Equal(new[] { 14 }, abyss[8333]);
             Assert.False(abyss.ContainsKey(8332));          // the Cangrancio's goal is its statues' (GuildRaidExecrabe)

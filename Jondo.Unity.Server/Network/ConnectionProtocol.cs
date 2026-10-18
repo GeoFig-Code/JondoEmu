@@ -1285,7 +1285,8 @@ namespace Jondo.Unity.Server.Network
                                                                  or Managers.InteractiveActionKind.RaidGardenSquare
                                                                  or Managers.InteractiveActionKind.RaidGardenButton
                                                                  or Managers.InteractiveActionKind.RaidPaperBoat
-                                                                 or Managers.InteractiveActionKind.RaidCannonBall);
+                                                                 or Managers.InteractiveActionKind.RaidCannonBall
+                                                                 or Managers.InteractiveActionKind.RaidChessPiece);
             if (enigma != null)
             {
                 long viewer = Network.SessionContext.State.CharacterId;
@@ -1296,6 +1297,7 @@ namespace Jondo.Unity.Server.Network
                     Managers.InteractiveActionKind.RaidFlower => Managers.GuildRaidMonochrome.Offers(viewer, map, element),
                     Managers.InteractiveActionKind.RaidPaperBoat or Managers.InteractiveActionKind.RaidCannonBall
                         => Managers.GuildRaidBelladona.Offers(viewer, map, element),
+                    Managers.InteractiveActionKind.RaidChessPiece => Managers.GuildRaidEfedra.Offers(viewer, map, element),
                     _ => Managers.GuildRaidEnclave.Offers(viewer, map, element),
                 };
                 if (!offered)
@@ -1310,6 +1312,7 @@ namespace Jondo.Unity.Server.Network
                     Managers.InteractiveActionKind.RaidFlower => Managers.GuildRaidMonochrome.Usable(viewer, map, element),
                     Managers.InteractiveActionKind.RaidPaperBoat or Managers.InteractiveActionKind.RaidCannonBall
                         => Managers.GuildRaidBelladona.Usable(viewer, map, element),
+                    Managers.InteractiveActionKind.RaidChessPiece => Managers.GuildRaidEfedra.Usable(viewer, map, element),
                     _ => Managers.GuildRaidEnclave.Usable(viewer, map, element),
                 };
             }
