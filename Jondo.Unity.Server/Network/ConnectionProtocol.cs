@@ -1278,19 +1278,29 @@ namespace Jondo.Unity.Server.Network
 
             bool usable = !gathering || (state == Managers.ResourceState.Full && alcanza);
 
-            // An Obra flower is offered only where the viewer's raid has one standing, and only while
-            // it is not green; elsewhere it is the passive element every map declares.
-            if (interactive.Actions.Any(a => a.Kind == Managers.InteractiveActionKind.RaidFlower))
+            // A Santuario enigma's element -- an Obra flower, a miniature garden's square or button --
+            // is offered only to the viewer's raid, where it has one standing, and usable only while
+            // the enigma lets it be; elsewhere it is the passive element every map declares.
+            var enigma = interactive.Actions.FirstOrDefault(a => a.Kind is Managers.InteractiveActionKind.RaidFlower
+                                                                 or Managers.InteractiveActionKind.RaidGardenSquare
+                                                                 or Managers.InteractiveActionKind.RaidGardenButton);
+            if (enigma != null)
             {
                 long viewer = Network.SessionContext.State.CharacterId;
-                if (!Managers.GuildRaidMonochrome.Offers(viewer, interactive.MapId, interactive.Element.Id))
+                bool flower = enigma.Kind == Managers.InteractiveActionKind.RaidFlower;
+                bool offered = flower
+                    ? Managers.GuildRaidMonochrome.Offers(viewer, interactive.MapId, interactive.Element.Id)
+                    : Managers.GuildRaidEnclave.Offers(viewer, interactive.MapId, interactive.Element.Id);
+                if (!offered)
                 {
                     jss.Msg(11, Pb.New().Var(1, 1)
                         .Var(5, interactive.Element.Id)
                         .Var(6, Managers.Interactives.TypeOfGfx(interactive.Element.Gfx)));
                     return;
                 }
-                usable = Managers.GuildRaidMonochrome.Usable(viewer, interactive.MapId, interactive.Element.Id);
+                usable = flower
+                    ? Managers.GuildRaidMonochrome.Usable(viewer, interactive.MapId, interactive.Element.Id)
+                    : Managers.GuildRaidEnclave.Usable(viewer, interactive.MapId, interactive.Element.Id);
             }
 
             var declaration = Pb.New().Var(1, 1);

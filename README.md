@@ -293,8 +293,10 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Monster aggression inside raids
 - ✅ The Sanctuary's Obra monocromática: the pedestals' objects, the paper flowers in their order, the red
   flash of a lost life and the zone taking its colour
+- ✅ The Sanctuary's Enclave de los protectores: the gardens' statues copied on the Patio's miniature
+  boards, the statue rising in the Obra's colour and its sixteen protectors, the wrong one lost at once
 - ❌ The light bands are not drawn yet
-- ❌ The Sanctuary's other three enigmas; the guardians stand from the start
+- ❌ The Sanctuary's other two enigmas; the guardians stand from the start
 - ❌ The Defensor's double turn and the bosses' scripted rules (the Reina's dungeons, the Princesa's flower)
 - ❌ Podium ornaments and titles; guild experience moving the guild level
 

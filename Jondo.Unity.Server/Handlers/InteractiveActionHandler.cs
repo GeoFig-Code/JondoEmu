@@ -172,6 +172,11 @@ namespace Jondo.Unity.Server.Handlers
                     await GuildRaidMonochrome.PressAsync(stream, GameState.CharacterId, mapId,
                                                          interactive.Element.Id, action.SkillId);
                     break;
+                case InteractiveActionKind.RaidGardenSquare:
+                case InteractiveActionKind.RaidGardenButton:
+                    await GuildRaidEnclave.PressAsync(stream, GameState.CharacterId, mapId,
+                                                      interactive.Element.Id, action.SkillId);
+                    break;
                 default:
                     throw new InvalidOperationException($"Unhandled interactive action: {action.Kind}.");
             }

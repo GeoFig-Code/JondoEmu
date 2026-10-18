@@ -240,7 +240,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 raid.Set(ProgressVariable, ++done);
                 await GuildRaidStagings.PlayAsync(raid, mapId, FlowerGreen, keep: true);
-                await RedeclareAsync(raid, mapId, elementId, usable: false);
+                await GuildRaidStagings.RedeclareAsync(raid, mapId, elementId, InteractiveActionKind.RaidFlower, usable: false);
                 await GuildRaidStagings.PlayAsync(raid, work.Centre, string.Format(StepDone, done), keep: true);
                 Program.LogDebug($"[Raids] {raid.Uuid}: the Obra's flower of pedestal {pedestal + 1} is green.");
                 if (done == Pedestals) await SolveAsync(raid, work, mapId);
@@ -255,7 +255,7 @@ namespace Jondo.Unity.Server.Managers
                 var (map, flower) = work.Flowers[work.Objects[flowers[green]]];
                 GuildRaidStagings.Drop(raid, map, GuildRaidStagings.IdOf(map, FlowerGreen));
                 await GuildRaidStagings.PlayAsync(raid, map, FlowerRed, keep: false);
-                await RedeclareAsync(raid, map, flower.Id, usable: true);
+                await GuildRaidStagings.RedeclareAsync(raid, map, flower.Id, InteractiveActionKind.RaidFlower, usable: true);
             }
             await GuildRaidStagings.PlayAsync(raid, mapId, FlowerRed, keep: false);
             GuildRaidStagings.Drop(raid, work.Centre, Enumerable.Range(1, Pedestals)
@@ -292,17 +292,10 @@ namespace Jondo.Unity.Server.Managers
                 }
             }
             Console.WriteLine($"[Raid] {raid.Uuid}: the Obra monocromática is solved, colour {colour}.");
+
+            // And the Enclave's statue, if it has risen, takes the colour.
+            await GuildRaidEnclave.ObraSolvedAsync(raid);
         }
 
-        /// <summary>A flower offered again, or no more, to the raid's members on its map.</summary>
-        private static async Task RedeclareAsync(RaidInstance raid, long mapId, int elementId, bool usable)
-        {
-            var interactive = InteractiveRegistry.OnMap(mapId).FirstOrDefault(i => i.Element.Id == elementId);
-            var action = interactive?.Actions.FirstOrDefault(a => a.Kind == InteractiveActionKind.RaidFlower);
-            if (action == null) return;
-            await GuildRaidStagings.TellRaidOnMapAsync(raid, mapId, ConnectionProtocol.Push(Op.Iwm,
-                ConnectionProtocol.BuildElementRedeclared(action.SkillInstanceId, action.SkillId, elementId,
-                                                          interactive.Type, usable, action.SkillNameId)));
-        }
     }
 }

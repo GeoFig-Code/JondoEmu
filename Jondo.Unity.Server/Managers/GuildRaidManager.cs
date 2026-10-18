@@ -105,6 +105,8 @@ namespace Jondo.Unity.Server.Managers
             {
                 GuildRaidGuardians.DrawColour(raid, Random.Shared);
                 GuildRaidMonochrome.Draw(raid, Random.Shared);
+                GuildRaidEnclave.Draw(raid, Random.Shared);
+                GuildRaidEnclave.Populate(Raids.Of(raid.RaidId), Random.Shared);
                 GuildRaidGuardians.Place(Raids.Of(raid.RaidId));
                 GuildRaidSanctuary.Populate(Raids.Of(raid.RaidId), Random.Shared);
             }
@@ -449,6 +451,9 @@ namespace Jondo.Unity.Server.Managers
 
             if (raid.RaidId == Raids.EternalGardens && GuildRaidSanctuary.CastleOf(kind)?.InCorridor(mapId) == true)
                 await AdvanceGoalAsync(raid, CorridorGoal, raid.GoalAt(CorridorGoal) + beaten.Values.Sum());
+
+            // The Enclave's protector, the one its statue and the raid's colour name.
+            if (raid.RaidId == Raids.EternalGardens) await GuildRaidEnclave.BeatenAsync(raid, beaten);
 
             if (raid.RaidId == Raids.Gigalodon && floor == 1 && kind != null)
             {

@@ -29,7 +29,9 @@ namespace Jondo.Unity.Server.Managers
     /// and played again, at its end, to whoever of the raid loads that map. What only happens
     /// once -- the red of a wrong flower, the flash of a lost life -- is played, not kept.
     ///
-    /// The sequences of each map are the client's (tools/extract_raid_stagings.py).
+    /// The sequences of each map are the client's (tools/extract_raid_stagings.py), and so are the
+    /// names its elements carry for them: where each named piece stands, and which clickable
+    /// element it is when it is one (<see cref="ElementsOf"/>).
     /// </remarks>
     public static class GuildRaidStagings
     {
@@ -43,32 +45,38 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>"Perte pv": the red flash every Santuario map plays when the raid loses a life.</summary>
         public const string LifeLost = "Perte pv";
 
-        private static IReadOnlyDictionary<long, IReadOnlyList<(int Id, string Name)>>? _maps;
+        private sealed record Document(IReadOnlyDictionary<long, IReadOnlyList<(int Id, string Name)>> Maps,
+                                       IReadOnlyDictionary<long, IReadOnlyList<(string Name, int Cell, int Element)>> Elements);
+
+        private static Document? _document;
         private static readonly object _lock = new();
 
         /// <summary>What each raid has standing on each map, in the order it was shown.</summary>
         private static readonly ConcurrentDictionary<long, ConcurrentDictionary<long, List<int>>> _standing = new();
 
-        private static IReadOnlyDictionary<long, IReadOnlyList<(int Id, string Name)>> Maps
+        private static Document Loaded
         {
             get
             {
-                if (_maps != null) return _maps;
+                if (_document != null) return _document;
                 lock (_lock)
                 {
-                    _maps ??= Load(Paths.RaidStagingsJson);
-                    return _maps;
+                    _document ??= Load(Paths.RaidStagingsJson);
+                    return _document;
                 }
             }
         }
 
-        private static IReadOnlyDictionary<long, IReadOnlyList<(int Id, string Name)>> Load(string path)
+        private static IReadOnlyDictionary<long, IReadOnlyList<(int Id, string Name)>> Maps => Loaded.Maps;
+
+        private static Document Load(string path)
         {
             var maps = new Dictionary<long, IReadOnlyList<(int Id, string Name)>>();
+            var elements = new Dictionary<long, IReadOnlyList<(string Name, int Cell, int Element)>>();
             if (!File.Exists(path))
             {
                 Console.WriteLine($"[Raids] {Path.GetFileName(path)} is missing: the raids' maps will show none of their hidden pieces.");
-                return maps;
+                return new Document(maps, elements);
             }
             try
             {
@@ -80,12 +88,22 @@ namespace Jondo.Unity.Server.Managers
                                      .Select(s => (s[0].GetInt32(), s[1].GetString() ?? ""))
                                      .ToList();
                 }
+                if (json.RootElement.TryGetProperty("elements", out var named))
+                {
+                    foreach (var map in named.EnumerateObject())
+                    {
+                        if (!long.TryParse(map.Name, out long mapId)) continue;
+                        elements[mapId] = map.Value.EnumerateArray()
+                                             .Select(e => (e[0].GetString() ?? "", e[1].GetInt32(), e[2].GetInt32()))
+                                             .ToList();
+                    }
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[Raids] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
-            return maps;
+            return new Document(maps, elements);
         }
 
         // ─── The data ───────────────────────────────────────────────────────────────────────
@@ -93,6 +111,13 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A map's staging sequences.</summary>
         public static IReadOnlyList<(int Id, string Name)> Of(long mapId)
             => Maps.TryGetValue(mapId, out var sequences) ? sequences : Array.Empty<(int, string)>();
+
+        /// <summary>
+        /// A map's elements named for its stagings: the name, the cell, and the element's id when it
+        /// is a clickable one (0 for a drawing). A name may stand on several cells.
+        /// </summary>
+        public static IReadOnlyList<(string Name, int Cell, int Element)> ElementsOf(long mapId)
+            => Loaded.Elements.TryGetValue(mapId, out var elements) ? elements : Array.Empty<(string, int, int)>();
 
         /// <summary>The uniqueId a map gives a sequence by its name, or 0 when the map has none so called.</summary>
         public static int IdOf(long mapId, string name)
@@ -178,6 +203,20 @@ namespace Jondo.Unity.Server.Managers
                 int id = IdOf(session.State.MapId, LifeLost);
                 if (id != 0) await session.SendAsync(ConnectionProtocol.Push(Op.Hpm, BuildPlay(id, FromStart)));
             }
+        }
+
+        /// <summary>
+        /// An element of an enigma offered again, or no more, to the raid's members on its map: its
+        /// declaration sent again with its skill usable or not (iwm).
+        /// </summary>
+        public static async Task RedeclareAsync(RaidInstance raid, long mapId, int elementId, InteractiveActionKind kind, bool usable)
+        {
+            var interactive = InteractiveRegistry.OnMap(mapId).FirstOrDefault(i => i.Element.Id == elementId);
+            var action = interactive?.Actions.FirstOrDefault(a => a.Kind == kind);
+            if (action == null) return;
+            await TellRaidOnMapAsync(raid, mapId, ConnectionProtocol.Push(Op.Iwm,
+                ConnectionProtocol.BuildElementRedeclared(action.SkillInstanceId, action.SkillId, elementId,
+                                                          interactive.Type, usable, action.SkillNameId)));
         }
 
         /// <summary>A frame to the raid's members standing on a map, out of a fight.</summary>

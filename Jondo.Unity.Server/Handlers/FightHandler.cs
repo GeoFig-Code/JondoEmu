@@ -130,6 +130,7 @@ namespace Jondo.Unity.Server.Handlers
             // The Santuario's guardians are fought by four players at most; its corridor alone,
             // its monsters with their protectors' bonuses, and its tower by eight.
             Managers.GuildRaidGuardians.OnFightCreated(fight);
+            Managers.GuildRaidEnclave.OnFightCreated(fight);
             Managers.GuildRaidSanctuary.OnFightCreated(fight);
 
             // A tax collector or a prism attacked: the fight learns whose it is, and its fighter
@@ -2800,7 +2801,44 @@ namespace Jondo.Unity.Server.Handlers
 
             await CascadaDePasivosAsync(stream, fight);
 
+            // A fight a raid's enigma says is lost from its start -- a wrong protector of the
+            // Enclave's -- ends here, before the first turn.
+            if (Managers.GuildRaidEnclave.LostFromTheStart(fight))
+            {
+                await LoseAtOnceAsync(stream, fight);
+                return;
+            }
+
             await AskToConfirmAsync(stream, fight);
+        }
+
+        /// <summary>
+        /// A fight lost at once: the side with the players dies inside one sequence, as giving up
+        /// does (AbandonAsync), and the result screen follows the client's acknowledgement.
+        /// </summary>
+        internal static async Task LoseAtOnceAsync(NetworkStream stream, FightInstance fight)
+        {
+            var player = TodosLosCombatientes(fight).FirstOrDefault(f => f != null && !f.IsMonster && !f.EsInvocado);
+            var losers = player == null ? new List<Fighter>() : fight.Aliados(player.Id).Where(f => f.IsAlive).ToList();
+            if (losers.Count == 0) return;
+            var author = (fight.CurrentFighter ?? losers[0]).Id;
+            PararElReloj(fight);
+
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
+                Network.FightProtocol.BuildSequenceStart(author, Network.FightProtocol.SurrenderSequence)));
+            foreach (var loser in losers)
+            {
+                loser.CurrentHP = 0;
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe, Network.FightProtocol.BuildDeath(loser.Id, loser.Id)));
+            }
+            await ReenviarLaListaAsync(stream, fight);
+
+            int closure = fight.SiguienteAccion();
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
+                Network.FightProtocol.BuildSequenceEnd(closure, author, Network.FightProtocol.SurrenderSequence)));
+            await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jxh, Network.FightProtocol.BuildConfirmTurn(author)));
+            Program.LogDebug($"[Fight] Fight #{fight.FightId} is lost from its start.");
+            await CheckFightOverAsync(stream, fight, closure, alreadyAsked: true);
         }
 
         private const int FirstRound = 1;

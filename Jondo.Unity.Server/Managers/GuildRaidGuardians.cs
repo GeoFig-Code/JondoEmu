@@ -23,8 +23,8 @@ namespace Jondo.Unity.Server.Managers
     /// world places none of them: no group of the Santuario carries a guardian, nor its bosses.
     ///
     /// WHEN: the guides wake them once the four enigmas are solved. Until all four are played --
-    /// the Obra's is (GuildRaidMonochrome) -- the guardians stand from the raid's start, or the
-    /// raid could not be finished.
+    /// the Obra's and the Enclave's are (GuildRaidMonochrome, GuildRaidEnclave) -- the guardians
+    /// stand from the raid's start, or the raid could not be finished.
     ///
     /// WITH WHOM: "four monsters, one of each kind" -- the Santuario's Trilipín, Machacamelia,
     /// Muguetégida and Daliana, the castle's colourless ones -- and the Centinela, its four
@@ -52,9 +52,10 @@ namespace Jondo.Unity.Server.Managers
     ///
     /// Which companion and which glyphs are right is, in the guides, what the Enclave's and the
     /// Obra's enigmas showed -- the Guardián's glyphs, "pour chaque glyphe correspond un objet",
-    /// those of the objects whose maps had a flower. Until both enigmas are played, any companion
-    /// and any glyph is right (his call, 2026-10-10): the "== N" and "&lt; 5" versions go through,
-    /// the others never.
+    /// those of the objects whose maps had a flower; the Vigilante's companion, the kind of the
+    /// statue the Enclave raises (GuildRaidEnclave.StatueVariable). Until that is wired, any
+    /// companion and any glyph is right (his call, 2026-10-10): the "== N" and "&lt; 5" versions go
+    /// through, the others never.
     /// A glyph's check goes to every attacker on the board; it counts once.
     /// </remarks>
     public static class GuildRaidGuardians
@@ -229,7 +230,34 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>A spell's admin name in the client's data, read once.</summary>
-        private static string AdminNameOf(int spell) => _adminNames.GetOrAdd(spell, ReadAdminName);
+        internal static string AdminNameOf(int spell) => _adminNames.GetOrAdd(spell, ReadAdminName);
+
+        private static IReadOnlyDictionary<int, int>? _companionByMob;
+
+        /// <summary>
+        /// The companions by the number the Vigilante's "Check Mob" gives each kind: the death of each
+        /// casts a grade of it whose "mob == N" names its N -- 1 Machacamelia, 2 Trilipán, 3 Daliana,
+        /// 4 Muguetégida in the client's data. The Enclave's statues are numbered alike ("Pop statue N").
+        /// </summary>
+        public static IReadOnlyDictionary<int, int> CompanionByMob()
+        {
+            if (_companionByMob != null) return _companionByMob;
+            var byMob = new Dictionary<int, int>();
+            foreach (var death in SpellEffects.De(CheckMob, 1))
+            {
+                if (death.EffectId != EffectEngine.EfectoQueLanzaHechizo || death.DiceNum != CheckMob) continue;
+                var companion = Regex.Match(death.Triggers + "," + death.TargetMask, @"\bF(\d+)");
+                if (!companion.Success) continue;
+                foreach (var check in SpellEffects.De(CheckMob, death.DiceSide))
+                {
+                    var mob = Regex.Match(AdminNameOf(check.DiceNum), @"^mob\s*==\s*(\d+)");
+                    if (check.EffectId == EffectEngine.EfectoQueLanzaHechizo && mob.Success)
+                        byMob[int.Parse(mob.Groups[1].Value)] = int.Parse(companion.Groups[1].Value);
+                }
+            }
+            if (byMob.Count > 0) _companionByMob = byMob;
+            return byMob;
+        }
 
         private static string ReadAdminName(int spell)
         {

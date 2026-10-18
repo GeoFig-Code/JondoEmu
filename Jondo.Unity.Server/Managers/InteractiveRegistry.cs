@@ -67,6 +67,12 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A paper flower of the Santuario's Obra monocromática (GuildRaidMonochrome).</summary>
         RaidFlower,
 
+        /// <summary>A square of one of the Patio de Efedra's miniature gardens (GuildRaidEnclave).</summary>
+        RaidGardenSquare,
+
+        /// <summary>The button that validates a miniature garden (GuildRaidEnclave).</summary>
+        RaidGardenButton,
+
         /// <summary>A paddock's gate: it opens the breeding window on its paddock (BreedingHandler).</summary>
         PaddockGate,
     }
@@ -461,6 +467,23 @@ namespace Jondo.Unity.Server.Managers
                     if (_byElement.ContainsKey((flowerMap, flower.Id))) continue;
                     Declared(flowerMap, flower, GuildRaidMonochrome.FlowerType)
                         .AddNamed(InteractiveActionKind.RaidFlower, GuildRaidMonochrome.FlowerSkill, GuildRaidMonochrome.ActivateFlower);
+                }
+            }
+
+            // And the Patio's miniature gardens: their squares and the button that validates each.
+            if (GuildRaidEnclave.WorkOf(Jondo.Unity.World.Content.Raids.Of(Jondo.Unity.World.Content.Raids.EternalGardens)) is { } enclave)
+            {
+                foreach (var board in enclave.Boards.Values)
+                {
+                    foreach (var square in Interactives.ElementsOf(board.MapId).Where(e => board.Squares.ContainsKey(e.Id)))
+                    {
+                        if (_byElement.ContainsKey((board.MapId, square.Id))) continue;
+                        Register(board.MapId, square, GuildRaidEnclave.SquareType, InteractiveActionKind.RaidGardenSquare,
+                                 GuildRaidEnclave.SquareSkill);
+                    }
+                    if (_byElement.ContainsKey((board.MapId, board.Button.Id))) continue;
+                    Declared(board.MapId, board.Button, GuildRaidEnclave.ButtonType)
+                        .AddNamed(InteractiveActionKind.RaidGardenButton, GuildRaidEnclave.ButtonSkill, GuildRaidEnclave.Press);
                 }
             }
 
