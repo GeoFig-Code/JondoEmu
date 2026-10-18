@@ -26,8 +26,17 @@ namespace Jondo.Unity.Server.Managers
             public int CellId { get; init; }
             public int Direction { get; init; }
 
-            /// <summary>When it was placed, in Unix milliseconds: the ley's f2.</summary>
+            /// <summary>When it was placed, in Unix milliseconds: the ley's f2 while it stands normal.</summary>
             public long PlacedUtcMs { get; init; }
+
+            /// <summary>Normal, weakened, vulnerable or pacified: see <see cref="Normal"/>.</summary>
+            public int State { get; set; }
+
+            /// <summary>
+            /// When a weakened prism turns vulnerable, a vulnerable one's conquest runs out, or a
+            /// pacified one goes back to normal, in Unix milliseconds; 0 when it stands normal.
+            /// </summary>
+            public long NextChangeUtcMs { get; set; }
 
             /// <summary>Its id among the map's actors, in a range of its own.</summary>
             public long ContextId => ContextBase - Id;
@@ -35,6 +44,17 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>Where the prisms' actor ids start, going down, far below the tax collectors'.</summary>
         public const long ContextBase = -900000;
+
+        /// <summary>
+        /// A prism's four states, the client's lew (Translations 1149320): normal, the alliance holds
+        /// the zone; weakened, it was beaten and will soon turn vulnerable; vulnerable, a conquest
+        /// is being fought over it; pacified, protected from attacks. The conquests window colours
+        /// them white, yellow, red and pink (AllianceConquestsUi.SetPrismLabels).
+        /// </summary>
+        public const int Normal = 0;
+        public const int Weakened = 1;
+        public const int Vulnerable = 2;
+        public const int Pacified = 3;
 
         public static void EnsureTables(SqliteConnection world)
         {
@@ -47,10 +67,26 @@ namespace Jondo.Unity.Server.Managers
                     MapId INTEGER NOT NULL,
                     CellId INTEGER NOT NULL DEFAULT 0,
                     Direction INTEGER NOT NULL DEFAULT 1,
-                    PlacedUtcMs INTEGER NOT NULL DEFAULT 0
+                    PlacedUtcMs INTEGER NOT NULL DEFAULT 0,
+                    State INTEGER NOT NULL DEFAULT 0,
+                    NextChangeUtcMs INTEGER NOT NULL DEFAULT 0
                 );
                 CREATE UNIQUE INDEX IF NOT EXISTS IdxPrismsSubArea ON Prisms (SubAreaId);";
             create.ExecuteNonQuery();
+
+            // The state came later: a table of before gets its two columns.
+            var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var info = world.CreateCommand();
+            info.CommandText = "PRAGMA table_info(Prisms);";
+            using (var reader = info.ExecuteReader())
+                while (reader.Read()) columns.Add(reader.GetString(1));
+            foreach (var column in new[] { "State", "NextChangeUtcMs" })
+            {
+                if (columns.Contains(column)) continue;
+                var alter = world.CreateCommand();
+                alter.CommandText = $"ALTER TABLE Prisms ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0;";
+                alter.ExecuteNonQuery();
+            }
         }
 
         /// <summary>A connection string a test can point at a temp database; null uses world.db.</summary>
@@ -85,7 +121,7 @@ namespace Jondo.Unity.Server.Managers
                     var all = new ConcurrentDictionary<int, Prism>();
                     using var conexion = Open();
                     var select = conexion.CreateCommand();
-                    select.CommandText = "SELECT Id, AllianceId, SubAreaId, MapId, CellId, Direction, PlacedUtcMs FROM Prisms;";
+                    select.CommandText = "SELECT Id, AllianceId, SubAreaId, MapId, CellId, Direction, PlacedUtcMs, State, NextChangeUtcMs FROM Prisms;";
                     using var lector = select.ExecuteReader();
                     while (lector.Read())
                     {
@@ -98,6 +134,8 @@ namespace Jondo.Unity.Server.Managers
                             CellId = lector.GetInt32(4),
                             Direction = lector.GetInt32(5),
                             PlacedUtcMs = lector.GetInt64(6),
+                            State = lector.GetInt32(7),
+                            NextChangeUtcMs = lector.GetInt64(8),
                         };
                         all[prism.SubAreaId] = prism;
                     }
@@ -108,15 +146,16 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>Places a prism and returns it; null when its subarea already has one.</summary>
-        public static Prism Place(long allianceId, int subAreaId, long mapId, int cellId, int direction)
+        public static Prism Place(long allianceId, int subAreaId, long mapId, int cellId, int direction,
+                                  int state = Normal, long nextChangeUtcMs = 0)
         {
             if (InSubArea(subAreaId) != null) return null;
             using var conexion = Open();
             long placed = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var insert = conexion.CreateCommand();
             insert.CommandText = @"
-                INSERT INTO Prisms (AllianceId, SubAreaId, MapId, CellId, Direction, PlacedUtcMs)
-                VALUES ($alliance, $subarea, $map, $cell, $dir, $placed);
+                INSERT INTO Prisms (AllianceId, SubAreaId, MapId, CellId, Direction, PlacedUtcMs, State, NextChangeUtcMs)
+                VALUES ($alliance, $subarea, $map, $cell, $dir, $placed, $state, $next);
                 SELECT last_insert_rowid();";
             insert.Parameters.AddWithValue("$alliance", allianceId);
             insert.Parameters.AddWithValue("$subarea", subAreaId);
@@ -124,6 +163,8 @@ namespace Jondo.Unity.Server.Managers
             insert.Parameters.AddWithValue("$cell", cellId);
             insert.Parameters.AddWithValue("$dir", direction);
             insert.Parameters.AddWithValue("$placed", placed);
+            insert.Parameters.AddWithValue("$state", state);
+            insert.Parameters.AddWithValue("$next", nextChangeUtcMs);
             long id;
             try { id = Convert.ToInt64(insert.ExecuteScalar()); }
             catch (SqliteException) { return null; }
@@ -132,6 +173,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 Id = id, AllianceId = allianceId, SubAreaId = subAreaId, MapId = mapId,
                 CellId = cellId, Direction = direction, PlacedUtcMs = placed,
+                State = state, NextChangeUtcMs = nextChangeUtcMs,
             };
             BySubArea[subAreaId] = prism;
             return prism;
@@ -148,6 +190,21 @@ namespace Jondo.Unity.Server.Managers
 
         public static List<Prism> OfAlliance(long allianceId)
             => BySubArea.Values.Where(p => p.AllianceId == allianceId).OrderBy(p => p.Id).ToList();
+
+        /// <summary>A prism's state changed, and when the next change comes.</summary>
+        public static void SetState(Prism prism, int state, long nextChangeUtcMs)
+        {
+            if (prism == null) return;
+            using var conexion = Open();
+            var update = conexion.CreateCommand();
+            update.CommandText = "UPDATE Prisms SET State = $state, NextChangeUtcMs = $next WHERE Id = $id;";
+            update.Parameters.AddWithValue("$state", state);
+            update.Parameters.AddWithValue("$next", nextChangeUtcMs);
+            update.Parameters.AddWithValue("$id", prism.Id);
+            update.ExecuteNonQuery();
+            prism.State = state;
+            prism.NextChangeUtcMs = nextChangeUtcMs;
+        }
 
         public static void Remove(Prism prism)
         {

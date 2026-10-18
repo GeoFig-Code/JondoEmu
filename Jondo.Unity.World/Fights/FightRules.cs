@@ -120,6 +120,12 @@
         /// </summary>
         public static readonly FightRules ContraPrisma = new Prisma();
 
+        /// <summary>
+        /// An aggression: a player attacking one of an enemy alliance in a conquest's zone, the
+        /// player menu's «Agredir» (the hph without its f2).
+        /// </summary>
+        public static readonly FightRules Agresion = new Asalto();
+
         /// <summary>A room of an Infinite Dream: against monsters, with the dream's clocks and no challenges.</summary>
         public static readonly FightRules EnUnSueno = new Sueno();
 
@@ -144,6 +150,26 @@
             public override bool DefeatCosts => false;
             public override int PlayerTurn => 900;
             public override string Nombre => "in a dream";
+        }
+
+        /// <summary>
+        /// The kam's type 1, the aggression of the client's fight types, which it draws with the
+        /// tax collector's and the prism's icon (SpectatorUi.GetFightTypeIcon); no aggression is
+        /// captured. The usual clock, nothing to win but the conquest's points, and losing costs as
+        /// any fight but a challenge or the Koliseo does (Translations 1156704).
+        /// </summary>
+        private sealed class Asalto : FightRules
+        {
+            public override bool HayRetos => false;
+            public override int RelojDeColocacion => 450;
+            public override int TipoDelKam => 1;
+            public override bool EnfrenteHayMonstruos => false;
+            public override bool ReparteBotin => false;
+            public override bool PagaElKoliseo => false;
+            public override bool BorraElGrupoAlGanar => false;
+            public override bool AvanzaDeSala => false;
+            public override bool DefeatCosts => true;
+            public override string Nombre => "an aggression";
         }
 
         /// <summary>

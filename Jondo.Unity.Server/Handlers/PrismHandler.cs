@@ -33,8 +33,14 @@ namespace Jondo.Unity.Server.Handlers
         private const int NeedsAlliance = 400;
         private const int ZoneAlreadyYours = 403;
 
+        /// <summary>«No puedes poner un prisma en este territorio: hay otra alianza que tiene prioridad hasta pasados {0} min.»</summary>
+        private const int PriorityOfAnother = 697;
+
+        /// <summary>«El estado del prisma es incompatible con esta acción.», info 1: attacking one that is not normal.</summary>
+        private const int StateForbids = 406;
+
         /// <summary>«Uno de tus prismas ha sido destruido.», info 0/1581, to the alliance.</summary>
-        private const int OneOfYoursDestroyed = 1581;
+        internal const int OneOfYoursDestroyed = 1581;
 
         // ─── Placing ────────────────────────────────────────────────────────────
 
@@ -67,7 +73,19 @@ namespace Jondo.Unity.Server.Handlers
                 return true;
             }
 
-            var prism = PrismStore.Place(alliance.Id, map.SubAreaId, me.MapId, me.CellId, me.Orientation);
+            // A conquest won: the winner alone, for a while (ConquestHandler.BirthOf).
+            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var priority = Conquests.PriorityIn(map.SubAreaId, now);
+            if (priority != null && priority.AllianceId != alliance.Id)
+            {
+                long minutes = Math.Max(1, (priority.UntilUtcMs - now + 59_999) / 60_000);
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, PriorityOfAnother, minutes.ToString())));
+                return true;
+            }
+            var (state, nextChange) = ConquestHandler.BirthOf(alliance.Id, map.SubAreaId, now);
+
+            var prism = PrismStore.Place(alliance.Id, map.SubAreaId, me.MapId, me.CellId, me.Orientation, state, nextChange);
             if (prism == null)
             {
                 await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn,
@@ -233,6 +251,15 @@ namespace Jondo.Unity.Server.Handlers
             var mine = AllianceStore.AllianceOf(me.CharacterId);
             if (alliance == null || mine == null || mine.Id == prism.AllianceId) return;
 
+            // Only a normal prism is fought: a weakened one waits for its conquest, a vulnerable
+            // one is being conquered, a pacified one is protected (Translations 1149320).
+            if (prism.State != PrismStore.Normal)
+            {
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, StateForbids)));
+                return;
+            }
+
             var monster = MobSpawnManager.GetMonsterData(PrismProtocol.Monster);
             if (monster == null || monster.Grades.Count == 0)
             {
@@ -273,39 +300,36 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// A prism's fight over: beaten, it is gone -- off its map, off the world's list (iew) -- and
-        /// its alliance told; standing, it goes back on its map. Its alliance hears how (iev).
+        /// A prism's fight over: beaten, it stands weakened until its conquest
+        /// (<see cref="ConquestHandler.WeakenAsync"/>); standing, it goes back on its map. Its
+        /// alliance hears how (iev).
         /// </summary>
         internal static async Task FightEndedAsync(FightInstance fight, bool attackersWon)
         {
             var prism = PrismStore.ByContextId(fight.DefenderLeaderId);
             if (prism == null) return;
             var alliance = AllianceStore.ById(prism.AllianceId);
-            if (alliance != null)
-            {
-                await AllianceHandler.TellMembersAsync(alliance, ConnectionProtocol.Push(Op.Iev,
-                    PrismProtocol.BuildFightResult(attackersWon ? PrismProtocol.Weakened : PrismProtocol.NotDefeated,
-                                                   PrismProtocol.Information(prism, alliance))));
-            }
 
             if (attackersWon)
             {
-                PrismStore.Remove(prism);
-                await GoneAsync(prism);
-                if (alliance != null)
-                    await AllianceHandler.TellMembersAsync(alliance, ConnectionProtocol.Push(Op.Lqn,
-                        ConnectionProtocol.BuildSystemMessage(OneOfYoursDestroyed)));
+                var attackers = fight.Azul.Where(f => !f.IsMonster && !f.EsInvocado)
+                                          .Select(f => AllianceStore.AllianceOf(f.Id)?.Id ?? 0)
+                                          .Where(id => id != 0);
+                await ConquestHandler.WeakenAsync(prism, attackers.ToList(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                 Program.LogDebug($"[Prism] The prism of subarea {prism.SubAreaId} falls in fight #{fight.FightId}.");
-                return;
             }
-
             if (alliance == null) return;
-            await SessionRegistry.BroadcastToMapAsync(prism.MapId, ConnectionProtocol.Push(Op.Jsn,
-                PrismProtocol.BuildShown(prism, alliance)), fightId: 0);
+
+            await AllianceHandler.TellMembersAsync(alliance, ConnectionProtocol.Push(Op.Iev,
+                PrismProtocol.BuildFightResult(attackersWon ? PrismProtocol.Weakened : PrismProtocol.NotDefeated,
+                                               PrismProtocol.Information(prism, alliance))));
+            if (!attackersWon)
+                await SessionRegistry.BroadcastToMapAsync(prism.MapId, ConnectionProtocol.Push(Op.Jsn,
+                    PrismProtocol.BuildShown(prism, alliance)), fightId: 0);
         }
 
         /// <summary>A prism gone: off its map (kmu) and off the world's list (iew).</summary>
-        private static async Task GoneAsync(PrismStore.Prism prism)
+        internal static async Task GoneAsync(PrismStore.Prism prism)
         {
             await SessionRegistry.BroadcastToMapAsync(prism.MapId, ConnectionProtocol.Push(Op.Kmu,
                 FightJoinProtocol.BuildActorHidden(prism.ContextId)), fightId: 0);

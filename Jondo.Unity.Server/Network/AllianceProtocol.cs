@@ -31,12 +31,21 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         public const int NotAggressable = 0;
 
+        /// <summary>Taking part in AvA, in a conquest's zone: other alliances' fighters may attack him.</summary>
+        public const int AvaAggressable = 3;
+
         /// <summary>Taking part in AvA, outside any fought-over zone: the switch is on above 2.</summary>
         public const int AvaNotAggressable = 4;
 
-        /// <summary>This character's status, from the alliance window's «Alliance fight» switch.</summary>
+        /// <summary>
+        /// This character's status, from the alliance window's «Alliance fight» switch and where he
+        /// stands: in the zone of a vulnerable prism he is aggressable (Handlers.ConquestHandler).
+        /// </summary>
         public static int AggressableStatus(long characterId)
-            => AllianceStore.TakesPartInAva(characterId) ? AvaNotAggressable : NotAggressable;
+        {
+            if (!AllianceStore.TakesPartInAva(characterId)) return NotAggressable;
+            return Handlers.ConquestHandler.InWarZone(characterId) ? AvaAggressable : AvaNotAggressable;
+        }
 
         /// <summary>
         /// A character's aggressable status (hon): f1 the character, f5 the status. f2 to f4 are

@@ -245,6 +245,18 @@ namespace Jondo.Unity.Server
                 },
                 null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
+            // The prisms' clock: weakened ones turning vulnerable, the conquests' minutes, the
+            // pacified going back to normal (Handlers.ConquestHandler).
+            var conquests = new System.Threading.Timer(
+                _ =>
+                {
+                    if (Interlocked.Exchange(ref _conquestTicking, 1) != 0) return;
+                    try { Handlers.ConquestHandler.TickAsync().GetAwaiter().GetResult(); }
+                    catch (Exception ex) { Console.WriteLine($"[Conquest] The clock failed: {ex.Message}"); }
+                    finally { Interlocked.Exchange(ref _conquestTicking, 0); }
+                },
+                null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+
             // And its window: the log and the figures. If it could not be opened —no desktop, for
             // example— the server keeps working the same: the window is for looking, not for
             // things to happen.
@@ -258,6 +270,7 @@ namespace Jondo.Unity.Server
             await _shutdown.Task;
             await barrendero.DisposeAsync();
             await koliseo.DisposeAsync();
+            await conquests.DisposeAsync();
 
             StopServices();
 
@@ -300,6 +313,7 @@ namespace Jondo.Unity.Server
         /// doing, and each one held a pool thread blocked behind the one before.
         /// </summary>
         private static int _koliseoTicking;
+        private static int _conquestTicking;
 
         /// <summary>The argument a restarted run gets: the process id of the run it replaces.</summary>
         private const string RestartAfter = "--restart-after";

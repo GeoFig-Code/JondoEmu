@@ -416,7 +416,8 @@ namespace Jondo.Unity.Server.Handlers
                                                         long mapId, int pvpId = 0,
                                                         bool koliseo = false, int koliseoMode = -1,
                                                         IReadOnlyList<Fighter>? blueBots = null,
-                                                        IReadOnlyList<Fighter>? redBots = null)
+                                                        IReadOnlyList<Fighter>? redBots = null,
+                                                        FightRules? rules = null)
         {
             // Koliseo JondoBots fill sides with no session behind them; somebody real still fights.
             blueBots ??= Array.Empty<Fighter>();
@@ -440,7 +441,7 @@ namespace Jondo.Unity.Server.Handlers
 
             var fight = new FightInstance(fightId, mapId, arenaMapId)
             {
-                Reglas = koliseo ? FightRules.Koliseo : FightRules.Desafio,
+                Reglas = rules ?? (koliseo ? FightRules.Koliseo : FightRules.Desafio),
                 KoliseoMode = koliseo ? koliseoMode : -1,
             };
 
@@ -9141,6 +9142,7 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         internal static async Task FightOverForTheWorldAsync(FightInstance fight, bool attackersWon)
         {
+            if (fight.Reglas == FightRules.Agresion) await ConquestHandler.AggressionEndedAsync(fight, attackersWon);
             var defence = await AllianceFights.CloseAsync(fight);
             if (defence == null)
             {

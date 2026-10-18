@@ -3023,6 +3023,12 @@ public static class Op
     /// <summary>C→S: the prism's teleport list (the prism's menu, dqv).</summary>
     public const string Ifd = "ifd";
 
+    /// <summary>S→C: a conquest's score, every minute (fgv.bewm; see KothProtocol).</summary>
+    public const string Mep = "mep";
+
+    /// <summary>S→C: a conquest over, f1 its winner (fgv.bewn).</summary>
+    public const string Mdz = "mdz";
+
     /// <summary>
     /// C→S { f1 bool }: the alliance window's «Alliance fight» switch, taking part in AvA or not
     /// (fgu.beuc). Answered with the hon.

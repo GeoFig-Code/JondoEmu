@@ -54,6 +54,25 @@ namespace Jondo.Unity.Server
         /// <summary>A line every player reads in the chat on coming into the world; empty, none.</summary>
         public string WelcomeMessage { get; set; } = "";
 
+        /// <summary>
+        /// The hours a beaten prism stays weakened before it turns vulnerable: «la hora elegida por
+        /// la defensa (con un plazo mínimo de 24 horas)», Translations 354323. The 3.6 client has no
+        /// window to choose that hour in, so the server keeps the minimum; 0 turns it vulnerable at once.
+        /// </summary>
+        public int PrismWeakenedHours { get; set; } = 24;
+
+        /// <summary>
+        /// The longest a conquest of a vulnerable prism lasts, in minutes: if no alliance has
+        /// dominated twenty minutes by then, the defence keeps its prism.
+        /// </summary>
+        public int ConquestMaxMinutes { get; set; } = 120;
+
+        /// <summary>
+        /// A conquered prism's hours of invulnerability, divided by the prisms its alliance holds:
+        /// «inversamente proporcional al número de prismas que tenga», Translations 1149317.
+        /// </summary>
+        public int ConquestInvulnerabilityHours { get; set; } = 24;
+
         /// <summary>The server window's language: es, en or fr.</summary>
         public string WindowLanguage { get; set; } = "es";
 

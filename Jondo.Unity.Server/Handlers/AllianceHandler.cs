@@ -1266,6 +1266,16 @@ namespace Jondo.Unity.Server.Handlers
             foreach (var field in ProtoMessage.Parse(mes).Fields)
                 if (field.FieldNumber == 1 && field.WireType == 0) on = field.VarIntValue != 0;
 
+            // Not in the middle of a conquest (info 1/399): the switch goes back where it was.
+            if (ConquestHandler.InWarZone(who))
+            {
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, ConquestHandler.NoSwitchInAWar)));
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Hon,
+                    AllianceProtocol.BuildAggressableStatus(who, AllianceProtocol.AggressableStatus(who))));
+                return;
+            }
+
             AllianceStore.SetTakesPartInAva(who, on);
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Hon,
                 AllianceProtocol.BuildAggressableStatus(who, AllianceProtocol.AggressableStatus(who))));

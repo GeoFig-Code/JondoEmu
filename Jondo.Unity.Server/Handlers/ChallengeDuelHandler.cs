@@ -15,7 +15,7 @@ namespace Jondo.Unity.Server.Handlers
     /// both endings from both sides. The whole exchange is four frames:
     ///
     /// <code>
-    ///   C-&gt;S  hph { f1: who is challenged, f2: 1, f3: n }
+    ///   C-&gt;S  hph { f1: who is challenged, f2: 1, f3: n }       (no f2: an aggression)
     ///   S-&gt;C  hqc { f1: challenger, f2: challenged, f3: id }   to both
     ///   C-&gt;S  hpu { f1: id }                                    refuse
     ///   C-&gt;S  hpu { f1: id, f2: 1 }                             accept
@@ -40,13 +40,23 @@ namespace Jondo.Unity.Server.Handlers
             if (hph == null) return;
 
             long targetId = 0;
+            bool friendly = false;
             foreach (var field in ProtoMessage.Parse(hph).Fields)
             {
                 if (field.FieldNumber == 1 && field.WireType == 0) targetId = field.VarIntValue;
+                else if (field.FieldNumber == 2 && field.WireType == 0) friendly = field.VarIntValue != 0;
             }
 
             long challengerId = GameState.CharacterId;
             if (targetId == 0 || challengerId == 0 || targetId == challengerId) return;
+
+            // Without its f2 it is no challenge but «Agredir» (PlayerMenuMaker.OnAttack): an
+            // aggression, in a conquest's zone.
+            if (!friendly)
+            {
+                await ConquestHandler.AggressAsync(stream, targetId);
+                return;
+            }
 
             var otro = SessionRegistry.FindByCharacter(targetId);
             if (otro == null || !otro.IsInWorld)

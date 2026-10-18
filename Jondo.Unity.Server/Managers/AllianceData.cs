@@ -26,10 +26,11 @@ namespace Jondo.Unity.Server.Managers
         public sealed record Right(int Id, int GroupId, int Order, string Name);
         public sealed record NamePart(int Id, string Name);
         public sealed record EmblemSymbol(int Id, int SkinId, bool Colorizable, int PrismSkinId = 0);
+        public sealed record KothRole(int Id, bool Default, string Name);
 
         private sealed record Document(List<RankTemplate> Ranks, List<Right> Rights,
                                        List<NamePart> TaxCollectorFirstNames, List<NamePart> TaxCollectorNames,
-                                       List<EmblemSymbol> EmblemSymbols);
+                                       List<EmblemSymbol> EmblemSymbols, List<KothRole> KothRoles = null);
 
         /// <summary>Manage the ranks and rights below one's own.</summary>
         public const int ManageRanks = 1;
@@ -91,13 +92,13 @@ namespace Jondo.Unity.Server.Managers
             if (!File.Exists(path))
             {
                 Console.WriteLine($"[Alliance] {path} not found: alliances get the four ranks without names.");
-                return new Document(new(), new(), new(), new(), new());
+                return new Document(new(), new(), new(), new(), new(), new());
             }
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             var document = JsonSerializer.Deserialize<Document>(File.ReadAllText(path), options);
             return new Document(document?.Ranks ?? new(), document?.Rights ?? new(),
                                 document?.TaxCollectorFirstNames ?? new(), document?.TaxCollectorNames ?? new(),
-                                document?.EmblemSymbols ?? new());
+                                document?.EmblemSymbols ?? new(), document?.KothRoles ?? new());
         }
 
         /// <summary>The four ranks an alliance is born with, leader first.</summary>
@@ -115,6 +116,12 @@ namespace Jondo.Unity.Server.Managers
 
         public static IReadOnlyList<NamePart> TaxCollectorFirstNames => Loaded.TaxCollectorFirstNames;
         public static IReadOnlyList<NamePart> TaxCollectorNames => Loaded.TaxCollectorNames;
+
+        /// <summary>
+        /// The role a member takes in a conquest when he learnt none: «carne de cañón», the
+        /// kothRoles' default; zero without the data.
+        /// </summary>
+        public static int DefaultKothRole => Loaded.KothRoles?.FirstOrDefault(r => r.Default)?.Id ?? 0;
 
         /// <summary>The skin an emblem symbol dresses a tax collector with; zero when it is not known.</summary>
         public static int SkinOfSymbol(int symbol)

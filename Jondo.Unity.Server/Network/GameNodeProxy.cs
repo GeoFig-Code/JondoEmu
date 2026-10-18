@@ -116,6 +116,7 @@ namespace Jondo.Unity.Server.Network
 
                         // A tax collector's items left in the recycling window go to the bag.
                         try { RecycleHandler.Abandon(sesion); } catch { }
+                        ConquestHandler.Forget(sesion.State.CharacterId);
 
                         // A commission half done ends for the one left behind too.
                         try { await CommissionHandler.AbandonAsync(sesion); } catch { }
@@ -540,6 +541,11 @@ namespace Jondo.Unity.Server.Network
                         // the level and the bag looked at again. Same place, same reason.
                         await Managers.Achievements.OnMapEnteredAsync(stream, GameState.MapId,
                                                                       mapaInfo?.SubAreaId ?? 0);
+
+                        // And the conquests: walking into a vulnerable prism's zone, or out of it,
+                        // changes an AvA fighter's status.
+                        await ConquestHandler.OnMapEnteredAsync(stream, GameState.CharacterId,
+                                                                mapaInfo?.SubAreaId ?? 0);
 
                         Console.WriteLine($"[Game Node] Actors of map {GameState.MapId} sent: " +
                                           $"{here.Name} on cell {GameState.CellId}.");

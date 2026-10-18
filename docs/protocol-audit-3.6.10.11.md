@@ -59,6 +59,7 @@ in the 756 captures and the client's senders in Ghidra.
 | `mdw`, `mdt` | the alliance nuggets window opening and closing (NuggetsUi) | `mec` { pot } to `mdw` | **fixed**, with `meb` (handing the pot out) and recycling (`kga`/`kgh`) |
 | `med` | swapping places in an alliance fight (JoinFightUtils.SwapPlaces) | unknown | missing |
 | `kjw`, `jaq` | the map panel's «leave the dungeon» and «leave the haven bag» (MapInfoUI) | the way out | **fixed** |
+| `hph` without its f2 | «Agredir» on a player (PlayerMenuMaker.OnAttack), which the server took for a challenge | the aggression's fight in a conquest's zone, else `lqn` 421 | **fixed**: see `ConquestHandler`, with the conquest's `mep` and `mdz` |
 
 The Ankama friends -- the window's first section -- are not game messages: they go to the chat
 service (`ChatServer`, Spin over TLS on 6337), which only answered the login, with a frame length that left

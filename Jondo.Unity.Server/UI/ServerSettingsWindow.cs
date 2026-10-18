@@ -29,6 +29,7 @@ namespace Jondo.Unity.Server.UI
         private int E(int px) => (int)Math.Round(px * _escala);
 
         private readonly NumberStepper _raidMin, _maxAp, _maxMp, _xp, _drop, _kamas, _randomLootChance;
+        private readonly NumberStepper _weakenedHours, _conquestMinutes, _invulnerableHours;
         private readonly ToggleSwitch _hardcore, _noEnergy, _randomLoot;
         private readonly LauncherField _welcome;
         private readonly RarityTable _rarities;
@@ -59,6 +60,7 @@ namespace Jondo.Unity.Server.UI
             public string Rates, Xp, Drop, Kamas, RatesHint;
             public string Characters, MaxAp, MaxMp, CapHint, NoEnergy, NoEnergyHint;
             public string Raids, RaidMin, RaidMinHint;
+            public string Conquests, Weakened, WeakenedHint, ConquestMax, ConquestMaxHint, Invulnerable, InvulnerableHint;
             public string Loot, RandomLoot, RandomLootHint, Chance, ChanceHint, LootLevels;
             public string Consumables, Equipment, Cosmetics, Creatures, Dofus, Legendary, Perfect, Percent;
             public string Modes, Hardcore, HardcoreHint;
@@ -85,6 +87,12 @@ namespace Jondo.Unity.Server.UI
                 NoEnergy = "Morir no cuesta energía", NoEnergyHint = "Perder un combate no gasta energía.",
                 Raids = "RAIDS DE GREMIO",
                 RaidMin = "Jugadores mínimos para iniciar una raid", RaidMinHint = "0 = los del juego (8).",
+                Conquests = "CONQUISTAS DE ALIANZA",
+                Weakened = "Horas de prisma debilitado", WeakenedHint = "Hasta que se vuelve vulnerable. 0 = enseguida.",
+                ConquestMax = "Duración máxima de una conquista",
+                ConquestMaxHint = "En minutos. Si nadie gana antes, la defensa conserva el prisma.",
+                Invulnerable = "Horas de invulnerabilidad",
+                InvulnerableHint = "Las del prisma conquistado, divididas por los prismas de su alianza.",
                 Loot = "BOTÍN ALEATORIO",
                 RandomLoot = "Botín aleatorio",
                 RandomLootHint = "Además de su tabla, cada monstruo puede soltar de 2 a 5 objetos al azar.",
@@ -124,6 +132,12 @@ namespace Jondo.Unity.Server.UI
                 NoEnergy = "Dying costs no energy", NoEnergyHint = "A lost fight spends no energy.",
                 Raids = "GUILD RAIDS",
                 RaidMin = "Fewest players to start a raid", RaidMinHint = "0 = the game's (8).",
+                Conquests = "ALLIANCE CONQUESTS",
+                Weakened = "Hours a prism stays weakened", WeakenedHint = "Until it turns vulnerable. 0 = at once.",
+                ConquestMax = "Longest a conquest lasts",
+                ConquestMaxHint = "In minutes. If nobody wins by then, the defence keeps the prism.",
+                Invulnerable = "Hours of invulnerability",
+                InvulnerableHint = "A conquered prism's, divided by its alliance's prisms.",
                 Loot = "RANDOM LOOT",
                 RandomLoot = "Random loot",
                 RandomLootHint = "Besides its table, each monster can drop 2 to 5 random items.",
@@ -163,6 +177,12 @@ namespace Jondo.Unity.Server.UI
                 NoEnergy = "Mourir ne coûte pas d'énergie", NoEnergyHint = "Perdre un combat ne dépense pas d'énergie.",
                 Raids = "RAIDS DE GUILDE",
                 RaidMin = "Joueurs minimum pour lancer un raid", RaidMinHint = "0 = ceux du jeu (8).",
+                Conquests = "CONQUÊTES D'ALLIANCE",
+                Weakened = "Heures de prisme affaibli", WeakenedHint = "Avant qu'il devienne vulnérable. 0 = tout de suite.",
+                ConquestMax = "Durée maximale d'une conquête",
+                ConquestMaxHint = "En minutes. Si personne ne gagne avant, la défense garde le prisme.",
+                Invulnerable = "Heures d'invulnérabilité",
+                InvulnerableHint = "Celles du prisme conquis, divisées par les prismes de son alliance.",
                 Loot = "BUTIN ALÉATOIRE",
                 RandomLoot = "Butin aléatoire",
                 RandomLootHint = "En plus de sa table, chaque monstre peut lâcher 2 à 5 objets au hasard.",
@@ -220,6 +240,9 @@ namespace Jondo.Unity.Server.UI
             _maxMp = Stepper(_saved.MaxMovementPoints, 0, 20, 1, 0, "");
             _noEnergy = Toggle(_saved.NoEnergyLoss);
             _raidMin = Stepper(_saved.RaidMinPlayers, 0, 16, 1, 0, "");
+            _weakenedHours = Stepper(_saved.PrismWeakenedHours, 0, 168, 1, 0, "h");
+            _conquestMinutes = Stepper(_saved.ConquestMaxMinutes, 20, 1440, 10, 0, "min");
+            _invulnerableHours = Stepper(_saved.ConquestInvulnerabilityHours, 0, 168, 1, 0, "h");
             _randomLoot = Toggle(_saved.RandomLoot);
             _randomLootChance = Stepper((decimal)_saved.RandomLootChancePercent, 0, 100, 1, 2, "%");
             _hardcore = Toggle(_saved.Hardcore);
@@ -243,13 +266,17 @@ namespace Jondo.Unity.Server.UI
                                   Row(_t.MaxAp, null, _maxAp), Row(_t.MaxMp, _t.CapHint, _maxMp),
                                   Row(_t.NoEnergy, _t.NoEnergyHint, _noEnergy));
             var raids = Card(_t.Raids, Row(_t.RaidMin, _t.RaidMinHint, _raidMin));
+            var conquests = Card(_t.Conquests,
+                                 Row(_t.Weakened, _t.WeakenedHint, _weakenedHours),
+                                 Row(_t.ConquestMax, _t.ConquestMaxHint, _conquestMinutes),
+                                 Row(_t.Invulnerable, _t.InvulnerableHint, _invulnerableHours));
             var loot = Card(_t.Loot,
                             Row(_t.RandomLoot, _t.RandomLootHint, _randomLoot),
                             Row(_t.Chance, _t.ChanceHint, _randomLootChance),
                             _rarities, _lootLevels);
             var modes = Card(_t.Modes, Row(_t.Hardcore, _t.HardcoreHint, _hardcore));
             var welcome = Card(_t.Welcome, new SettingNote(_t.WelcomeHint), _welcome);
-            _left = new[] { rates, characters, welcome };
+            _left = new[] { rates, characters, conquests, welcome };
             _right = new[] { loot, modes, raids };
 
             _body = new Body { BackColor = LauncherTheme.Background, AutoScroll = true };
@@ -443,6 +470,9 @@ namespace Jondo.Unity.Server.UI
             edited.MaxMovementPoints = (int)_maxMp.Value;
             edited.NoEnergyLoss = _noEnergy.Checked;
             edited.RaidMinPlayers = (int)_raidMin.Value;
+            edited.PrismWeakenedHours = (int)_weakenedHours.Value;
+            edited.ConquestMaxMinutes = (int)_conquestMinutes.Value;
+            edited.ConquestInvulnerabilityHours = (int)_invulnerableHours.Value;
             edited.RandomLoot = _randomLoot.Checked;
             edited.RandomLootChancePercent = (double)_randomLootChance.Value;
             edited.Hardcore = _hardcore.Checked;

@@ -66,13 +66,19 @@ namespace Jondo.Unity.Server.Network
         // ─── The prism ──────────────────────────────────────────────────────────
 
         /// <summary>
-        /// What the actor and the lists say of a prism (ley): f2 when it was placed, in
-        /// milliseconds, f4 the same in seconds, f5 its alliance. The f4 equals the f2 to the second in
-        /// every prism of the captures' ife.
+        /// What the actor and the lists say of a prism (ley): f2 when its state next changes, in
+        /// milliseconds, f3 its state, f4 when it was placed, in seconds, f5 its alliance.
         /// </summary>
+        /// <remarks>
+        /// The client reads them so (ku.fhn, read in Ghidra): the conquests window writes the f4 as
+        /// the creation date and, for a weakened or a pacified prism, the time left until the f2
+        /// (AllianceConquestsUi.GetStateTimeLeft). Every prism of the captures' ife stands normal,
+        /// and there the f2 is its placing, the f4 to the second: so it goes while normal.
+        /// </remarks>
         public static Pb State(PrismStore.Prism prism, AllianceStore.Alliance alliance)
             => Pb.New()
-                .Var(2, prism.PlacedUtcMs)
+                .Var(2, prism.State == PrismStore.Normal || prism.NextChangeUtcMs <= 0 ? prism.PlacedUtcMs : prism.NextChangeUtcMs)
+                .VarIfNotZero(3, prism.State)
                 .Var(4, prism.PlacedUtcMs / 1000)
                 .Msg(5, AllianceProtocol.Block(alliance));
 
