@@ -161,6 +161,7 @@ namespace Jondo.Unity.Server.Managers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, whole
                 ? ConnectionProtocol.Push(Jondo.Unity.Protocol.Op.Ium, ConnectionProtocol.BuildItemGone(net.Uid))
                 : ConnectionProtocol.Push(Jondo.Unity.Protocol.Op.Ivj, ConnectionProtocol.BuildItemQuantity(net.Uid, net.Quantity)));
+            await Handlers.ItemUseHandler.WeighAsync(stream);
         }
     }
 }

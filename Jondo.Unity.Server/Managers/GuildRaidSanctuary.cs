@@ -302,7 +302,11 @@ namespace Jondo.Unity.Server.Managers
                             ConnectionProtocol.BuildNotice(Handlers.CommandTexts.Get("raid.page.had"))));
                 return true;
             }
-            if (stream != null) await Equipment.GiveAsync(stream, page, 1);
+            // The page, and «Has conseguido 1 '$item'», as any item gained.
+            if (stream != null && await Equipment.GiveAsync(stream, page, 1))
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Jondo.Unity.Protocol.Op.Lqn,
+                        ConnectionProtocol.BuildSystemMessage(InfoMessages.ItemGained, "1", page.ToString())));
             Program.LogDebug($"[Raids] {characterId} tears page {page} from the manuscript on map {mapId}.");
             return true;
         }

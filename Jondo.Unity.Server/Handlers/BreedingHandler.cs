@@ -189,6 +189,7 @@ namespace Jondo.Unity.Server.Handlers
                 room--;
             }
             if (place != Stable.StablePlace && added.Count > 0) Stable.Advance(Me, place, NowMs);
+            if (added.Count > 0) await ItemUseHandler.WeighAsync(stream);
             await WriteAsync(stream, ConnectionProtocol.Answer(Op.Hty, BreedingProtocol.BuildRidesAdded(added, failed),
                                                                ConnectionProtocol.RequestId(frame)));
             Console.WriteLine($"[Breeding] {SessionContext.State.CharacterName} puts {added.Count} ride(s) in place {place}" +
@@ -406,6 +407,7 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
             foreach (var (uid, count) in used) await SpendAsync(stream, uid, count);
+            await ItemUseHandler.WeighAsync(stream);
             if (gauges.TickedMs <= 0) gauges.TickedMs = NowMs;
             Stable.SaveGauges(Me, paddock, gauges);
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Htf, BreedingProtocol.BuildGaugesFilled(gauges, BreedingProtocol.Ok)));
@@ -424,7 +426,11 @@ namespace Jondo.Unity.Server.Handlers
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Hum, BreedingProtocol.BuildGaugesSimulated(gauges, used)));
         }
 
-        /// <summary>Units of an item of the bag spent: gone when none are left, its count told otherwise.</summary>
+        /// <summary>
+        /// Units of an item of the bag spent: gone when none are left, its count told otherwise. The
+        /// bag's weight goes after (ItemUseHandler.WeighAsync): without it the open bag keeps drawing
+        /// an item gone -- the paddock's fuel stayed there.
+        /// </summary>
         private static async Task SpendAsync(NetworkStream stream, long uid, int count)
         {
             var item = Equipment.ByUid(uid);
