@@ -144,7 +144,8 @@ namespace Jondo.Unity.Tests.World
             fight.AddMonster(reina);
             GuildRaidReina.OnFightCreated(fight);
             fight.StartFight();
-            await FightHandler.AplicarEfectosAsync(null, fight, reina, 31924, 1, reina, EffectEngine.AlLanzar, reina.CellId);
+            reina.Conducta = (31924, 1);                               // her "Aura Escarlata", as a fight casts it
+            await FightHandler.LanzarLaConductaAsync(null, fight, reina);
             await GuildRaidReina.OnFightStartedAsync(null, fight);     // nobody in a jail: no monsters, open at once
             return (fight, reina, players);
         }
@@ -207,6 +208,56 @@ namespace Jondo.Unity.Tests.World
                 Assert.True(GuildRaidReina.Jailed(people[1]));
                 Assert.Equal(GuildRaidReina.Jails()[1].Cell, people[1].CellId);
                 Assert.Equal(FightInstance.Rojos, fight.WonByEffect);
+            }
+            finally
+            {
+                GuildRaidReina.Forget(fight.FightId);
+            }
+        }
+
+        /// <summary>
+        /// Her phase II: whoever stands where the Pommeau appears dies; the Volonté de la Princesse
+        /// comes in beside her, one of her side to beat, the Pommeau and the Lame on their cells with no
+        /// turn of their own; she is healed in full, invulnerable, and plays twice a round. The Pommeau
+        /// and the Lame beaten, she is open to blows with their bonuses.
+        /// </summary>
+        [Fact]
+        public async Task Her_second_phase_brings_the_volonte_and_the_swords()
+        {
+            if (!HasData) return;
+            var (fight, reina, people) = await Unjailed(2);
+            try
+            {
+                var cells = GuildRaidReina.SwordCells();
+                Assert.Equal(2, cells.Count);
+                people[1].MoverA(cells[0]);
+                Assert.Contains(reina.Buffs.Puestos, r => r.EffectId == EffectEngine.Umbral);   // her 1-life threshold, on from the start
+                reina.CurrentHP = 1;
+
+                await FightHandler.DispararAsync(null, fight, reina, "TR31977");   // her 1-life threshold reached
+                Assert.True(GuildRaidReina.InSecondPhase(fight));
+                Assert.False(people[1].IsAlive);                       // "il est OS"
+                Assert.Equal(reina.MaxHP, reina.CurrentHP);
+                Assert.True(reina.Buffs.TieneEstado(56));
+                Assert.Equal(50, fight.TwiceARound[reina.Id]);
+
+                var volonte = fight.Rojo.Single(m => m.MonsterId == GuildRaidReina.Volonte);
+                Assert.False(volonte.EsInvocado);
+                Assert.True(volonte.JuegaTurno);
+                Assert.True(MapGeometry.Distance(volonte.CellId, reina.CellId) <= 2);
+                var pommeau = fight.Rojo.Single(m => m.MonsterId == GuildRaidReina.Pommeau);
+                var lame = fight.Rojo.Single(m => m.MonsterId == GuildRaidReina.Lame);
+                Assert.Equal((cells[0], cells[1]), (pommeau.CellId, lame.CellId));
+                Assert.False(pommeau.JuegaTurno);
+                Assert.True(pommeau.Buffs.TieneEstado(56) && lame.Buffs.TieneEstado(56));
+
+                pommeau.CurrentHP = 0;
+                await FightHandler.CaenSusInvocadosAsync(null, fight, pommeau);
+                Assert.True(reina.Buffs.TieneEstado(56));
+                lame.CurrentHP = 0;
+                await FightHandler.CaenSusInvocadosAsync(null, fight, lame);
+                Assert.False(reina.Buffs.TieneEstado(56));
+                Assert.True(reina.Buffs.TieneEstado(6643) && reina.Buffs.TieneEstado(6644));
             }
             finally
             {

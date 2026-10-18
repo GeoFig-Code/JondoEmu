@@ -142,6 +142,13 @@ namespace Jondo.Unity.World.Combat
         public const int OutOfPrison = 4068;
 
         /// <summary>
+        /// 2194, on a fight's scene: INFERRED, its next phase. The Reina's phase II casts it on her
+        /// scene right after clearing the cells her Pommeau and Lame appear on, and nothing in the
+        /// data brings them, nor the Volonté de la Princesse, in: the server does it there.
+        /// </summary>
+        public const int ScenePhase = 2194;
+
+        /// <summary>
         /// 2027, "Toma el control de la entidad": a row on a summon that makes it its owner's to
         /// play (Fighter.PlaysOnItsOwn). The Steamer's Evolución III lays it on his turrets,
         /// the Sram's Doble on the double, Dominio de Invocaciones on the summons -- row 248585

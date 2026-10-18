@@ -4591,6 +4591,18 @@ namespace Jondo.Unity.Server.Handlers
                                                   int template, int grade, int cell)
             => InvocarAsync(stream, fight, summoner, template, grade, cell);
 
+        /// <summary>
+        /// A summon made one of its side's own: it counts for the fight's end and plays in the order by
+        /// its initiative, the list sent again.
+        /// </summary>
+        internal static async Task PromoteSummonAsync(NetworkStream stream, FightInstance fight, Fighter summon)
+        {
+            if (summon == null || !summon.EsInvocado) return;
+            summon.Invocador = 0;
+            fight.RebuildTurnOrderKeepingCurrent();
+            await ReenviarLaListaAsync(stream, fight);
+        }
+
         /// <summary>A fighter moved to a cell, or the free one nearest it, as a teleport the board sees.</summary>
         internal static async Task TeleportNearAsync(FightInstance fight, Fighter who, int cell)
         {
@@ -5089,7 +5101,7 @@ namespace Jondo.Unity.Server.Handlers
         /// A monster's behaviour spell, cast when the fight begins or when it comes in: a cast
         /// like any other on the wire, and its triggered rows armed for good on whoever they name.
         /// </summary>
-        private static async Task LanzarLaConductaAsync(NetworkStream stream, FightInstance fight, Fighter quien)
+        internal static async Task LanzarLaConductaAsync(NetworkStream stream, FightInstance fight, Fighter quien)
         {
             var (hechizo, grado) = quien.Conducta;
             if (hechizo == 0 || !quien.IsAlive) return;
@@ -6396,6 +6408,12 @@ namespace Jondo.Unity.Server.Handlers
                 if (c.AcabaElTurno) fight.EndTurnRequested = true;
                 if (c.EndsTheFight && fight.WonByEffect < 0) fight.WonByEffect = c.Efecto.DiceNum;
                 if (c.PlaysTwice > 0 && c.Caster != null) fight.PlayTwiceARound(c.Caster.Id, c.PlaysTwice);
+                if (c.ScenePhase)
+                {
+                    // The Reina's phase II: the Volonté de la Princesse, the Pommeau and the Lame.
+                    await Managers.GuildRaidReina.SecondPhaseAsync(stream, fight, quienLanza);
+                    continue;
+                }
                 if (c.Staging >= 0)
                 {
                     // Only a staging the fight's map has, as the raids' stagings read it.

@@ -47,6 +47,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A staging of the fight's map to play, by its uniqueId (effect 2192); -1 for none.</summary>
         public int Staging { get; init; } = -1;
 
+        /// <summary>The fight's scene goes on to its next phase (effect 2194).</summary>
+        public bool ScenePhase { get; init; }
+
         /// <summary>
         /// Whether this row comes out of a spell's CRITICAL list: the jxm carries it as its f9.
         /// A critical cast runs the whole chain on the critical lists, and a spell with none
@@ -4149,6 +4152,17 @@ namespace Jondo.Unity.Server.Managers
                     Sobre = sobre, Caster = quienLanza, Efecto = efecto,
                     HechizoOrigen = hechizo, NivelOrigen = grado,
                     Lanza = true, CasillaDesde = deDonde, CasillaHasta = celdaApuntada,
+                };
+            }
+
+            if (efecto.EffectId == EffectSupport.ScenePhase)
+            {
+                // Nothing on the fighter: the fight's own rules bring the phase (FightHandler).
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    ScenePhase = true,
                 };
             }
 

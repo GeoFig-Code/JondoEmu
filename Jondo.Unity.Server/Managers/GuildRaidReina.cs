@@ -50,6 +50,17 @@ namespace Jondo.Unity.Server.Managers
     /// cell (<see cref="OnStateAsync"/>), and ends the fight when every player is jailed. The
     /// Floráculo at its threshold lets him out by the data -- 4068 to the jail's exit, the cage down,
     /// his pass and marker off, "Évadé" and his immunity on --, "PR" being somebody jailed.
+    ///
+    /// PHASE II ("Quand la Reine Écarlate passe en phase 2, elle devient invulnérable. Elle fait
+    /// apparaître, à côté d'elle, la Volonté de la Princesse ... Elle fait également apparaître le
+    /// Pommeau Enraciné et la Lame Fleurie chacun sur un côté du terrain"; "Si un personnage se trouve
+    /// sur la case d'apparition du Pommeau enraciné ou de la Lame fleurie, il est OS"; "pour le
+    /// gagner, il faut à la fois éliminer la Reine et la Volonté de la Princesse"): her threshold's
+    /// script (31978) heals her in full, makes her invulnerable until both are beaten (with their
+    /// bonuses), plays twice a round (4059), kills whoever stands on the two cells (31979) and then
+    /// casts 2194 on her scene -- where the server brings the three in (<see cref="SecondPhaseAsync"/>).
+    /// INFERRED: the Pommeau on the first of those cells and the Lame on the second; the Volonté a
+    /// summon of hers made one of her side, as winning asks for her death.
     /// </remarks>
     public static class GuildRaidReina
     {
@@ -256,7 +267,57 @@ namespace Jondo.Unity.Server.Managers
             Program.LogDebug($"[Raids] Fight #{fight.FightId}: the Reina's jails open, her fight begins.");
         }
 
-        /// <summary>A fight over: its jails go.</summary>
-        public static void Forget(long fightId) => _jailPhase.TryRemove(fightId, out _);
+        // ─── Phase II ───────────────────────────────────────────────────────────────────────
+
+        /// <summary>The Volonté de la Princesse, the Pommeau Enraciné and the Lame Fleurie.</summary>
+        public const int Volonte = 8281;
+        public const int Pommeau = 8312;
+        public const int Lame = 8313;
+
+        /// <summary>Her phase II's "Dispé/Kill post-Invoc": its fixed cells are where the Pommeau and the Lame appear.</summary>
+        public const int ClearsTheirCells = 31979;
+
+        /// <summary>Where the Pommeau and the Lame appear, in that order (inferred): the cells her phase II clears.</summary>
+        public static IReadOnlyList<int> SwordCells()
+            => SpellEffects.De(ClearsTheirCells, 1).SelectMany(e => e.CeldasFijas).Distinct().ToList();
+
+        private static readonly ConcurrentDictionary<long, byte> _secondPhase = new();
+
+        public static bool InSecondPhase(FightInstance fight) => fight != null && _secondPhase.ContainsKey(fight.FightId);
+
+        /// <summary>
+        /// Her scene's next phase: the Volonté de la Princesse beside her, one of her side; the Pommeau
+        /// and the Lame on their cells. Once a fight, and only hers.
+        /// </summary>
+        public static async Task SecondPhaseAsync(NetworkStream stream, FightInstance fight, Fighter caster)
+        {
+            var reina = ReinaOf(fight);
+            if (reina == null || caster != reina || !_secondPhase.TryAdd(fight.FightId, 0)) return;
+            var cells = SwordCells();
+
+            // Whoever stands where they appear dies by her script's own blow (31979 grade 2), cast on
+            // each such cell: its grade 1 reaches them through a cast this engine aims at her cell.
+            foreach (int cell in cells)
+            {
+                if (fight.Todos.Any(f => f.IsAlive && f.CellId == cell && f.TeamId != reina.TeamId))
+                    await Handlers.FightHandler.CastAtAsync(stream, fight, reina, ClearsTheirCells, 2, cell);
+            }
+
+            var volonte = await Handlers.FightHandler.SummonAsync(stream, fight, reina, Volonte, 1, reina.CellId);
+            await Handlers.FightHandler.PromoteSummonAsync(stream, fight, volonte);
+            if (cells.Count >= 2)
+            {
+                await Handlers.FightHandler.SummonAsync(stream, fight, reina, Pommeau, 1, cells[0]);
+                await Handlers.FightHandler.SummonAsync(stream, fight, reina, Lame, 1, cells[1]);
+            }
+            Program.LogDebug($"[Raids] Fight #{fight.FightId}: the Reina's phase II, the Volonté, the Pommeau and the Lame in.");
+        }
+
+        /// <summary>A fight over: its jails and phases go.</summary>
+        public static void Forget(long fightId)
+        {
+            _jailPhase.TryRemove(fightId, out _);
+            _secondPhase.TryRemove(fightId, out _);
+        }
     }
 }

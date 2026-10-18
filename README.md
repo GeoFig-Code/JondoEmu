@@ -313,7 +313,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
   a Floráculo before each, everyone out and healed when the last of them falls
 - ✅ The Reina's Exilio Imperial locks a player in a free jail, passing his turns; breaking its Floráculo
   lets him out, Évadé; everybody jailed loses the fight
-- ❌ The Reina's second phase; the Princesa's flower and statues
+- ✅ The Reina's second phase: healed and invulnerable until her Pommeau and Lame fall, playing twice a
+  round, with the Volonté de la Princesse to beat as well
+- ❌ The Princesa Maldita's flower and statues
 - ❌ Podium ornaments and titles; guild experience moving the guild level
 
 ### 🔱 Alliances
