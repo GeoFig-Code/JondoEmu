@@ -186,27 +186,73 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
-        /// The four guardians stand in the middle of their zones, where the hub's portals arrive, each
-        /// with one of each kind beside it -- and the Centinela, in the Patio, with its obelisks.
+        /// The four guardians sleep until the four enigmas are solved -- what their goals wait for in
+        /// the client's data --, then wake in the middle of their zones, where the hub's portals
+        /// arrive, by their statues: each with one of each kind beside it, the Centinela with its
+        /// obelisks besides; the statues go and the hub shows their logos. Each one beaten ends its
+        /// zone and takes its logo away; the fourth dissolves the hub's door.
         /// </summary>
         [Fact]
-        public void The_guardians_stand_in_the_middle_of_their_zones()
+        public async Task The_guardians_wake_by_their_statues_once_the_enigmas_are_solved()
         {
             if (!HasWorld) return;
+            if (!MapManager.WalkableCells.ContainsKey(238294274)) MapManager.Initialize();
             MobSpawnManager.EnsureMonsterData();
             var gardens = Raids.Of(Raids.EternalGardens);
-            foreach (var zone in GuildRaidGuardians.GuardianOfZone.Keys)
-                MobSpawnManager.RestoreMap(GuildRaidPassages.ArrivalOf(gardens, zone).Value.MapId);
+            long Centre(int zone) => GuildRaidPassages.ArrivalOf(gardens, zone).Value.MapId;
+            long hub = GuildRaidPassages.HubOf(gardens).Value.MapId;
+            bool Stands(RaidInstance r, long map, string name) => GuildRaidStagings.Standing(r, map).Contains(GuildRaidStagings.IdOf(map, name));
+            bool Guarded(int zone) => MobSpawnManager.GetMobsForMap(Centre(zone)).Any(g => g.Members[0].Monster.Id == GuildRaidGuardians.GuardianOfZone[zone]);
+            foreach (var zone in GuildRaidGuardians.GuardianOfZone.Keys) MobSpawnManager.RestoreMap(Centre(zone));
 
-            Assert.Equal(4, GuildRaidGuardians.Place(gardens));
-            foreach (var (zone, guardian) in GuildRaidGuardians.GuardianOfZone)
+            var raid = new RaidInstance(79, Raids.EternalGardens, 1, 7001, DateTimeOffset.UtcNow, TimeSpan.FromHours(2));
+            raid.SetHealth(gardens.Health);
+            try
             {
-                long map = GuildRaidPassages.ArrivalOf(gardens, zone).Value.MapId;
-                var group = MobSpawnManager.GetMobsForMap(map).Single(g => g.Members[0].Monster.Id == guardian);
-                Assert.Equal(GuildRaidGuardians.GroupOf(guardian), group.Members.Select(m => m.Monster.Id));
+                Assert.Equal(new[] { 1, 2, 3, 4 }, GuildRaidGuardians.WaitedFor(Raids.EternalGardens));
+                Assert.All(GuildRaidGuardians.GuardianOfZone.Keys, z => Assert.False(Guarded(z)));
+                Assert.Equal(238294274L, Centre(1));
+
+                // Three enigmas solved: they still sleep.
+                var goals = GuildRaidCatalogue.GoalsOf(Raids.EternalGardens);
+                async Task Meet(int goal) => await GuildRaidManager.AdvanceGoalAsync(raid, goal, Math.Max(1, goals.Single(g => g.Id == goal).Value));
+                foreach (int enigma in new[] { 1, 2, 3 }) await Meet(enigma);
+                Assert.False(GuildRaidGuardians.Due(raid));
+                Assert.All(GuildRaidGuardians.GuardianOfZone.Keys, z => Assert.False(Guarded(z)));
+
+                // The fourth: all four wake, by their statues.
+                await Meet(4);
+                Assert.Equal(1, raid.Get(GuildRaidGuardians.AwakeVariable));
+                foreach (var (zone, guardian) in GuildRaidGuardians.GuardianOfZone)
+                {
+                    var group = MobSpawnManager.GetMobsForMap(Centre(zone)).Single(g => g.Members[0].Monster.Id == guardian);
+                    Assert.Equal(GuildRaidGuardians.GroupOf(guardian), group.Members.Select(m => m.Monster.Id));
+                    Assert.Equal(GuildRaidGuardians.CellOf(Centre(zone)), group.CellId);
+                    Assert.True(Stands(raid, Centre(zone), GuildRaidGuardians.Wakes));
+                    Assert.True(Stands(raid, hub, GuildRaidGuardians.HubLogo(zone)));
+                }
+                Assert.All(GuildRaidGuardians.GuardianOfZone.Keys,
+                           z => Assert.Contains(GuildRaidGuardians.CellOf(Centre(z)), MapManager.WalkableCells[Centre(z)]));
+
+                // The Vigilante de la Obra beaten: its zone is done, its logo gone; the door stands.
+                await Meet(GuildRaidGuardians.GoalOf(Raids.EternalGardens, GuildRaidGuardians.Vigilante).Id);
+                Assert.True(Stands(raid, Centre(1), GuildRaidGuardians.AuraEnds));
+                Assert.True(Stands(raid, Centre(1), GuildRaidGuardians.ZoneDone));
+                Assert.False(Stands(raid, hub, GuildRaidGuardians.HubLogo(1)));
+                Assert.True(Stands(raid, hub, GuildRaidGuardians.HubLogo(2)));
+                Assert.False(Stands(raid, hub, GuildRaidGuardians.DoorDissolves));
+
+                // The other three: the door dissolves.
+                foreach (int guardian in new[] { GuildRaidGuardians.Guardian, GuildRaidGuardians.Centinela, 8319 })
+                    await Meet(GuildRaidGuardians.GoalOf(Raids.EternalGardens, guardian).Id);
+                Assert.True(Stands(raid, hub, GuildRaidGuardians.DoorDissolves));
+                Assert.Empty(GuildRaidGuardians.GuardianOfZone.Keys.Where(z => Stands(raid, hub, GuildRaidGuardians.HubLogo(z))));
             }
-            foreach (var zone in GuildRaidGuardians.GuardianOfZone.Keys)
-                MobSpawnManager.RestoreMap(GuildRaidPassages.ArrivalOf(gardens, zone).Value.MapId);
+            finally
+            {
+                GuildRaidStagings.Forget(raid);
+                foreach (var zone in GuildRaidGuardians.GuardianOfZone.Keys) MobSpawnManager.RestoreMap(Centre(zone));
+            }
         }
 
         /// <summary>

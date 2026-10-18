@@ -102,8 +102,9 @@ namespace Jondo.Unity.Server.Managers
             // The Santuario's health, full (the guides).
             if (Raids.Of(raid.RaidId)?.Health is int health and > 0) raid.SetHealth(health);
 
-            // The Santuario's guardians in the middle of their zones, and its colour drawn; its
-            // castle's corridor with its monsters alone, and the bosses in the tower.
+            // The Santuario's colour drawn and its enigmas laid out -- its guardians sleep until they
+            // are solved (GuildRaidGuardians) --; its castle's corridor with its monsters alone, and
+            // the bosses in the tower.
             if (raid.RaidId == Raids.EternalGardens)
             {
                 GuildRaidGuardians.DrawColour(raid, Random.Shared);
@@ -112,7 +113,6 @@ namespace Jondo.Unity.Server.Managers
                 GuildRaidEnclave.Populate(Raids.Of(raid.RaidId), Random.Shared);
                 GuildRaidBelladona.Draw(raid, Random.Shared);
                 GuildRaidEfedra.Draw(raid, Random.Shared);
-                GuildRaidGuardians.Place(Raids.Of(raid.RaidId));
                 GuildRaidSanctuary.Populate(Raids.Of(raid.RaidId), Random.Shared);
             }
 
@@ -193,6 +193,10 @@ namespace Jondo.Unity.Server.Managers
                     raid.SetLight(goal.UnlocksFloor, 1, DateTimeOffset.UtcNow);
             }
             await GuildRaidHandler.TellRunningStateAsync(raid);
+
+            // The Santuario's guardians wake once what their goals wait for is met, and each one
+            // beaten leaves its zone (GuildRaidGuardians).
+            if (!wasMet && value >= target) await GuildRaidGuardians.GoalMetAsync(raid, goalId);
 
             // The Santuario is over once its last goals are met -- its two final bosses, the goals
             // no other goal waits for (the guides: "both bosses beaten").

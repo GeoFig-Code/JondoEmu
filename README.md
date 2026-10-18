@@ -302,7 +302,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The Sanctuary's chess in the Patio de Efedra: Belladona's rules, her pieces found green or red on
   the Reserva's four boards, and her game where four players, turned into rooks and bishops, take their
   places before her fourth turn
-- ❌ The guardians stand from the start, not once the four enigmas are solved
+- ✅ The Sanctuary's guardians wake by their statues once the four enigmas are solved, their logos lit
+  in the hub; each one beaten ends its zone, and the fourth dissolves the corridor's door
 - ❌ The Defensor's double turn and the bosses' scripted rules (the Reina's dungeons, the Princesa's flower)
 - ❌ Podium ornaments and titles; guild experience moving the guild level
 

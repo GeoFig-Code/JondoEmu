@@ -22,9 +22,19 @@ namespace Jondo.Unity.Server.Managers
     /// central map, the one the hub's portal arrives at (GuildRaidPassages.ArrivalOf). The client's
     /// world places none of them: no group of the Santuario carries a guardian, nor its bosses.
     ///
-    /// WHEN: the guides wake them once the four enigmas are solved. Until all four are played --
-    /// the Obra's and the Enclave's are (GuildRaidMonochrome, GuildRaidEnclave) -- the guardians
-    /// stand from the raid's start, or the raid could not be finished.
+    /// WHEN: "Après avoir terminé et résolu les 4 énigmes, les gardiens de chacune des zones se
+    /// réveillent" (DPLN), all four at once; and the client's data says the same, each guardian's
+    /// goal ("Vencer al vigilante de la obra"...) waiting for the four enigmas' (its
+    /// requisiteForDisplay, 1 to 4). So none stands at the raid's start: they wake as the last of
+    /// what their goals wait for is met (<see cref="GoalMetAsync"/>), each where its zone's centre
+    /// has its sleeping statue.
+    ///
+    /// WHAT IS SEEN, from the maps' own stagings: on each zone's centre, "#SD Spawn_boss" -- the grey
+    /// statue ("boss", "statue_gris") gone in a puff, the portal's leaves turning --, and on the hub
+    /// "Logo_miniboss_ouvrage" (clos, reserve, cour). INFERRED, the data pairing them so: a guardian
+    /// beaten ends its zone's aura and turns its portal back ("#SD Fin aura boss", "Zone finit"),
+    /// its logo goes from the hub ("depop_mb_..."), and once the four are beaten the hub's door to
+    /// the corridor dissolves ("Dissolve porte") -- the door the corridor's goal opens.
     ///
     /// WITH WHOM: "four monsters, one of each kind" -- the Santuario's Trilipín, Machacamelia,
     /// Muguetégida and Daliana, the castle's colourless ones -- and the Centinela, its four
@@ -111,7 +121,7 @@ namespace Jondo.Unity.Server.Managers
             return members;
         }
 
-        /// <summary>Puts each guardian with its group on its zone's central map. How many were placed.</summary>
+        /// <summary>Puts each guardian with its group on its zone's central map, by its statue. How many were placed.</summary>
         public static int Place(RaidKind kind)
         {
             if (kind == null || kind.Id != Raids.EternalGardens) return 0;
@@ -119,12 +129,124 @@ namespace Jondo.Unity.Server.Managers
             foreach (var (zone, guardian) in GuardianOfZone)
             {
                 if (GuildRaidPassages.ArrivalOf(kind, zone) is not { } arrival) continue;
-                var group = MobSpawnManager.SpawnComposed(arrival.MapId, GroupOf(guardian).Select(m => (m, 0)));
+                var group = MobSpawnManager.SpawnComposed(arrival.MapId, GroupOf(guardian).Select(m => (m, 0)), CellOf(arrival.MapId));
                 if (group == null) continue;
                 placed++;
                 Program.LogDebug($"[Raids] Guardian {guardian} placed on map {arrival.MapId}, cell {group.CellId}.");
             }
             return placed;
+        }
+
+        /// <summary>
+        /// Where a guardian wakes on its zone's centre: the walkable cell nearest its sleeping statue
+        /// (the element the map's data names "boss"), or -1 for the map's own choice.
+        /// </summary>
+        public static int CellOf(long centre)
+        {
+            int statue = GuildRaidStagings.ElementsOf(centre).Where(e => e.Name == Statue).Select(e => e.Cell).DefaultIfEmpty(-1).Min();
+            return statue < 0 ? -1 : MapManager.GetNearestWalkableCell(centre, statue);
+        }
+
+        // ─── Waking them, and each one beaten ───────────────────────────────────────────────
+
+        /// <summary>Whether a raid's guardians are awake: 1 once they woke.</summary>
+        public const string AwakeVariable = "Guardians_Awake";
+
+        /// <summary>The stagings and elements, by their names in the client's maps.</summary>
+        public const string Statue = "boss";
+        public const string Wakes = "#SD Spawn_boss";
+        public const string AuraEnds = "#SD Fin aura boss";
+        public const string ZoneDone = "Zone finit";
+        public const string DoorDissolves = "Dissolve porte";
+        public static string HubLogo(int zone) => $"Logo_miniboss_{HubWords[zone]}";
+        public static string HubLogoGone(int zone) => $"depop_mb_{HubWords[zone]}";
+
+        /// <summary>How the hub's stagings name the zones: the Obra "ouvrage", the Enclave "clos", the Reserva "reserve", the Patio "cour".</summary>
+        private static readonly IReadOnlyDictionary<int, string> HubWords = new Dictionary<int, string>
+        {
+            [1] = "ouvrage", [2] = "clos", [3] = "reserve", [4] = "cour",
+        };
+
+        /// <summary>A guardian's goal in its raid: the one naming it ("Vencer al vigilante de la obra").</summary>
+        public static GuildRaidCatalogue.Goal GoalOf(int raidId, int guardian)
+            => GuildRaidCatalogue.GoalsOf(raidId).FirstOrDefault(g => g.Monsters?.Contains(guardian) == true);
+
+        /// <summary>What the guardians' goals wait for, in the client's data: the four enigmas'.</summary>
+        public static List<int> WaitedFor(int raidId)
+            => GuardianOfZone.Values.Select(g => GoalOf(raidId, g)).Where(g => g?.RequisiteForDisplay != null)
+                             .SelectMany(g => g.RequisiteForDisplay.Where(r => r != g.Id)).Distinct().OrderBy(r => r).ToList();
+
+        /// <summary>Whether a raid's goal is met: at its value, one at least.</summary>
+        private static bool Met(RaidInstance raid, int goalId)
+            => GuildRaidCatalogue.GoalsOf(raid.RaidId).FirstOrDefault(g => g.Id == goalId) is { } goal
+               && raid.GoalAt(goalId) >= Math.Max(1, goal.Value);
+
+        /// <summary>Whether a raid's guardians are due to wake: asleep, and everything their goals wait for met.</summary>
+        public static bool Due(RaidInstance raid)
+        {
+            if (raid == null || raid.RaidId != Raids.EternalGardens || raid.Get(AwakeVariable) != 0) return false;
+            var waited = WaitedFor(raid.RaidId);
+            return waited.Count > 0 && waited.All(id => Met(raid, id));
+        }
+
+        /// <summary>
+        /// A goal of a raid just met: the guardians wake once the last of what theirs wait for is; a
+        /// guardian's own is that guardian beaten.
+        /// </summary>
+        public static async Task GoalMetAsync(RaidInstance raid, int goalId)
+        {
+            if (raid == null || raid.RaidId != Raids.EternalGardens) return;
+            if (Due(raid)) await WakeAsync(raid);
+            foreach (var (zone, guardian) in GuardianOfZone)
+            {
+                if (GoalOf(raid.RaidId, guardian)?.Id == goalId) await BeatenAsync(raid, zone);
+            }
+        }
+
+        /// <summary>
+        /// The four guardians wake: each zone's statue goes in a puff and its guardian stands there with
+        /// its group, seen at once by whoever is on the map; the hub shows their four logos.
+        /// </summary>
+        public static async Task WakeAsync(RaidInstance raid)
+        {
+            raid.Set(AwakeVariable, 1);
+            var kind = Raids.Of(raid.RaidId);
+            long hub = GuildRaidPassages.HubOf(kind)?.MapId ?? 0;
+            foreach (var zone in GuardianOfZone.Keys)
+            {
+                if (GuildRaidPassages.ArrivalOf(kind, zone) is not { } centre) continue;
+                await GuildRaidStagings.PlayAsync(raid, centre.MapId, Wakes, keep: true);
+                if (hub != 0) await GuildRaidStagings.PlayAsync(raid, hub, HubLogo(zone), keep: true);
+            }
+            int placed = Place(kind);
+            foreach (var zone in GuardianOfZone.Keys)
+            {
+                if (GuildRaidPassages.ArrivalOf(kind, zone) is { } centre) await MapAdmin.RefreshAsync(centre.MapId);
+            }
+            Console.WriteLine($"[Raid] {raid.Uuid}: the Santuario's guardians wake ({placed} placed).");
+        }
+
+        /// <summary>
+        /// A zone's guardian beaten: its aura ends and its portal turns back, its logo leaves the hub;
+        /// the fourth dissolves the hub's door to the corridor.
+        /// </summary>
+        public static async Task BeatenAsync(RaidInstance raid, int zone)
+        {
+            var kind = Raids.Of(raid.RaidId);
+            long hub = GuildRaidPassages.HubOf(kind)?.MapId ?? 0;
+            if (GuildRaidPassages.ArrivalOf(kind, zone) is { } centre)
+            {
+                await GuildRaidStagings.PlayAsync(raid, centre.MapId, AuraEnds, keep: true);
+                await GuildRaidStagings.PlayAsync(raid, centre.MapId, ZoneDone, keep: true);
+            }
+            if (hub == 0) return;
+            GuildRaidStagings.Drop(raid, hub, GuildRaidStagings.IdOf(hub, HubLogo(zone)));
+            await GuildRaidStagings.PlayAsync(raid, hub, HubLogoGone(zone), keep: false);
+            if (GuardianOfZone.Values.All(g => GoalOf(raid.RaidId, g) is { } goal && Met(raid, goal.Id)))
+            {
+                await GuildRaidStagings.PlayAsync(raid, hub, DoorDissolves, keep: true);
+                Console.WriteLine($"[Raid] {raid.Uuid}: the four guardians beaten, the corridor's door dissolves.");
+            }
         }
 
         /// <summary>Draws the raid's colour, which the Centinela's obelisks and spells follow.</summary>
