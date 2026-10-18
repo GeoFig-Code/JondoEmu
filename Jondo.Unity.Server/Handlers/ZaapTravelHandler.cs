@@ -94,6 +94,7 @@ namespace Jondo.Unity.Server.Handlers
             if (hjc == null) return;
             // Before any kamas are paid for the trip.
             if (await Managers.Jail.KeepsInAsync(stream)) return;
+            if (await ConquestHandler.HoldsInAsync(stream, ConquestHandler.NoTeleportInAWar)) return;
 
             // f2 says which tab the choice comes from, and what f3 means depends on it: for the
             // zaap and the zaapi it is the MAP being gone to; for the anomaly it is ITS SUBAREA,

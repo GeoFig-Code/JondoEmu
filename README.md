@@ -362,8 +362,17 @@ An alliance is made of characters, not guilds.
   by numbers and for aggressions won, twenty minutes of domination to win
 - ✅ Attacking enemy alliance fighters in a conquest's zone
 - ✅ The winner's thirty minutes alone to place its prism, born pacified
-- ✅ Weakened hours, conquest length and invulnerability in the server settings
-- ❌ The top tax collectors, prism modules, conquest roles and their potions
+- ✅ Weakened hours, conquest length, invulnerability and a new prism's protection in the server settings
+- ✅ Pacifying crystals: Pepito at the temple trades them for nuggets, and one protects a prism for
+  twelve hours (four per prism), with no teleport to it meanwhile
+- ✅ Conquest roles chosen with Hal Ylanza, each alliance's limit per role, and the role icons over
+  the fighters (a seer sees the enemies')
+- ✅ The champion's fights count double, the scout's points are handed in with his potion on the
+  prism's map, and the sentinel's potion makes him attack enemies passing near
+- ✅ No zaap, travel item, haven bag or Koliseo search from a conquest's zone; a new prism cannot be
+  attacked in its first hour
+- ✅ Taking a defender's place in an alliance fight
+- ❌ The top tax collectors, and the resurrector's and gravedigger's potions (no tombs in conquests)
 
 ### 🎒 Character and inventory
 

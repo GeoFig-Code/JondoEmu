@@ -26,7 +26,7 @@ namespace Jondo.Unity.Server.Managers
         public sealed record Right(int Id, int GroupId, int Order, string Name);
         public sealed record NamePart(int Id, string Name);
         public sealed record EmblemSymbol(int Id, int SkinId, bool Colorizable, int PrismSkinId = 0);
-        public sealed record KothRole(int Id, bool Default, string Name);
+        public sealed record KothRole(int Id, bool Default, string Name, int Certificate = 0);
 
         private sealed record Document(List<RankTemplate> Ranks, List<Right> Rights,
                                        List<NamePart> TaxCollectorFirstNames, List<NamePart> TaxCollectorNames,
@@ -122,6 +122,12 @@ namespace Jondo.Unity.Server.Managers
         /// kothRoles' default; zero without the data.
         /// </summary>
         public static int DefaultKothRole => Loaded.KothRoles?.FirstOrDefault(r => r.Default)?.Id ?? 0;
+
+        /// <summary>
+        /// The conquests' roles, each with its certificate, «Certificado de &lt;role&gt;», the item
+        /// carrying which is holding the role (see <see cref="KothRoles"/>).
+        /// </summary>
+        public static IReadOnlyList<KothRole> KothRoles => Loaded.KothRoles ?? new List<KothRole>();
 
         /// <summary>The skin an emblem symbol dresses a tax collector with; zero when it is not known.</summary>
         public static int SkinOfSymbol(int symbol)

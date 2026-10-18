@@ -322,6 +322,9 @@ namespace Jondo.Unity.Server
         /// </summary>
         public long OpenActorDialogue { get; set; }
 
+        /// <summary>The prism whose crystal window is open (PrismHandler.CrystalWindowAsync), or zero.</summary>
+        public long OpenPrismCrystals { get; set; }
+
         // Per-character manager caches. These must never be static: loading the second account
         // would otherwise replace the first account's equipment, appearance and spell bar.
         internal Dictionary<long, Managers.Equipment.Item> EquipmentItems { get; }

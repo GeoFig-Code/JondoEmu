@@ -73,6 +73,12 @@ namespace Jondo.Unity.Server
         /// </summary>
         public int ConquestInvulnerabilityHours { get; set; } = 24;
 
+        /// <summary>
+        /// The minutes a new prism cannot be attacked: «No puedes atacar este prisma durante su
+        /// primera hora de vida» (info 1/154). 0 lets it be attacked at once.
+        /// </summary>
+        public int PrismProtectionMinutes { get; set; } = 60;
+
         /// <summary>The server window's language: es, en or fr.</summary>
         public string WindowLanguage { get; set; } = "es";
 

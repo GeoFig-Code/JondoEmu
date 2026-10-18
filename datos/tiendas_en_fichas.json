@@ -66,6 +66,11 @@
       "preciosPorTipo": { "249": 15000, "250": 50000, "324": 100000 },
       "precio": 50000
     },
+    "7030": {
+      "_quien": "Pepito, the Temple of Alliances: the pacifying crystal for nuggets (14635). INFERRED price: the client's help says only that it is traded for nuggets",
+      "moneda": 14635,
+      "precios": { "27632": 200 }
+    },
     "7839": {
       "_quien": "Neru Stalar, the Dream Market: in dream fragments (32080), the guide's prices",
       "moneda": 32080,

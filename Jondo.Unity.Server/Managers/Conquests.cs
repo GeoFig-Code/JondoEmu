@@ -21,8 +21,11 @@ namespace Jondo.Unity.Server.Managers
     /// <item>the winner then has thirty minutes alone to place a prism there.</item>
     /// </list>
     /// How many points a map or a fight is worth the help does not say: those are inferred
-    /// (<see cref="PointsPerMap"/>, <see cref="PointsPerFighter"/>). The roles' own points -- the
-    /// scout's, which the conquest window shows apart -- are not here: no role is learnt yet.
+    /// (<see cref="PointsPerMap"/>, <see cref="PointsPerFighter"/>), and so are the roles' own:
+    /// the champion's fights count double, and the scout's minutes in the zone, carried until he
+    /// drinks his potion on the prism's map, are the prism's column of the window
+    /// (<see cref="ScoutPointsPerMinute"/>, <see cref="ScoutCap"/>). Each alliance brings at most
+    /// <see cref="KothRoles.Limits"/> of a role into one conquest.
     /// The wars live in memory; a restart in the middle of one starts it again from its prism,
     /// which stays vulnerable in world.db.
     /// </remarks>
@@ -52,6 +55,19 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>INFERRED: the points an aggression won gives for each enemy beaten, and a lost one takes.</summary>
         public const int PointsPerFighter = 5;
 
+        /// <summary>
+        /// INFERRED: how much more a champion's fights weigh, won or lost -- «gana más puntos que los
+        /// demás con cada victoria en combate, pero sufre una mayor pérdida de puntos en caso de derrota».
+        /// </summary>
+        public const int ChampionFactor = 2;
+
+        /// <summary>
+        /// INFERRED: what a scout gathers each minute in the zone off the prism's map, and the most he
+        /// carries -- «acumula puntos mientras permanezca con vida hasta un límite».
+        /// </summary>
+        public const int ScoutPointsPerMinute = 1;
+        public const int ScoutCap = 10;
+
         /// <summary>An alliance taking part.</summary>
         public sealed class Side
         {
@@ -65,6 +81,9 @@ namespace Jondo.Unity.Server.Managers
 
             /// <summary>Its members in the zone at the last minute.</summary>
             public int Present { get; set; }
+
+            /// <summary>How many of them hold each role, at the last minute.</summary>
+            public IReadOnlyDictionary<int, int> Roles { get; set; } = new Dictionary<int, int>();
 
             public long Total => Scores.Sum();
         }
@@ -84,6 +103,18 @@ namespace Jondo.Unity.Server.Managers
 
             /// <summary>When the next minute is counted.</summary>
             public long NextTickUtcMs { get; set; }
+
+            /// <summary>The prism's map, where the scouts hand their points in and gather none.</summary>
+            public long PrismMapId { get; init; }
+
+            /// <summary>The fighters let into the zone, with their alliance and role: the role limits count them.</summary>
+            public ConcurrentDictionary<long, (long Alliance, int Role)> Admitted { get; } = new();
+
+            /// <summary>What each scout carries, not handed in yet.</summary>
+            public ConcurrentDictionary<long, int> ScoutCarried { get; } = new();
+
+            /// <summary>The sentinels on guard, each on the map he drank his potion on.</summary>
+            public ConcurrentDictionary<long, long> Sentinels { get; } = new();
 
             private readonly Dictionary<long, Side> _sides = new();
 
@@ -110,13 +141,13 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        /// <summary>A member in the zone: his alliance and the map he is on.</summary>
-        public readonly record struct Presence(long AllianceId, long MapId, long CharacterId);
+        /// <summary>A member in the zone: his alliance, the map he is on and his role.</summary>
+        public readonly record struct Presence(long AllianceId, long MapId, long CharacterId, int Role = 0);
 
         private static readonly ConcurrentDictionary<int, War> _wars = new();
 
         /// <summary>A conquest opening on a subarea; the one already running if there is one.</summary>
-        public static War Start(int subAreaId, long defenderId, long nowMs, long endsUtcMs)
+        public static War Start(int subAreaId, long defenderId, long nowMs, long endsUtcMs, long prismMapId = 0)
         {
             return _wars.GetOrAdd(subAreaId, _ =>
             {
@@ -127,6 +158,7 @@ namespace Jondo.Unity.Server.Managers
                     StartedUtcMs = nowMs,
                     EndsUtcMs = endsUtcMs,
                     NextTickUtcMs = nowMs + TickMs,
+                    PrismMapId = prismMapId,
                 };
                 war.SideOf(defenderId);
                 return war;
@@ -140,6 +172,38 @@ namespace Jondo.Unity.Server.Managers
         public static void End(int subAreaId) => _wars.TryRemove(subAreaId, out _);
 
         /// <summary>
+        /// A fighter coming into the zone: let in, unless his alliance already brought as many of his
+        /// role as it may (<see cref="KothRoles.Limits"/>). One let in keeps his place while he stays.
+        /// </summary>
+        public static bool Admit(War war, long characterId, long allianceId, int role)
+        {
+            if (war == null) return false;
+            if (war.Admitted.TryGetValue(characterId, out var already) && already.Alliance == allianceId && already.Role == role)
+                return true;
+            if (KothRoles.Limits.TryGetValue(role, out int limit)
+                && war.Admitted.Count(a => a.Key != characterId && a.Value.Alliance == allianceId && a.Value.Role == role) >= limit)
+                return false;
+            war.Admitted[characterId] = (allianceId, role);
+            return true;
+        }
+
+        /// <summary>A fighter gone from the zone: his role's place is free again, and his guard over.</summary>
+        public static void Release(War war, long characterId)
+        {
+            if (war == null) return;
+            war.Admitted.TryRemove(characterId, out _);
+            war.Sentinels.TryRemove(characterId, out _);
+        }
+
+        /// <summary>A scout drinking his potion on the prism's map: what he carried goes to his alliance's prism points.</summary>
+        public static long HandIn(War war, long characterId, long allianceId)
+        {
+            if (war == null || !war.ScoutCarried.TryRemove(characterId, out int carried) || carried <= 0) return 0;
+            war.SideOf(allianceId).Scores[ScoreOfPrism] += carried;
+            return carried;
+        }
+
+        /// <summary>
         /// One minute of a conquest: the maps' points to whoever outnumbers the rest on each, a
         /// minute of domination to the highest score among the alliances present, and the
         /// winner, the alliance id, once one has dominated twenty minutes; 0 while none has.
@@ -151,9 +215,22 @@ namespace Jondo.Unity.Server.Managers
         public static long Tick(War war, IReadOnlyCollection<Presence> present, long nowMs)
         {
             war.NextTickUtcMs = nowMs + TickMs;
-            foreach (var side in war.Sides) side.Present = 0;
+            foreach (var side in war.Sides)
+            {
+                side.Present = 0;
+                side.Roles = new Dictionary<int, int>();
+            }
             foreach (var byAlliance in present.GroupBy(p => p.AllianceId))
-                war.SideOf(byAlliance.Key).Present = byAlliance.Select(p => p.CharacterId).Distinct().Count();
+            {
+                var side = war.SideOf(byAlliance.Key);
+                var people = byAlliance.GroupBy(p => p.CharacterId).Select(g => g.First()).ToList();
+                side.Present = people.Count;
+                side.Roles = people.Where(p => p.Role != 0).GroupBy(p => p.Role).ToDictionary(g => g.Key, g => g.Count());
+            }
+
+            foreach (var scout in present.Where(p => p.Role == KothRoles.Scout && p.MapId != war.PrismMapId))
+                war.ScoutCarried.AddOrUpdate(scout.CharacterId, Math.Min(ScoutCap, ScoutPointsPerMinute),
+                                             (_, carried) => Math.Min(ScoutCap, carried + ScoutPointsPerMinute));
 
             foreach (var map in present.GroupBy(p => p.MapId))
             {
@@ -179,16 +256,17 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// An aggression of the zone over: its winners' alliances get the points of the enemies they
-        /// beat, its losers' lose theirs.
+        /// An aggression of the zone over: each winner's alliance gets the points of the enemies
+        /// beaten, each loser's loses his; a champion's, won or lost, weigh <see cref="ChampionFactor"/>.
         /// </summary>
-        public static void FightOver(War war, IReadOnlyCollection<long> winnerAlliances, IReadOnlyCollection<long> loserAlliances)
+        public static void FightOver(War war, IReadOnlyCollection<(long Alliance, int Role)> winners,
+                                     IReadOnlyCollection<(long Alliance, int Role)> losers)
         {
             if (war == null) return;
-            foreach (long alliance in winnerAlliances)
-                war.SideOf(alliance).Scores[ScoreOfFights] += PointsPerFighter * loserAlliances.Count;
-            foreach (long alliance in loserAlliances)
-                war.SideOf(alliance).Scores[ScoreOfFights] -= PointsPerFighter;
+            foreach (var (alliance, role) in winners)
+                war.SideOf(alliance).Scores[ScoreOfFights] += PointsPerFighter * losers.Count * (role == KothRoles.Champion ? ChampionFactor : 1);
+            foreach (var (alliance, role) in losers)
+                war.SideOf(alliance).Scores[ScoreOfFights] -= PointsPerFighter * (role == KothRoles.Champion ? ChampionFactor : 1);
         }
 
         // ─── The winner's priority ──────────────────────────────────────────────

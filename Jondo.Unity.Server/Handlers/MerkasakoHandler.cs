@@ -57,6 +57,7 @@ namespace Jondo.Unity.Server.Handlers
                 await LeaveAsync(stream);
                 return;
             }
+            if (await ConquestHandler.HoldsInAsync(stream, ConquestHandler.NoHavenBagInAWar)) return;
 
             state.HavenBagEntryMapId = state.MapId;
             state.HavenBagEntryCell = state.CellId;

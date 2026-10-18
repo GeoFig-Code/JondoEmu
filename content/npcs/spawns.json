@@ -38,9 +38,20 @@
     "",
     "The Dream Market's two vendors, on its map 238683394 ('Dream Market', left of the well's):",
     "Neru Stalar (7839) on cell 258, in front of the market's stall, and Gobribe (8000) beside him",
-    "on 276, both facing 1. INFERRED: no capture goes there; the guide says they are there."
+    "on 276, both facing 1. INFERRED: no capture goes there; the guide says they are there.",
+    "",
+    "Pepito (7030), at the Temple of Alliances (115083777): the client's help sends you to him there",
+    "(Translations 1149314, '{{map,13,35,1::Pepito}}', the map Hal Ylanza stands on) to trade nuggets",
+    "for pacifying crystals. INFERRED: no capture shows him; cell 329, walkable and free, two rows in",
+    "front of Hal Ylanza's 301, facing 1 as he does."
   ],
   "spawns": [
+    {
+      "map": 115083777,
+      "npc": 7030,
+      "cell": 329,
+      "orientation": 1
+    },
     {
       "map": 192415750,
       "npc": 520,

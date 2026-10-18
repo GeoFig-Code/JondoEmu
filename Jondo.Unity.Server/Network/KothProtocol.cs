@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Linq;
 using Jondo.Unity.Server.Managers;
 
 namespace Jondo.Unity.Server.Network
@@ -39,12 +40,18 @@ namespace Jondo.Unity.Server.Network
                       .Build();
         }
 
-        /// <summary>An alliance's line (men). Its members go as the default role, the only one there is yet.</summary>
+        /// <summary>An alliance's line (men). Members whose role is not known go as the default role.</summary>
         public static Pb Line(Conquests.Side side, AllianceStore.Alliance alliance, int defaultRole)
         {
             var men = Pb.New().Msg(1, AllianceProtocol.Block(alliance));
-            if (side.Present > 0 && defaultRole > 0)
-                men.Msg(2, Pb.New().Var(1, side.Present).Var(2, defaultRole));
+            int counted = 0;
+            foreach (var role in side.Roles.OrderBy(r => r.Key))
+            {
+                men.Msg(2, Pb.New().Var(1, role.Value).Var(2, role.Key));
+                counted += role.Value;
+            }
+            if (side.Present > counted && defaultRole > 0 && !side.Roles.ContainsKey(defaultRole))
+                men.Msg(2, Pb.New().Var(1, side.Present - counted).Var(2, defaultRole));
             men.VarIfNotZero(3, side.Domination);
             for (int kind = 0; kind < Conquests.ScoreKinds; kind++)
                 men.Msg(5, Pb.New().VarIfNotZero(1, side.Scores[kind]).VarIfNotZero(4, kind));

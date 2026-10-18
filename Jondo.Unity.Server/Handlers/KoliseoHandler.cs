@@ -137,8 +137,9 @@ namespace Jondo.Unity.Server.Handlers
         {
             byte[]? lsm = ConnectionProtocol.ReadPayload(payload, Op.Lsm);
             if (lsm == null) return;
-            // A Koliseo fight is a trip to an arena: none for a prisoner.
+            // A Koliseo fight is a trip to an arena: none for a prisoner, nor in a conquest.
             if (await Managers.Jail.KeepsInAsync(stream)) return;
+            if (await ConquestHandler.HoldsInAsync(stream, ConquestHandler.NoKoliseoInAWar)) return;
 
             int indice = IndiceDeModalidad(lsm, 1);
 

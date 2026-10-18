@@ -51,6 +51,7 @@ namespace Jondo.Unity.Server.Handlers
 
             // An alliance prism: the subarea held by the alliance, the prism where the user stands.
             if (await PrismHandler.TryPlaceAsync(stream, item)) return;
+            if (await ConquestHandler.UseRolePotionAsync(stream, item)) return;
 
             // A travel item: the recall potion, a city's, one's home, an ankla's choice.
             if (await TravelItemHandler.TryUseAsync(stream, item)) return;

@@ -39,20 +39,34 @@ namespace Jondo.Unity.Server.Network
 
         /// <summary>
         /// This character's status, from the alliance window's «Alliance fight» switch and where he
-        /// stands: in the zone of a vulnerable prism he is aggressable (Handlers.ConquestHandler).
+        /// stands: let into the conquest of a vulnerable prism's zone he is aggressable
+        /// (Handlers.ConquestHandler).
         /// </summary>
         public static int AggressableStatus(long characterId)
         {
             if (!AllianceStore.TakesPartInAva(characterId)) return NotAggressable;
-            return Handlers.ConquestHandler.InWarZone(characterId) ? AvaAggressable : AvaNotAggressable;
+            return Handlers.ConquestHandler.FightsInAWar(characterId) ? AvaAggressable : AvaNotAggressable;
         }
 
         /// <summary>
-        /// A character's aggressable status (hon): f1 the character, f5 the status. f2 to f4 are
-        /// left out; the handler (eht.gmh) only reads them below the AvA statuses.
+        /// Another character's status and role (hof, in the hoh): { f1 the role, -1 for none shown,
+        /// f2 the status, f3 the character } -- eht.gaf.
         /// </summary>
-        public static byte[] BuildAggressableStatus(long characterId, int status)
-            => Pb.New().Var(1, characterId).VarIfNotZero(5, status).Build();
+        public static Pb StatusOf(long characterId, int status, int role)
+            => Pb.New().Var(1, role).VarIfNotZero(2, status).Var(3, characterId);
+
+        /// <summary>
+        /// A character's aggressable status (hon): f1 the character, f4 his conquest role, f5 the
+        /// status. eht.gmh hands the f4 to RoleplayEntitiesService.xzy, which draws «role{f4}» over
+        /// him while aggressable in a vulnerable prism's zone (yab; -1 draws none). f2, the
+        /// prequalification's end, and f3 are left out.
+        /// </summary>
+        public static byte[] BuildAggressableStatus(long characterId, int status, int role = -1)
+        {
+            var hon = Pb.New().Var(1, characterId);
+            if (status == AvaAggressable && role != -1) hon.Var(4, role);
+            return hon.VarIfNotZero(5, status).Build();
+        }
 
         /// <summary>
         /// The creation's results (lbv), as the client's handler of the mch (fgv.bevj, read in

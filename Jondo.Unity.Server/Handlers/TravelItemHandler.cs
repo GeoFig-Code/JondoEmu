@@ -137,6 +137,7 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
             if (await Jail.KeepsInAsync(stream)) return;
+            if (await ConquestHandler.HoldsInAsync(stream, ConquestHandler.NoTeleportInAWar)) return;
 
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Hpp,
                 TravelProtocol.BuildDelayedUse(item.Template, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), me.CharacterId)));

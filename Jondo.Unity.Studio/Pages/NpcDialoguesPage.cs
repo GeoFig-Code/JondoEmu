@@ -86,6 +86,8 @@ namespace Jondo.Unity.Studio.Pages
                             Step = c.Step,
                             StartsQuest = c.StartsQuest,
                             AfterQuest = c.AfterQuest,
+                            KothRole = c.KothRole,
+                            RefusedNext = c.RefusedNext,
                         }).ToArray(),
                     });
                 }
@@ -128,6 +130,8 @@ namespace Jondo.Unity.Studio.Pages
             public int Step;
             public int StartsQuest;
             public bool AfterQuest;
+            public int KothRole;
+            public long RefusedNext;
         }
 
         /// <summary>One line of the NPC, as the list shows it.</summary>
@@ -745,6 +749,8 @@ namespace Jondo.Unity.Studio.Pages
                         Step = choice.Step,
                         StartsQuest = choice.StartsQuest,
                         AfterQuest = choice.AfterQuest,
+                        KothRole = choice.KothRole,
+                        RefusedNext = choice.RefusedNext,
                     });
                 }
 

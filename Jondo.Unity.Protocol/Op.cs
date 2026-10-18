@@ -3023,6 +3023,15 @@ public static class Op
     /// <summary>C→S: the prism's teleport list (the prism's menu, dqv).</summary>
     public const string Ifd = "ifd";
 
+    /// <summary>C→S, empty: the prism menu's «Añadir un cristal» (dqu); answered with the crystal window.</summary>
+    public const string Iey = "iey";
+
+    /// <summary>C→S { f1 the fight, f3 the defender }: taking a defender's place (JoinFightUtils.SwapPlaces).</summary>
+    public const string Med = "med";
+
+    /// <summary>S→C { f1 [hof { f1 role, f2 status, f3 character }] }: several players' AvA status and role (eht.gaf).</summary>
+    public const string Hoh = "hoh";
+
     /// <summary>S→C: a conquest's score, every minute (fgv.bewm; see KothProtocol).</summary>
     public const string Mep = "mep";
 

@@ -38,9 +38,21 @@
     "(8000), whose catalogues and prices are the dofuspourlesnoobs guide's 'Songes infinis' (its",
     "two vendor tables). They charge in tokens, datos/tiendas_en_fichas.json: Neru Stalar in",
     "dream fragments (32080), what the end of a dream pays, and sells their bag of a thousand",
-    "(34274); Gobribe in those bags."
+    "(34274); Gobribe in those bags.",
+    "",
+    "PEPITO (NPC 7030), at the Temple of Alliances: the pacifying crystal (27632), which the client's",
+    "help says is traded for nuggets with him (Translations 1149314). He charges in nuggets (14635),",
+    "datos/tiendas_en_fichas.json."
   ],
   "shops": [
+    {
+      "npc": 7030,
+      "items": [
+        {
+          "gid": 27632
+        }
+      ]
+    },
     {
       "npc": 7580,
       "alsoSoldBy": [ 2142 ],

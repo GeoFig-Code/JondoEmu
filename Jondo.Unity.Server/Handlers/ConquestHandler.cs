@@ -46,8 +46,41 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>«No es posible activar/desactivar el modo AcA en una zona donde se desarrolla un combate de alianza.», info 1.</summary>
         internal const int NoSwitchInAWar = 399;
 
+        /// <summary>«Se ha alcanzado el número máximo para tu rol en esta AcA. ¡Cambia de rol antes de volver!», info 1.</summary>
+        private const int RoleFull = 684;
+
+        /// <summary>«Un exploradores no puede acumular puntos en el mapa del prisma», info 1.</summary>
+        private const int ScoutOnThePrismMap = 701;
+
+        /// <summary>«No es posible teletransportarse desde una zona en conflicto con el modo AcA activado.», info 1.</summary>
+        public const int NoTeleportInAWar = 427;
+
+        /// <summary>«No puedes teletransportarte a tu merkasako mientras participas en un conflicto AcA.», info 1.</summary>
+        public const int NoHavenBagInAWar = 475;
+
+        /// <summary>«No puedes iniciar una búsqueda de koliseo cuando estás participando en un AcA.», info 1.</summary>
+        public const int NoKoliseoInAWar = 713;
+
         /// <summary>The PvP notices' info type.</summary>
         private const int PvpNotice = 2;
+
+        /// <summary>
+        /// The scout's potion's effect (28214, «aliviar la carga que tengas en un prisma»): drunk on
+        /// the prism's map, what he carried is his alliance's.
+        /// </summary>
+        public const int ScoutPotionEffect = 2904;
+
+        /// <summary>
+        /// The sentinel's potion's effect (14426, «atacarás automáticamente a los enemigos que se
+        /// acerquen a menos de 6 casillas»): drunk in the zone, he stands guard on his map.
+        /// </summary>
+        public const int SentinelPotionEffect = 209;
+
+        /// <summary>«A menos de 6 casillas»: how near an enemy passes for a sentinel on guard to attack him.</summary>
+        public const int SentinelReach = 6;
+
+        /// <summary>No role shown over a character (hof.f1, hon.f4): RoleplayEntitiesService.yab draws none for -1.</summary>
+        private const int NoRole = -1;
 
         // ─── The clock ──────────────────────────────────────────────────────────
 
@@ -65,7 +98,11 @@ namespace Jondo.Unity.Server.Handlers
                     else if (prism.State == PrismStore.Vulnerable)
                         await ConquestMinuteAsync(prism, nowMs);
                     else if (prism.State == PrismStore.Pacified && nowMs >= prism.NextChangeUtcMs)
+                    {
+                        // A crystal's hours over: it is spent, and its slot empty again.
+                        if (prism.CrystalGid != 0) PrismStore.SetCrystal(prism, 0, prism.CrystalsUsed);
                         await ChangeStateAsync(prism, PrismStore.Normal, 0);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -88,8 +125,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             var alliance = AllianceStore.ById(prism.AllianceId);
             if (alliance == null) return;
-            await SessionRegistry.BroadcastAsync(ConnectionProtocol.Push(Op.Ifa,
-                PrismProtocol.BuildChanged(PrismProtocol.Information(prism, alliance))));
+            await PrismHandler.BroadcastChangedAsync(prism);
             if (!FightHandler.IsGroupFighting(prism.ContextId))
                 await SessionRegistry.BroadcastToMapAsync(prism.MapId, ConnectionProtocol.Push(Op.Jsn,
                     PrismProtocol.BuildShown(prism, alliance)), fightId: 0);
@@ -129,7 +165,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             long ends = nowMs + Math.Max(Conquests.DominationToWin, ServerSettings.Current.ConquestMaxMinutes) * 60_000L;
             await ChangeStateAsync(prism, PrismStore.Vulnerable, ends);
-            Conquests.Start(prism.SubAreaId, prism.AllianceId, nowMs, ends);
+            Conquests.Start(prism.SubAreaId, prism.AllianceId, nowMs, ends, prism.MapId);
 
             byte[] defend = Notice(YourTerritoryVulnerable, prism.SubAreaId);
             byte[] take = Notice(TerritoryVulnerable, prism.SubAreaId);
@@ -153,7 +189,8 @@ namespace Jondo.Unity.Server.Handlers
                       ?? Conquests.Start(prism.SubAreaId, prism.AllianceId, nowMs,
                                          prism.NextChangeUtcMs > nowMs
                                              ? prism.NextChangeUtcMs
-                                             : nowMs + Math.Max(Conquests.DominationToWin, ServerSettings.Current.ConquestMaxMinutes) * 60_000L);
+                                             : nowMs + Math.Max(Conquests.DominationToWin, ServerSettings.Current.ConquestMaxMinutes) * 60_000L,
+                                         prism.MapId);
             if (nowMs < war.NextTickUtcMs) return;
 
             long winner = Conquests.Tick(war, PresentIn(prism.SubAreaId), nowMs);
@@ -170,10 +207,11 @@ namespace Jondo.Unity.Server.Handlers
         private static async Task EndAsync(PrismStore.Prism prism, Conquests.War war, long winnerId, long nowMs)
         {
             var winner = AllianceStore.ById(winnerId);
+            var fighters = FightersIn(war.SubAreaId);
             if (winner != null)
             {
                 byte[] end = ConnectionProtocol.Push(Op.Mdz, KothProtocol.BuildEnd(winner));
-                foreach (var session in FightersIn(war.SubAreaId)) await session.SendAsync(end);
+                foreach (var session in fighters) await session.SendAsync(end);
             }
             Conquests.End(war.SubAreaId);
 
@@ -198,7 +236,7 @@ namespace Jondo.Unity.Server.Handlers
                 Program.LogDebug($"[Conquest] «{winner.Name}» conquers subarea {war.SubAreaId}.");
             }
 
-            await RefreshZoneAsync(war.SubAreaId);
+            await RefreshZoneAsync(war.SubAreaId, fighters);
         }
 
         /// <summary>The score (mep) to the zone's fighters.</summary>
@@ -230,22 +268,48 @@ namespace Jondo.Unity.Server.Handlers
             return session != null && IsWarZone(SubAreaOf(WhereIs(session)));
         }
 
-        /// <summary>The zone's fighters: in the world on its maps, in an alliance, with «Alliance fight» on.</summary>
+        /// <summary>
+        /// Whether a connected character fights in the conquest of the zone he stands in: there with
+        /// «Alliance fight» on, in an alliance, and let in -- his alliance had room for his role.
+        /// </summary>
+        public static bool FightsInAWar(long characterId)
+        {
+            var session = SessionRegistry.FindByCharacter(characterId);
+            return session != null && Admit(session);
+        }
+
+        /// <summary>Lets a session into its zone's conquest, if it may come in; whether it is in.</summary>
+        private static bool Admit(GameSession session)
+        {
+            long id = session.State.CharacterId;
+            int subArea = SubAreaOf(WhereIs(session));
+            var war = IsWarZone(subArea) ? Conquests.In(subArea) : null;
+            if (war == null || id == 0 || !AllianceStore.TakesPartInAva(id)) return false;
+            if (war.Admitted.ContainsKey(id)) return true;
+            var alliance = AllianceStore.AllianceOf(id);
+            return alliance != null && Conquests.Admit(war, id, alliance.Id, KothRoles.RoleOf(session));
+        }
+
+        /// <summary>The role a fighter of a conquest holds there.</summary>
+        private static int RoleIn(Conquests.War war, long characterId)
+            => war != null && war.Admitted.TryGetValue(characterId, out var admitted) ? admitted.Role : NoRole;
+
+        /// <summary>The zone's fighters: in the world on its maps, in an alliance, with «Alliance fight» on, let in.</summary>
         private static List<GameSession> FightersIn(int subAreaId)
             => SessionRegistry.InWorld()
-                              .Where(s => s.State.CharacterId != 0 && SubAreaOf(WhereIs(s)) == subAreaId
-                                          && AllianceStore.TakesPartInAva(s.State.CharacterId)
-                                          && AllianceStore.AllianceOf(s.State.CharacterId) != null)
+                              .Where(s => s.State.CharacterId != 0 && SubAreaOf(WhereIs(s)) == subAreaId && Admit(s))
                               .ToList();
 
-        /// <summary>Who is there for the minute's count: each fighter of the zone, his alliance and map.</summary>
+        /// <summary>Who is there for the minute's count: each fighter of the zone, his alliance, map and role.</summary>
         internal static List<Conquests.Presence> PresentIn(int subAreaId)
         {
+            var war = Conquests.In(subAreaId);
             var present = new List<Conquests.Presence>();
             foreach (var session in FightersIn(subAreaId))
             {
-                var alliance = AllianceStore.AllianceOf(session.State.CharacterId);
-                if (alliance != null) present.Add(new Conquests.Presence(alliance.Id, WhereIs(session), session.State.CharacterId));
+                long id = session.State.CharacterId;
+                if (war != null && war.Admitted.TryGetValue(id, out var admitted))
+                    present.Add(new Conquests.Presence(admitted.Alliance, WhereIs(session), id, admitted.Role));
             }
             return present;
         }
@@ -265,31 +329,73 @@ namespace Jondo.Unity.Server.Handlers
             if (characterId == 0 || !AllianceStore.TakesPartInAva(characterId)) return;
             if (AllianceStore.AllianceOf(characterId) == null) return;
 
+            // Out of a zone, out of its conquest: his role's place is free again.
+            foreach (var other in Conquests.All())
+                if (other.SubAreaId != subAreaId) Conquests.Release(other, characterId);
+
+            var war = IsWarZone(subAreaId) ? Conquests.In(subAreaId) : null;
             int status = AllianceProtocol.AggressableStatus(characterId);
+            if (war != null) await OnWalkedAsync(SessionRegistry.FindByCharacter(characterId));
+            if (war != null && status != AllianceProtocol.AvaAggressable)
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, RoleFull)));
+
+            // A scout on the prism's map gathers nothing there.
+            var session = SessionRegistry.FindByCharacter(characterId);
+            if (war != null && session != null && RoleIn(war, characterId) == KothRoles.Scout && WhereIs(session) == war.PrismMapId)
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, ScoutOnThePrismMap)));
+
             int before = _heard.TryGetValue(characterId, out int heard) ? heard : AllianceProtocol.AvaNotAggressable;
             if (status == before) return;
             _heard[characterId] = status;
-            await SendAsync(stream, ConnectionProtocol.Push(Op.Hon, AllianceProtocol.BuildAggressableStatus(characterId, status)));
+            await SendAsync(stream, ConnectionProtocol.Push(Op.Hon,
+                AllianceProtocol.BuildAggressableStatus(characterId, status, RoleIn(war, characterId))));
 
             if (status != AllianceProtocol.AvaAggressable) return;
             var prism = PrismStore.InSubArea(subAreaId);
             var owner = prism == null ? null : AllianceStore.ById(prism.AllianceId);
-            if (owner != null)
-                await SendAsync(stream, ConnectionProtocol.Push(Op.Ifa,
-                    PrismProtocol.BuildChanged(PrismProtocol.Information(prism, owner))));
-            var war = Conquests.In(subAreaId);
-            if (war != null) await SendAsync(stream, ScoreFrame(war));
+            if (owner != null) await SendAsync(stream, PrismHandler.ChangedFor(prism, owner, characterId));
+            if (war != null)
+            {
+                await SendAsync(stream, ScoreFrame(war));
+                await SendRolesAsync(war);
+            }
+        }
+
+        /// <summary>
+        /// Every fighter of a conquest learns the others' status and role (hoh; eht.gaf draws the
+        /// role over each one): his allies', and his enemies' only if he is a seer, who «puede ver
+        /// de modo permanente los roles de los adversarios» (Translations 1119557).
+        /// </summary>
+        private static async Task SendRolesAsync(Conquests.War war)
+        {
+            var fighters = FightersIn(war.SubAreaId);
+            foreach (var viewer in fighters)
+            {
+                long me = viewer.State.CharacterId;
+                if (!war.Admitted.TryGetValue(me, out var mine)) continue;
+                var hoh = Pb.New();
+                foreach (var other in fighters)
+                {
+                    long them = other.State.CharacterId;
+                    if (them == me || !war.Admitted.TryGetValue(them, out var theirs)) continue;
+                    int role = theirs.Alliance == mine.Alliance || mine.Role == KothRoles.Seer ? theirs.Role : NoRole;
+                    hoh.Msg(1, AllianceProtocol.StatusOf(them, AllianceProtocol.AvaAggressable, role));
+                }
+                await viewer.SendAsync(ConnectionProtocol.Push(Op.Hoh, hoh.Build()));
+            }
         }
 
         /// <summary>A conquest opened or closed: the zone's fighters hear their new status and are drawn again.</summary>
-        private static async Task RefreshZoneAsync(int subAreaId)
+        private static async Task RefreshZoneAsync(int subAreaId, IEnumerable<GameSession> fighters = null)
         {
-            foreach (var session in FightersIn(subAreaId))
+            var war = Conquests.In(subAreaId);
+            foreach (var session in (fighters ?? FightersIn(subAreaId)).ToList())
             {
                 long id = session.State.CharacterId;
                 int status = AllianceProtocol.AggressableStatus(id);
                 _heard[id] = status;
-                await session.SendAsync(ConnectionProtocol.Push(Op.Hon, AllianceProtocol.BuildAggressableStatus(id, status)));
+                await session.SendAsync(ConnectionProtocol.Push(Op.Hon,
+                    AllianceProtocol.BuildAggressableStatus(id, status, RoleIn(war, id))));
                 if (session.State.IsInFight) continue;
 
                 var character = DatabaseManager.GetCharacterById(id);
@@ -299,10 +405,28 @@ namespace Jondo.Unity.Server.Handlers
                 await session.SendAsync(jsn);
                 await SessionRegistry.BroadcastToMapAsync(session.MapId, jsn, session.Id);
             }
+            if (war != null) await SendRolesAsync(war);
         }
 
-        /// <summary>A character gone from the world: his next status is heard afresh.</summary>
-        public static void Forget(long characterId) => _heard.TryRemove(characterId, out _);
+        /// <summary>
+        /// Whether the session being served takes part in a conflict -- «Alliance fight» on, in a
+        /// vulnerable prism's zone --, which keeps it there: it hears why (<paramref name="refusal"/>,
+        /// info 1) and true is returned.
+        /// </summary>
+        public static async Task<bool> HoldsInAsync(NetworkStream stream, int refusal)
+        {
+            long id = SessionContext.State.CharacterId;
+            if (id == 0 || !AllianceStore.TakesPartInAva(id) || !InWarZone(id)) return false;
+            await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, refusal)));
+            return true;
+        }
+
+        /// <summary>A character gone from the world: his next status is heard afresh, and his role's place is free.</summary>
+        public static void Forget(long characterId)
+        {
+            _heard.TryRemove(characterId, out _);
+            foreach (var war in Conquests.All()) Conquests.Release(war, characterId);
+        }
 
         // ─── Aggressions ────────────────────────────────────────────────────────
 
@@ -340,16 +464,126 @@ namespace Jondo.Unity.Server.Handlers
             var war = Conquests.In(SubAreaOf(fight.RoleplayMapId));
             if (war == null) return;
 
-            List<long> AlliancesOf(IEnumerable<Fighter> side)
+            List<(long, int)> AlliancesOf(IEnumerable<Fighter> side)
                 => side.Where(f => !f.IsMonster && !f.EsInvocado)
-                       .Select(f => AllianceStore.AllianceOf(f.Id)?.Id ?? 0)
-                       .Where(id => id != 0)
+                       .Select(f => (AllianceStore.AllianceOf(f.Id)?.Id ?? 0,
+                                     war.Admitted.TryGetValue(f.Id, out var admitted) ? admitted.Role : AllianceData.DefaultKothRole))
+                       .Where(a => a.Item1 != 0)
                        .ToList();
 
             var winners = AlliancesOf(attackersWon ? fight.Azul : fight.Rojo);
             var losers = AlliancesOf(attackersWon ? fight.Rojo : fight.Azul);
             Conquests.FightOver(war, winners, losers);
             await SendScoreAsync(war);
+        }
+
+        // ─── The role potions ───────────────────────────────────────────────────
+
+        /// <summary>
+        /// A role potion used -- one whose criterion asks for a role's certificate, «PO=27659» --:
+        /// the scout's (<see cref="ScoutPotionEffect"/>) and the sentinel's
+        /// (<see cref="SentinelPotionEffect"/>) work; the resurrector's and the gravedigger's want
+        /// the tombs of the fallen, which this server's conquests have none of, and do nothing.
+        /// Only one holding the role and fighting in a conquest may drink one; anybody else hears
+        /// «No cumples los requisitos». False when the item is no role potion.
+        /// </summary>
+        public static async Task<bool> UseRolePotionAsync(NetworkStream stream, Equipment.Item item)
+        {
+            string criterion = DatabaseManager.GetItemTemplateCriterion(item.Template) ?? "";
+            bool forARole = AllianceData.KothRoles.Any(r => r.Certificate != 0
+                && System.Text.RegularExpressions.Regex.IsMatch(criterion, $@"\bPO={r.Certificate}\b"));
+            if (!forARole) return false;
+
+            var effects = DatabaseManager.GetItemEffectsData(DatabaseManager.GetItemTemplatePossibleEffects(item.Template));
+            if (effects.Any(e => e.EffectId == ScoutPotionEffect)) return await ScoutPotionAsync(stream, item);
+            if (effects.Any(e => e.EffectId == SentinelPotionEffect)) return await SentinelPotionAsync(stream, item);
+            await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, InfoMessages.RequirementsNotMet)));
+            return true;
+        }
+
+        /// <summary>
+        /// The sentinel's potion: spent, and he stands guard on his map until he leaves it or the
+        /// conquest ends (<see cref="OnWalkedAsync"/>).
+        /// </summary>
+        private static async Task<bool> SentinelPotionAsync(NetworkStream stream, Equipment.Item item)
+        {
+            var me = SessionContext.Current;
+            long id = me.State.CharacterId;
+            var war = Conquests.In(SubAreaOf(WhereIs(me)));
+            if (war == null || !FightsInAWar(id) || RoleIn(war, id) != KothRoles.Sentinel)
+            {
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, InfoMessages.RequirementsNotMet)));
+                return true;
+            }
+            if (!await ItemUseHandler.SpendOneAsync(stream, item.Uid)) return true;
+            war.Sentinels[id] = me.State.MapId;
+            Program.LogDebug($"[Conquest] Sentinel {me.State.CharacterName} stands guard on map {me.State.MapId}.");
+            return true;
+        }
+
+        /// <summary>
+        /// A fighter of a conquest walked: an enemy sentinel on guard on his map, free and less than
+        /// <see cref="SentinelReach"/> cells away, attacks him -- «ataca automáticamente a
+        /// cualquier enemigo que pase a menos de 6 casillas de él» (Translations 1119557).
+        /// </summary>
+        public static async Task OnWalkedAsync(GameSession mover)
+        {
+            if (mover == null || mover.State.IsInFight || mover.State.FightId != 0) return;
+            long id = mover.State.CharacterId;
+            long map = mover.State.MapId;
+            var war = Conquests.In(SubAreaOf(map));
+            if (war == null || war.Sentinels.IsEmpty || !war.Admitted.TryGetValue(id, out var mine)) return;
+
+            foreach (var guard in war.Sentinels.ToArray())
+            {
+                if (guard.Value != map || guard.Key == id) continue;
+                if (!war.Admitted.TryGetValue(guard.Key, out var theirs) || theirs.Alliance == mine.Alliance) continue;
+                var sentinel = SessionRegistry.FindByCharacter(guard.Key);
+                if (sentinel == null || sentinel.State.MapId != map)
+                {
+                    war.Sentinels.TryRemove(guard.Key, out _);
+                    continue;
+                }
+                if (sentinel.State.IsInFight || sentinel.State.FightId != 0) continue;
+                if (Jondo.Unity.World.Maps.MapGeometry.Distance(sentinel.State.CellId, mover.State.CellId) >= SentinelReach) continue;
+
+                Program.LogDebug($"[Conquest] Sentinel {sentinel.State.CharacterName} attacks {mover.State.CharacterName}.");
+                await FightHandler.InitiatePvpAsync(new List<GameSession> { sentinel }, new List<GameSession> { mover },
+                                                    map, rules: FightRules.Agresion);
+                return;
+            }
+        }
+
+        /// <summary>
+        /// The scout's potion: by a scout of a conquest, on its prism's map, what he carried goes to
+        /// his alliance's prism points and the potion is spent; elsewhere in the zone, 701.
+        /// </summary>
+        private static async Task<bool> ScoutPotionAsync(NetworkStream stream, Equipment.Item item)
+        {
+            var me = SessionContext.Current;
+            long id = me.State.CharacterId;
+            var war = Conquests.In(SubAreaOf(WhereIs(me)));
+            if (war == null || !FightsInAWar(id) || RoleIn(war, id) != KothRoles.Scout)
+            {
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, InfoMessages.RequirementsNotMet)));
+                return true;
+            }
+            if (WhereIs(me) != war.PrismMapId)
+            {
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, ScoutOnThePrismMap)));
+                return true;
+            }
+            if (!war.ScoutCarried.TryGetValue(id, out int carried) || carried <= 0) return true;
+            if (!await ItemUseHandler.SpendOneAsync(stream, item.Uid)) return true;
+
+            long handed = Conquests.HandIn(war, id, war.Admitted[id].Alliance);
+            Program.LogDebug($"[Conquest] Scout {me.State.CharacterName} hands in {handed} point(s) on the prism's map.");
+            await SendScoreAsync(war);
+            return true;
         }
 
         // ─── Placing after a conquest ───────────────────────────────────────────

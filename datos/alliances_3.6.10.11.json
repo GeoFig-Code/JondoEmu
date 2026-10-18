@@ -278,37 +278,44 @@
   {
    "id": 2,
    "default": false,
-   "name": "Vidente"
+   "name": "Vidente",
+   "certificate": 27658
   },
   {
    "id": 3,
    "default": false,
-   "name": "Enterrador"
+   "name": "Enterrador",
+   "certificate": 14444
   },
   {
    "id": 4,
    "default": false,
-   "name": "Resucitador"
+   "name": "Resucitador",
+   "certificate": 14445
   },
   {
    "id": 5,
    "default": false,
-   "name": "Centinela"
+   "name": "Centinela",
+   "certificate": 14446
   },
   {
    "id": 6,
    "default": false,
-   "name": "Explorador"
+   "name": "Explorador",
+   "certificate": 27659
   },
   {
    "id": 7,
    "default": false,
-   "name": "Campeón"
+   "name": "Campeón",
+   "certificate": 27660
   },
   {
    "id": 8,
    "default": true,
-   "name": "Carne de cañón"
+   "name": "Carne de cañón",
+   "certificate": 27936
   }
  ],
  "taxCollectorFirstNames": [

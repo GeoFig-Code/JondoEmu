@@ -29,7 +29,7 @@ namespace Jondo.Unity.Server.UI
         private int E(int px) => (int)Math.Round(px * _escala);
 
         private readonly NumberStepper _raidMin, _maxAp, _maxMp, _xp, _drop, _kamas, _randomLootChance;
-        private readonly NumberStepper _weakenedHours, _conquestMinutes, _invulnerableHours;
+        private readonly NumberStepper _weakenedHours, _conquestMinutes, _invulnerableHours, _protectionMinutes;
         private readonly ToggleSwitch _hardcore, _noEnergy, _randomLoot;
         private readonly LauncherField _welcome;
         private readonly RarityTable _rarities;
@@ -61,6 +61,7 @@ namespace Jondo.Unity.Server.UI
             public string Characters, MaxAp, MaxMp, CapHint, NoEnergy, NoEnergyHint;
             public string Raids, RaidMin, RaidMinHint;
             public string Conquests, Weakened, WeakenedHint, ConquestMax, ConquestMaxHint, Invulnerable, InvulnerableHint;
+            public string Protection, ProtectionHint;
             public string Loot, RandomLoot, RandomLootHint, Chance, ChanceHint, LootLevels;
             public string Consumables, Equipment, Cosmetics, Creatures, Dofus, Legendary, Perfect, Percent;
             public string Modes, Hardcore, HardcoreHint;
@@ -93,6 +94,8 @@ namespace Jondo.Unity.Server.UI
                 ConquestMaxHint = "En minutos. Si nadie gana antes, la defensa conserva el prisma.",
                 Invulnerable = "Horas de invulnerabilidad",
                 InvulnerableHint = "Las del prisma conquistado, divididas por los prismas de su alianza.",
+                Protection = "Protección de un prisma nuevo",
+                ProtectionHint = "Minutos sin poder atacarlo tras ponerlo. 0 = ninguna.",
                 Loot = "BOTÍN ALEATORIO",
                 RandomLoot = "Botín aleatorio",
                 RandomLootHint = "Además de su tabla, cada monstruo puede soltar de 2 a 5 objetos al azar.",
@@ -138,6 +141,8 @@ namespace Jondo.Unity.Server.UI
                 ConquestMaxHint = "In minutes. If nobody wins by then, the defence keeps the prism.",
                 Invulnerable = "Hours of invulnerability",
                 InvulnerableHint = "A conquered prism's, divided by its alliance's prisms.",
+                Protection = "Protection of a new prism",
+                ProtectionHint = "Minutes it cannot be attacked after it is placed. 0 = none.",
                 Loot = "RANDOM LOOT",
                 RandomLoot = "Random loot",
                 RandomLootHint = "Besides its table, each monster can drop 2 to 5 random items.",
@@ -183,6 +188,8 @@ namespace Jondo.Unity.Server.UI
                 ConquestMaxHint = "En minutes. Si personne ne gagne avant, la défense garde le prisme.",
                 Invulnerable = "Heures d'invulnérabilité",
                 InvulnerableHint = "Celles du prisme conquis, divisées par les prismes de son alliance.",
+                Protection = "Protection d'un prisme neuf",
+                ProtectionHint = "Minutes sans pouvoir l'attaquer après sa pose. 0 = aucune.",
                 Loot = "BUTIN ALÉATOIRE",
                 RandomLoot = "Butin aléatoire",
                 RandomLootHint = "En plus de sa table, chaque monstre peut lâcher 2 à 5 objets au hasard.",
@@ -243,6 +250,7 @@ namespace Jondo.Unity.Server.UI
             _weakenedHours = Stepper(_saved.PrismWeakenedHours, 0, 168, 1, 0, "h");
             _conquestMinutes = Stepper(_saved.ConquestMaxMinutes, 20, 1440, 10, 0, "min");
             _invulnerableHours = Stepper(_saved.ConquestInvulnerabilityHours, 0, 168, 1, 0, "h");
+            _protectionMinutes = Stepper(_saved.PrismProtectionMinutes, 0, 1440, 10, 0, "min");
             _randomLoot = Toggle(_saved.RandomLoot);
             _randomLootChance = Stepper((decimal)_saved.RandomLootChancePercent, 0, 100, 1, 2, "%");
             _hardcore = Toggle(_saved.Hardcore);
@@ -269,7 +277,8 @@ namespace Jondo.Unity.Server.UI
             var conquests = Card(_t.Conquests,
                                  Row(_t.Weakened, _t.WeakenedHint, _weakenedHours),
                                  Row(_t.ConquestMax, _t.ConquestMaxHint, _conquestMinutes),
-                                 Row(_t.Invulnerable, _t.InvulnerableHint, _invulnerableHours));
+                                 Row(_t.Invulnerable, _t.InvulnerableHint, _invulnerableHours),
+                                 Row(_t.Protection, _t.ProtectionHint, _protectionMinutes));
             var loot = Card(_t.Loot,
                             Row(_t.RandomLoot, _t.RandomLootHint, _randomLoot),
                             Row(_t.Chance, _t.ChanceHint, _randomLootChance),
@@ -473,6 +482,7 @@ namespace Jondo.Unity.Server.UI
             edited.PrismWeakenedHours = (int)_weakenedHours.Value;
             edited.ConquestMaxMinutes = (int)_conquestMinutes.Value;
             edited.ConquestInvulnerabilityHours = (int)_invulnerableHours.Value;
+            edited.PrismProtectionMinutes = (int)_protectionMinutes.Value;
             edited.RandomLoot = _randomLoot.Checked;
             edited.RandomLootChancePercent = (double)_randomLootChance.Value;
             edited.Hardcore = _hardcore.Checked;

@@ -78,6 +78,9 @@ namespace Jondo.Unity.Server.Handlers
             // If he leads a party, the ones following him learn where the walk ends, right behind
             // the jsj: that ikv is what makes their clients walk after him (PartyFollowHandler).
             await PartyFollowHandler.LeaderMovedAsync(SessionContext.Current);
+
+            // And in a conquest's zone, a sentinel on guard may fall on him.
+            await ConquestHandler.OnWalkedAsync(SessionContext.Current);
         }
 
         /// <summary>

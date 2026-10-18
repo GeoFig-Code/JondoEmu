@@ -186,6 +186,48 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
+        /// «Swap places» on a defender of the fights tab (med { f1 the fight, f3 the defender, f2
+        /// left empty }; fgu.beub from JoinFightUtils.SwapPlaces, which first refuses one already in
+        /// another fight): taking that defender's place.
+        /// </summary>
+        /// <remarks>
+        /// INFERRED. The client says only whose place. Dofus 2 swapped places in a list of defenders
+        /// waiting to go in; here defenders join the fight itself, so with room on the side it is a
+        /// join, and with the side full the defender named steps out of the placement and the one
+        /// asking steps in.
+        /// </remarks>
+        public static async Task SwapAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[] med = ConnectionProtocol.ReadPayload(payload, Op.Med);
+            var (_, fightId) = TaxCollectorProtocol.ReadFightKey(med);
+            long target = 0;
+            if (med != null)
+                foreach (var field in ProtoMessage.Parse(med).Fields)
+                    if (field.FieldNumber == 3 && field.WireType == 0) target = field.VarIntValue;
+
+            var session = SessionContext.Current;
+            var me = session.State;
+            if (target == 0 || target == me.CharacterId || !_open.TryGetValue(fightId, out var defence)) return;
+            var fight = FightHandler.FightById(fightId);
+            var alliance = AllianceStore.ById(defence.AllianceId);
+            if (fight == null || alliance == null || AllianceStore.AllianceOf(me.CharacterId)?.Id != alliance.Id) return;
+
+            await FightHandler.InTurnAsync(fight, async () =>
+            {
+                if (fight.State != FightState.Placement) return;
+                if (fight.CanJoin(FightInstance.Rojos, FightHandler.CapOf(fight)) == FightInstance.JoinRefusal.TeamFull
+                    && fight.EquipoDe(target) == FightInstance.Rojos)
+                {
+                    var other = SessionRegistry.FindByCharacter(target);
+                    if (other == null) return;
+                    using (SessionContext.Push(other)) await FightHandler.LeavePlacementAsync(other.Stream, fight);
+                    Program.LogDebug($"[AllianceFights] {me.CharacterName} takes the place of {target} in fight #{fightId}.");
+                }
+                await DefendAsync(stream, session, fight, fightId, defence, alliance);
+            });
+        }
+
+        /// <summary>
         /// A defender takes himself off (mea, his own slot of the line): out of the fight as
         /// anybody leaving its placement.
         /// </summary>

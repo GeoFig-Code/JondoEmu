@@ -132,6 +132,19 @@ namespace Jondo.Unity.World.Content
         /// </remarks>
         public bool ReturnsHome { get; init; }
 
+        /// <summary>
+        /// The conquest role this reply takes, or zero: Hal Ylanza's «Quiero ser explorador.» hands
+        /// over the role's certificate and goes on to his «¡Enhorabuena!».
+        /// </summary>
+        public int KothRole { get; init; }
+
+        /// <summary>
+        /// Where a <see cref="KothRole"/> reply leads when the role cannot be changed yet -- «Lo
+        /// siento, aún no estás listo para cambiar de rol. Vuelve a verme dentro de unos minutos.»
+        /// --, or zero to end the conversation.
+        /// </summary>
+        public long RefusedNext { get; init; }
+
         public bool Ends => Next == 0;
 
         /// <summary>Whether this reply is offered to nobody in particular.</summary>
@@ -412,6 +425,8 @@ namespace Jondo.Unity.World.Content
                                           && back.ValueKind == JsonValueKind.True,
                             AfterQuest = choice.TryGetProperty("afterQuest", out var after)
                                          && after.ValueKind == JsonValueKind.True,
+                            KothRole = (int)Number(choice, "kothRole"),
+                            RefusedNext = Number(choice, "refused"),
                         });
                     }
                 }
@@ -515,6 +530,8 @@ namespace Jondo.Unity.World.Content
                                 writer.WriteEndArray();
                             }
                             if (choice.ReturnsHome) writer.WriteBoolean("teleportBack", true);
+                            if (choice.KothRole != 0) writer.WriteNumber("kothRole", choice.KothRole);
+                            if (choice.RefusedNext != 0) writer.WriteNumber("refused", choice.RefusedNext);
                             writer.WriteEndObject();
                         }
 
@@ -583,6 +600,12 @@ namespace Jondo.Unity.World.Content
                     if (!choice.Ends && !known.Contains(choice.Next))
                     {
                         wrong.Add($"reply {choice.Reply} leads to message {choice.Next}, which is " +
+                                  "not one of its lines.");
+                    }
+
+                    if (choice.RefusedNext != 0 && !known.Contains(choice.RefusedNext))
+                    {
+                        wrong.Add($"reply {choice.Reply} is refused onto message {choice.RefusedNext}, which is " +
                                   "not one of its lines.");
                     }
                 }

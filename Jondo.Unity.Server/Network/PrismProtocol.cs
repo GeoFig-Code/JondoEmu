@@ -27,6 +27,18 @@ namespace Jondo.Unity.Server.Network
         public const int Teleporter = 2;
         public const int DestinationKind = 2;
 
+        /// <summary>
+        /// The crystals a prism may consume in its life: «Un prisma puede consumir solamente 4
+        /// cristales sucesivos en su vida útil» (Translations 1149314).
+        /// </summary>
+        public const int MaxCrystals = 4;
+
+        /// <summary>
+        /// The storage kind (kci.f3) that opens the prism's crystal window: the client turns 18
+        /// into its exchange 22 (gjp.bkme), which opens PrismModuleUi (fwy.bivq → bixl).
+        /// </summary>
+        public const int CrystalWindowKind = 18;
+
         /// <summary>A prism's fight ended (iev.f1): 0 not beaten (fgv.bewp: «ui.prism.notDefeated»), else weakened.</summary>
         public const int NotDefeated = 0;
         public const int Weakened = 1;
@@ -74,13 +86,40 @@ namespace Jondo.Unity.Server.Network
         /// the creation date and, for a weakened or a pacified prism, the time left until the f2
         /// (AllianceConquestsUi.GetStateTimeLeft). Every prism of the captures' ife stands normal,
         /// and there the f2 is its placing, the f4 to the second: so it goes while normal.
+        ///
+        /// Its own alliance sees more (<paramref name="own"/>): the f1, an optional field the client
+        /// takes for «mine», is the crystals it may still consume -- the crystal window's «{0} de 4
+        /// cristales posibles», which takes none at 0 --, and the f6 (lno) the crystal it holds:
+        /// { f2 the crystal, as an item of the bag (lec), f3 1 while it works }. With the f1 and no
+        /// f6 the client throws (ku.fhn reads the f6 unchecked). None of the 1,869 prisms of the
+        /// captures is the player's own, so this side is all the client's code.
         /// </remarks>
-        public static Pb State(PrismStore.Prism prism, AllianceStore.Alliance alliance)
-            => Pb.New()
-                .Var(2, prism.State == PrismStore.Normal || prism.NextChangeUtcMs <= 0 ? prism.PlacedUtcMs : prism.NextChangeUtcMs)
-                .VarIfNotZero(3, prism.State)
-                .Var(4, prism.PlacedUtcMs / 1000)
-                .Msg(5, AllianceProtocol.Block(alliance));
+        public static Pb State(PrismStore.Prism prism, AllianceStore.Alliance alliance, bool own = false)
+        {
+            var ley = Pb.New();
+            if (own) ley.Var(1, Math.Max(0, MaxCrystals - prism.CrystalsUsed));
+            ley.Var(2, prism.State == PrismStore.Normal || prism.NextChangeUtcMs <= 0 ? prism.PlacedUtcMs : prism.NextChangeUtcMs)
+               .VarIfNotZero(3, prism.State)
+               .Var(4, prism.PlacedUtcMs / 1000)
+               .Msg(5, AllianceProtocol.Block(alliance));
+            if (own) ley.Msg(6, Crystal(prism));
+            return ley;
+        }
+
+        /// <summary>The crystal it holds (lno): { f2 the crystal (lec), f3 1 while it pacifies the prism }.</summary>
+        public static Pb Crystal(PrismStore.Prism prism)
+        {
+            var lno = Pb.New();
+            if (prism.CrystalGid == 0) return lno;
+            var effects = DatabaseManager.TryGetItemTemplateEffects(prism.CrystalGid, out string json)
+                ? Managers.Equipment.ParseEffects(json)
+                : Array.Empty<Managers.Equipment.ItemEffect>();
+            return lno.Msg(2, Pb.New().Msg(5, ConnectionProtocol.ItemBody(prism.CrystalGid, effects, 1, CrystalUid(prism))))
+                      .VarIfNotZero(3, prism.HasActiveCrystal ? 1 : 0);
+        }
+
+        /// <summary>The crystal's uid in its slot: none of the bag's, so it is the prism's own id from far below.</summary>
+        public static long CrystalUid(PrismStore.Prism prism) => 2_000_000_000L + prism.Id;
 
         /// <summary>
         /// The prism as an actor of its map (ljx): the kind 2 of the actor's f2.f1.
@@ -106,14 +145,14 @@ namespace Jondo.Unity.Server.Network
         /// A prism in the world's lists (lhm): f1 its map, f2 { f1 x, f2 y }, f3 its subarea, f4 its
         /// state, f5 its alliance's uuid. The 1,000-odd of the ife at world entry have this shape.
         /// </summary>
-        public static Pb Information(PrismStore.Prism prism, AllianceStore.Alliance alliance)
+        public static Pb Information(PrismStore.Prism prism, AllianceStore.Alliance alliance, bool own = false)
         {
             var map = MapManager.GetMapInfo(prism.MapId);
             return Pb.New()
                 .Var(1, prism.MapId)
                 .Msg(2, Pb.New().VarIfNotZero(1, map?.PosX ?? 0).VarIfNotZero(2, map?.PosY ?? 0))
                 .Var(3, prism.SubAreaId)
-                .Msg(4, State(prism, alliance))
+                .Msg(4, State(prism, alliance, own))
                 .Str(5, alliance.Uuid);
         }
 

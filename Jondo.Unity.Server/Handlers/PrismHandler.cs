@@ -39,6 +39,9 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>«El estado del prisma es incompatible con esta acción.», info 1: attacking one that is not normal.</summary>
         private const int StateForbids = 406;
 
+        /// <summary>«No puedes atacar este prisma durante su primera hora de vida.», info 1.</summary>
+        private const int TooYoungToAttack = 154;
+
         /// <summary>«Uno de tus prismas ha sido destruido.», info 0/1581, to the alliance.</summary>
         internal const int OneOfYoursDestroyed = 1581;
 
@@ -97,8 +100,7 @@ namespace Jondo.Unity.Server.Handlers
             byte[] shown = ConnectionProtocol.Push(Op.Jsn, PrismProtocol.BuildShown(prism, alliance));
             await SendAsync(stream, shown);
             await SessionRegistry.BroadcastToMapAsync(prism.MapId, shown, SessionContext.Current.Id, fightId: 0);
-            await SessionRegistry.BroadcastAsync(ConnectionProtocol.Push(Op.Ifa,
-                PrismProtocol.BuildChanged(PrismProtocol.Information(prism, alliance))));
+            await BroadcastChangedAsync(prism);
 
             Program.LogDebug($"[Prism] {me.CharacterName} places a prism of «{alliance.Name}» in subarea " +
                              $"{prism.SubAreaId}, map {prism.MapId}.");
@@ -156,11 +158,12 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>Every prism of the world at world entry (ife), for the world map.</summary>
         public static async Task OnWorldEntryAsync(NetworkStream stream)
         {
+            long mine = AllianceStore.AllianceOf(SessionContext.State.CharacterId)?.Id ?? 0;
             var prisms = new List<Pb>();
             foreach (var prism in PrismStore.All())
             {
                 var alliance = AllianceStore.ById(prism.AllianceId);
-                if (alliance != null) prisms.Add(PrismProtocol.Information(prism, alliance));
+                if (alliance != null) prisms.Add(PrismProtocol.Information(prism, alliance, own: alliance.Id == mine));
             }
             await SendAsync(stream, ConnectionProtocol.Push(Op.Ife, PrismProtocol.BuildAll(prisms)));
         }
@@ -196,9 +199,32 @@ namespace Jondo.Unity.Server.Handlers
             return true;
         }
 
-        /// <summary>An alliance's prisms, as its sheet (mcx) lists them in its f2.</summary>
+        /// <summary>An alliance's prisms, as its sheet (mcx) lists them in its f2: their own view, they are its.</summary>
         public static IEnumerable<Pb> InformationOf(AllianceStore.Alliance alliance)
-            => PrismStore.OfAlliance(alliance.Id).Select(p => PrismProtocol.Information(p, alliance));
+            => PrismStore.OfAlliance(alliance.Id).Select(p => PrismProtocol.Information(p, alliance, own: true));
+
+        /// <summary>
+        /// A prism placed or changed (ifa) to the whole world: its alliance's members get their own
+        /// view of it (<see cref="PrismProtocol.State"/>), everybody else the plain one.
+        /// </summary>
+        internal static async Task BroadcastChangedAsync(PrismStore.Prism prism)
+        {
+            var alliance = AllianceStore.ById(prism.AllianceId);
+            if (alliance == null) return;
+            byte[] theirs = ConnectionProtocol.Push(Op.Ifa, PrismProtocol.BuildChanged(PrismProtocol.Information(prism, alliance)));
+            byte[] ours = ConnectionProtocol.Push(Op.Ifa, PrismProtocol.BuildChanged(PrismProtocol.Information(prism, alliance, own: true)));
+            var members = AllianceStore.Members(alliance.Id).Select(m => m.CharacterId).ToHashSet();
+            foreach (var session in SessionRegistry.InWorld())
+            {
+                if (session.State.CharacterId == 0) continue;
+                await session.SendAsync(members.Contains(session.State.CharacterId) ? ours : theirs);
+            }
+        }
+
+        /// <summary>The ifa of a prism for one character: his alliance's own view when it is its.</summary>
+        internal static byte[] ChangedFor(PrismStore.Prism prism, AllianceStore.Alliance alliance, long characterId)
+            => ConnectionProtocol.Push(Op.Ifa, PrismProtocol.BuildChanged(PrismProtocol.Information(prism, alliance,
+                own: AllianceStore.AllianceOf(characterId)?.Id == alliance.Id)));
 
         // ─── Teleport ───────────────────────────────────────────────────────────
 
@@ -217,7 +243,8 @@ namespace Jondo.Unity.Server.Handlers
             var destinations = new List<ConnectionProtocol.ZaapDestination>();
             foreach (var prism in PrismStore.OfAlliance(alliance.Id))
             {
-                if (MapManager.GetMapInfo(prism.MapId) == null) continue;
+                // A crystal on it: «la teletransportación a ese prisma se vuelve imposible» (1149314).
+                if (MapManager.GetMapInfo(prism.MapId) == null || (prism.HasActiveCrystal && prism.MapId != me.MapId)) continue;
                 destinations.Add(new ConnectionProtocol.ZaapDestination(
                     prism.MapId, prism.SubAreaId, Interactives.LevelOfSubArea(prism.SubAreaId),
                     prism.MapId == me.MapId ? 0 : ZaapTravelHandler.CostBetween(me.MapId, prism.MapId),
@@ -232,7 +259,114 @@ namespace Jondo.Unity.Server.Handlers
         {
             var alliance = AllianceStore.AllianceOf(characterId);
             var prism = PrismStore.OnMap(mapId);
-            return alliance != null && prism != null && prism.AllianceId == alliance.Id;
+            return alliance != null && prism != null && prism.AllianceId == alliance.Id && !prism.HasActiveCrystal;
+        }
+
+        // ─── Crystals ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The crystals' effect, its dice the hours a crystal pacifies its prism: 12 for the
+        /// «Cristal pacificador» (27632), «protegiéndolo de los ataques durante las próximas doce
+        /// horas» (Translations 1001713). An item is a crystal when it carries it.
+        /// </summary>
+        public const int CrystalEffect = 2996;
+
+        /// <summary>«Límite de {0} cristales ya alcanzado en este prisma.», info 1.</summary>
+        private const int CrystalLimitReached = 695;
+
+        /// <summary>«Acción imposible: aquí no hay ningún prisma.», info 1.</summary>
+        private const int NoPrismHere = 414;
+
+        /// <summary>«Acción imposible: este prisma no pertenece a tu alianza.», info 1.</summary>
+        private const int NotYourPrism = 415;
+
+        /// <summary>The hours an item pacifies a prism for: 0 when it is no crystal.</summary>
+        public static int CrystalHours(int template)
+            => DatabaseManager.GetItemEffectsData(DatabaseManager.GetItemTemplatePossibleEffects(template))
+                              .Where(e => e.EffectId == CrystalEffect).Select(e => e.DiceNum).FirstOrDefault();
+
+        /// <summary>
+        /// The prism menu's «Añadir un cristal» (iey, empty; PrismMenuMaker.OnPrismModulesManage) on
+        /// one's alliance's prism, with the right to modify it: the crystal window -- a storage of
+        /// kind 18 (kci), the client's PrismModuleUi, its slot taking a crystal from the bag.
+        /// </summary>
+        public static async Task CrystalWindowAsync(NetworkStream stream)
+        {
+            var me = SessionContext.State;
+            var prism = PrismStore.OnMap(me.MapId);
+            if (prism == null)
+            {
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, NoPrismHere)));
+                return;
+            }
+            var alliance = AllianceStore.ById(prism.AllianceId);
+            if (alliance == null || AllianceStore.AllianceOf(me.CharacterId)?.Id != alliance.Id)
+            {
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, NotYourPrism)));
+                return;
+            }
+            if (!AllianceStore.HasRight(me.CharacterId, AllianceData.PlacePrism))
+            {
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Hla, TaxCollectorProtocol.BuildError(TaxCollectorProtocol.ErrorNoRights)));
+                return;
+            }
+            if (prism.State == PrismStore.Vulnerable)
+            {
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, StateForbids)));
+                return;
+            }
+
+            me.OpenPrismCrystals = prism.Id;
+            await SendAsync(stream, ChangedFor(prism, alliance, me.CharacterId));
+            await SendAsync(stream, ConnectionProtocol.Push(Op.Kci, StorageProtocol.BuildOpened(1, PrismProtocol.CrystalWindowKind)));
+        }
+
+        /// <summary>
+        /// A crystal dropped in the window's slot (kcr, as any storage's): spent from the bag, the
+        /// prism pacified for the crystal's hours -- the one it held, if any, crushed («aplastará el
+        /// cristal ya presente», 1003776) -- and one of its four crystals gone. False when the window
+        /// is not open, for the next one in line.
+        /// </summary>
+        public static async Task<bool> MoveCrystalAsync(NetworkStream stream, byte[] payload)
+        {
+            var me = SessionContext.State;
+            if (me.OpenPrismCrystals == 0) return false;
+            if (!StorageHandler.ReadMove(payload, out int quantity, out long uid) || quantity <= 0) return true;
+
+            var prism = PrismStore.All().FirstOrDefault(p => p.Id == me.OpenPrismCrystals);
+            var item = Equipment.ByUid(uid);
+            if (prism == null || item == null || AllianceStore.AllianceOf(me.CharacterId)?.Id != prism.AllianceId) return true;
+            int hours = CrystalHours(item.Template);
+            if (hours <= 0) return true;
+
+            if (prism.CrystalsUsed >= PrismProtocol.MaxCrystals)
+            {
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning,
+                    CrystalLimitReached, PrismProtocol.MaxCrystals.ToString())));
+                return true;
+            }
+            if (prism.State == PrismStore.Weakened || prism.State == PrismStore.Vulnerable)
+            {
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, StateForbids)));
+                return true;
+            }
+            if (!await ItemUseHandler.SpendOneAsync(stream, uid)) return true;
+
+            PrismStore.SetCrystal(prism, item.Template, prism.CrystalsUsed + 1);
+            await ConquestHandler.ChangeStateAsync(prism, PrismStore.Pacified,
+                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + hours * 3_600_000L);
+            Program.LogDebug($"[Prism] {me.CharacterName} puts crystal {item.Template} on the prism of subarea " +
+                             $"{prism.SubAreaId}: pacified {hours} h, {prism.CrystalsUsed} of {PrismProtocol.MaxCrystals} used.");
+            return true;
+        }
+
+        /// <summary>The crystal window closed (kla): khd as any storage. False when it was not open.</summary>
+        public static async Task<bool> CloseCrystalWindowAsync(NetworkStream stream)
+        {
+            if (SessionContext.State.OpenPrismCrystals == 0) return false;
+            SessionContext.State.OpenPrismCrystals = 0;
+            await SendAsync(stream, ConnectionProtocol.Push(Op.Khd, ConnectionProtocol.BuildStorageClosed()));
+            return true;
         }
 
         // ─── Attacking ──────────────────────────────────────────────────────────
@@ -259,6 +393,13 @@ namespace Jondo.Unity.Server.Handlers
                     ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, StateForbids)));
                 return;
             }
+            if (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - prism.PlacedUtcMs
+                < Math.Max(0, ServerSettings.Current.PrismProtectionMinutes) * 60_000L)
+            {
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, TooYoungToAttack)));
+                return;
+            }
 
             var monster = MobSpawnManager.GetMonsterData(PrismProtocol.Monster);
             if (monster == null || monster.Grades.Count == 0)
@@ -280,7 +421,7 @@ namespace Jondo.Unity.Server.Handlers
             if (fight == null || AllianceFights.Of(fight) == null) return;
 
             await AllianceHandler.TellMembersAsync(alliance, ConnectionProtocol.Push(Op.Iex,
-                PrismProtocol.BuildAttacked(PrismProtocol.Information(prism, alliance))));
+                PrismProtocol.BuildAttacked(PrismProtocol.Information(prism, alliance, own: true))));
             await AllianceFights.AnnounceAsync(fight);
             Program.LogDebug($"[Prism] The prism of «{alliance.Name}» in subarea {prism.SubAreaId} attacked: " +
                              $"fight #{fight.FightId}.");
@@ -322,7 +463,7 @@ namespace Jondo.Unity.Server.Handlers
 
             await AllianceHandler.TellMembersAsync(alliance, ConnectionProtocol.Push(Op.Iev,
                 PrismProtocol.BuildFightResult(attackersWon ? PrismProtocol.Weakened : PrismProtocol.NotDefeated,
-                                               PrismProtocol.Information(prism, alliance))));
+                                               PrismProtocol.Information(prism, alliance, own: true))));
             if (!attackersWon)
                 await SessionRegistry.BroadcastToMapAsync(prism.MapId, ConnectionProtocol.Push(Op.Jsn,
                     PrismProtocol.BuildShown(prism, alliance)), fightId: 0);

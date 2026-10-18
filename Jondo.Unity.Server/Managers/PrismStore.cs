@@ -38,6 +38,15 @@ namespace Jondo.Unity.Server.Managers
             /// </summary>
             public long NextChangeUtcMs { get; set; }
 
+            /// <summary>How many crystals it has consumed in its life: four at most (Translations 1149314).</summary>
+            public int CrystalsUsed { get; set; }
+
+            /// <summary>The template of the crystal it holds, while it lasts; 0 for none.</summary>
+            public int CrystalGid { get; set; }
+
+            /// <summary>Whether a crystal pacifies it now: no attack, and no teleport to it.</summary>
+            public bool HasActiveCrystal => CrystalGid != 0 && State == Pacified;
+
             /// <summary>Its id among the map's actors, in a range of its own.</summary>
             public long ContextId => ContextBase - Id;
         }
@@ -69,18 +78,20 @@ namespace Jondo.Unity.Server.Managers
                     Direction INTEGER NOT NULL DEFAULT 1,
                     PlacedUtcMs INTEGER NOT NULL DEFAULT 0,
                     State INTEGER NOT NULL DEFAULT 0,
-                    NextChangeUtcMs INTEGER NOT NULL DEFAULT 0
+                    NextChangeUtcMs INTEGER NOT NULL DEFAULT 0,
+                    CrystalsUsed INTEGER NOT NULL DEFAULT 0,
+                    CrystalGid INTEGER NOT NULL DEFAULT 0
                 );
                 CREATE UNIQUE INDEX IF NOT EXISTS IdxPrismsSubArea ON Prisms (SubAreaId);";
             create.ExecuteNonQuery();
 
-            // The state came later: a table of before gets its two columns.
+            // The state and the crystals came later: a table of before gets their columns.
             var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var info = world.CreateCommand();
             info.CommandText = "PRAGMA table_info(Prisms);";
             using (var reader = info.ExecuteReader())
                 while (reader.Read()) columns.Add(reader.GetString(1));
-            foreach (var column in new[] { "State", "NextChangeUtcMs" })
+            foreach (var column in new[] { "State", "NextChangeUtcMs", "CrystalsUsed", "CrystalGid" })
             {
                 if (columns.Contains(column)) continue;
                 var alter = world.CreateCommand();
@@ -121,7 +132,7 @@ namespace Jondo.Unity.Server.Managers
                     var all = new ConcurrentDictionary<int, Prism>();
                     using var conexion = Open();
                     var select = conexion.CreateCommand();
-                    select.CommandText = "SELECT Id, AllianceId, SubAreaId, MapId, CellId, Direction, PlacedUtcMs, State, NextChangeUtcMs FROM Prisms;";
+                    select.CommandText = "SELECT Id, AllianceId, SubAreaId, MapId, CellId, Direction, PlacedUtcMs, State, NextChangeUtcMs, CrystalsUsed, CrystalGid FROM Prisms;";
                     using var lector = select.ExecuteReader();
                     while (lector.Read())
                     {
@@ -136,6 +147,8 @@ namespace Jondo.Unity.Server.Managers
                             PlacedUtcMs = lector.GetInt64(6),
                             State = lector.GetInt32(7),
                             NextChangeUtcMs = lector.GetInt64(8),
+                            CrystalsUsed = lector.GetInt32(9),
+                            CrystalGid = lector.GetInt32(10),
                         };
                         all[prism.SubAreaId] = prism;
                     }
@@ -204,6 +217,21 @@ namespace Jondo.Unity.Server.Managers
             update.ExecuteNonQuery();
             prism.State = state;
             prism.NextChangeUtcMs = nextChangeUtcMs;
+        }
+
+        /// <summary>The crystal it holds now, 0 for none, and how many it has consumed.</summary>
+        public static void SetCrystal(Prism prism, int crystalGid, int crystalsUsed)
+        {
+            if (prism == null) return;
+            using var conexion = Open();
+            var update = conexion.CreateCommand();
+            update.CommandText = "UPDATE Prisms SET CrystalGid = $gid, CrystalsUsed = $used WHERE Id = $id;";
+            update.Parameters.AddWithValue("$gid", crystalGid);
+            update.Parameters.AddWithValue("$used", crystalsUsed);
+            update.Parameters.AddWithValue("$id", prism.Id);
+            update.ExecuteNonQuery();
+            prism.CrystalGid = crystalGid;
+            prism.CrystalsUsed = crystalsUsed;
         }
 
         public static void Remove(Prism prism)

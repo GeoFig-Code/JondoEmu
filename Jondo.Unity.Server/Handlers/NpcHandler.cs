@@ -1071,14 +1071,23 @@ namespace Jondo.Unity.Server.Handlers
             var elegida = frase?.Choice(reply);
             if (elegida == null || elegida.Ends) return false;
 
-            var siguiente = conversacion!.Line(elegida.Next);
+            // A conquest role taken (Hal Ylanza): its certificate, or the line that says not yet.
+            long next = elegida.Next;
+            if (elegida.KothRole != 0
+                && !await Managers.KothRoles.BecomeAsync(stream, elegida.KothRole, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))
+            {
+                next = elegida.RefusedNext;
+                if (next == 0) return false;
+            }
+
+            var siguiente = conversacion!.Line(next);
             if (siguiente == null)
             {
                 // The editor checks this before saving, so getting here means the file was edited by
                 // hand. It is said and closed instead of leaving the player looking at a window that does
                 // not respond.
                 Console.WriteLine($"[NPC] Reply {reply} of {estado.OpenDialogueNpcId} leads " +
-                                  $"to line {elegida.Next}, which is not written. It closes.");
+                                  $"to line {next}, which is not written. It closes.");
                 return false;
             }
 

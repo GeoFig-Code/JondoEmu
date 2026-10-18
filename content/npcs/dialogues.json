@@ -2319,6 +2319,330 @@
         }
       ],
       "_byHand": true
+    },
+    {
+      "npc": 2142,
+      "map": 0,
+      "opening": 15733,
+      "lines": [
+        {
+          "message": 15733,
+          "choices": [
+            {
+              "reply": 18584,
+              "next": 52751
+            },
+            {
+              "reply": 70774,
+              "next": 15734
+            }
+          ]
+        },
+        {
+          "message": 15734,
+          "choices": [
+            {
+              "reply": 18583,
+              "next": 15735
+            },
+            {
+              "reply": 18586,
+              "next": 15738
+            },
+            {
+              "reply": 18594,
+              "next": 15747
+            },
+            {
+              "reply": 70351,
+              "next": 52521
+            },
+            {
+              "reply": 70352,
+              "next": 52522
+            },
+            {
+              "reply": 70353,
+              "next": 52523
+            },
+            {
+              "reply": 70362,
+              "next": 52530
+            },
+            {
+              "reply": 18584,
+              "next": 52751
+            }
+          ]
+        },
+        {
+          "message": 52751,
+          "choices": [
+            {
+              "reply": 70775,
+              "next": 52752,
+              "kothRole": 8,
+              "refused": 52753
+            },
+            {
+              "reply": 70776,
+              "next": 52754,
+              "kothRole": 3,
+              "refused": 52755
+            },
+            {
+              "reply": 70777,
+              "next": 52756,
+              "kothRole": 4,
+              "refused": 52757
+            },
+            {
+              "reply": 70778,
+              "next": 52758,
+              "kothRole": 5,
+              "refused": 52759
+            },
+            {
+              "reply": 70779,
+              "next": 52760,
+              "kothRole": 2,
+              "refused": 52761
+            },
+            {
+              "reply": 70780,
+              "next": 52762,
+              "kothRole": 7,
+              "refused": 52763
+            },
+            {
+              "reply": 70781,
+              "next": 52764,
+              "kothRole": 6,
+              "refused": 52765
+            },
+            {
+              "reply": 70773
+            }
+          ]
+        },
+        {
+          "message": 15735,
+          "choices": [
+            {
+              "reply": 18582,
+              "next": 15736,
+              "kothRole": 3,
+              "refused": 15737
+            },
+            {
+              "reply": 18595,
+              "next": 15734
+            }
+          ]
+        },
+        {
+          "message": 15738,
+          "choices": [
+            {
+              "reply": 18585,
+              "next": 15739,
+              "kothRole": 4,
+              "refused": 15740
+            },
+            {
+              "reply": 18596,
+              "next": 15734
+            }
+          ]
+        },
+        {
+          "message": 15747,
+          "choices": [
+            {
+              "reply": 18593,
+              "next": 15748,
+              "kothRole": 5,
+              "refused": 15749
+            },
+            {
+              "reply": 18597,
+              "next": 15734
+            }
+          ]
+        },
+        {
+          "message": 52521,
+          "choices": [
+            {
+              "reply": 70357,
+              "next": 52524,
+              "kothRole": 2,
+              "refused": 52525
+            },
+            {
+              "reply": 70354,
+              "next": 15734
+            }
+          ]
+        },
+        {
+          "message": 52522,
+          "choices": [
+            {
+              "reply": 70358,
+              "next": 52526,
+              "kothRole": 7,
+              "refused": 52527
+            },
+            {
+              "reply": 70355,
+              "next": 15734
+            }
+          ]
+        },
+        {
+          "message": 52523,
+          "choices": [
+            {
+              "reply": 70359,
+              "next": 52528,
+              "kothRole": 6,
+              "refused": 52529
+            },
+            {
+              "reply": 70356,
+              "next": 15734
+            }
+          ]
+        },
+        {
+          "message": 52530,
+          "choices": [
+            {
+              "reply": 70360,
+              "next": 52531,
+              "kothRole": 8,
+              "refused": 52532
+            },
+            {
+              "reply": 70361,
+              "next": 15734
+            }
+          ]
+        },
+        {
+          "message": 52752,
+          "choices": []
+        },
+        {
+          "message": 52753,
+          "choices": []
+        },
+        {
+          "message": 52754,
+          "choices": []
+        },
+        {
+          "message": 52755,
+          "choices": []
+        },
+        {
+          "message": 52756,
+          "choices": []
+        },
+        {
+          "message": 52757,
+          "choices": []
+        },
+        {
+          "message": 52758,
+          "choices": []
+        },
+        {
+          "message": 52759,
+          "choices": []
+        },
+        {
+          "message": 52760,
+          "choices": []
+        },
+        {
+          "message": 52761,
+          "choices": []
+        },
+        {
+          "message": 52762,
+          "choices": []
+        },
+        {
+          "message": 52763,
+          "choices": []
+        },
+        {
+          "message": 52764,
+          "choices": []
+        },
+        {
+          "message": 52765,
+          "choices": []
+        },
+        {
+          "message": 15736,
+          "choices": []
+        },
+        {
+          "message": 15737,
+          "choices": []
+        },
+        {
+          "message": 15739,
+          "choices": []
+        },
+        {
+          "message": 15740,
+          "choices": []
+        },
+        {
+          "message": 15748,
+          "choices": []
+        },
+        {
+          "message": 15749,
+          "choices": []
+        },
+        {
+          "message": 52524,
+          "choices": []
+        },
+        {
+          "message": 52525,
+          "choices": []
+        },
+        {
+          "message": 52526,
+          "choices": []
+        },
+        {
+          "message": 52527,
+          "choices": []
+        },
+        {
+          "message": 52528,
+          "choices": []
+        },
+        {
+          "message": 52529,
+          "choices": []
+        },
+        {
+          "message": 52531,
+          "choices": []
+        },
+        {
+          "message": 52532,
+          "choices": []
+        }
+      ]
     }
   ]
 }

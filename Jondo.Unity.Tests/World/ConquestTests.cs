@@ -48,6 +48,16 @@ namespace Jondo.Unity.Tests.World
 
         public void Dispose()
         {
+            using (var world = new SqliteConnection(DatabaseManager.WorldConnectionString))
+            {
+                world.Open();
+                var clean = world.CreateCommand();
+                clean.CommandText = "DELETE FROM CharacterItems WHERE CharacterId IN ($a, $b);";
+                clean.Parameters.AddWithValue("$a", CharacterA);
+                clean.Parameters.AddWithValue("$b", CharacterB);
+                clean.ExecuteNonQuery();
+            }
+            KothRoles.Forget();
             AllianceStore.SetTakesPartInAva(CharacterA, false);
             AllianceStore.SetTakesPartInAva(CharacterB, false);
             ConquestHandler.Forget(CharacterA);
@@ -59,7 +69,10 @@ namespace Jondo.Unity.Tests.World
             try { File.Delete(_file); } catch (IOException) { }
         }
 
-        private static Conquests.Presence At(long alliance, long map, long character) => new(alliance, map, character);
+        private static Conquests.Presence At(long alliance, long map, long character, int role = 0) => new(alliance, map, character, role);
+
+        private static (long, int)[] Of(long alliance, int role = KothRolesDefault) => new[] { (alliance, role) };
+        private const int KothRolesDefault = 8;
 
         // ─── The rules ──────────────────────────────────────────────────────────
 
@@ -119,7 +132,7 @@ namespace Jondo.Unity.Tests.World
         public void An_absent_alliance_does_not_dominate()
         {
             var war = Conquests.Start(9004, 1, 0, 7_200_000);
-            Conquests.FightOver(war, new long[] { 2 }, new long[] { 1 });
+            Conquests.FightOver(war, Of(2), Of(1));
             Conquests.Tick(war, new[] { At(1, PrismMap, 10) }, Conquests.TickMs);
 
             Assert.Equal(5, war.SideOf(2).Total);
@@ -132,12 +145,206 @@ namespace Jondo.Unity.Tests.World
         public void Aggressions_give_and_take_points()
         {
             var war = Conquests.Start(9005, 1, 0, 7_200_000);
-            Conquests.FightOver(war, new long[] { 2 }, new long[] { 1 });
-            Conquests.FightOver(war, new long[] { 2 }, new long[] { 1 });
-            Conquests.FightOver(war, new long[] { 1 }, new long[] { 2 });
+            Conquests.FightOver(war, Of(2), Of(1));
+            Conquests.FightOver(war, Of(2), Of(1));
+            Conquests.FightOver(war, Of(1), Of(2));
 
             Assert.Equal(2 * Conquests.PointsPerFighter - Conquests.PointsPerFighter, war.SideOf(2).Scores[Conquests.ScoreOfFights]);
             Assert.Equal(Conquests.PointsPerFighter - 2 * Conquests.PointsPerFighter, war.SideOf(1).Scores[Conquests.ScoreOfFights]);
+
+            // A champion's weigh double, won and lost.
+            Conquests.FightOver(war, Of(3, KothRoles.Champion), Of(4, KothRoles.Champion));
+            Assert.Equal(Conquests.PointsPerFighter * Conquests.ChampionFactor, war.SideOf(3).Scores[Conquests.ScoreOfFights]);
+            Assert.Equal(-Conquests.PointsPerFighter * Conquests.ChampionFactor, war.SideOf(4).Scores[Conquests.ScoreOfFights]);
+        }
+
+        /// <summary>
+        /// The roles' limits per alliance and conquest -- one champion, ten seers... -- and the
+        /// window's roles: each one present, by role.
+        /// </summary>
+        [Fact]
+        public void Each_alliance_brings_its_roles_up_to_their_limits()
+        {
+            var war = Conquests.Start(9008, 1, 0, 7_200_000);
+            Assert.True(Conquests.Admit(war, 10, 1, KothRoles.Champion));
+            Assert.True(Conquests.Admit(war, 10, 1, KothRoles.Champion));          // the same one, again
+            Assert.False(Conquests.Admit(war, 11, 1, KothRoles.Champion));         // a second champion
+            Assert.True(Conquests.Admit(war, 20, 2, KothRoles.Champion));          // another alliance's
+            for (long seer = 100; seer < 110; seer++) Assert.True(Conquests.Admit(war, seer, 1, KothRoles.Seer));
+            Assert.False(Conquests.Admit(war, 110, 1, KothRoles.Seer));
+            for (long fodder = 200; fodder < 400; fodder++) Assert.True(Conquests.Admit(war, fodder, 1, KothRolesDefault));
+
+            Conquests.Release(war, 10);
+            Assert.True(Conquests.Admit(war, 11, 1, KothRoles.Champion));
+
+            Conquests.Tick(war, new[] { At(1, PrismMap, 11, KothRoles.Champion), At(1, OtherMap, 100, KothRoles.Seer),
+                                        At(1, OtherMap, 101, KothRoles.Seer), At(1, OtherMap, 200, KothRolesDefault) },
+                           Conquests.TickMs);
+            var side = war.SideOf(1);
+            Assert.Equal(1, side.Roles[KothRoles.Champion]);
+            Assert.Equal(2, side.Roles[KothRoles.Seer]);
+            Assert.Equal(1, side.Roles[KothRolesDefault]);
+
+            var alliance = new AllianceStore.Alliance { Uuid = "u", Name = "N", Tag = "T" };
+            var roles = KothProtocol.Line(side, alliance, KothRolesDefault).Build();
+            var lines = ProtoMessage.Parse(roles).Fields.Where(f => f.FieldNumber == 2)
+                                    .Select(f => ProtoMessage.Parse(f.BytesValue).Fields).ToList();
+            Assert.Equal(3, lines.Count);
+            Assert.Contains(lines, l => l.Single(f => f.FieldNumber == 2).VarIntValue == KothRoles.Seer
+                                        && l.Single(f => f.FieldNumber == 1).VarIntValue == 2);
+        }
+
+        /// <summary>
+        /// A scout gathers a point a minute off the prism's map, up to his cap, none on it, and his
+        /// potion hands them in as his alliance's prism points.
+        /// </summary>
+        [Fact]
+        public void A_scout_gathers_and_hands_in()
+        {
+            var war = Conquests.Start(9009, 1, 0, 7_200_000, prismMapId: PrismMap);
+            for (int minute = 1; minute <= Conquests.ScoutCap + 3; minute++)
+                Conquests.Tick(war, new[] { At(2, OtherMap, 30, KothRoles.Scout), At(2, PrismMap, 31, KothRoles.Scout) },
+                               minute * Conquests.TickMs);
+            Assert.Equal(Conquests.ScoutCap, war.ScoutCarried[30]);
+            Assert.False(war.ScoutCarried.ContainsKey(31));
+
+            Assert.Equal(Conquests.ScoutCap, Conquests.HandIn(war, 30, 2));
+            Assert.Equal(Conquests.ScoutCap, war.SideOf(2).Scores[Conquests.ScoreOfPrism]);
+            Assert.Equal(0, Conquests.HandIn(war, 30, 2));
+        }
+
+        /// <summary>The hon carries the role while aggressable; the hoh's line is { role, status, character }.</summary>
+        [Fact]
+        public void The_role_goes_over_the_fighter()
+        {
+            var hon = Fields(AllianceProtocol.BuildAggressableStatus(77, AllianceProtocol.AvaAggressable, KothRoles.Scout));
+            Assert.Equal(KothRoles.Scout, (int)hon[4].VarIntValue);
+            Assert.Equal(AllianceProtocol.AvaAggressable, (int)hon[5].VarIntValue);
+            Assert.False(Fields(AllianceProtocol.BuildAggressableStatus(77, AllianceProtocol.AvaNotAggressable, KothRoles.Scout)).ContainsKey(4));
+
+            var hof = Fields(AllianceProtocol.StatusOf(77, AllianceProtocol.AvaAggressable, -1).Build());
+            Assert.Equal(-1, (int)(long)hof[1].VarIntValue);
+            Assert.Equal(77, hof[3].VarIntValue);
+        }
+
+        /// <summary>Each role's certificate comes from the client's own items, «Certificado de explorador» for the scout.</summary>
+        [Fact]
+        public void The_roles_have_their_certificates()
+        {
+            if (AllianceData.KothRoles.Count == 0) return;   // no alliance data
+            Assert.Equal(27659, KothRoles.CertificateOf(KothRoles.Scout));
+            Assert.Equal(27936, KothRoles.CertificateOf(AllianceData.DefaultKothRole));
+            Assert.Equal(KothRoles.Seer, KothRoles.RoleOfCertificate(27658));
+            Assert.Equal(0, KothRoles.RoleOfCertificate(0));
+        }
+
+        /// <summary>
+        /// Hal Ylanza's conversation: «Elegir tu rol» leads to the roles, and «Quiero ser explorador»
+        /// takes the scout's role, or says «aún no estás listo».
+        /// </summary>
+        [Fact]
+        public void Hal_Ylanza_hands_the_roles_over()
+        {
+            var tree = NpcDialogues.For(2142, 115083777);
+            Assert.NotNull(tree);
+            Assert.Empty(Jondo.Unity.World.Content.NpcDialogueContent.Complaints(tree));
+            var choose = tree.Line(tree.Opening)?.Choice(18584);
+            Assert.NotNull(choose);
+            var scout = tree.Line(choose.Next)?.Choice(70781);
+            Assert.NotNull(scout);
+            Assert.Equal(KothRoles.Scout, scout.KothRole);
+            Assert.Equal(52764, scout.Next);
+            Assert.Equal(52765, scout.RefusedNext);
+        }
+
+        /// <summary>Taking a role hands its certificate over and takes the others; changing again so soon is refused.</summary>
+        [Fact]
+        public async Task A_role_is_its_certificate()
+        {
+            if (AllianceData.KothRoles.Count == 0) return;
+            await using var a = await Economy.ClientPipe.OpenAsync(AccountA, CharacterA, PrismMap);
+            using (SessionContext.Push(a.Session))
+            {
+                Assert.Equal(AllianceData.DefaultKothRole, KothRoles.RoleOfCurrent());
+                Assert.True(await KothRoles.BecomeAsync(a.ToClient, KothRoles.Scout, 1_000_000));
+                Assert.Equal(KothRoles.Scout, KothRoles.RoleOfCurrent());
+                Assert.Equal(1, Equipment.HowMany(27659));
+                Assert.False(await KothRoles.BecomeAsync(a.ToClient, KothRoles.Seer, 1_000_000 + 60_000));
+                Assert.Equal(KothRoles.Scout, KothRoles.RoleOfCurrent());
+                Assert.True(await KothRoles.BecomeAsync(a.ToClient, KothRoles.Seer, 1_000_000 + KothRoles.ChangeCooldownMs));
+                Assert.Equal(KothRoles.Seer, KothRoles.RoleOfCurrent());
+                Assert.Equal(0, Equipment.HowMany(27659));
+            }
+        }
+
+        /// <summary>
+        /// Its own alliance's ley: f1 the crystals left of four, f6 the crystal it holds; nobody
+        /// else's carries either.
+        /// </summary>
+        [Fact]
+        public void The_own_view_carries_the_crystals()
+        {
+            var alliance = new AllianceStore.Alliance { Uuid = "u", Name = "N", Tag = "T" };
+            var prism = new PrismStore.Prism { Id = 5, PlacedUtcMs = 1_784_886_505_835, CrystalsUsed = 1 };
+
+            var theirs = Fields(PrismProtocol.State(prism, alliance).Build());
+            Assert.False(theirs.ContainsKey(1));
+            Assert.False(theirs.ContainsKey(6));
+
+            var ours = Fields(PrismProtocol.State(prism, alliance, own: true).Build());
+            Assert.Equal(PrismProtocol.MaxCrystals - 1, ours[1].VarIntValue);
+            Assert.Empty(ours[6].BytesValue);                                       // no crystal in it
+
+            prism.CrystalGid = 27632;
+            prism.State = PrismStore.Pacified;
+            var lno = Fields(Fields(PrismProtocol.State(prism, alliance, own: true).Build())[6].BytesValue);
+            Assert.Equal(1, lno[3].VarIntValue);
+            Assert.True(lno.ContainsKey(2));
+        }
+
+        /// <summary>
+        /// «Añadir un cristal» (iey) on one's prism opens the crystal window (kci, kind 18); a
+        /// pacifying crystal dropped in it is spent, the prism pacified for its twelve hours with one
+        /// crystal of four gone, and no teleport goes to it; the window closes as a storage (khd).
+        /// </summary>
+        [Fact]
+        public async Task A_crystal_pacifies_its_prism()
+        {
+            if (PrismHandler.CrystalHours(27632) == 0) return;   // no item data
+            var defence = AllianceStore.Create(CharacterA, "Defensa", "DEF", 1, 1, 1, 1, 1);
+            var prism = PrismStore.Place(defence.Id, Zone, PrismMap, 300, 1);
+            var crystal = DatabaseManager.AddPieceToInventory(CharacterA, 27632, "[]");
+            Assert.NotNull(crystal);
+
+            await using var a = await Economy.ClientPipe.OpenAsync(AccountA, CharacterA, PrismMap);
+            using (SessionContext.Push(a.Session))
+            {
+                Equipment.Add(crystal.Uid, 27632, 1, Equipment.Bag, null);
+                await PrismHandler.CrystalWindowAsync(a.ToClient);
+                var view = await a.Next(Op.Ifa);
+                Assert.Equal(PrismHandler.ChangedFor(prism, defence, CharacterA), ConnectionProtocol.Push(Op.Ifa, view));
+                Assert.Equal(StorageProtocol.BuildOpened(1, PrismProtocol.CrystalWindowKind), await a.Next(Op.Kci));
+
+                long before = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                Assert.True(await PrismHandler.MoveCrystalAsync(a.ToClient,
+                    ConnectionProtocol.Push(Op.Kcr, Pb.New().Var(1, 1).Var(2, crystal.Uid).Build())));
+                Assert.Equal(ConnectionProtocol.BuildItemGone(crystal.Uid), await a.Next(Op.Ium));
+                Assert.Equal(PrismStore.Pacified, prism.State);
+                Assert.Equal(27632, prism.CrystalGid);
+                Assert.Equal(1, prism.CrystalsUsed);
+                Assert.InRange(prism.NextChangeUtcMs - before, 12 * 3_600_000L - 5_000, 12 * 3_600_000L + 5_000);
+                Assert.True(prism.HasActiveCrystal);
+                Assert.False(PrismHandler.IsDestination(CharacterA, PrismMap));
+
+                Assert.True(await PrismHandler.CloseCrystalWindowAsync(a.ToClient));
+                Assert.False(await PrismHandler.CloseCrystalWindowAsync(a.ToClient));
+            }
+
+            // Its hours over, the crystal is gone from its slot and the prism normal again.
+            await ConquestHandler.TickAsync(prism.NextChangeUtcMs + 1);
+            Assert.Equal(PrismStore.Normal, prism.State);
+            Assert.Equal(0, prism.CrystalGid);
+            Assert.Equal(1, prism.CrystalsUsed);
         }
 
         /// <summary>The winner's priority lasts its thirty minutes; a conquered prism's invulnerability shrinks with the prisms held.</summary>
@@ -284,11 +491,13 @@ namespace Jondo.Unity.Tests.World
             await ConquestHandler.TickAsync(now);
             Assert.Equal(PrismStore.Vulnerable, prism.State);
             Assert.NotNull(Conquests.In(Zone));
-            var aSaw = await a.Take(4);
-            Assert.Equal(new[] { "ifa", "jsn", "lqn", "hon" }, aSaw.Select(f => f.Opcode));
+            var aSaw = await a.Take(5);
+            Assert.Equal(new[] { "ifa", "jsn", "lqn", "hon", "hoh" }, aSaw.Select(f => f.Opcode));
             Assert.Equal(ConnectionProtocol.BuildInfoMessage(2, 86, Zone.ToString()), aSaw[2].Payload);
-            Assert.Equal(AllianceProtocol.BuildAggressableStatus(CharacterA, AllianceProtocol.AvaAggressable), aSaw[3].Payload);
-            bSaw = await b.Take(4);
+            Assert.Equal(AllianceProtocol.BuildAggressableStatus(CharacterA, AllianceProtocol.AvaAggressable, KothRolesDefault), aSaw[3].Payload);
+            // «Asalto»'s fighter, his role hidden from one who is no seer.
+            Assert.Equal(Pb.New().Msg(1, AllianceProtocol.StatusOf(CharacterB, AllianceProtocol.AvaAggressable, -1)).Build(), aSaw[4].Payload);
+            bSaw = await b.Take(5);
             Assert.Equal(ConnectionProtocol.BuildInfoMessage(2, 89, Zone.ToString()), bSaw[2].Payload);
             Assert.Equal(AllianceProtocol.AvaAggressable, AllianceProtocol.AggressableStatus(CharacterB));
 

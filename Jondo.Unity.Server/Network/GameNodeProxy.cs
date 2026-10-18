@@ -913,6 +913,10 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.PrismHandler.AttackAsync(stream);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Ifd)))
                     await Handlers.PrismHandler.TeleportListAsync(stream);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Iey)))
+                    await Handlers.PrismHandler.CrystalWindowAsync(stream);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Med)))
+                    await Handlers.AllianceFights.SwapAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Mab)))
                 {
                     // Listening to the applications: nothing is answered in the capture.
@@ -1227,6 +1231,7 @@ namespace Jondo.Unity.Server.Network
                     // And a house chest, a bin or the guild chest.
                     // And a tax collector's equipment open to be modified.
                     if (!await TaxCollectorHandler.MoveItemAsync(stream, payload)
+                        && !await PrismHandler.MoveCrystalAsync(stream, payload)
                         && !await CommissionHandler.OfferAsync(stream, payload)
                         && !await TradeHandler.MoveAsync(stream, payload)
                         && !await WorkshopHandler.MoveAsync(stream, payload)
@@ -1436,6 +1441,7 @@ namespace Jondo.Unity.Server.Network
                     // of its own: with the conversation open, any order that puts the zaap first
                     // takes the X that belonged to the dialogue.
                     if (await TaxCollectorHandler.CloseExchangeAsync(stream)) { }
+                    else if (await PrismHandler.CloseCrystalWindowAsync(stream)) { }
                     else if (await CommissionHandler.CloseAsync()) { }
                     else if (await TradeHandler.CloseAsync()) { }
                     else if (MarketplaceHandler.IsOpen) await MarketplaceHandler.CloseAsync();

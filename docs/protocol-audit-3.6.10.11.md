@@ -57,7 +57,9 @@ in the 756 captures and the client's senders in Ghidra.
 | `ivp` | the average prices of the item tooltips, on entering the world and when the client's copy is old | `ivi` { f2 [ item, price ] } (~9,700 items), to all 140 of the captures' `ivp` | **fixed**: the marketplaces' sales |
 | `jlh` | the guild window closing (GuildBaseUI.OnDisable) | nothing | **fixed** (taken silently) |
 | `mdw`, `mdt` | the alliance nuggets window opening and closing (NuggetsUi) | `mec` { pot } to `mdw` | **fixed**, with `meb` (handing the pot out) and recycling (`kga`/`kgh`) |
-| `med` | swapping places in an alliance fight (JoinFightUtils.SwapPlaces) | unknown | missing |
+| `med` | swapping places in an alliance fight (JoinFightUtils.SwapPlaces) { f1 the fight, f3 the defender } | unknown | **fixed**, inferred: a join, or the named defender's place when the side is full |
+| `iey` | the prism menu's «Añadir un cristal» (PrismMenuMaker.OnPrismModulesManage) | the crystal window, `kci` { f3 18 } (PrismModuleUi), then `kcr` drops the crystal | **fixed**: see `PrismHandler`, the own alliance's prism view (ley f1, f6) |
+| `hkp`, `mat` | a tax collector request, an alliance one | nothing reaches them: no window raises their events (drk, dpm) | not needed |
 | `kjw`, `jaq` | the map panel's «leave the dungeon» and «leave the haven bag» (MapInfoUI) | the way out | **fixed** |
 | `hph` without its f2 | «Agredir» on a player (PlayerMenuMaker.OnAttack), which the server took for a challenge | the aggression's fight in a conquest's zone, else `lqn` 421 | **fixed**: see `ConquestHandler`, with the conquest's `mep` and `mdz` |
 
