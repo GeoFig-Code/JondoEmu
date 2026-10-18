@@ -1278,6 +1278,21 @@ namespace Jondo.Unity.Server.Network
 
             bool usable = !gathering || (state == Managers.ResourceState.Full && alcanza);
 
+            // An Obra flower is offered only where the viewer's raid has one standing, and only while
+            // it is not green; elsewhere it is the passive element every map declares.
+            if (interactive.Actions.Any(a => a.Kind == Managers.InteractiveActionKind.RaidFlower))
+            {
+                long viewer = Network.SessionContext.State.CharacterId;
+                if (!Managers.GuildRaidMonochrome.Offers(viewer, interactive.MapId, interactive.Element.Id))
+                {
+                    jss.Msg(11, Pb.New().Var(1, 1)
+                        .Var(5, interactive.Element.Id)
+                        .Var(6, Managers.Interactives.TypeOfGfx(interactive.Element.Gfx)));
+                    return;
+                }
+                usable = Managers.GuildRaidMonochrome.Usable(viewer, interactive.MapId, interactive.Element.Id);
+            }
+
             var declaration = Pb.New().Var(1, 1);
 
             // f2 comes out at zero for wood, wheat and sage, and at 1 or 3 for the two
@@ -1654,11 +1669,11 @@ namespace Jondo.Unity.Server.Network
         /// It is the message that switches off the freshly reaped wheat without having to resend the whole map.
         /// </summary>
         public static byte[] BuildElementRedeclared(int skillInstanceId, int skillId,
-                                                    int elementId, int type, bool usable)
+                                                    int elementId, int type, bool usable, int skillNameId = 0)
         {
             var declaration = Pb.New().Var(1, 1);
             if (usable) declaration.Var(2, 0);
-            declaration.Msg(usable ? 4 : 3, Pb.New().Var(1, skillInstanceId).Var(2, skillId));
+            declaration.Msg(usable ? 4 : 3, Pb.New().Var(1, skillInstanceId).Var(2, skillId).VarIfNotZero(3, skillNameId));
             return Pb.New().Msg(3, declaration.Var(5, elementId).Var(6, type)).Build();
         }
 

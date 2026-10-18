@@ -104,6 +104,7 @@ namespace Jondo.Unity.Server.Managers
             if (raid.RaidId == Raids.EternalGardens)
             {
                 GuildRaidGuardians.DrawColour(raid, Random.Shared);
+                GuildRaidMonochrome.Draw(raid, Random.Shared);
                 GuildRaidGuardians.Place(Raids.Of(raid.RaidId));
                 GuildRaidSanctuary.Populate(Raids.Of(raid.RaidId), Random.Shared);
             }
@@ -419,7 +420,17 @@ namespace Jondo.Unity.Server.Managers
             if (raid.Health == null || most <= 0 || amount <= 0) return;
             int left = raid.ChangeHealth(-amount, most);
             await GuildRaidHandler.TellRunningStateAsync(raid);
+            await GuildRaidStagings.LifeLostAsync(raid);
             if (left <= 0) await FinishAsync(raid, RaidInstance.Ending.OutOfHealth);
+        }
+
+        /// <summary>The raid gains health -- an enigma solved gives one back --, never above its most (the guides).</summary>
+        public static async Task GainHealthAsync(RaidInstance raid, int amount)
+        {
+            int most = Raids.Of(raid.RaidId)?.Health ?? 0;
+            if (raid.Health == null || most <= 0 || amount <= 0 || raid.Health >= most) return;
+            raid.ChangeHealth(amount, most);
+            await GuildRaidHandler.TellRunningStateAsync(raid);
         }
 
         /// <summary>
@@ -636,6 +647,7 @@ namespace Jondo.Unity.Server.Managers
             }
             _running.TryRemove(raid.Id, out _);
             GuildRaidLuminarium.Forget(raid);
+            GuildRaidStagings.Forget(raid);
 
             foreach (long member in raid.Members.ToList())
             {

@@ -22,9 +22,9 @@ namespace Jondo.Unity.Server.Managers
     /// central map, the one the hub's portal arrives at (GuildRaidPassages.ArrivalOf). The client's
     /// world places none of them: no group of the Santuario carries a guardian, nor its bosses.
     ///
-    /// WHEN: the guides wake them once the four enigmas are solved. The enigmas cannot be shown
-    /// with this client (their pedestals, flowers and boards are map stagings, which it only plays
-    /// in fights), so the guardians stand from the raid's start, or the raid could not be finished.
+    /// WHEN: the guides wake them once the four enigmas are solved. Until all four are played --
+    /// the Obra's is (GuildRaidMonochrome) -- the guardians stand from the raid's start, or the
+    /// raid could not be finished.
     ///
     /// WITH WHOM: "four monsters, one of each kind" -- the Santuario's Trilipín, Machacamelia,
     /// Muguetégida and Daliana, the castle's colourless ones -- and the Centinela, its four
@@ -33,8 +33,8 @@ namespace Jondo.Unity.Server.Managers
     /// THE CENTINELA'S COLOUR: in the guides it is the colour the Obra takes when its enigma is
     /// solved. Its obelisks and its spells list a version per colour -- "Check color == 1" to "4",
     /// "Caleidohueso color == 1 / feu" -- and the data picks none: the server does
-    /// (<see cref="ChosenCasts"/>), by the raid's colour, drawn at its start since the Obra cannot
-    /// give it. The players read it off the element of its hits, as the guides advise.
+    /// (<see cref="ChosenCasts"/>), by the raid's colour, drawn at its start and shown by the Obra
+    /// once solved (GuildRaidMonochrome). The players read it off the element of its hits too.
     ///
     /// THE VIGILANTE AND THE GUARDIÁN start invulnerable, and what frees them is the client's own
     /// data: scripts written for the fight's scene, a carrier of neither side ("Sce", with "Def"
@@ -51,8 +51,10 @@ namespace Jondo.Unity.Server.Managers
     ///   it and takes the other glyphs away. Where they go is the server's: spread over the board.
     ///
     /// Which companion and which glyphs are right is, in the guides, what the Enclave's and the
-    /// Obra's enigmas showed. With those impossible here, any companion and any glyph is right
-    /// (his call, 2026-10-10): the "== N" and "&lt; 5" versions go through, the others never.
+    /// Obra's enigmas showed -- the Guardián's glyphs, "pour chaque glyphe correspond un objet",
+    /// those of the objects whose maps had a flower. Until both enigmas are played, any companion
+    /// and any glyph is right (his call, 2026-10-10): the "== N" and "&lt; 5" versions go through,
+    /// the others never.
     /// A glyph's check goes to every attacker on the board; it counts once.
     /// </remarks>
     public static class GuildRaidGuardians

@@ -64,6 +64,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The Santuario's manuscript, whose pages are torn one per zone (GuildRaidSanctuary).</summary>
         RaidManuscript,
 
+        /// <summary>A paper flower of the Santuario's Obra monocromática (GuildRaidMonochrome).</summary>
+        RaidFlower,
+
         /// <summary>A paddock's gate: it opens the breeding window on its paddock (BreedingHandler).</summary>
         PaddockGate,
     }
@@ -447,6 +450,18 @@ namespace Jondo.Unity.Server.Managers
                 if (_byElement.ContainsKey((manuscriptMap, manuscript.Id))) continue;
                 Declared(manuscriptMap, manuscript, GuildRaidSanctuary.ManuscriptType)
                     .AddNamed(InteractiveActionKind.RaidManuscript, GuildRaidSanctuary.ManuscriptSkill, GuildRaidSanctuary.TearPageName);
+            }
+
+            // And the Obra's paper flowers: "Activar la flor de papel", offered only where the
+            // viewer's raid has one standing (ConnectionProtocol.Declare).
+            if (GuildRaidMonochrome.WorkOf(Jondo.Unity.World.Content.Raids.Of(Jondo.Unity.World.Content.Raids.EternalGardens)) is { } obra)
+            {
+                foreach (var (flowerMap, flower) in obra.Flowers.Values)
+                {
+                    if (_byElement.ContainsKey((flowerMap, flower.Id))) continue;
+                    Declared(flowerMap, flower, GuildRaidMonochrome.FlowerType)
+                        .AddNamed(InteractiveActionKind.RaidFlower, GuildRaidMonochrome.FlowerSkill, GuildRaidMonochrome.ActivateFlower);
+                }
             }
 
             foreach (long mapId in Interactives.MapIds)

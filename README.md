@@ -291,8 +291,10 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The Sanctuary's arenas, the manuscript's five pages and the client's own names for its ways
 - ✅ The final score screen, the weekly frieze rewards and the raids ladder
 - ✅ Monster aggression inside raids
-- ❌ The light bands are not drawn: the client only plays map stagings inside fights
-- ❌ The Sanctuary's four enigmas, for the same reason; the guardians stand from the start
+- ✅ The Sanctuary's Obra monocromática: the pedestals' objects, the paper flowers in their order, the red
+  flash of a lost life and the zone taking its colour
+- ❌ The light bands are not drawn yet
+- ❌ The Sanctuary's other three enigmas; the guardians stand from the start
 - ❌ The Defensor's double turn and the bosses' scripted rules (the Reina's dungeons, the Princesa's flower)
 - ❌ Podium ornaments and titles; guild experience moving the guild level
 

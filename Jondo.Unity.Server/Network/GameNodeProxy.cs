@@ -512,6 +512,10 @@ namespace Jondo.Unity.Server.Network
                         await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                             ConnectionProtocol.BuildActorsComplete());
 
+                        // And on a guild raid's map, what the raid has shown there: its stagings,
+                        // which a map load resets in the client.
+                        await Managers.GuildRaidStagings.OnMapLoadedAsync(stream, GameState.CharacterId, GameState.MapId);
+
                         // And what depends on having arrived here: the objectives met
                         // by stepping on a map or a zone.
                         //

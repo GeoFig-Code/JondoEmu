@@ -2138,6 +2138,12 @@ public static class Op
     /// <summary>The mating: { oneof { f1 error, f2 { f1 genetichas, f2 children, f3 experience, f4, f5 the parents } }, f3 }. Raises cdz.</summary>
     public const string Hsu = "hsu";
 
+    /// <summary>
+    /// A map staging played, in a fight or out of it (ebm::vce): { f1 progression %, f2 intensity %,
+    /// f3 the sequence's uniqueId on the map }. Progression 100 shows its end state at once.
+    /// </summary>
+    public const string Hpm = "hpm";
+
     /// <summary>Part of the 3.6.4.3 final burst that ibt fires (icg is sent three times). It does not appear in any of the 242 captures.</summary>
     public const string Klp = "klp";
 
