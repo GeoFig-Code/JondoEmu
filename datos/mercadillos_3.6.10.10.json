@@ -30,7 +30,8 @@
   "  pista+grafico       con el grafico de un mostrador que un jss declara en otro sitio",
   "                      (Brakmar usa el mismo en los cinco suyos). INFERIDO.",
   "  pista+grafico unico el unico elemento con un grafico que no tiene ningun otro elemento",
-  "                      del mundo, y que ningun jss declara como otra cosa. INFERIDO.",
+  "                      del mundo, y que ningun jss declara como otra cosa; sin contar los",
+  "                      apilados en una casilla, variantes de un adorno. INFERIDO.",
   "  sinResolver: pistas cuyo mostrador no se decide con esto; se quedan fuera, sin inventar."
  ],
  "habilidad": 355,
@@ -764,6 +765,16 @@
     207625216
    ],
    "grafico": 74994
+  },
+  "540827": {
+   "mercadillo": 1265,
+   "fuente": "pista+grafico unico",
+   "pista": 3756,
+   "mapas": [
+    73532416,
+    73532928
+   ],
+   "grafico": 132000
   }
  },
  "sinResolver": [
@@ -838,19 +849,6 @@
    "subzona": 95,
    "mapasMirados": [
     188744199
-   ]
-  },
-  {
-   "pista": 3756,
-   "nombre": "Mercadillo de criaturas",
-   "mapa": 73532928,
-   "coordenadas": [
-    -19,
-    1
-   ],
-   "subzona": 182,
-   "mapasMirados": [
-    73532928
    ]
   }
  ]
