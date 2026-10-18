@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace Jondo.Unity.Server.Managers
@@ -114,6 +115,9 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         private static readonly HashSet<int> _capturable = new HashSet<int>();
 
+        /// <summary>Each subzone's neighbours, the "neighbors" of its data.</summary>
+        private static readonly Dictionary<int, int[]> _subAreaNeighbours = new Dictionary<int, int[]>();
+
         /// <summary>Maps whose zaap has to be stated by hand because it is not recognised by the drawing.</summary>
         private static readonly Dictionary<long, int> _overrides = new Dictionary<long, int>();
 
@@ -129,6 +133,7 @@ namespace Jondo.Unity.Server.Managers
             _subAreaLevels.Clear();
             _subAreaAreas.Clear();
             _capturable.Clear();
+            _subAreaNeighbours.Clear();
 
             LoadWaypoints();
             LoadElements();
@@ -259,6 +264,14 @@ namespace Jondo.Unity.Server.Managers
                         {
                             _capturable.Add(reader.GetInt32(0));
                         }
+                        if (doc.RootElement.TryGetProperty("neighbors", out var neighbours))
+                        {
+                            if (neighbours.ValueKind == JsonValueKind.Object && neighbours.TryGetProperty("Array", out var array))
+                                neighbours = array;
+                            if (neighbours.ValueKind == JsonValueKind.Array)
+                                _subAreaNeighbours[reader.GetInt32(0)] = neighbours.EnumerateArray()
+                                    .Where(n => n.TryGetInt32(out _)).Select(n => n.GetInt32()).ToArray();
+                        }
                     }
                     catch { }
                 }
@@ -296,6 +309,10 @@ namespace Jondo.Unity.Server.Managers
                 Console.WriteLine($"[Interactives] Could not read {Path.GetFileName(path)}: {ex.Message}");
             }
         }
+
+        /// <summary>The subzones next to this one.</summary>
+        public static IReadOnlyList<int> NeighboursOfSubArea(int subAreaId)
+            => _subAreaNeighbours.TryGetValue(subAreaId, out var found) ? found : Array.Empty<int>();
 
         /// <summary>Whether a prism can hold this subzone.</summary>
         public static bool IsCapturable(int subAreaId) => _capturable.Contains(subAreaId);

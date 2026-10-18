@@ -64,6 +64,12 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Collect the tax collectors of the other members.</summary>
         public const int CollectMembersTaxCollectors = 19;
 
+        /// <summary>«Ver el saldo de pepitas»: the alliance's nugget pot.</summary>
+        public const int SeeNuggets = 6;
+
+        /// <summary>«Distribuir pepitas»: handing the pot out to the members.</summary>
+        public const int DistributeNuggets = 7;
+
         private static Document _document;
         private static readonly object _lock = new();
 

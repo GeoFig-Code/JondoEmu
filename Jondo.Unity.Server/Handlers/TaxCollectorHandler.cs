@@ -244,8 +244,9 @@ namespace Jondo.Unity.Server.Handlers
         // ─── Collecting ─────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Collecting it (kbu, the menu's «Recaudar»): what it carries goes to whoever collects, the
-        /// alliance is told (kdc, hjt, hlc) and it leaves its map.
+        /// Collecting it (kbu, the menu's «Recaudar»): what it carries goes to whoever collects --
+        /// through the recycling window, where it can become nuggets shared with the alliance's pot
+        /// (RecycleHandler) --, the alliance is told (kdc, hjt, hlc) and it leaves its map.
         /// </summary>
         public static async Task CollectAsync(NetworkStream stream, byte[] payload)
         {
@@ -278,11 +279,16 @@ namespace Jondo.Unity.Server.Handlers
             TaxCollectorStore.Remove(tc);
             if (tc.OwnerId != me.CharacterId)
                 await TellOwnerAsync(tc, TaxCollectorStore.AbsenceCollected, me.CharacterId, me.CharacterName);
-            foreach (var (item, quantity) in items)
+            bool recycling = SessionContext.State.Workshop == null
+                && await RecycleHandler.OpenForTaxCollectorAsync(stream, alliance.Id, tc.SubAreaId, items);
+            if (!recycling)
             {
-                if (!await WorkshopHandler.GiveAsync(stream, item, quantity)) continue;
-                await SendAsync(stream, Op.Lqn, ConnectionProtocol.BuildSystemMessage(
-                    InfoMessages.ItemGained, quantity.ToString(), item.ToString()));
+                foreach (var (item, quantity) in items)
+                {
+                    if (!await WorkshopHandler.GiveAsync(stream, item, quantity)) continue;
+                    await SendAsync(stream, Op.Lqn, ConnectionProtocol.BuildSystemMessage(
+                        InfoMessages.ItemGained, quantity.ToString(), item.ToString()));
+                }
             }
 
             await AllianceHandler.TellMembersAsync(alliance, ConnectionProtocol.Push(Op.Kdc,

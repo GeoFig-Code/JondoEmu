@@ -36,6 +36,25 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
+        /// The neutral prism beside the temple is declared as the client's «Prisma neutral» (type
+        /// 451) with «Reciclar recursos» (skill 457), on its cell 172.
+        /// </summary>
+        [Fact]
+        public void The_neutral_prism_recycles()
+        {
+            Interactives.Initialize();
+            if (Interactives.ElementsOf(RecycleHandler.PrismMap).Count == 0) return;   // no world data
+            InteractiveRegistry.Initialize();
+
+            var prism = Assert.Single(InteractiveRegistry.OnMap(RecycleHandler.PrismMap),
+                                      i => i.Element.Id == RecycleHandler.PrismElement);
+            Assert.Equal(172, prism.Element.Cell);
+            var action = Assert.Single(prism.Actions);
+            Assert.Equal(InteractiveActionKind.Recycle, action.Kind);
+            Assert.Equal(RecycleHandler.RecycleSkill, action.SkillId);
+        }
+
+        /// <summary>
         /// The 2.68 passage on the door is left out of the routes, and not only out of the registry:
         /// kept as a route, the start's guard found a passage that resolved to the alliance's
         /// door and stopped the server, and its cell let anybody walk in without the gem.

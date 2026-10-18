@@ -194,6 +194,7 @@ namespace Jondo.Unity.Server.Network
                     }
                 }
 
+                try { Handlers.RecycleHandler.Abandon(session); } catch { }
                 SessionRegistry.Unregister(session);
                 await Handlers.FriendsHandler.LeftAsync(session.AccountId);
                 Console.WriteLine($"[Game Server] Session {session.Id} released.");

@@ -354,7 +354,10 @@ An alliance is made of characters, not guilds.
   their teleport; attacked and defended
 - ✅ The alliance fight switch
 - ✅ The *Pócima del templo de las alianzas*; Hal Ylanza at the temple sells what Gremia sells
-- ❌ The top tax collectors, prism modules, weakened and vulnerable prisms, conquests and nuggets
+- ✅ Nuggets: recycling resources at the neutral prism beside the temple; collecting a tax collector
+  recycles its bag half for you, half for the alliance's pot, more with neighbouring territories held
+- ✅ The alliance's nugget pot, handed out to the members' banks by those with the right
+- ❌ The top tax collectors, prism modules, weakened and vulnerable prisms and conquests
 
 ### 🎒 Character and inventory
 

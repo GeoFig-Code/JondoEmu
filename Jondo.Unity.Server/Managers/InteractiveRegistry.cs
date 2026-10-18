@@ -87,6 +87,9 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>A paddock's gate: it opens the breeding window on its paddock (BreedingHandler).</summary>
         PaddockGate,
+
+        /// <summary>The neutral prism beside the Temple of Alliances: «Reciclar recursos» (RecycleHandler).</summary>
+        Recycle,
     }
 
     /// <summary>A skill offered by an interactive element.</summary>
@@ -356,6 +359,16 @@ namespace Jondo.Unity.Server.Managers
                     if (found.Id != element) continue;
                     Register(map, found, Interactives.TypeOfGfx(found.Gfx), InteractiveActionKind.AllianceFounding, skill);
                 }
+            }
+
+            // The neutral prism beside the Temple of Alliances: interactive type 451 «Prisma neutral»
+            // with skill 457 «Reciclar recursos» (Translations 1148930-1148932), the crystal with the
+            // alliance emblem at cell 172 of 115081729. See RecycleHandler.
+            foreach (var prism in Interactives.ElementsOf(Handlers.RecycleHandler.PrismMap))
+            {
+                if (prism.Id != Handlers.RecycleHandler.PrismElement) continue;
+                Register(Handlers.RecycleHandler.PrismMap, prism, Handlers.RecycleHandler.PrismType,
+                         InteractiveActionKind.Recycle, Handlers.RecycleHandler.RecycleSkill);
             }
 
             // The six paddocks' gates, type 120 «Cercado», each with the skill that opens its paddock

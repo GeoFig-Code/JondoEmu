@@ -56,7 +56,7 @@ in the 756 captures and the client's senders in Ghidra.
 | `lqf` | the map's load time in ms, after `lqc` | nothing | not needed |
 | `ivp` | the average prices of the item tooltips, on entering the world and when the client's copy is old | `ivi` { f2 [ item, price ] } (~9,700 items), to all 140 of the captures' `ivp` | **fixed**: the marketplaces' sales |
 | `jlh` | the guild window closing (GuildBaseUI.OnDisable) | nothing | **fixed** (taken silently) |
-| `mdw`, `mdt` | the alliance nuggets window opening and closing (NuggetsUi) | the nuggets | missing, with the nuggets |
+| `mdw`, `mdt` | the alliance nuggets window opening and closing (NuggetsUi) | `mec` { pot } to `mdw` | **fixed**, with `meb` (handing the pot out) and recycling (`kga`/`kgh`) |
 | `med` | swapping places in an alliance fight (JoinFightUtils.SwapPlaces) | unknown | missing |
 | `kjw`, `jaq` | the map panel's «leave the dungeon» and «leave the haven bag» (MapInfoUI) | the way out | **fixed** |
 

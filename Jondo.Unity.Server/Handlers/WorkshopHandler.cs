@@ -76,6 +76,9 @@ namespace Jondo.Unity.Server.Handlers
             /// <summary>A commission's table: the item on it is the customer's.</summary>
             public Commission? Commission { get; init; }
 
+            /// <summary>A recycling window: the neutral prism's, or a tax collector's collection.</summary>
+            public RecycleHandler.Session? Recycle { get; init; }
+
             /// <summary>What lies on a craft bench or the grinder: which stack and how many of it.</summary>
             public List<(long Uid, int Quantity)> Slots { get; } = new List<(long, int)>();
 
@@ -167,7 +170,8 @@ namespace Jondo.Unity.Server.Handlers
             SessionContext.State.Workshop = null;
             SessionContext.State.DirectoryJob = 0;
             await SendAsync(stream, Op.Khd, ConnectionProtocol.BuildShopClosed());
-            if (bench?.Breaker == true || bench?.Book == true) return;   // the grinder's close, and the book's, is the khd alone
+            if (bench?.Recycle != null) await RecycleHandler.ClosingAsync(stream, bench);
+            if (bench?.Breaker == true || bench?.Book == true || bench?.Recycle != null) return;   // the grinder's close, the book's and the recycling's is the khd alone
             await SendAsync(stream, Op.Ivx, ConnectionProtocol.BuildInventory());
             await SendAsync(stream, Op.Hlm, Array.Empty<byte>());
         }
@@ -176,6 +180,7 @@ namespace Jondo.Unity.Server.Handlers
         public static void Forget()
         {
             var session = SessionContext.Current;
+            RecycleHandler.Abandon(session);
             session.State.Workshop = null;
             if (session.State.Commission != null) _ = CommissionHandler.AbandonAsync(session);
             if (session.State.Trade != null) _ = TradeHandler.AbandonAsync(session);
@@ -237,6 +242,12 @@ namespace Jondo.Unity.Server.Handlers
             long uid = VarOf(kcr, 2);
             if (uid == 0 || delta == 0) return true;
 
+            if (bench.Recycle != null)
+            {
+                await RecycleHandler.MoveAsync(stream, bench, delta, uid);
+                return true;
+            }
+
             var item = Equipment.ByUid(uid);
             if (bench.Magus)
             {
@@ -290,6 +301,12 @@ namespace Jondo.Unity.Server.Handlers
             if (bench == null) return false;
             byte[]? kep = ConnectionProtocol.ReadPayload(payload, Op.Kep);
             if (kep == null || bench.Breaker || VarOf(kep, 1) == 0) return true;
+
+            if (bench.Recycle != null)
+            {
+                await RecycleHandler.RecycleAsync(stream, bench);
+                return true;
+            }
 
             if (bench.Magus)
             {
@@ -834,7 +851,7 @@ namespace Jondo.Unity.Server.Handlers
         /// Takes units off a stack in someone's bag and tells them: ium when it goes, ivj when
         /// some are left -- the workshop's ivj, or the plain one the grinder sends.
         /// </summary>
-        private static async Task ConsumeAsync(GameSession owner, Equipment.Item item, int quantity, bool inWorkshop = true)
+        internal static async Task ConsumeAsync(GameSession owner, Equipment.Item item, int quantity, bool inWorkshop = true)
         {
             long uid = item.Uid;
             int left = item.Quantity - quantity;

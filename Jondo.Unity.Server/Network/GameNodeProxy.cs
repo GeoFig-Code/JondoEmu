@@ -114,6 +114,9 @@ namespace Jondo.Unity.Server.Network
                             sesion.LeaveWorld();
                         }
 
+                        // A tax collector's items left in the recycling window go to the bag.
+                        try { RecycleHandler.Abandon(sesion); } catch { }
+
                         // A commission half done ends for the one left behind too.
                         try { await CommissionHandler.AbandonAsync(sesion); } catch { }
                         try { await TradeHandler.AbandonAsync(sesion); } catch { }
@@ -588,6 +591,13 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr == Op.Uri("kqd")) await FriendsHandler.UnblockAsync(stream, payload);
                 else if (payloadStr == Op.Uri(Op.Kpa)) await FriendsHandler.IgnoreAsync(stream, payload);
                 else if (payloadStr == Op.Uri("kpl")) await FriendsHandler.UnignoreAsync(stream, payload);
+                // The alliance's nugget pot: its tab opening (mdw) and closing (mdt), and handing it out.
+                else if (payloadStr == Op.Uri("mdw")) await RecycleHandler.ShowPotAsync(stream);
+                else if (payloadStr == Op.Uri("meb")) await RecycleHandler.DistributeAsync(stream, payload);
+                else if (payloadStr == Op.Uri("mdt"))
+                {
+                    // The nuggets tab closing. Nothing to answer.
+                }
                 // The map panel's «leave the dungeon» and «leave the haven bag».
                 else if (payloadStr == Op.Uri("kjw")) await DungeonHandler.LeaveAsync(stream);
                 else if (payloadStr == Op.Uri("jaq")) await MerkasakoHandler.ExitAsync(stream);
