@@ -3781,10 +3781,18 @@ namespace Jondo.Unity.Server.Managers
             // A dream spell's charge: spent with the cast, not put on the target.
             if (efecto.EffectId == ConsumeDreamResource) return null;
 
-            // Turned to the other side until its next turn (see Fighter.TurnsOnTheOtherSide). The
-            // row still goes on the bearer, as any other: it is what the client lists on it.
+            // Turned to the other side until its next turn (see Fighter.TurnsOnTheOtherSide). Where
+            // its fight says the side changes for real -- the Flor Maldita, its die's 0 going over
+            // and its 1 coming back two rounds on -- it does. The row still goes on the bearer, as
+            // any other: it is what the client lists on it.
             if (efecto.EffectId == CambiaDeBando && sobre != null && sobre.IsAlive)
-                sobre.TurnsOnTheOtherSide = Math.Max(sobre.TurnsOnTheOtherSide, Math.Max(1, efecto.DiceSide));
+            {
+                if (GuildRaidPrincesa.ChangesSideForReal(combate, sobre))
+                    combate.SwitchSide(sobre, efecto.DiceNum == 1 ? GuildRaidPrincesa.HomeSideOf(combate, sobre)
+                                                                   : 1 - sobre.TeamId);
+                else
+                    sobre.TurnsOnTheOtherSide = Math.Max(sobre.TurnsOnTheOtherSide, Math.Max(1, efecto.DiceSide));
+            }
 
             // One effect's rows taken off the bearer, by the effect's uid: its #3.
             if (efecto.EffectId == RetiraElEfecto)

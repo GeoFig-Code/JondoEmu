@@ -424,10 +424,14 @@ namespace Jondo.Unity.Server.Network
         /// every sequence, each fighter it holds as alive with no entity; a jxb sent in mid-fight
         /// with the dead marked alive brings them back onto the board.
         /// </param>
+        /// <param name="team">
+        /// Its side, f2 of the place block: 1 for the monsters' and nothing for the players'. A
+        /// monster gone over to the players (the Flor Maldita) goes with nothing. Null: by its kind.
+        /// </param>
         public static Pb FighterBlock(int cell, int orientation, long fighterId,
                                       IEnumerable<(int Characteristic, long Base, long Gear)> sheet,
                                       byte[] look, Pb identity, bool isMonster, int wave = 0,
-                                      bool alive = true)
+                                      bool alive = true, int? team = null)
         {
             var stats = Pb.New().Var(3, SheetKind);
             foreach (var (characteristic, baseValue, gear) in sheet)
@@ -438,7 +442,7 @@ namespace Jondo.Unity.Server.Network
             // Who it is, with its place repeated. It appears in both, with f2 only in the monsters.
             var where = Pb.New().Var(1, cell).VarIfNotZero(2, orientation).Var(4, 0);
             var again = Pb.New()
-                .VarIfNotZero(2, isMonster ? 1 : 0)
+                .VarIfNotZero(2, team ?? (isMonster ? 1 : 0))
                 .VarIfNotZero(3, alive ? 1 : 0)
                 .Msg(4, Pb.New().Msg(1, where).Var(3, fighterId));
 

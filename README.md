@@ -317,7 +317,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
   round, with the Volonté de la Princesse to beat as well
 - ✅ The Princesa Maldita's Aura turns to stone whoever she sees from her second turn, summons hiding
   players from it; her Flor Maldita stands in the middle on four cells
-- ❌ The Flor Maldita changing sides and the Princesa's second phase
+- ✅ The Flor Maldita at its threshold goes over to the players for two rounds, healing and boosting
+  whichever camp it is in
+- ❌ The Princesa's second phase
 - ❌ Podium ornaments and titles; guild experience moving the guild level
 
 ### 🔱 Alliances

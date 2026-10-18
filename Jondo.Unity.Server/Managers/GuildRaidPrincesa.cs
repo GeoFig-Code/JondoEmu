@@ -29,6 +29,12 @@ namespace Jondo.Unity.Server.Managers
     ///
     /// INFERRED: the Flor comes in as her summon at the board's start, on the cell that closes its
     /// body's square (383).
+    ///
+    /// THE FLOR'S CAMP: at its threshold (32020) it heals in full and goes over (32021 grade 2: its
+    /// "6664", invulnerable, 3107 die 0), and two rounds on comes back (grade 3, by the 792's delay
+    /// 2: "6665", vulnerable, 3107 die 1, its threshold put again) -- all the data's. Its 3107 moves
+    /// it between the sides for real here (<see cref="ChangesSideForReal"/>): its turn's end heals
+    /// and boosts "its allies" (32019 on "g"), the players while it is theirs.
     /// </remarks>
     public static class GuildRaidPrincesa
     {
@@ -86,6 +92,18 @@ namespace Jondo.Unity.Server.Managers
             flor.ExtraCells.AddRange(FlorBodyCells().Where(c => c != flor.CellId));
             Program.LogDebug($"[Raids] Fight #{fight.FightId}: the Flor Maldita on {flor.CellId} and {string.Join(", ", flor.ExtraCells)}.");
         }
+
+        /// <summary>
+        /// Whether a fighter changes sides for real (3107) in its fight: the Flor Maldita, whose
+        /// camp is whose it heals and boosts each turn -- "Quand ce seuil est déclenché, elle se
+        /// soigne entièrement et change d'équipe pour passer dans votre camp pour 2 tours".
+        /// </summary>
+        public static bool ChangesSideForReal(FightInstance fight, Fighter fighter)
+            => fighter != null && fighter.IsMonster && fighter.MonsterId == Flor && IsHers(fight);
+
+        /// <summary>A side-changer's own side: its summoner's, the Princesa's.</summary>
+        public static int HomeSideOf(FightInstance fight, Fighter fighter)
+            => fight?.Buscar(fighter.Invocador)?.TeamId ?? FightInstance.Rojos;
 
         /// <summary>A fight over: what it held goes.</summary>
         public static void Forget(long fightId) => _started.TryRemove(fightId, out _);

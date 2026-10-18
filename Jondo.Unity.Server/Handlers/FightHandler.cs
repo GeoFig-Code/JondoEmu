@@ -618,7 +618,7 @@ namespace Jondo.Unity.Server.Handlers
                     fighter.CellId, FacingOf(fight, fighter), fighter.Id, FullSheetOf(fighter),
                     MonsterLook(fighter),
                     IdentityOf(fighter),
-                    isMonster: true, wave: fighter.Wave, alive: fighter.IsAlive);
+                    isMonster: true, wave: fighter.Wave, alive: fighter.IsAlive, team: fighter.TeamId);
             }
 
             var (look, breed, sex) = CharacterLookOf(fighter);
@@ -3548,7 +3548,8 @@ namespace Jondo.Unity.Server.Handlers
                     {
                         // A wait of a monster's behaviour spell is its behaviour still: what it arms is
                         // for good -- the Princesa's Aura, cast a round late, every turn start after.
-                        bool deSuConducta = caster.Conducta.Spell != 0 && caster.Conducta.Spell == waiting.HechizoOrigen;
+                        bool deSuConducta = waiting.DeConducta
+                                            || (caster.Conducta.Spell != 0 && caster.Conducta.Spell == waiting.HechizoOrigen);
                         await LanzarPorOrdenAsync(stream, fight, caster, waiting.Dado, Math.Max(1, waiting.Cara),
                                                   result.Target, result.Target.CellId, Managers.EffectEngine.AlLanzar,
                                                   Managers.EffectEngine.EfectosSorteados(waiting.Dado, Math.Max(1, waiting.Cara), false),
@@ -6104,6 +6105,14 @@ namespace Jondo.Unity.Server.Handlers
             // chained -- the fired spell keeps the hook it has. Furor's decay casts 28604 at
             // grade 3, whose own "1160 under TE" is what takes Furor I away a turn later.
             bool alLanzar = string.Equals(disparador, Managers.EffectEngine.AlLanzar, StringComparison.OrdinalIgnoreCase);
+
+            // What a monster's behaviour leaves waiting is its behaviour still, when it comes.
+            if (conducta)
+            {
+                foreach (var c in consecuencias)
+                    if (c.Buff is { Pendiente: true } espera) espera.DeConducta = true;
+            }
+
             EngancharLoPendiente(consecuencias, hechizo, grado, quienLanza.Id, fight.RoundNumber,
                                  incluirElPropio: alLanzar, critico: critico, conducta: conducta,
                                  throughPortal: fight.CastThroughPortal);

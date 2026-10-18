@@ -137,5 +137,55 @@ namespace Jondo.Unity.Tests.World
                 GuildRaidPrincesa.Forget(fight.FightId);
             }
         }
+
+        /// <summary>
+        /// The Flor at its threshold: healed in full, over to the players for two rounds, invulnerable,
+        /// one of their side in the order, healing them at its turn's end; then back, open to blows, its
+        /// threshold on again -- for good.
+        /// </summary>
+        [Fact]
+        public async Task The_flor_goes_over_to_the_players_for_two_rounds()
+        {
+            if (!HasData) return;
+            var (fight, princesa, people) = await Fight(443, 444);
+            try
+            {
+                var flor = fight.Rojo.Single(m => m.MonsterId == GuildRaidPrincesa.Flor);
+                Assert.Contains(flor.Buffs.Puestos, r => r.EffectId == EffectEngine.Umbral);
+                flor.CurrentHP = 1;
+                await FightHandler.DispararAsync(null, fight, flor, "TR32020");
+
+                Assert.Equal(flor.MaxHP, flor.CurrentHP);
+                Assert.Equal(FightInstance.Azules, flor.TeamId);
+                Assert.Contains(flor, fight.Azul);
+                Assert.DoesNotContain(flor, fight.Rojo);
+                Assert.Contains(flor, fight.TurnOrder);
+                Assert.True(flor.Buffs.TieneEstado(56));
+                Assert.True(princesa.Buffs.TieneEstado(6664));
+
+                people[0].CurrentHP = 1000;
+                await FightHandler.DispararAsync(null, fight, flor, EffectEngine.AlAcabarElTurno);
+                Assert.True(people[0].CurrentHP > 1000);                           // its petal heals its camp
+
+                int back = fight.RoundNumber + 2;
+                while (fight.RoundNumber < back) fight.NextTurn();
+                await FightHandler.ApplyDuePendingAsync(null, fight);
+                Assert.Equal(FightInstance.Rojos, flor.TeamId);
+                Assert.Contains(flor, fight.Rojo);
+                Assert.False(flor.Buffs.TieneEstado(56));
+                Assert.True(princesa.Buffs.TieneEstado(6665));
+
+                // Its threshold on again, and still there rounds later.
+                int later = fight.RoundNumber + 3;
+                while (fight.RoundNumber < later) fight.NextTurn();
+                flor.CurrentHP = 1;
+                await FightHandler.DispararAsync(null, fight, flor, "TR32020");
+                Assert.Equal(FightInstance.Azules, flor.TeamId);
+            }
+            finally
+            {
+                GuildRaidPrincesa.Forget(fight.FightId);
+            }
+        }
     }
 }

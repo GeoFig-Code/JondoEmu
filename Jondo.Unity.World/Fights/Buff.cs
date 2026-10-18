@@ -162,6 +162,13 @@ namespace Jondo.Unity.World.Fights
         public bool Pendiente { get; set; }
 
         /// <summary>
+        /// A wait born of a monster's behaviour -- its starting spell, or what its hooks for good
+        /// fire --: when its round comes, what it casts is the monster's behaviour still, its hooks
+        /// for good (the Flor Maldita's threshold, put again as it comes back).
+        /// </summary>
+        public bool DeConducta { get; set; }
+
+        /// <summary>
         /// The catalogue numbers of the row, kept for the frames: the dice, the value, and how
         /// dispellable it is. A pending row announces them twice, once waiting and once live.
         /// </summary>

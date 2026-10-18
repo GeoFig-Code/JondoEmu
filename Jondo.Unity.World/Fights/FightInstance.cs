@@ -624,7 +624,31 @@ namespace Jondo.Unity.World.Fights
                 }
                 salida.Add(grupo);
             }
+
+            // A summon gone over to the other side keeps its turns, on its own: the Flor Maldita in
+            // the players' camp heals them at its turn's end.
+            var conDueno = new HashSet<long>(bando.Where(f => !f.EsInvocado).Select(f => f.Id));
+            foreach (var suelto in bando.Where(f => f.IsAlive && f.EsInvocado && f.JuegaTurno && !conDueno.Contains(f.Invocador))
+                                        .OrderByDescending(f => f.Initiative))
+            {
+                salida.Add(new List<Fighter> { suelto });
+            }
             return salida;
+        }
+
+        /// <summary>
+        /// A fighter goes over to a side for real (3107 where its fight says so: the Flor Maldita):
+        /// out of its list into the other's, its team the new one, the order rebuilt keeping whose
+        /// turn it is, and the timeline told.
+        /// </summary>
+        public void SwitchSide(Fighter fighter, int team)
+        {
+            if (fighter == null || fighter.TeamId == team) return;
+            (fighter.TeamId == Azules ? Azul : Rojo).Remove(fighter);
+            fighter.TeamId = team;
+            (team == Azules ? Azul : Rojo).Add(fighter);
+            RebuildTurnOrderKeepingCurrent();
+            _timelineChanged = true;
         }
 
         /// <summary>
