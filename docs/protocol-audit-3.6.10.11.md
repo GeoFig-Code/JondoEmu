@@ -55,9 +55,10 @@ in the 756 captures and the client's senders in Ghidra.
 | `krv` | world entry, with a request id | `mgz`, `kqp` | left unanswered on purpose |
 | `lqf` | the map's load time in ms, after `lqc` | nothing | not needed |
 | `ivp` | the average prices of the item tooltips, on entering the world and when the client's copy is old | `ivi` { f2 [ item, price ] } (~9,700 items), to all 140 of the captures' `ivp` | **fixed**: the marketplaces' sales |
-| `jlh` | in the guild window | nothing | unknown, no answer expected |
-| `med`, `mdw`, `mdt` | in the alliance window (no capture) | unknown | unknown |
-| `kjw`, `jaq` | no capture | unknown | unknown |
+| `jlh` | the guild window closing (GuildBaseUI.OnDisable) | nothing | **fixed** (taken silently) |
+| `mdw`, `mdt` | the alliance nuggets window opening and closing (NuggetsUi) | the nuggets | missing, with the nuggets |
+| `med` | swapping places in an alliance fight (JoinFightUtils.SwapPlaces) | unknown | missing |
+| `kjw`, `jaq` | the map panel's «leave the dungeon» and «leave the haven bag» (MapInfoUI) | the way out | **fixed** |
 
 The Ankama friends -- the window's first section -- are not game messages: they go to the chat
 service (`ChatServer`, Spin over TLS on 6337), which only answered the login, with a frame length that left

@@ -66,6 +66,15 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
+        /// «Salir del refugio», the map panel's option inside the haven bag (jaq, empty:
+        /// MapInfoUI.ExitHavenBag): the same way out as the button's second press.
+        /// </summary>
+        public static async Task ExitAsync(NetworkStream stream)
+        {
+            if (Merkasako.IsHavenBag(SessionContext.State.MapId)) await LeaveAsync(stream);
+        }
+
+        /// <summary>
         /// Back to the world, the way he came in.
         /// </summary>
         /// <remarks>

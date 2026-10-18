@@ -195,6 +195,20 @@ namespace Jondo.Unity.Server.Handlers
             return DungeonManager.WayOut(dungeon);
         }
 
+        /// <summary>
+        /// «Salir de la mazmorra», the map panel's option inside a dungeon (kjw, empty:
+        /// MapInfoUI.ExitDungeon): out through its exit, as after the boss. False, and nothing
+        /// done, when the map is no dungeon's room or the player is fighting.
+        /// </summary>
+        public static async Task<bool> LeaveAsync(NetworkStream stream)
+        {
+            if (SessionContext.State.IsInFight) return false;
+            var dungeon = DungeonManager.OfRoom(SessionContext.State.MapId);
+            long exit = dungeon == null ? 0 : DungeonManager.WayOut(dungeon);
+            if (exit == 0) return false;
+            return await TeleportHandler.ToMapAsync(stream, exit) >= 0;
+        }
+
         /// <summary>Whether this map is the last room of a dungeon, where the boss stands.</summary>
         public static bool IsBossRoom(long mapId)
         {

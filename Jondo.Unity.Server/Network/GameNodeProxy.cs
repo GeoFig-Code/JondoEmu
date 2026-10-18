@@ -588,6 +588,13 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr == Op.Uri("kqd")) await FriendsHandler.UnblockAsync(stream, payload);
                 else if (payloadStr == Op.Uri(Op.Kpa)) await FriendsHandler.IgnoreAsync(stream, payload);
                 else if (payloadStr == Op.Uri("kpl")) await FriendsHandler.UnignoreAsync(stream, payload);
+                // The map panel's «leave the dungeon» and «leave the haven bag».
+                else if (payloadStr == Op.Uri("kjw")) await DungeonHandler.LeaveAsync(stream);
+                else if (payloadStr == Op.Uri("jaq")) await MerkasakoHandler.ExitAsync(stream);
+                else if (payloadStr == Op.Uri("jlh"))
+                {
+                    // The guild window closing. Nothing to answer.
+                }
                 // The shop's gifts: one, or all of them, to a character.
                 else if (payloadStr == Op.Uri("jwm")) await GiftHandler.ClaimAsync(stream, payload);
                 else if (payloadStr == Op.Uri("jth")) await GiftHandler.ClaimAllAsync(stream, payload);

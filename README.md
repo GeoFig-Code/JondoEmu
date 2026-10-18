@@ -498,6 +498,7 @@ Full workings in **`docs/achievements.md`**.
 **187 dungeons**, with their **763 rooms**, their key and their boss.
 
 - ✅ Hand over the key to the guardian, fight room after room, beat the boss and come out
+- ✅ Leave a dungeon, or the haven bag, from the map panel
 - ✅ The monster side grows with each player in the fight, up to eight
 - ✅ Dungeon challenges and their achievements
 
