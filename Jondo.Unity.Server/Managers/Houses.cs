@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace Jondo.Unity.Server.Managers
@@ -206,7 +207,26 @@ namespace Jondo.Unity.Server.Managers
         private static readonly Dictionary<(long MapId, int ElementId), int> _houseIds = new();
         private static readonly Dictionary<int, Door> _byHouseId = new();
 
-        public static IEnumerable<long> Interiors => _exits.Keys;
+        /// <summary>
+        /// The other rooms of a house with its own interior (the data's "habitaciones"), each to
+        /// the room one comes in by -- the Palacio de los Lagos encantados' fourteen. They are the
+        /// house's as its entrance is: its chests, its owner. The ways between them are the client's
+        /// own world graph's (interactive_teleports_worldgraph_2.73.json): its stars and doors.
+        /// </summary>
+        private static readonly Dictionary<long, long> _hallOf = new();
+        private static readonly Dictionary<long, List<long>> _rooms = new();
+
+        /// <summary>Every interior: the entrances, with their exit, and the other rooms of a house.</summary>
+        public static IEnumerable<long> Interiors => _exits.Keys.Concat(_hallOf.Keys);
+
+        /// <summary>The room one comes into a house by, for any of its rooms; the map itself otherwise.</summary>
+        public static long HallOf(long mapId) => _hallOf.TryGetValue(mapId, out long hall) ? hall : mapId;
+
+        /// <summary>The entrances that have other rooms, and those rooms.</summary>
+        public static IEnumerable<long> HallsWithRooms => _rooms.Keys;
+
+        public static IReadOnlyList<long> RoomsOf(long hall)
+            => _rooms.TryGetValue(hall, out var rooms) ? rooms : (IReadOnlyList<long>)Array.Empty<long>();
 
         public static void Initialize()
         {
@@ -214,6 +234,8 @@ namespace Jondo.Unity.Server.Managers
             _byElement.Clear();
             _exits.Clear();
             _wayBack.Clear();
+            _hallOf.Clear();
+            _rooms.Clear();
             _houseIds.Clear();
             _byHouseId.Clear();
 
@@ -264,6 +286,16 @@ namespace Jondo.Unity.Server.Managers
                         _byMap.Add(mapId, doors);
                     }
                     doors.Add(door);
+                }
+                if (doc.RootElement.TryGetProperty("habitaciones", out var rooms))
+                {
+                    foreach (var entry in rooms.EnumerateObject())
+                    {
+                        if (!long.TryParse(entry.Name, out long hall)) continue;
+                        var others = entry.Value.EnumerateArray().Select(r => r.GetInt64()).Where(r => r != hall).ToList();
+                        _rooms[hall] = others;
+                        foreach (long room in others) _hallOf[room] = hall;
+                    }
                 }
                 if (doc.RootElement.TryGetProperty("salidas", out var exits))
                 {
@@ -351,14 +383,14 @@ namespace Jondo.Unity.Server.Managers
             => _byElement.TryGetValue((mapId, elementId), out door);
 
         /// <summary>Is this map the interior of some house?</summary>
-        public static bool IsInterior(long mapId) => _exits.ContainsKey(mapId);
+        public static bool IsInterior(long mapId) => _exits.ContainsKey(mapId) || _hallOf.ContainsKey(mapId);
 
         public static bool TryGetExit(long interiorMapId, out Exit exit)
             => _exits.TryGetValue(interiorMapId, out exit);
 
         /// <summary>The door that leads back to the street from this interior.</summary>
         public static bool TryGetWayBack(long interiorMapId, out Door door)
-            => _wayBack.TryGetValue(interiorMapId, out door);
+            => _wayBack.TryGetValue(HallOf(interiorMapId), out door);
 
         /// <summary>The house id this door carries on the wire; zero for a door that is not a house.</summary>
         public static int HouseIdOf(long mapId, int elementId)

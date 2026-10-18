@@ -3,7 +3,9 @@
   "Puertas de casa del mundo y a que interior lleva cada una.",
   "El TIPO 300 y la habilidad estan medidos de las capturas; el INTERIOR lo decidimos",
   "nosotros porque el cliente no lo trae. Ver tools/casas_mundo.py, que lo explica.",
-  "Se puede corregir a mano: cambia el \"interior\" de una puerta y se queda cambiado."
+  "Se puede corregir a mano: cambia el \"interior\" de una puerta y se queda cambiado.",
+  "habitaciones: las otras salas de una casa con interior propio (origen \"propia\"),",
+  "las de su misma copia; se pasa de una a otra por sus estrellas."
  ],
  "tipo": 300,
  "graficos": [
@@ -8334,9 +8336,9 @@
    "elemento": 475545,
    "casilla": 203,
    "gfx": 31642,
-   "interior": 212336640,
+   "interior": 85459457,
    "subzona": 231,
-   "origen": "mundo"
+   "origen": "propia"
   },
   {
    "mapa": 88080658,
@@ -11365,9 +11367,9 @@
    "elemento": 514847,
    "casilla": 310,
    "gfx": 62995,
-   "interior": 212337676,
+   "interior": 103547392,
    "subzona": 95,
-   "origen": "mundo"
+   "origen": "propia"
   },
   {
    "mapa": 191104002,
@@ -13389,6 +13391,18 @@
   }
  ],
  "salidas": {
+  "85459457": {
+   "elemento": 504540,
+   "casilla": 444,
+   "gfx": 3518,
+   "puerta": false
+  },
+  "103547392": {
+   "elemento": 515706,
+   "casilla": 425,
+   "gfx": 3518,
+   "puerta": false
+  },
   "212336640": {
    "elemento": 521849,
    "casilla": 470,
@@ -14073,5 +14087,28 @@
    "gfx": 44035,
    "puerta": true
   }
+ },
+ "habitaciones": {
+  "85459457": [
+   85459459,
+   85459461,
+   85459463,
+   85460481,
+   85460483,
+   85460485,
+   85460487,
+   85461505,
+   85461507,
+   85461509,
+   85461511,
+   85462529,
+   85462531,
+   85462533
+  ],
+  "103547392": [
+   103547394,
+   103548416,
+   103549440
+  ]
  }
 }

@@ -212,7 +212,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ **16 temporal anomalies** with their 120-minute countdown
 <img width="2560" height="1514" alt="image" src="https://github.com/user-attachments/assets/942d4d71-9711-45f1-9156-5381f7ad14b8" />
 
-- ✅ **3,815 interactive teleports** and passages that fire when you step on a cell
+- ✅ **5,347 interactive teleports** and passages that fire when you step on a cell — the suns and
+  stars of houses and caves among them
 - ✅ The GM prison's three maps joined in a round: trapdoor, hanging cage and treasure chest
 - ✅ New passages can be created, both ways, from Jondo Studio
 <img width="2560" height="1506" alt="image" src="https://github.com/user-attachments/assets/e3908060-2ad1-415c-a11a-cb6f323b9378" />
@@ -227,6 +228,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - 🟡 Buying a house
 - ❌ The other 1,400 doors cannot be owned; houses shared with a guild, kicking someone out, the list
   of houses on sale
+- ✅ The Palacio de los Lagos encantados: its door leads into the palace, and its stars, doors and
+  stairs take you through its fifteen rooms; the vault door opens on the treasure room's six chests
 - ✅ **67 public bins**, shared by everybody
 - ✅ Haven bags: entering and leaving, their own zaap, **four rooms** and **every theme** for every
   character, **4,083 furniture pieces** placed and saved, the chest, the lottery machine
@@ -235,7 +238,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 <img width="2560" height="1492" alt="image" src="https://github.com/user-attachments/assets/a81a3b24-8559-4ad5-8a27-e6913eef95a8" />
 
 > The client does not say which interior sits behind each door: the 1,437 doors share **114 interiors**,
-> assigned within their own neighbourhood. The mapping lives in `datos/casas_mundo_3.6.10.10.json`
+> assigned within their own neighbourhood. Two houses whose rooms the client does keep — the palace and
+> one in Astrub — lead to their own. The mapping lives in `datos/casas_mundo_3.6.10.10.json`
 > and can be corrected by hand.
 
 ### 🏦 Banks and marketplaces
@@ -244,7 +248,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The guild chest, in the 24 banks that have one, with the ranks' rights per tab
 - ❌ The bank's level condition; the guild chest's extra tabs, kamas and history
 - ✅ The seven marketplaces — resources, equipment, consumables, runes, creatures, souls and
-  cosmetics — across **39 counters**: browse, buy lots of 1, 10, 100 or 1000, sell for the 2 % tax,
+  cosmetics — across **40 counters**, the breeders' village's four among them: browse, buy lots of 1, 10, 100 or 1000, sell for the 2 % tax,
   take a lot back, change its price, the sales history
 - ❌ Merchant mode: the 3.6 client has no screen for it
 

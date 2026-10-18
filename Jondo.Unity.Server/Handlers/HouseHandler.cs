@@ -350,7 +350,7 @@ namespace Jondo.Unity.Server.Handlers
 
             long map = SessionContext.State.HouseEntryMapId;
             int element = SessionContext.State.HouseEntryElementId;
-            if (map != 0 && element != 0 && Houses.TryGetDoor(map, element, out var door) && door.InteriorMapId == here)
+            if (map != 0 && element != 0 && Houses.TryGetDoor(map, element, out var door) && door.InteriorMapId == Houses.HallOf(here))
                 return (map, element);
 
             return Houses.TryGetWayBack(here, out var wayBack) ? (wayBack.MapId, wayBack.ElementId) : (0, 0);
