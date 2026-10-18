@@ -216,7 +216,7 @@ namespace Jondo.Unity.Server.Managers
             /// </summary>
             public Func<Fighter, int, int, int, Tackle.Loss> TackleAt { get; init; } = (_, _, _, _) => Tackle.Loss.None;
 
-            public bool Occupied(int cell) => Fighters.Any(f => f.IsAlive && f.CellId == cell);
+            public bool Occupied(int cell) => Fighters.Any(f => f.IsAlive && f.Occupies(cell));
 
             /// <summary>
             /// Whom a row reaches when the caster stands on the first cell and aims at the second:

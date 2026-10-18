@@ -254,6 +254,9 @@ namespace Jondo.Unity.Tests.World
                 pommeau.CurrentHP = 0;
                 await FightHandler.CaenSusInvocadosAsync(null, fight, pommeau);
                 Assert.True(reina.Buffs.TieneEstado(56));
+                // Rounds go by before the Lame falls: her phase's hooks are hers for good.
+                int later = fight.RoundNumber + 3;
+                while (fight.RoundNumber < later) fight.NextTurn();
                 lame.CurrentHP = 0;
                 await FightHandler.CaenSusInvocadosAsync(null, fight, lame);
                 Assert.False(reina.Buffs.TieneEstado(56));

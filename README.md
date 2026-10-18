@@ -315,7 +315,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
   lets him out, Évadé; everybody jailed loses the fight
 - ✅ The Reina's second phase: healed and invulnerable until her Pommeau and Lame fall, playing twice a
   round, with the Volonté de la Princesse to beat as well
-- ❌ The Princesa Maldita's flower and statues
+- ✅ The Princesa Maldita's Aura turns to stone whoever she sees from her second turn, summons hiding
+  players from it; her Flor Maldita stands in the middle on four cells
+- ❌ The Flor Maldita changing sides and the Princesa's second phase
 - ❌ Podium ornaments and titles; guild experience moving the guild level
 
 ### 🔱 Alliances

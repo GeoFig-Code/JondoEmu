@@ -42,6 +42,7 @@ namespace Jondo.Unity.Server.Managers
             Tamano = Tamano,
             TamanoMinimo = TamanoMinimo,
             ParaEnElObjetivo = ParaEnElObjetivo,
+            SoloEnLineaDeVista = SoloEnLineaDeVista,
             PasoDeCaida = PasoDeCaida,
             TopeDeCaida = TopeDeCaida,
             MaxStack = MaxStack,
@@ -105,6 +106,12 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>Whether the zone is cut on reaching the target, for lines.</summary>
         public bool ParaEnElObjetivo { get; init; }
+
+        /// <summary>
+        /// Its zone reaches only who is in sight of its centre (zoneDescr.onlyAffectIfInSightLine):
+        /// the Princesa Maldita's Aura, "tous les personnages en ligne de vue" (DPLN).
+        /// </summary>
+        public bool SoloEnLineaDeVista { get; init; }
 
         /// <summary>
         /// How much damage it loses for each cell one is away from the zone's centre, as a
@@ -253,7 +260,7 @@ namespace Jondo.Unity.Server.Managers
                     if ((flags & SpellEffect.ForClientOnlyFlag) != 0) continue;
 
                     int forma = 'P', tamano = 1, minimo = 0, paso = 0, tope = 0;
-                    bool para = false;
+                    bool para = false, enLineaDeVista = false;
                     var fijas = new List<int>();
                     if (e.TryGetProperty("zoneDescr", out var z) && z.ValueKind == JsonValueKind.Object)
                     {
@@ -274,6 +281,7 @@ namespace Jondo.Unity.Server.Managers
                         tamano = Entero(z, "param1");
                         minimo = Entero(z, "param2");
                         para = Entero(z, "isStopAtTarget") != 0;
+                        enLineaDeVista = Entero(z, "onlyAffectIfInSightLine") != 0;
                         paso = Entero(z, "damageDecreaseStepPercent");
                         tope = Entero(z, "maxDamageDecreaseApplyCount");
                     }
@@ -296,6 +304,7 @@ namespace Jondo.Unity.Server.Managers
                         Tamano = tamano,
                         TamanoMinimo = minimo,
                         ParaEnElObjetivo = para,
+                        SoloEnLineaDeVista = enLineaDeVista,
                         PasoDeCaida = paso,
                         TopeDeCaida = tope,
                         MaxStack = maxStack,

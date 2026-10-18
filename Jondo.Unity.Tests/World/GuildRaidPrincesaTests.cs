@@ -1,0 +1,141 @@
+using System.Linq;
+using System.Threading.Tasks;
+using Jondo.Unity.Server;
+using Jondo.Unity.Server.Handlers;
+using Jondo.Unity.Server.Managers;
+using Jondo.Unity.World.Fights;
+using Jondo.Unity.World.Maps;
+using Xunit;
+
+namespace Jondo.Unity.Tests.World
+{
+    /// <summary>
+    /// The Princesa Maldita's fight: her Flor Maldita in the middle of her board, its body four cells,
+    /// and her Aura turning to statues, from her second round, whoever she sees as her turn starts.
+    /// In the MapManager collection, as every test that loads the maps.
+    /// </summary>
+    [Collection("MapManager")]
+    public class GuildRaidPrincesaTests
+    {
+        private const long Top = 238297364;
+        private const long Arena = 238297361;
+
+        private static bool HasData => GuildRaidPrincesa.FlorBodyCells().Count == 3;
+
+        /// <summary>The Flor's body: the three cells its "createHitbox" names, and the one closing their square, its own.</summary>
+        [Fact]
+        public void The_flor_s_body_is_four_cells()
+        {
+            if (!HasData) return;
+            if (!MapManager.WalkableCells.ContainsKey(Arena)) MapManager.Initialize();
+            Assert.Equal(new[] { 355, 369, 370 }, GuildRaidPrincesa.FlorBodyCells().OrderBy(c => c));
+            Assert.Equal(383, GuildRaidPrincesa.FlorCell(Arena));
+            Assert.Equal(Arena, MapManager.ResolveArenaMapId(Top));
+        }
+
+        private static async Task<(FightInstance Fight, Fighter Princesa, Fighter[] People)> Fight(params int[] cells)
+        {
+            if (!MapManager.WalkableCells.ContainsKey(Arena)) MapManager.Initialize();
+            MobSpawnManager.EnsureMonsterData();
+            var fight = new FightInstance(9801 + cells.Length, Top, Arena);
+            var people = cells.Select((c, i) => new Fighter
+            {
+                Id = 7201 + i, TeamId = 0, CellId = c, MaxHP = 5000, CurrentHP = 5000, Level = 200, Initiative = 10 - i,
+            }).ToArray();
+            foreach (var person in people) fight.AddPlayer(person);
+            var princesa = new Fighter { Id = -1, TeamId = 1, CellId = 268, MaxHP = 50000, CurrentHP = 50000, IsMonster = true,
+                                         MonsterId = GuildRaidPrincesa.Princesa, Level = 200, Initiative = 100 };
+            fight.AddMonster(princesa);
+            GuildRaidPrincesa.OnFightCreated(fight);
+            fight.StartFight();
+            princesa.Conducta = (32003, 1);
+            await FightHandler.LanzarLaConductaAsync(null, fight, princesa);
+            await GuildRaidPrincesa.OnFightStartedAsync(null, fight);
+            return (fight, princesa, people);
+        }
+
+        /// <summary>
+        /// The Flor comes in on its cell, its body on the other three; a blow on one of those reaches
+        /// it, and nobody can be put on them.
+        /// </summary>
+        [Fact]
+        public async Task The_flor_stands_in_the_middle_with_its_body()
+        {
+            if (!HasData) return;
+            var (fight, princesa, people) = await Fight(443, 444);
+            try
+            {
+                Assert.Same(princesa, fight.SceneStandIn);
+                var flor = fight.Rojo.Single(m => m.MonsterId == GuildRaidPrincesa.Flor);
+                Assert.Equal(383, flor.CellId);
+                Assert.Equal(new[] { 355, 369, 370 }, flor.ExtraCells.OrderBy(c => c));
+                Assert.True(flor.EsInvocado);
+                Assert.True(flor.Occupies(369));
+
+                // A kill on a point, aimed at one of its body's cells.
+                await FightHandler.CastAtAsync(null, fight, people[0], 31979, 2, 369);
+                Assert.False(flor.IsAlive);
+            }
+            finally
+            {
+                GuildRaidPrincesa.Forget(fight.FightId);
+            }
+        }
+
+        /// <summary>
+        /// Her Aura holds in her first round; from her second, whoever she sees as her turn starts
+        /// becomes a statue and passes, whoever something hides does not; at her next turn start
+        /// the statues die.
+        /// </summary>
+        [Fact]
+        public async Task Her_aura_turns_whoever_she_sees_to_stone()
+        {
+            if (!HasData) return;
+            if (!MapManager.WalkableCells.ContainsKey(Arena)) MapManager.Initialize();
+            // One in her sight, one with the other right in between (a fighter hides a fighter).
+            var walkable = MapManager.GetFightWalkable(Arena);
+            var blockers = MapManager.GetLosBlockers(Arena);
+            int seen = walkable.Where(c => MapGeometry.Distance(c, 268) == 3 && MapGeometry.HasLineOfSight(268, c, blockers)).OrderBy(c => c).First();
+            int shield = -1, hidden = -1;
+            foreach (int c1 in walkable.Where(c => c != seen && MapGeometry.Distance(c, 268) <= 2).OrderBy(c => c))
+            {
+                foreach (int c2 in walkable.Where(c => c != seen && c != c1 && MapGeometry.Distance(c, 268) <= 5).OrderBy(c => c))
+                {
+                    if (!MapGeometry.HasLineOfSight(268, c2, blockers)) continue;
+                    if (MapGeometry.HasLineOfSight(268, c2, c => blockers.Contains(c) || c == c1)) continue;
+                    if (!MapGeometry.HasLineOfSight(268, c1, blockers)) continue;
+                    shield = c1; hidden = c2;
+                    break;
+                }
+                if (shield >= 0) break;
+            }
+            Assert.True(shield >= 0);
+            var (fight, princesa, people) = await Fight(seen, shield, hidden);
+            // Her turn starting in a round, as a fight starts it: what waited for the round, then "TB".
+            async Task HerTurnIn(int round)
+            {
+                while (fight.RoundNumber < round) fight.NextTurn();
+                await FightHandler.ApplyDuePendingAsync(null, fight);
+                await FightHandler.DispararAsync(null, fight, princesa, EffectEngine.AlEmpezarElTurno);
+            }
+            try
+            {
+                await HerTurnIn(1);
+                Assert.DoesNotContain(people, p => p.Buffs.TieneEstado(6650));   // not in her first round
+
+                await HerTurnIn(2);
+                Assert.True(people[0].Buffs.TieneEstado(6650));
+                Assert.True(people[1].Buffs.TieneEstado(6650));                  // the one in front, seen
+                Assert.False(people[2].Buffs.TieneEstado(6650));                 // hidden behind him
+
+                await HerTurnIn(3);                                              // her Aura still on, three rounds in
+                Assert.False(people[0].IsAlive);
+                Assert.True(people[2].IsAlive);
+            }
+            finally
+            {
+                GuildRaidPrincesa.Forget(fight.FightId);
+            }
+        }
+    }
+}

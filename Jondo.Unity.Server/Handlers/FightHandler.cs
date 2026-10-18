@@ -143,6 +143,7 @@ namespace Jondo.Unity.Server.Handlers
             Managers.GuildRaidEnclave.OnFightCreated(fight);
             Managers.GuildRaidEfedra.OnFightCreated(fight);
             Managers.GuildRaidReina.OnFightCreated(fight);
+            Managers.GuildRaidPrincesa.OnFightCreated(fight);
             Managers.GuildRaidSanctuary.OnFightCreated(fight);
 
             // A tax collector or a prism attacked: the fight learns whose it is, and its fighter
@@ -2726,6 +2727,9 @@ namespace Jondo.Unity.Server.Handlers
                     // The Reina's jails: their monsters and Floráculos, the cages closed.
                     await Managers.GuildRaidReina.OnFightStartedAsync(stream, fight);
 
+                    // The Princesa's Flor Maldita in the middle of her board.
+                    await Managers.GuildRaidPrincesa.OnFightStartedAsync(stream, fight);
+
                     // A fight a raid's enigma says is lost from its start -- a wrong protector of the
                     // Enclave's -- ends here, before the first turn.
                     if (Managers.GuildRaidEnclave.LostFromTheStart(fight))
@@ -3542,9 +3546,13 @@ namespace Jondo.Unity.Server.Handlers
                     }
                     else
                     {
+                        // A wait of a monster's behaviour spell is its behaviour still: what it arms is
+                        // for good -- the Princesa's Aura, cast a round late, every turn start after.
+                        bool deSuConducta = caster.Conducta.Spell != 0 && caster.Conducta.Spell == waiting.HechizoOrigen;
                         await LanzarPorOrdenAsync(stream, fight, caster, waiting.Dado, Math.Max(1, waiting.Cara),
                                                   result.Target, result.Target.CellId, Managers.EffectEngine.AlLanzar,
-                                                  Managers.EffectEngine.EfectosSorteados(waiting.Dado, Math.Max(1, waiting.Cara), false));
+                                                  Managers.EffectEngine.EfectosSorteados(waiting.Dado, Math.Max(1, waiting.Cara), false),
+                                                  conducta: deSuConducta);
                     }
                 }
                 else if (result.Marks)
@@ -3718,8 +3726,8 @@ namespace Jondo.Unity.Server.Handlers
 
             // Who is in the way, so as not to walk through them or end up on top of them.
             var ocupadas = new HashSet<int>();
-            foreach (var otro in fight.Azul) if (otro.IsAlive && otro != walker) ocupadas.Add(otro.CellId);
-            foreach (var otro in fight.Rojo) if (otro.IsAlive && otro != walker) ocupadas.Add(otro.CellId);
+            foreach (var otro in fight.Azul) if (otro.IsAlive && otro != walker) { ocupadas.Add(otro.CellId); ocupadas.UnionWith(otro.ExtraCells); }
+            foreach (var otro in fight.Rojo) if (otro.IsAlive && otro != walker) { ocupadas.Add(otro.CellId); ocupadas.UnionWith(otro.ExtraCells); }
             if (ocupadas.Contains(destination)) return;
 
             // The WHOLE path, cell by cell.
@@ -4931,11 +4939,13 @@ namespace Jondo.Unity.Server.Handlers
                                                   bool conducta = false, bool throughPortal = false)
         {
             // A monster spell's rows armed by the engine, one hook per bearer, caster and spell,
-            // holding just those rows. The behaviour spell's own rows are the monster's for good.
+            // holding just those rows. The behaviour spell's rows are the monster's for good, and
+            // so are those of the spells it chains: the Princesa's Aura (32010, chained by her
+            // starting spell) waits on her every turn start, not on the next one alone.
             foreach (var grupo in consecuencias.Where(c => c.FilaArmada && c.Sobre != null)
                                                .GroupBy(c => (c.Sobre, c.HechizoOrigen, c.NivelOrigen, Quien: c.Caster?.Id ?? lanzador)))
             {
-                bool deConducta = conducta && grupo.Key.HechizoOrigen == hechizo;
+                bool deConducta = conducta;
                 int hasta = ronda + 1;
                 foreach (var c in grupo)
                 {
@@ -5334,9 +5344,14 @@ namespace Jondo.Unity.Server.Handlers
                 var armadas = FilasArmadas(enganche, disparador);
                 if (armadas.Count == 0) return;
                 var suLanzador = (enganche.Lanzador != 0 ? fight.Buscar(enganche.Lanzador) : null) ?? quien;
+                // A monster's hook for good is its behaviour going on: what it arms is for good too --
+                // the Reina's phase II, off her threshold, waits on her Pommeau's and Lame's deaths
+                // however many rounds later they come.
+                bool suyoParaSiempre = enganche.CaducaEnRonda < 0 && EsDelBandoDeLosMonstruos(fight, suLanzador);
                 await LanzarPorOrdenAsync(stream, fight, suLanzador, enganche.Hechizo, enganche.Grado, quien,
                                           quien.CellId, disparador, armadas, enganche.Critico,
-                                          rondaDelEnganche: enganche.PuestoEnRonda, soloAlObjetivo: true);
+                                          rondaDelEnganche: enganche.PuestoEnRonda, soloAlObjetivo: true,
+                                          conducta: suyoParaSiempre);
                 return;
             }
             var lanzador = (enganche.Lanzador != 0 ? fight.Buscar(enganche.Lanzador) : null) ?? quien;
@@ -8460,7 +8475,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             long planning = fight.CurrentFighter?.Id ?? 0;
             foreach (var fighter in TodosLosCombatientes(fight))
-                if (fighter.IsAlive && fighter.Id != planning && fighter.CellId == cell) return true;
+                if (fighter.IsAlive && fighter.Id != planning && fighter.Occupies(cell)) return true;
             return false;
         }
 
@@ -8858,8 +8873,8 @@ namespace Jondo.Unity.Server.Handlers
 
         private static bool Occupied(FightInstance fight, int cell)
         {
-            foreach (var f in fight.Azul) if (f.IsAlive && f.CellId == cell) return true;
-            foreach (var f in fight.Rojo) if (f.IsAlive && f.CellId == cell) return true;
+            foreach (var f in fight.Azul) if (f.IsAlive && f.Occupies(cell)) return true;
+            foreach (var f in fight.Rojo) if (f.IsAlive && f.Occupies(cell)) return true;
             return false;
         }
 

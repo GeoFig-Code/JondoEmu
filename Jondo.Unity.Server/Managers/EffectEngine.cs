@@ -3573,11 +3573,24 @@ namespace Jondo.Unity.Server.Managers
             }
 
             var dentro = new HashSet<int>(casillas);
+            // A zone that reaches only who is in sight of its centre: the map's blockers and the
+            // fighters standing between -- a summon hides a player from the Princesa's Aura.
+            var tapan = efecto.SoloEnLineaDeVista ? MapManager.GetLosBlockers(combate.ArenaMapId) : null;
+            bool LoVe(Fighter quien)
+            {
+                if (!efecto.SoloEnLineaDeVista || celdaApuntada < 0) return true;
+                int hasta = CeldaDe(quien);
+                return Jondo.Unity.World.Maps.MapGeometry.HasLineOfSight(celdaApuntada, hasta,
+                    c => (tapan != null && tapan.Contains(c))
+                         || Todos(combate).Any(f => f != null && f.IsAlive && f != quien && f.Occupies(c)));
+            }
             foreach (var quien in Todos(combate))
             {
                 if (quien == null || quien.EstaCargado) continue;
                 if (!quien.IsAlive && !(includeDeadTarget && quien == objetivo)) continue;
-                if (dentro.Contains(CeldaDe(quien))) yield return quien;
+                // A big body is reached on any of its cells, once.
+                bool enLaZona = dentro.Contains(CeldaDe(quien)) || quien.ExtraCells.Any(dentro.Contains);
+                if (enLaZona && LoVe(quien)) yield return quien;
             }
         }
 

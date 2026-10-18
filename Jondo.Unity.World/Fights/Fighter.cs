@@ -116,6 +116,15 @@ namespace Jondo.Unity.World.Fights
         public int TurnsOnTheOtherSide { get; set; }
 
         /// <summary>
+        /// The other cells a big creature's body takes besides its own -- the Flor Maldita's "hitbox
+        /// de 4 cases" (DPLN): nobody stands on them, and a blow on any of them is a blow on it, once.
+        /// </summary>
+        public List<int> ExtraCells { get; } = new List<int>();
+
+        /// <summary>Whether this fighter takes a cell: its own, or one of its body's.</summary>
+        public bool Occupies(int cell) => CellId == cell || (ExtraCells.Count > 0 && ExtraCells.Contains(cell));
+
+        /// <summary>
         /// General fixed damage (characteristic 16). It is added at the end of the calculation, after
         /// multiplying by the elemental characteristic and the power.
         /// </summary>
