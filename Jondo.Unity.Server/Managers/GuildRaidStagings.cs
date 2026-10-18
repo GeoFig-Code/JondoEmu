@@ -130,6 +130,22 @@ namespace Jondo.Unity.Server.Managers
             return None;
         }
 
+        /// <summary>The map of a list at a world position, or 0: where a guide names an enigma's map by its position.</summary>
+        public static long MapAt(IEnumerable<long> maps, int x, int y)
+        {
+            using var connection = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.WorldConnectionString);
+            connection.Open();
+            foreach (long map in maps)
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT PosX, PosY FROM MapPositions WHERE MapId = $m;";
+                command.Parameters.AddWithValue("$m", map);
+                using var reader = command.ExecuteReader();
+                if (reader.Read() && reader.GetInt32(0) == x && reader.GetInt32(1) == y) return map;
+            }
+            return 0;
+        }
+
         /// <summary>Whether a map has a sequence so called.</summary>
         public static bool Has(long mapId, string name) => IdOf(mapId, name) != None;
 

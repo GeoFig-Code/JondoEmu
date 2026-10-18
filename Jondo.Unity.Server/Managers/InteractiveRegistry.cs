@@ -73,6 +73,12 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The button that validates a miniature garden (GuildRaidEnclave).</summary>
         RaidGardenButton,
 
+        /// <summary>A paper boat of the Obra, revealed onto the Reserva's boards (GuildRaidBelladona).</summary>
+        RaidPaperBoat,
+
+        /// <summary>A ball of a Reserva board, a letter or a number of the shot (GuildRaidBelladona).</summary>
+        RaidCannonBall,
+
         /// <summary>A paddock's gate: it opens the breeding window on its paddock (BreedingHandler).</summary>
         PaddockGate,
     }
@@ -484,6 +490,24 @@ namespace Jondo.Unity.Server.Managers
                     if (_byElement.ContainsKey((board.MapId, board.Button.Id))) continue;
                     Declared(board.MapId, board.Button, GuildRaidEnclave.ButtonType)
                         .AddNamed(InteractiveActionKind.RaidGardenButton, GuildRaidEnclave.ButtonSkill, GuildRaidEnclave.Press);
+                }
+            }
+
+            // And the Reserva's battleship: the Obra's paper boats and its boards' balls.
+            if (GuildRaidBelladona.WorkOf(Jondo.Unity.World.Content.Raids.Of(Jondo.Unity.World.Content.Raids.EternalGardens)) is { } reserva)
+            {
+                foreach (var slot in reserva.Slots)
+                {
+                    if (_byElement.ContainsKey((slot.MapId, slot.Element.Id))) continue;
+                    Declared(slot.MapId, slot.Element, GuildRaidBelladona.BoatType)
+                        .AddNamed(InteractiveActionKind.RaidPaperBoat, GuildRaidBelladona.BoatSkill, GuildRaidBelladona.Reveal);
+                }
+                foreach (var board in reserva.Boards)
+                foreach (var ball in Interactives.ElementsOf(board.MapId).Where(e => board.Balls.ContainsKey(e.Id)))
+                {
+                    if (_byElement.ContainsKey((board.MapId, ball.Id))) continue;
+                    Declared(board.MapId, ball, GuildRaidBelladona.BallType)
+                        .AddNamed(InteractiveActionKind.RaidCannonBall, GuildRaidBelladona.BallSkill, GuildRaidBelladona.Fire);
                 }
             }
 

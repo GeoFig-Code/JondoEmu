@@ -303,7 +303,7 @@ namespace Jondo.Unity.Server.Managers
             int placed = 0;
             foreach (var group in Placements.GroupBy(p => (p.X, p.Y)))
             {
-                long map = MapAt(work.Maps, group.Key.X, group.Key.Y);
+                long map = GuildRaidStagings.MapAt(work.Maps, group.Key.X, group.Key.Y);
                 if (map == 0) continue;
                 var cells = GuildRaidSanctuary.SpreadCells(GuildRaidSanctuary.CellsFor(map, group.Count()), group.Count(), dice);
                 int i = 0;
@@ -316,22 +316,6 @@ namespace Jondo.Unity.Server.Managers
             }
             Program.LogDebug($"[Raids] The Enclave's {placed} protectors placed.");
             return placed;
-        }
-
-        /// <summary>The map of a list at a world position, or 0.</summary>
-        private static long MapAt(IEnumerable<long> maps, int x, int y)
-        {
-            using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
-            connection.Open();
-            foreach (long map in maps)
-            {
-                using var command = connection.CreateCommand();
-                command.CommandText = "SELECT PosX, PosY FROM MapPositions WHERE MapId = $m;";
-                command.Parameters.AddWithValue("$m", map);
-                using var reader = command.ExecuteReader();
-                if (reader.Read() && reader.GetInt32(0) == x && reader.GetInt32(1) == y) return map;
-            }
-            return 0;
         }
 
         // ─── The boards ─────────────────────────────────────────────────────────────────────

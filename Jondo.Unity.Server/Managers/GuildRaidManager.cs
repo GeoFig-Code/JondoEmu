@@ -110,6 +110,7 @@ namespace Jondo.Unity.Server.Managers
                 GuildRaidMonochrome.Draw(raid, Random.Shared);
                 GuildRaidEnclave.Draw(raid, Random.Shared);
                 GuildRaidEnclave.Populate(Raids.Of(raid.RaidId), Random.Shared);
+                GuildRaidBelladona.Draw(raid, Random.Shared);
                 GuildRaidGuardians.Place(Raids.Of(raid.RaidId));
                 GuildRaidSanctuary.Populate(Raids.Of(raid.RaidId), Random.Shared);
             }

@@ -1283,14 +1283,21 @@ namespace Jondo.Unity.Server.Network
             // the enigma lets it be; elsewhere it is the passive element every map declares.
             var enigma = interactive.Actions.FirstOrDefault(a => a.Kind is Managers.InteractiveActionKind.RaidFlower
                                                                  or Managers.InteractiveActionKind.RaidGardenSquare
-                                                                 or Managers.InteractiveActionKind.RaidGardenButton);
+                                                                 or Managers.InteractiveActionKind.RaidGardenButton
+                                                                 or Managers.InteractiveActionKind.RaidPaperBoat
+                                                                 or Managers.InteractiveActionKind.RaidCannonBall);
             if (enigma != null)
             {
                 long viewer = Network.SessionContext.State.CharacterId;
-                bool flower = enigma.Kind == Managers.InteractiveActionKind.RaidFlower;
-                bool offered = flower
-                    ? Managers.GuildRaidMonochrome.Offers(viewer, interactive.MapId, interactive.Element.Id)
-                    : Managers.GuildRaidEnclave.Offers(viewer, interactive.MapId, interactive.Element.Id);
+                long map = interactive.MapId;
+                int element = interactive.Element.Id;
+                bool offered = enigma.Kind switch
+                {
+                    Managers.InteractiveActionKind.RaidFlower => Managers.GuildRaidMonochrome.Offers(viewer, map, element),
+                    Managers.InteractiveActionKind.RaidPaperBoat or Managers.InteractiveActionKind.RaidCannonBall
+                        => Managers.GuildRaidBelladona.Offers(viewer, map, element),
+                    _ => Managers.GuildRaidEnclave.Offers(viewer, map, element),
+                };
                 if (!offered)
                 {
                     jss.Msg(11, Pb.New().Var(1, 1)
@@ -1298,9 +1305,13 @@ namespace Jondo.Unity.Server.Network
                         .Var(6, Managers.Interactives.TypeOfGfx(interactive.Element.Gfx)));
                     return;
                 }
-                usable = flower
-                    ? Managers.GuildRaidMonochrome.Usable(viewer, interactive.MapId, interactive.Element.Id)
-                    : Managers.GuildRaidEnclave.Usable(viewer, interactive.MapId, interactive.Element.Id);
+                usable = enigma.Kind switch
+                {
+                    Managers.InteractiveActionKind.RaidFlower => Managers.GuildRaidMonochrome.Usable(viewer, map, element),
+                    Managers.InteractiveActionKind.RaidPaperBoat or Managers.InteractiveActionKind.RaidCannonBall
+                        => Managers.GuildRaidBelladona.Usable(viewer, map, element),
+                    _ => Managers.GuildRaidEnclave.Usable(viewer, map, element),
+                };
             }
 
             var declaration = Pb.New().Var(1, 1);

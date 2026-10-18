@@ -297,7 +297,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
   boards, the statue rising in the Obra's colour and its sixteen protectors, the wrong one lost at once
 - ✅ The Abyss's light drawn on its maps and fight arenas: bands fading every two minutes, the lamps
   blinking before they do, the luminomachines lighting them up again
-- ❌ The Sanctuary's other two enigmas; the guardians stand from the start
+- ✅ The Sanctuary's Reserva de Belladona: six paper boats found in the Obra and sunk in turns on the
+  two battleship boards, a miss floating them all again
+- ❌ The Sanctuary's chess enigma in the Patio de Efedra; the guardians stand from the start
 - ❌ The Defensor's double turn and the bosses' scripted rules (the Reina's dungeons, the Princesa's flower)
 - ❌ Podium ornaments and titles; guild experience moving the guild level
 
