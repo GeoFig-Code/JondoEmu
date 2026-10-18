@@ -153,6 +153,32 @@ namespace Jondo.Unity.Server.Handlers
             return values;
         }
 
+        // ─── jqe: stopped on the way ────────────────────────────────────────────
+
+        /// <summary>
+        /// The client cut its walk short (jqe { f1: the cell it stopped on }): clicked somewhere else
+        /// on the way, its next jrw right behind. The real server answers nothing -- three captures,
+        /// walking in the tutorial, against the hipermago and with the tymador -- but the character
+        /// stands there and not where the cut walk was going: until this it was left at the old
+        /// end, and a passage on that cell would still have fired at the next jqi.
+        /// </summary>
+        public static void StopMovement(byte[] payload)
+        {
+            byte[]? jqe = ConnectionProtocol.ReadPayload(payload, "jqe");
+            if (jqe == null) return;
+            int cell = -1;
+            foreach (var f in ProtoMessage.Parse(jqe).Fields)
+                if (f.FieldNumber == 1 && f.WireType == 0) cell = (int)f.VarIntValue;
+
+            var state = SessionContext.State;
+            if (cell < 0 || !MapManager.WalkableCells.TryGetValue(state.MapId, out var walkable) || !walkable.Contains(cell))
+                return;
+            state.CellId = cell;
+            state.PendingMovementMapId = 0;
+            state.PendingMovementCellId = -1;
+            DatabaseManager.SaveCurrentCharacter();
+        }
+
         // ─── jqi: may I leave? ──────────────────────────────────────────────────
 
         /// <summary>

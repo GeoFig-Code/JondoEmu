@@ -72,9 +72,11 @@ namespace Jondo.Unity.Server.Network
         /// nothing, instead of blowing up.
         /// </summary>
         public Task SendAsync(byte[] packet)
-            => Stream == null
-                ? Task.CompletedTask
-                : Jondo.Protocol.NetworkMessage.WriteFrameAsync(Stream, packet);
+        {
+            if (Stream != null) return Jondo.Protocol.NetworkMessage.WriteFrameAsync(Stream, packet);
+            Jondo.Protocol.NetworkMessage.FrameTap?.Invoke(packet);
+            return Task.CompletedTask;
+        }
 
         public void BindAccount(long accountId, int serverId, string language = "es")
         {

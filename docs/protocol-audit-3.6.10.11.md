@@ -1,0 +1,60 @@
+# Protocol audit against the 3.6.10.11 client (2026-10-18)
+
+What the server sends, read against the client's own classes, and what the client sends that the
+server does not answer.
+
+## The schema
+
+`datos/protocolo_3.6.10.11.proto` (and `protocolo_conexion_3.6.10.11.proto`) are rebuilt with
+`protocolbuilder proto` from the client's Cpp2IL assemblies. The earlier dumps paired each field
+number with the class's properties by position, and a proto3 `optional` field brings a getter-only
+`Boolean` (whether it is set) behind it: every number after it was shifted (`jug`'s wave came out
+as its f5). `ProtoWriter` now counts only the properties a field is written through -- those with
+a setter, and the lists and maps -- and the 2,169 messages come out with no mismatch.
+
+## Malformed packets
+
+| Check | Coverage | Result |
+|---|---|---|
+| Every S->C frame of the traffic logs (Oct 11-18), decoded against the schema (`tools/auditar_protocolo.py`) | 129,809 frames, 297 messages | clean in the latest log; older logs show the `mdu`/`mdx` rank-as-fighter block fixed in 0cbe252 and the `.level` command's `kri`/`krb`/`bcy` |
+| Every frame the 2,573 tests write (`JONDO_FRAME_TAP=<file>`, see `Jondo.Unity.Tests/FrameTap.cs`) | 915 frames, 112 messages | clean |
+| The builders no frame shows, followed through their `Pb` chains (`tools/auditar_constructores.py`) | 100 of 113 | clean (one packed list written by hand, valid) |
+| The 13 builders the script cannot follow, by eye | 13 | clean |
+
+Fixed:
+
+- `.level` sent `kri`, `krb`, `krd` and `bcy`, and `.kamas` sent `bvr`: names of an earlier protocol.
+  In 3.6, `krb`, `bcy` and `bvr` do not exist and `kri` is another message whose f1 is an integer,
+  so the client could not parse the stats list sent as it. Removed; the `kub` and `ivf` already sent
+  are what refresh the sheet and the kamas.
+
+Dead code left in place (no 3.6 client message reaches it): `StatsHandler.HandleStatsUpgradeRequest`
+(`krc`, 3.6.4.3), `InventoryHandler.HandleItemMovementRequest` (`isi`, 3.6.4.3), the `kkn`, `joi`,
+`jpp`, `hmv`, `ibt`, `igx`, `knx` branches of `GameNodeProxy`, and FightHandler's builders of `jox`,
+`jxe`, `jyi`, `jyk`, `jvm`, `jpf`, `jud`, `joo` -- 25 names in all that the client has no class for.
+
+## Client messages the server does not answer
+
+From the console log's unhandled packets, checked against the code, then the real server's answers
+in the 756 captures and the client's senders in Ghidra.
+
+| Message | What it is | Real server's answer | State |
+|---|---|---|---|
+| `jqe` | the walk cut short on a cell (a new click on the way) | nothing | **fixed**: the character stands on that cell, and the cut walk's passage no longer fires |
+| `hir` | the zaap trip's cost to a map, asked on arrival and by the autopilot | `him` { map, kamas } | **fixed** |
+| `knm`, `kno`, `kny` | the contact lists, asked on entering the world | `kqg` (contacts), `koj`, `koi` | missing: friends, enemies and ignored |
+| `kon` | the friends window's setting { f2 } | `lqn` 205 | missing (friends) |
+| `hom` | the account's statistics | `ivi`, ~9,700 id/value pairs | missing |
+| `ido` | starting a quest from an item or a poster (the "se busca" posters' 1563-1565) | `kld` | missing |
+| `idv` | a quest objective validated { objective, -1 }, sometimes moving the player | the map change | missing |
+| `jwm`, `jth` | the shop: claiming purchases and gifts | `jwj`, items | missing |
+| `kwd` | character creation's random name | `kvk` { name } | missing |
+| `koc`, `koe`, `kpb` | requests on entering the world | guild information, or nothing | not needed (sent unasked) |
+| `ktn`, `hos`, `lrd`, `jha` | chat channels on entering the world | `hou`, eleven `ktq`, `lru` | not needed (sent unasked) |
+| `kmr` | world entry | `kml`, `kmp`, `ktz`, `iom` | not needed (sent unasked) |
+| `krv` | world entry, with a request id | `mgz`, `kqp` | left unanswered on purpose |
+| `lqf` | the map's load time in ms, after `lqc` | nothing | not needed |
+| `ivp` | a periodic notice (the client's hour loop) | nothing | not needed |
+| `jlh` | in the guild window | nothing | unknown, no answer expected |
+| `med`, `mdw`, `mdt` | in the alliance window (no capture) | unknown | unknown |
+| `kjw`, `jaq` | no capture | unknown | unknown |

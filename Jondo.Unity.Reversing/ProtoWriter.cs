@@ -71,10 +71,19 @@ public static class ProtoWriter
             // The properties do go one per number, and on top of that they carry each case's right type.
             // In front there are always the three standard ones —the parser and the two descriptors— and
             // behind, when there is a oneof, one is left over: the one saying which is set.
+            //
+            // And only the properties a field is read and written through: those with a setter, and
+            // the lists and maps, which protobuf gives a getter alone. A proto3 "optional" field brings
+            // a getter-only Boolean behind it -- whether it is set -- and the oneof one more saying
+            // which case is set; counted as fields they shifted every number after them (jug's wave
+            // came out as its f5).
             var properties = type.GetProperties(Everything)
                                  .Where(p => p.PropertyType.Name is not "MessageDescriptor" &&
                                              !p.PropertyType.Name.StartsWith("MessageParser",
                                                                              StringComparison.Ordinal))
+                                 .Where(p => p.SetMethod != null ||
+                                             p.PropertyType.Name.StartsWith("RepeatedField", StringComparison.Ordinal) ||
+                                             p.PropertyType.Name.StartsWith("MapField", StringComparison.Ordinal))
                                  .ToList();
 
             var fields = new List<Field>();
@@ -86,7 +95,7 @@ public static class ProtoWriter
                 fields.Add(new Field(number, name, properties[i].Name, repeated));
             }
 
-            messages.Add(new Message(type.Name, fields, numbers.Count > properties.Count));
+            messages.Add(new Message(type.Name, fields, numbers.Count != properties.Count));
         }
 
         return messages.OrderBy(m => m.Name, StringComparer.Ordinal).ToList();

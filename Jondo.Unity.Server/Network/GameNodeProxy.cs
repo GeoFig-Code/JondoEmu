@@ -570,6 +570,14 @@ namespace Jondo.Unity.Server.Network
                     if (GameState.IsInFight) await FightHandler.HandleFightMessageAsync(stream, payload, payloadStr);
                     else await WorldMoveHandler.ConfirmMovementAsync(stream, payload);
                 }
+                else if (payloadStr.Contains("type.ankama.com/hir"))
+                {
+                    await ZaapTravelHandler.TellCostAsync(stream, payload);
+                }
+                else if (payloadStr.Contains("type.ankama.com/jqe"))
+                {
+                    if (!GameState.IsInFight) WorldMoveHandler.StopMovement(payload);
+                }
                 else if (payloadStr.Contains("type.ankama.com/jqi"))
                 {
                     await WorldMoveHandler.AllowMapExitAsync(stream, payload);

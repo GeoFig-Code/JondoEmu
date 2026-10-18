@@ -235,13 +235,9 @@ namespace Jondo.Unity.Server.Handlers
             GameState.Kamas = Math.Max(0, before + amount);
             DatabaseManager.SaveCurrentCharacter();
 
-            // The usual one, which comes from no capture but has been here since the beginning.
-            await NetworkMessage.WriteFrameAsync(stream, NetworkEnvelope.BuildGameNodePacket(
-                "type.ankama.com/bvr", Pb.New().Var(1, GameState.Kamas).Build()));
-
-            // And the one that is measured: it is what the real server sends when charging for a zaap
-            // trip. It carries the WHOLE figure, not the difference, so sending both does not throw
-            // anything off -- the second says the same as the first.
+            // The measured one: what the real server sends when charging for a zaap trip, the WHOLE
+            // figure. (A "bvr" went before it, from an earlier protocol: the 3.6 client has no such
+            // message.)
             await NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Ivf, ConnectionProtocol.BuildKamas(GameState.Kamas)));
 
@@ -453,31 +449,10 @@ namespace Jondo.Unity.Server.Handlers
 
             DatabaseManager.SaveCurrentCharacter();
 
-            // What this command already sent, as it was. It is not removed -- it has been here since the
-            // beginning and there is no way to check from outside whether the client looks at it -- but it
-            // is not relied on either: kri, krb and krd go out through root field 3, which is the
-            // ANSWERS envelope, and without a request id inside. What really refreshes the sheet is
-            // the kub further down.
-            byte[]? kri = StatsHandler.BuildUpdatedKriPacket();
-            if (kri != null) await NetworkMessage.WriteFrameAsync(stream, kri);
-
-            await NetworkMessage.WriteFrameAsync(stream,
-                StatsHandler.BuildKrbPacket(GameState.CharacterRemainingPoints));
-            await NetworkMessage.WriteFrameAsync(stream,
-                NetworkEnvelope.BuildGameNodePacket("type.ankama.com/krd", Array.Empty<byte>()));
-
-            // The bcy only makes sense going up: it is the "you went up a level" message. Going down
-            // it is not sent, since its two point fields would go negative.
-            if (newLevel > oldLevel)
-            {
-                await NetworkMessage.WriteFrameAsync(stream, NetworkEnvelope.BuildGameNodePacket(
-                    "type.ankama.com/bcy", Pb.New()
-                        .Var(1, newLevel)
-                        .Var(2, oldLevel)
-                        .Var(3, 5L * (StatsHandler.StatLevel(newLevel) - StatsHandler.StatLevel(oldLevel)))
-                        .Var(4, 5L * (StatsHandler.StatLevel(newLevel) - StatsHandler.StatLevel(oldLevel)))
-                        .Build()));
-            }
+            // kri, krb, krd and bcy went out here, an earlier protocol's: read against the 3.6 client's
+            // own classes, krb and bcy do not exist and kri is another message whose f1 is an
+            // integer -- the client could not parse the stats list sent as it. The kub below is
+            // what refreshes the sheet.
 
             // And the real sheet: the kub carries the level, the life the level gives, the experience
             // with its floor and ceiling, and the points left. It is the same pair of messages

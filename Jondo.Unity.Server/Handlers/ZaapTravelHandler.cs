@@ -296,6 +296,25 @@ namespace Jondo.Unity.Server.Handlers
             return salida;
         }
 
+        /// <summary>
+        /// What a zaap trip to a map costs from here (hir { f2: the map }), answered him { f1: the
+        /// map, f2: the kamas }, nothing in f2 for the map one stands on: the client asks it on
+        /// arriving on a map and while its autopilot plans a route, as the "feria del troll" and
+        /// "autopilotaje" captures show (165153537 at 50, then without a price once there).
+        /// </summary>
+        public static Task TellCostAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? hir = ConnectionProtocol.ReadPayload(payload, "hir");
+            if (hir == null) return Task.CompletedTask;
+            long map = 0;
+            foreach (var field in ProtoMessage.Parse(hir).Fields)
+                if (field.FieldNumber == 2 && field.WireType == 0) map = field.VarIntValue;
+            if (map <= 0) return Task.CompletedTask;
+            long cost = CostBetween(Jondo.Unity.Server.Network.SessionContext.State.MapId, map);
+            return Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push("him", Pb.New().Var(1, map).VarIfNotZero(2, cost).Build()));
+        }
+
         internal static long CostBetween(long from, long to)
         {
             var a = MapManager.GetMapInfo(from);

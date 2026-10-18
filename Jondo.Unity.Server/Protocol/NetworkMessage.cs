@@ -75,8 +75,15 @@ namespace Jondo.Protocol
             return payload;
         }
 
+        /// <summary>
+        /// Sees every frame written, before its length: the tests set it to audit what the server
+        /// builds against the client's schema (tools/auditar_protocolo.py). Null in the server.
+        /// </summary>
+        public static Action<byte[]>? FrameTap;
+
         public static async Task WriteFrameAsync(Stream stream, byte[] payload)
         {
+            FrameTap?.Invoke(payload);
             using var ms = new MemoryStream();
             var codedStream = new CodedOutputStream(ms);
             
