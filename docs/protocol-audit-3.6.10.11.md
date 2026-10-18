@@ -48,7 +48,7 @@ in the 756 captures and the client's senders in Ghidra.
 | `ido` | a document's «start the quest» button: a wanted poster, a book (the "se busca" posters' 1563-1565) | the start, or `lqn` 626 «No puedes empezar una misión ya empezada»; `kla` brings the `kld` | **fixed** |
 | `idv` | a quest no longer followed { quest, -1 } (`iec` follows one) | nothing | **fixed**: the followed quests come back in `iel` on entering the world |
 | `jwm`, `jth` | the shop's gifts window: one gift, or all of them, to a character (listed by `jtg` after the character list) | `jwj` { id, true }, `iua`, `iun` per gift | **fixed**: the gifts an administrator grants from F10 |
-| `kwd` | character creation's random name | `kvk` { name } | missing |
+| `kwd` | character creation's random name | `kvk` { name } | **fixed**: the branch waited for `kvk`, which only the server sends |
 | `koc`, `koe`, `kpb` | requests on entering the world | guild information, or nothing | not needed (sent unasked) |
 | `ktn`, `hos`, `lrd`, `jha` | chat channels on entering the world | `hou`, eleven `ktq`, `lru` | not needed (sent unasked) |
 | `kmr` | world entry | `kml`, `kmp`, `ktz`, `iom` | not needed (sent unasked) |

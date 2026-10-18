@@ -350,9 +350,11 @@ namespace Jondo.Unity.Server.Network
                 {
                     await CharacterDeletionHandler.CloseAsync(stream);
                 }
-                else if (payloadStr.Contains(Op.Uri(Op.Kvk)))
+                else if (payloadStr.Contains(Op.Uri("kwd")))
                 {
-                    // The dice button: a random name.
+                    // The dice button: a random name. The client asks with kwd and the name comes
+                    // back in a kvk («crear personaje - borrar personaje», three times); this branch
+                    // used to wait for the kvk itself, which the client never sends.
                     await CharacterCreationHandler.SuggestNameAsync(stream);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kvw)) || payloadStr.Contains(Op.Uri(Op.Ksl))

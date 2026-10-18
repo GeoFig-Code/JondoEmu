@@ -85,7 +85,7 @@ namespace Jondo.Unity.Server.Handlers
         public static IReadOnlyList<(int Gid, int Slot)> StarterItems => AdventurerSet;
 
         /// <summary>
-        /// The client asks for a random name (kvk) and expects the same message back with one inside.
+        /// The client asks for a random name (kwd) and expects a kvk with one inside.
         /// Without an answer the dice button did nothing.
         ///
         /// The shape is set by rule 1 of the client's NamingRules:
