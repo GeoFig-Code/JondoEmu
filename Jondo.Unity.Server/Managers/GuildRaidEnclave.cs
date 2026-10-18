@@ -527,7 +527,7 @@ namespace Jondo.Unity.Server.Managers
             if (protector.MonsterId != RightProtector(raid)) _wrongFights[fight.FightId] = 0;
         }
 
-        /// <summary>Whether a fight starting is lost at once: asked once a player, as the fight's start is.</summary>
+        /// <summary>Whether a fight starting is lost at once (asked as its board starts; the mark goes with Forget).</summary>
         public static bool LostFromTheStart(FightInstance fight) => fight != null && _wrongFights.ContainsKey(fight.FightId);
 
         /// <summary>A fight over: its mark goes.</summary>

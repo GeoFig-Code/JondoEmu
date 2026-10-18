@@ -2665,7 +2665,7 @@ namespace Jondo.Unity.Server.Handlers
         ///
         /// The kai is the cut between the two phases: placement goes before it and the fight after.
         /// </summary>
-        private static async Task StartFightAsync(FightInstance fight)
+        internal static async Task StartFightAsync(FightInstance fight)
         {
             // Once per fight. SetFighterReady has usually started the fight part already, and two
             // readies at the same instant asked for this twice: the opening burst went out twice.
@@ -2686,6 +2686,50 @@ namespace Jondo.Unity.Server.Handlers
             // frames of whoever is watching, and splitting it would leave a client receiving the jxb
             // out of its own sequence.
             await ACadaUnoAsync(fight, sesion => ArrancarParaUnoAsync(sesion.Stream, fight));
+
+            // And what happens on the board before the first turn, once, behind everybody's burst.
+            await BoardStartsAsync(fight);
+        }
+
+        /// <summary>
+        /// What happens on the board between the opening bursts and the first turn: the passives
+        /// and attitudes, the raids' own starts, and the first turn asked for -- ONCE a fight, from
+        /// the context of the first person in it, as the fight's other once-a-fight steps run.
+        /// </summary>
+        /// <remarks>
+        /// It closed each person's burst, so it ran once per person: with two, every attitude was
+        /// cast and applied twice, the Guardián laid sixteen glyphs, the turn was asked for twice,
+        /// and the second person saw the first's run before his own kai.
+        /// </remarks>
+        private static async Task BoardStartsAsync(FightInstance fight)
+        {
+            var first = Publico(fight).FirstOrDefault();
+            if (first == null) return;
+            try
+            {
+                using (SessionContext.Push(first))
+                {
+                    var stream = first.Stream;
+                    await CascadaDePasivosAsync(stream, fight);
+
+                    // A fight a raid's enigma says is lost from its start -- a wrong protector of the
+                    // Enclave's -- ends here, before the first turn.
+                    if (Managers.GuildRaidEnclave.LostFromTheStart(fight))
+                    {
+                        await LoseAtOnceAsync(stream, fight);
+                        return;
+                    }
+
+                    // Belladona's chess: the players turned into its pieces, its glyphs laid.
+                    await Managers.GuildRaidEfedra.OnFightStartedAsync(stream, fight);
+
+                    await AskToConfirmAsync(stream, fight);
+                }
+            }
+            catch (Exception ex)
+            {
+                Program.LogDebug($"[Fight] The board of fight #{fight.FightId} failed to start: {ex.Message}");
+            }
         }
 
         /// <summary>The starting burst, as ONE of the people in the fight sees it.</summary>
@@ -2800,20 +2844,8 @@ namespace Jondo.Unity.Server.Handlers
                 Program.LogDebug($"[Koliseo] {me} may give up fight #{fight.FightId}.");
             }
 
-            await CascadaDePasivosAsync(stream, fight);
-
-            // A fight a raid's enigma says is lost from its start -- a wrong protector of the
-            // Enclave's -- ends here, before the first turn.
-            if (Managers.GuildRaidEnclave.LostFromTheStart(fight))
-            {
-                if (fight.FinPendiente == 0) await LoseAtOnceAsync(stream, fight);
-                return;
-            }
-
-            // Belladona's chess: the players turned into its pieces, its glyphs laid (once a fight).
-            await Managers.GuildRaidEfedra.OnFightStartedAsync(stream, fight);
-
-            await AskToConfirmAsync(stream, fight);
+            // The board's own start -- the passives, the raids' and the first turn -- follows
+            // everybody's burst, once (BoardStartsAsync).
         }
 
         /// <summary>
