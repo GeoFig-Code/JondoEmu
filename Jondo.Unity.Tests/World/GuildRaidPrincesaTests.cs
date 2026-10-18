@@ -187,5 +187,53 @@ namespace Jondo.Unity.Tests.World
                 GuildRaidPrincesa.Forget(fight.FightId);
             }
         }
+
+        /// <summary>
+        /// Her phase II: healed, invulnerable, twice a round, the Volonté de la Reine beside her; the
+        /// Flor's turn lays the purple glyph on the ring; its stepper gets Encantamiento Floral, a
+        /// spell of one use; cast on her twice, it takes her invulnerability.
+        /// </summary>
+        [Fact]
+        public async Task The_purple_glyph_s_spell_breaks_her_invulnerability()
+        {
+            if (!HasData) return;
+            var (fight, princesa, people) = await Fight(443, 444);
+            try
+            {
+                princesa.CurrentHP = 1;
+                await FightHandler.DispararAsync(null, fight, princesa, "TR32013");   // her 1-life threshold
+                Assert.True(GuildRaidPrincesa.InSecondPhase(fight));
+                Assert.Equal(princesa.MaxHP, princesa.CurrentHP);
+                Assert.True(princesa.Buffs.TieneEstado(56));
+                Assert.Equal(50, fight.TwiceARound[princesa.Id]);
+                var volonte = fight.Rojo.Single(m => m.MonsterId == GuildRaidPrincesa.Volonte);
+                Assert.False(volonte.EsInvocado);
+
+                var flor = fight.Rojo.Single(m => m.MonsterId == GuildRaidPrincesa.Flor);
+                var player = people[0];
+                for (int use = 1; use <= 2; use++)
+                {
+                    await GuildRaidPrincesa.OnTurnStartAsync(null, fight, flor);
+                    var glyph = fight.Glifos.Single(g => g.Dueno == flor.Id);
+                    Assert.Contains(glyph.Casillas.First(), GuildRaidPrincesa.GlyphCells());
+
+                    // Stepped on: the spell given, the glyph gone.
+                    await FightHandler.AplicarEfectosAsync(null, fight, flor, glyph.Hechizo, glyph.Grado, player,
+                                                           EffectEngine.AlLanzar, player.CellId);
+                    Assert.Contains(player.GrantedSpells, g => g.Spell == 32024);
+                    Assert.DoesNotContain(fight.Glifos, g => g.Dueno == flor.Id);
+
+                    await FightHandler.CastAtAsync(null, fight, player, 32024, 1, princesa.CellId);
+                    Assert.DoesNotContain(player.GrantedSpells, g => g.Spell == 32024);   // one use
+                    Assert.Contains(32024, player.TakenSpells);
+                    Assert.True(princesa.Buffs.TieneEstado(GuildRaidPrincesa.Vulnerable));
+                    Assert.Equal(use == 1, princesa.Buffs.TieneEstado(56));
+                }
+            }
+            finally
+            {
+                GuildRaidPrincesa.Forget(fight.FightId);
+            }
+        }
     }
 }

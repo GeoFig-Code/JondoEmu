@@ -35,6 +35,12 @@ namespace Jondo.Unity.Server.Managers
     /// 2: "6665", vulnerable, 3107 die 1, its threshold put again) -- all the data's. Its 3107 moves
     /// it between the sides for real here (<see cref="ChangesSideForReal"/>): its turn's end heals
     /// and boosts "its allies" (32019 on "g"), the players while it is theirs.
+    ///
+    /// PHASE II: her threshold's script (32014) heals her, makes her invulnerable, plays twice a round
+    /// (4059) and casts 2194 on her scene, where the server brings in the Volonté de la Reine. The
+    /// Flor, on her side, lays at its turn a purple glyph for one turn on the board's middle ring;
+    /// its stepper is given "Encantamiento Floral" (3405), whose second cast on her takes her
+    /// invulnerability (its own states, 6666 then 56 off) and which takes itself away (3406).
     /// </remarks>
     public static class GuildRaidPrincesa
     {
@@ -105,7 +111,62 @@ namespace Jondo.Unity.Server.Managers
         public static int HomeSideOf(FightInstance fight, Fighter fighter)
             => fight?.Buscar(fighter.Invocador)?.TeamId ?? FightInstance.Rojos;
 
+        // ─── Phase II ───────────────────────────────────────────────────────────────────────
+
+        /// <summary>The Volonté de la Reine; the Flor's purple glyph's cells and its spell (32022 grade 2).</summary>
+        public const int Volonte = 8280;
+        public const int Glyph = 32022;
+        public const int GlyphGrade = 2;
+
+        /// <summary>Her phase II's marker, the Flor's on her side, and hers once vulnerable (on the Flor too).</summary>
+        public const int PhaseTwo = 6663;
+        public const int OnHerSide = 6665;
+        public const int Vulnerable = 6666;
+
+        /// <summary>The ring round the board's middle where the purple glyph goes: its spell's twenty fixed cells.</summary>
+        public static IReadOnlyList<int> GlyphCells() => SpellEffects.De(Glyph, 1).SelectMany(e => e.CeldasFijas).Distinct().ToList();
+
+        private static readonly ConcurrentDictionary<long, byte> _secondPhase = new();
+
+        public static bool InSecondPhase(FightInstance fight) => fight != null && _secondPhase.ContainsKey(fight.FightId);
+
+        /// <summary>
+        /// Her scene's next phase: the Volonté de la Reine beside her, one of her side -- as the
+        /// Reina's Volonté de la Princesse is in hers (inferred: the guide says so of the Reina's).
+        /// </summary>
+        public static async Task SecondPhaseAsync(NetworkStream stream, FightInstance fight, Fighter caster)
+        {
+            var princesa = PrincesaOf(fight);
+            if (princesa == null || caster != princesa || !_secondPhase.TryAdd(fight.FightId, 0)) return;
+            var volonte = await Handlers.FightHandler.SummonAsync(stream, fight, princesa, Volonte, 1, princesa.CellId);
+            await Handlers.FightHandler.PromoteSummonAsync(stream, fight, volonte);
+            Program.LogDebug($"[Raids] Fight #{fight.FightId}: the Princesa's phase II, the Volonté de la Reine in.");
+        }
+
+        /// <summary>
+        /// A turn starts: the Flor's, in her phase II, on her side, and she still invulnerable, lays its
+        /// purple glyph for a turn on a free cell of the ring -- what its turn-start script (32004
+        /// grade 2) draws one of twenty cells for, through a cast on a fixed cell this engine aims
+        /// elsewhere. "Ce glyphe ne peut être posé que sur les cases autour de la bordure du milieu".
+        /// </summary>
+        public static async Task OnTurnStartAsync(NetworkStream stream, FightInstance fight, Fighter fighter)
+        {
+            if (fighter == null || !fighter.IsMonster || fighter.MonsterId != Flor || !IsHers(fight)) return;
+            if (!fighter.Buffs.TieneEstado(PhaseTwo) || !fighter.Buffs.TieneEstado(OnHerSide) || fighter.Buffs.TieneEstado(Vulnerable)) return;
+            var walkable = MapManager.GetFightWalkable(fight.MapId);
+            var free = GlyphCells().Where(c => !fight.Todos.Any(f => f.IsAlive && f.Occupies(c))
+                                               && (walkable == null || walkable.Count == 0 || walkable.Contains(c))).ToList();
+            if (free.Count == 0) return;
+            int cell = free[Random.Shared.Next(free.Count)];
+            await Handlers.FightHandler.CastAtAsync(stream, fight, fighter, Glyph, GlyphGrade, cell);
+            Program.LogDebug($"[Raids] The Flor Maldita lays its purple glyph on {cell}.");
+        }
+
         /// <summary>A fight over: what it held goes.</summary>
-        public static void Forget(long fightId) => _started.TryRemove(fightId, out _);
+        public static void Forget(long fightId)
+        {
+            _started.TryRemove(fightId, out _);
+            _secondPhase.TryRemove(fightId, out _);
+        }
     }
 }

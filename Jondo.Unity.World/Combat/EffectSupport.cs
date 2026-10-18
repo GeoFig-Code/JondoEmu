@@ -149,6 +149,14 @@ namespace Jondo.Unity.World.Combat
         public const int ScenePhase = 2194;
 
         /// <summary>
+        /// 3405 and 3406, a spell given for the fight and taken back (their value a spell level):
+        /// the Princesa Maldita's purple glyph gives its stepper "Encantamiento Floral", a spell of one
+        /// use that takes itself away (DPLN: "un sort à utilisation unique").
+        /// </summary>
+        public const int GivesSpell = 3405;
+        public const int TakesSpell = 3406;
+
+        /// <summary>
         /// 2027, "Toma el control de la entidad": a row on a summon that makes it its owner's to
         /// play (Fighter.PlaysOnItsOwn). The Steamer's Evolución III lays it on his turrets,
         /// the Sram's Doble on the double, Dominio de Invocaciones on the summons -- row 248585

@@ -121,6 +121,12 @@ namespace Jondo.Unity.World.Fights
         /// </summary>
         public List<int> ExtraCells { get; } = new List<int>();
 
+        /// <summary>The spells given for the fight (3405), at their grades, on top of his own.</summary>
+        public List<(int Spell, int Grade)> GrantedSpells { get; } = new List<(int, int)>();
+
+        /// <summary>The spells taken back (3406): a spell of one use, used.</summary>
+        public HashSet<int> TakenSpells { get; } = new HashSet<int>();
+
         /// <summary>Whether this fighter takes a cell: its own, or one of its body's.</summary>
         public bool Occupies(int cell) => CellId == cell || (ExtraCells.Count > 0 && ExtraCells.Contains(cell));
 

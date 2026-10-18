@@ -319,7 +319,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
   players from it; her Flor Maldita stands in the middle on four cells
 - ✅ The Flor Maldita at its threshold goes over to the players for two rounds, healing and boosting
   whichever camp it is in
-- ❌ The Princesa's second phase
+- ✅ The Princesa's second phase: healed and invulnerable, playing twice a round with the Volonté de la
+  Reine; the Flor's purple glyph gives a one-use Encantamiento Floral, and two of them break her
+  invulnerability
 - ❌ Podium ornaments and titles; guild experience moving the guild level
 
 ### 🔱 Alliances

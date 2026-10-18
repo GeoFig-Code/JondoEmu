@@ -50,6 +50,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The fight's scene goes on to its next phase (effect 2194).</summary>
         public bool ScenePhase { get; init; }
 
+        /// <summary>A spell given or taken for the fight (3405, 3406): the bearer's bar is drawn again.</summary>
+        public bool SpellBarChanged { get; init; }
+
         /// <summary>
         /// Whether this row comes out of a spell's CRITICAL list: the jxm carries it as its f9.
         /// A critical cast runs the whole chain on the critical lists, and a spell with none
@@ -4173,6 +4176,27 @@ namespace Jondo.Unity.Server.Managers
                     Sobre = sobre, Caster = quienLanza, Efecto = efecto,
                     HechizoOrigen = hechizo, NivelOrigen = grado,
                     Lanza = true, CasillaDesde = deDonde, CasillaHasta = celdaApuntada,
+                };
+            }
+
+            if (efecto.EffectId == EffectSupport.GivesSpell || efecto.EffectId == EffectSupport.TakesSpell)
+            {
+                // A character's: what is given goes on his bar for the fight, what is taken off it.
+                if (sobre == null || sobre.IsMonster || sobre.EsInvocado || efecto.Value <= 0) return null;
+                var (dado, suGrado) = SpellCriteria.SpellOfLevel(efecto.Value);
+                if (dado <= 0) return null;
+                sobre.GrantedSpells.RemoveAll(g => g.Spell == dado);
+                if (efecto.EffectId == EffectSupport.GivesSpell)
+                {
+                    sobre.GrantedSpells.Add((dado, Math.Max(1, suGrado)));
+                    sobre.TakenSpells.Remove(dado);
+                }
+                else sobre.TakenSpells.Add(dado);
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    SpellBarChanged = true,
                 };
             }
 

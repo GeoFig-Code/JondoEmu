@@ -3328,6 +3328,9 @@ namespace Jondo.Unity.Server.Handlers
             // Belladona's chess ends as her fourth turn begins (GuildRaidEfedra).
             if (await Managers.GuildRaidEfedra.QueenTurnAsync(stream, fight, fighter)) return;
 
+            // The Flor Maldita's purple glyph, at its turn in the Princesa's phase II.
+            await Managers.GuildRaidPrincesa.OnTurnStartAsync(stream, fight, fighter);
+
             // Where he starts from and with how many MP: it is what is needed to judge, at the end,
             // the position challenges and the spend-exactly-one-MP one. It goes AFTER giving back
             // the points.
@@ -4253,6 +4256,13 @@ namespace Jondo.Unity.Server.Handlers
                     return;
                 }
                 dreamGrade = held.Value.Grade;
+            }
+
+            // A spell of one use, used (3406): not again until the fight gives it again.
+            if (caster.TakenSpells.Contains(spell) && !caster.GrantedSpells.Any(g => g.Spell == spell))
+            {
+                Program.LogDebug($"[Fight] {caster.Id} has used spell {spell} up.");
+                return;
             }
 
             // A piece of Belladona's chess casts only its move, where it reaches, and the blessing (GuildRaidEfedra).
@@ -6434,8 +6444,20 @@ namespace Jondo.Unity.Server.Handlers
                 if (c.PlaysTwice > 0 && c.Caster != null) fight.PlayTwiceARound(c.Caster.Id, c.PlaysTwice);
                 if (c.ScenePhase)
                 {
-                    // The Reina's phase II: the Volonté de la Princesse, the Pommeau and the Lame.
+                    // The bosses' phase II: the Reina's Volonté de la Princesse, Pommeau and Lame;
+                    // the Princesa's Volonté de la Reine.
                     await Managers.GuildRaidReina.SecondPhaseAsync(stream, fight, quienLanza);
+                    await Managers.GuildRaidPrincesa.SecondPhaseAsync(stream, fight, quienLanza);
+                    continue;
+                }
+                if (c.SpellBarChanged)
+                {
+                    // His bar drawn again, to him.
+                    var suyo = c.Sobre;
+                    await ACadaUnoAsync(fight, async sesion =>
+                    {
+                        if (sesion.State.CharacterId == suyo.Id) await RefreshPlayerSpellBarAsync(sesion.Stream);
+                    });
                     continue;
                 }
                 if (c.Staging >= 0)

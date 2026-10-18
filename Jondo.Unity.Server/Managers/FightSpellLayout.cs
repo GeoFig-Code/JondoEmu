@@ -55,12 +55,21 @@ namespace Jondo.Unity.Server.Managers
 
             var layout = Current(breed, level, accountId);
             int net = RideCapture.SpellOfEquippedNet();
-            if (net == 0 || layout.Spells.Any(s => s.Spell == net)) return layout;
-            layout.Spells.Add((net, 1));
+            if (net != 0 && !layout.Spells.Any(s => s.Spell == net)) AddOnFreeSlot(layout, net, 1);
+
+            // And what the fight gave him (3405): the Princesa's Encantamiento Floral.
+            var fighter = Handlers.FightHandler.FightOf(Network.SessionContext.State.CharacterId)?.Buscar(Network.SessionContext.State.CharacterId);
+            foreach (var (spell, grade) in fighter?.GrantedSpells ?? new List<(int, int)>())
+                if (!layout.Spells.Any(s => s.Spell == spell)) AddOnFreeSlot(layout, spell, grade);
+            return layout;
+        }
+
+        private static void AddOnFreeSlot(Layout layout, int spell, int grade)
+        {
+            layout.Spells.Add((spell, grade));
             var taken = layout.Bar.Select(b => b.Slot).ToHashSet();
             int slot = Enumerable.Range(1, SlotCount - 1).FirstOrDefault(s => !taken.Contains(s));
-            if (slot > 0) layout.Bar.Add((slot, net));
-            return layout;
+            if (slot > 0) layout.Bar.Add((slot, spell));
         }
 
         /// <summary>
