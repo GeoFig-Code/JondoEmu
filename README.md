@@ -311,7 +311,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
   timeline
 - ✅ The Reina Escarlata's fight starts in her four jails: two monsters in each sharing their damage,
   a Floráculo before each, everyone out and healed when the last of them falls
-- ❌ The Reina's Exilio Imperial and second phase; the Princesa's flower and statues
+- ✅ The Reina's Exilio Imperial locks a player in a free jail, passing his turns; breaking its Floráculo
+  lets him out, Évadé; everybody jailed loses the fight
+- ❌ The Reina's second phase; the Princesa's flower and statues
 - ❌ Podium ornaments and titles; guild experience moving the guild level
 
 ### 🔱 Alliances

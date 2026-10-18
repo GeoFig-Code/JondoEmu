@@ -142,6 +142,7 @@ namespace Jondo.Unity.Server.Handlers
             Managers.GuildRaidGuardians.OnFightCreated(fight);
             Managers.GuildRaidEnclave.OnFightCreated(fight);
             Managers.GuildRaidEfedra.OnFightCreated(fight);
+            Managers.GuildRaidReina.OnFightCreated(fight);
             Managers.GuildRaidSanctuary.OnFightCreated(fight);
 
             // A tax collector or a prism attacked: the fight learns whose it is, and its fighter
@@ -5907,7 +5908,8 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>The moves that travel as a jwe 4: the plain teleport and the symmetric ones.</summary>
         private static bool EsTeletransporte(int efecto)
-            => efecto is Jondo.Unity.World.Combat.EffectSupport.Teleport or 1099 or 1100 or 1104 or 1105 or 1106;
+            => efecto is Jondo.Unity.World.Combat.EffectSupport.Teleport or 1099 or 1100 or 1104 or 1105 or 1106
+                      or Jondo.Unity.World.Combat.EffectSupport.OutOfPrison;
 
         /// <summary>
         /// The copies of a fighter go: the switch back to visible and one 1029 per copy, in a
@@ -6394,6 +6396,15 @@ namespace Jondo.Unity.Server.Handlers
                 if (c.AcabaElTurno) fight.EndTurnRequested = true;
                 if (c.EndsTheFight && fight.WonByEffect < 0) fight.WonByEffect = c.Efecto.DiceNum;
                 if (c.PlaysTwice > 0 && c.Caster != null) fight.PlayTwiceARound(c.Caster.Id, c.PlaysTwice);
+                if (c.Staging >= 0)
+                {
+                    // Only a staging the fight's map has, as the raids' stagings read it.
+                    if (Managers.GuildRaidStagings.Of(fight.MapId).Any(s => s.Id == c.Staging))
+                        await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                            Network.FightProtocol.BuildTriggerStaging(quienLanza.Id, c.Staging,
+                                                                      c.Efecto.DiceSide > 0 ? c.Efecto.DiceSide : 100)));
+                    continue;
+                }
 
                 // A steal hands its points over as a row of its own on the caster (Steals), which
                 // the points branch above has already put in his hand.
@@ -6786,6 +6797,10 @@ namespace Jondo.Unity.Server.Handlers
                     && c.Sobre.Buffs.Puestos.Count(b => b.Estado == c.Buff.Estado
                                                        && b.EffectId == Jondo.Unity.World.Combat.EffectSupport.AddState) == 1)
                     Disparo(c.Sobre, Managers.EffectEngine.AlPonerseElEstado(c.Buff.Estado), quienLanza);
+
+                // A jail's marker on a player: into that jail (GuildRaidReina).
+                if (c.Buff.Estado != 0 && c.Efecto.EffectId == Jondo.Unity.World.Combat.EffectSupport.AddState)
+                    await Managers.GuildRaidReina.OnStateAsync(fight, c.Sobre, c.Buff.Estado);
 
                 if (c.Apariencia != 0)
                 {

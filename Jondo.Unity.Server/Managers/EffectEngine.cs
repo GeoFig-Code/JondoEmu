@@ -44,6 +44,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The caster plays twice a round from now on, its second turn this far into the round, in percent (effect 4059).</summary>
         public int PlaysTwice { get; init; }
 
+        /// <summary>A staging of the fight's map to play, by its uniqueId (effect 2192); -1 for none.</summary>
+        public int Staging { get; init; } = -1;
+
         /// <summary>
         /// Whether this row comes out of a spell's CRITICAL list: the jxm carries it as its f9.
         /// A critical cast runs the whole chain on the critical lists, and a spell with none
@@ -1092,6 +1095,10 @@ namespace Jondo.Unity.Server.Managers
             foreach (var t in trozos)
             {
                 if (t.Length == 0) continue;
+
+                // PR: somebody in a prison -- the Reina's jails' (GuildRaidReina.Jailed).
+                if (t == "PR") { if (!GuildRaidReina.Jailed(quien)) return false; continue; }
+
                 bool? lado = t switch
                 {
                     "a" => deEscena ? null : suyo,
@@ -1419,6 +1426,18 @@ namespace Jondo.Unity.Server.Managers
         /// which is what keeps you from transferring what you no longer have.
         /// </remarks>
         private const int TransfiereVida = 90;
+
+        /// <summary>A walkable cell nobody else stands on: the one asked for, or the nearest such; -1 if none.</summary>
+        private static int CeldaLibreMasCercana(FightInstance combate, int celda, Fighter quien)
+        {
+            var suelo = MapManager.GetFightWalkable(combate.ArenaMapId);
+            var tomadas = new HashSet<int>(Todos(combate).Where(f => f != null && f.IsAlive && f != quien).Select(f => f.CellId));
+            bool Libre(int c) => !tomadas.Contains(c) && (suelo == null || suelo.Count == 0 || suelo.Contains(c));
+            if (celda >= 0 && Libre(celda)) return celda;
+            if (suelo == null || suelo.Count == 0) return -1;
+            return suelo.Where(Libre).OrderBy(c => Jondo.Unity.World.Maps.MapGeometry.Distance(c, celda)).ThenBy(c => c)
+                        .Cast<int?>().FirstOrDefault() ?? -1;
+        }
 
         /// <summary>«Teleports to the target cell». 425 spells carry it.</summary>
         /// <remarks>
@@ -3010,6 +3029,7 @@ namespace Jondo.Unity.Server.Managers
             bool ownSummonsOnly = false, notOwnSummons = false, alInvocador = false;
             bool alAtacante = false;
             bool soloTelefragueados = false, soloTeleportFallido = false, soloLoInvocado = false;
+            bool soloEncerrados = false;
 
             // The kinds of fighter a letter names, by side: the lower case is the caster's side
             // and the upper case the other one. c is the caster himself, when he stands in the
@@ -3240,6 +3260,10 @@ namespace Jondo.Unity.Server.Managers
                 // "-1 MP on a,U" drained every fighter on the board each turn.
                 if (t == "U") { soloLoInvocado = true; continue; }
 
+                // PR: somebody in a prison, the Reina's jails' -- carrying a jail's marker
+                // (GuildRaidReina.Jailed). Let through, it had her end-of-fight check take everybody.
+                if (t == "PR") { soloEncerrados = true; continue; }
+
                 if (t.Length > 1 && (t[0] == 'e' || t[0] == 'E') && int.TryParse(t.Substring(1), out int estado))
                 {
                     if (t[0] == 'E') pideEstado.Add(estado); else pideNoEstado.Add(estado);
@@ -3452,6 +3476,7 @@ namespace Jondo.Unity.Server.Managers
                 if (withShield && quien.PuntosDeEscudo <= 0) vale = false;
                 if (withoutShield && quien.PuntosDeEscudo > 0) vale = false;
                 if (soloTelefragueados && !combate.Telefrags.ContainsKey(quien.Id)) vale = false;
+                if (soloEncerrados && !GuildRaidReina.Jailed(quien)) vale = false;
                 if (soloTeleportFallido && !combate.TeleportsFallidos.Contains(quien.Id)) vale = false;
                 if (vale) yield return quien;
             }
@@ -4124,6 +4149,33 @@ namespace Jondo.Unity.Server.Managers
                     Sobre = sobre, Caster = quienLanza, Efecto = efecto,
                     HechizoOrigen = hechizo, NivelOrigen = grado,
                     Lanza = true, CasillaDesde = deDonde, CasillaHasta = celdaApuntada,
+                };
+            }
+
+            if (efecto.EffectId == EffectSupport.PlaysStaging)
+            {
+                // Nothing on the fighter: the board plays the staging (FightHandler).
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    Staging = efecto.DiceNum,
+                };
+            }
+
+            if (efecto.EffectId == EffectSupport.OutOfPrison)
+            {
+                // Forced, the jailed being pinned (6630): to the cell, or the free one nearest it.
+                if (!sobre.IsAlive) return null;
+                int destino = CeldaLibreMasCercana(combate, efecto.DiceSide, sobre);
+                if (destino < 0 || destino == sobre.CellId) return null;
+                int veniaDe = sobre.CellId;
+                sobre.MoverA(destino);
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    CasillaDesde = veniaDe, CasillaHasta = destino,
                 };
             }
 

@@ -128,6 +128,20 @@ namespace Jondo.Unity.World.Combat
         public const int PlaysTwice = 4059;
 
         /// <summary>
+        /// 2192, a staging of the fight's map played (its uniqueId on the die's number, its
+        /// intensity on its side): the Reina's "Staging Manager" lifts and lowers her jails' cages
+        /// with it ("#SD_cage1_up"...). The same jwe the server sends for the Sima's arenas.
+        /// </summary>
+        public const int PlaysStaging = 2192;
+
+        /// <summary>
+        /// 4068, out of a prison to a cell: the Floráculo's threshold sends the one in its jail to
+        /// the cell on the die's side (its number names the jail's "prisonGlyph"). Forced: whoever
+        /// is jailed carries a state that keeps him from being moved (6630).
+        /// </summary>
+        public const int OutOfPrison = 4068;
+
+        /// <summary>
         /// 2027, "Toma el control de la entidad": a row on a summon that makes it its owner's to
         /// play (Fighter.PlaysOnItsOwn). The Steamer's Evolución III lays it on his turrets,
         /// the Sram's Doble on the double, Dominio de Invocaciones on the summons -- row 248585

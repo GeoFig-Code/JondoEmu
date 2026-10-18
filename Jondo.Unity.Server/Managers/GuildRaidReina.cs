@@ -38,6 +38,18 @@ namespace Jondo.Unity.Server.Managers
     /// monsters stand on the jail's free cells farthest from the players; the Reina's pass goes when the
     /// last of them falls. Not done: the jails as fights of their own, the player's summons dying as
     /// he leaves one.
+    ///
+    /// THE EXILIO IMPERIAL ("Exil Impérial : Inflige 850 de dégâts terre à la cible et la place
+    /// aléatoirement dans un des 4 cachots. Un personnage dans un cachot passe ses tours"; "Chaque
+    /// cachot ne peut contenir qu'un seul personnage. Si tous les personnages du combat sont dans un
+    /// cachot, le combat est automatiquement perdu"): the Reina's four versions, one per jail, each
+    /// usable while hers is free, put on the one hit the jail's marker (7110 to 7113), his pass and
+    /// his loss of life each turn, and its Floráculo's vulnerability -- all the data's. Where he goes is
+    /// a chain the data runs through cells ("checkWhereToTp", 31943, the jail's cell on each grade)
+    /// and a teleport this engine cannot read: the server puts whoever takes a jail's marker on that
+    /// cell (<see cref="OnStateAsync"/>), and ends the fight when every player is jailed. The
+    /// Floráculo at its threshold lets him out by the data -- 4068 to the jail's exit, the cage down,
+    /// his pass and marker off, "Évadé" and his immunity on --, "PR" being somebody jailed.
     /// </remarks>
     public static class GuildRaidReina
     {
@@ -51,6 +63,9 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>The Reina's "Passtour": she passes her turns while the jails hold their monsters.</summary>
         public const int PassTurns = 32169;
+
+        /// <summary>The Exilio's "checkWhereToTp": its grades 1 to 4 name, in their fixed cell, each jail's cell for the one sent in.</summary>
+        public const int CheckWhereToTp = 31943;
 
         /// <summary>A jail's cells (4040, "prisonGlyph") and the way out of it (4068).</summary>
         public const int PrisonGlyph = 4040;
@@ -69,7 +84,7 @@ namespace Jondo.Unity.Server.Managers
         /// lowering its cage, and the kind of its monsters.
         /// </summary>
         public sealed record Jail(int Number, int Glyph, IReadOnlyList<int> Cells, int Exit, int Marker,
-                                  int Floracle, int FloracleCell, int CageUp, int CageDown, int Kind);
+                                  int Floracle, int FloracleCell, int CageUp, int CageDown, int Kind, int Cell = -1);
 
         private static IReadOnlyList<Jail> _jails;
 
@@ -98,7 +113,12 @@ namespace Jondo.Unity.Server.Managers
                                    floracleId, hitbox.CeldasFijas[0], up, down, 0));
             }
             if (jails.Count != JailKinds.Count) return Array.Empty<Jail>();
-            _jails = jails.OrderBy(j => j.Marker).Select((j, i) => j with { Number = i + 1, Kind = JailKinds[i] }).ToList();
+            var sentTo = Enumerable.Range(1, JailKinds.Count)
+                                   .SelectMany(g => SpellEffects.De(CheckWhereToTp, g).SelectMany(e => e.CeldasFijas)).ToList();
+            _jails = jails.OrderBy(j => j.Marker)
+                          .Select((j, i) => j with { Number = i + 1, Kind = JailKinds[i],
+                                                     Cell = sentTo.Where(c => j.Cells.Contains(c)).DefaultIfEmpty(j.Cells[0]).First() })
+                          .ToList();
             return _jails;
         }
 
@@ -117,6 +137,42 @@ namespace Jondo.Unity.Server.Managers
         private static Fighter ReinaOf(FightInstance fight) => fight?.Rojo.FirstOrDefault(m => m.IsAlive && m.IsMonster && !m.EsInvocado && m.MonsterId == Reina);
 
         public static bool InJailPhase(FightInstance fight) => fight != null && _jailPhase.ContainsKey(fight.FightId);
+
+        /// <summary>Whether a fighter is in a prison: he carries one of the jails' markers.</summary>
+        public static bool Jailed(Fighter fighter) => fighter != null && Jails().Any(j => fighter.Buffs.TieneEstado(j.Marker));
+
+        /// <summary>A fight just built: the Reina's scripts are written for her fight's scene ("Sce"), which she stands for.</summary>
+        public static void OnFightCreated(FightInstance fight)
+        {
+            var reina = ReinaOf(fight);
+            if (reina != null && Jails().Count > 0) fight.SceneStandIn = reina;
+        }
+
+        /// <summary>
+        /// A state put on a fighter: a jail's marker on a player sends him into that jail, on its cell
+        /// or the free one nearest it; every player jailed, the fight is lost (3402's way, once the
+        /// Exilio is over).
+        /// </summary>
+        public static async Task OnStateAsync(FightInstance fight, Fighter fighter, int state)
+        {
+            if (fight == null || fighter == null || fighter.IsMonster || fighter.EsInvocado || !fighter.IsAlive) return;
+            var jail = Jails().FirstOrDefault(j => j.Marker == state);
+            if (jail == null || ReinaOf(fight) == null) return;
+            if (!jail.Cells.Contains(fighter.CellId))
+            {
+                int cell = jail.Cell;
+                if (fight.Todos.Any(f => f.IsAlive && f != fighter && f.CellId == cell))
+                    cell = jail.Cells.Where(c => !fight.Todos.Any(f => f.IsAlive && f.CellId == c))
+                                     .OrderBy(c => Jondo.Unity.World.Maps.MapGeometry.Distance(c, jail.Cell)).DefaultIfEmpty(-1).First();
+                if (cell >= 0) await Handlers.FightHandler.TeleportNearAsync(fight, fighter, cell);
+            }
+            Program.LogDebug($"[Raids] {fighter.Id} is jailed in the Reina's jail {jail.Number}.");
+            if (fight.Azul.Where(f => f.IsAlive && !f.IsMonster && !f.EsInvocado).All(Jailed) && fight.WonByEffect < 0)
+            {
+                fight.WonByEffect = FightInstance.Rojos;
+                Program.LogDebug($"[Raids] Fight #{fight.FightId}: every player jailed, the fight is lost.");
+            }
+        }
 
         /// <summary>
         /// The board starts: each jail's cage closed and its Floráculo before it, and two monsters in

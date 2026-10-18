@@ -126,5 +126,92 @@ namespace Jondo.Unity.Tests.World
                 GuildRaidReina.Forget(fight.FightId);
             }
         }
+
+        /// <summary>The Reina out of her jail phase, with her script on and the Floráculos at their doors; players in the middle.</summary>
+        private static async Task<(FightInstance Fight, Fighter Reina, Fighter[] People)> Unjailed(int people)
+        {
+            if (!MapManager.WalkableCells.ContainsKey(Arena)) MapManager.Initialize();
+            MobSpawnManager.EnsureMonsterData();
+            var fight = new FightInstance(9702 + people, 238295316, Arena);
+            var cells = new[] { 243, 244, 245, 271 };
+            var players = Enumerable.Range(0, people).Select(i => new Fighter
+            {
+                Id = 7101 + i, TeamId = 0, CellId = cells[i], MaxHP = 5000, CurrentHP = 5000, Level = 200,
+            }).ToArray();
+            foreach (var person in players) fight.AddPlayer(person);
+            var reina = new Fighter { Id = -1, TeamId = 1, CellId = 300, MaxHP = 50000, CurrentHP = 50000, IsMonster = true,
+                                      MonsterId = GuildRaidReina.Reina, Level = 200 };
+            fight.AddMonster(reina);
+            GuildRaidReina.OnFightCreated(fight);
+            fight.StartFight();
+            await FightHandler.AplicarEfectosAsync(null, fight, reina, 31924, 1, reina, EffectEngine.AlLanzar, reina.CellId);
+            await GuildRaidReina.OnFightStartedAsync(null, fight);     // nobody in a jail: no monsters, open at once
+            return (fight, reina, players);
+        }
+
+        /// <summary>
+        /// The Exilio for jail I sends the one hit into it, with its marker and his pass; its Floráculo
+        /// at its threshold lets him out at the jail's exit, his marker and pass gone, Évadé and
+        /// immune for a while, and jail I free again for the Reina.
+        /// </summary>
+        [Fact]
+        public async Task The_exilio_jails_and_the_floraculo_frees()
+        {
+            if (!HasData) return;
+            var (fight, reina, people) = await Unjailed(2);
+            try
+            {
+                Assert.False(GuildRaidReina.InJailPhase(fight));
+                Assert.Same(reina, fight.SceneStandIn);
+                var jail = GuildRaidReina.Jails()[0];
+                var jailed = people[0];
+
+                await FightHandler.CastAtAsync(null, fight, reina, 31937, 1, jailed.CellId);
+                Assert.True(GuildRaidReina.Jailed(jailed));
+                Assert.Equal(jail.Cell, jailed.CellId);
+                Assert.True(reina.Buffs.TieneEstado(6626));            // jail I taken
+                var floracle = fight.Rojo.Single(m => m.MonsterId == jail.Floracle);
+                Assert.True(floracle.Buffs.TieneEstado(6635));          // open to blows
+                Assert.True(jailed.Buffs.Puestos.Any(b => b.HechizoOrigen == 31942));
+                Assert.Equal(-1, fight.WonByEffect);                    // the other is still out
+
+                await FightHandler.CastAtAsync(null, fight, floracle, GuildRaidReina.FloracleThreshold, 1, floracle.CellId);
+                Assert.False(GuildRaidReina.Jailed(jailed));
+                Assert.Null(GuildRaidReina.JailAt(jailed.CellId));
+                Assert.True(MapGeometry.Distance(jailed.CellId, jail.Exit) <= 1);
+                Assert.True(jailed.Buffs.TieneEstado(6631));            // immune to the Exilio
+                Assert.True(jailed.Buffs.TieneEstado(7157));            // Évadé
+                Assert.DoesNotContain(jailed.Buffs.Puestos, b => b.HechizoOrigen == 31942);
+                Assert.False(reina.Buffs.TieneEstado(6626));
+            }
+            finally
+            {
+                GuildRaidReina.Forget(fight.FightId);
+            }
+        }
+
+        /// <summary>Everybody jailed loses the fight; nobody jailed, the Reina's end-of-fight check kills nobody.</summary>
+        [Fact]
+        public async Task Everybody_jailed_loses()
+        {
+            if (!HasData) return;
+            var (fight, reina, people) = await Unjailed(2);
+            try
+            {
+                for (int i = 0; i < 3; i++) await FightHandler.DispararAsync(null, fight, reina, EffectEngine.AlEmpezarElTurno);
+                Assert.All(people, p => Assert.True(p.IsAlive));
+
+                await FightHandler.CastAtAsync(null, fight, reina, 31937, 1, people[0].CellId);
+                Assert.Equal(-1, fight.WonByEffect);
+                await FightHandler.CastAtAsync(null, fight, reina, 31973, 1, people[1].CellId);
+                Assert.True(GuildRaidReina.Jailed(people[1]));
+                Assert.Equal(GuildRaidReina.Jails()[1].Cell, people[1].CellId);
+                Assert.Equal(FightInstance.Rojos, fight.WonByEffect);
+            }
+            finally
+            {
+                GuildRaidReina.Forget(fight.FightId);
+            }
+        }
     }
 }
