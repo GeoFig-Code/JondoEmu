@@ -60,6 +60,7 @@ in the 756 captures and the client's senders in Ghidra.
 | `med` | swapping places in an alliance fight (JoinFightUtils.SwapPlaces) { f1 the fight, f3 the defender } | unknown | **fixed**, inferred: a join, or the named defender's place when the side is full |
 | `iey` | the prism menu's «Añadir un cristal» (PrismMenuMaker.OnPrismModulesManage) | the crystal window, `kci` { f3 18 } (PrismModuleUi), then `kcr` drops the crystal | **fixed**: see `PrismHandler`, the own alliance's prism view (ley f1, f6) |
 | `hkp`, `mat` | a tax collector request, an alliance one | nothing reaches them: no window raises their events (drk, dpm) | not needed |
+| `kug` | «Resucitar» on the death popup, «Liberar alma» on one's own menu, as a tomb (eoy.bani) | `kup` { 0 } and the way to the save point | **fixed** for a conquest's tombs: see `ConquestHandler` |
 | `kjw`, `jaq` | the map panel's «leave the dungeon» and «leave the haven bag» (MapInfoUI) | the way out | **fixed** |
 | `hph` without its f2 | «Agredir» on a player (PlayerMenuMaker.OnAttack), which the server took for a challenge | the aggression's fight in a conquest's zone, else `lqn` 421 | **fixed**: see `ConquestHandler`, with the conquest's `mep` and `mdz` |
 

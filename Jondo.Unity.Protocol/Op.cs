@@ -3032,6 +3032,12 @@ public static class Op
     /// <summary>S→C { f1 [hof { f1 role, f2 status, f3 character }] }: several players' AvA status and role (eht.gaf).</summary>
     public const string Hoh = "hoh";
 
+    /// <summary>S→C { f1 life state: 0 alive, 1 tomb, 2 phantom; f2 a map }: the character's life state (ees.wup).</summary>
+    public const string Kup = "kup";
+
+    /// <summary>C→S: «Resucitar» on the death popup, or «Liberar alma» on one's own menu, as a tomb (eoy.bani).</summary>
+    public const string Kug = "kug";
+
     /// <summary>S→C: a conquest's score, every minute (fgv.bewm; see KothProtocol).</summary>
     public const string Mep = "mep";
 

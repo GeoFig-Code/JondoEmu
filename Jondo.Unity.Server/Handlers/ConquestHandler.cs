@@ -79,6 +79,12 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>«A menos de 6 casillas»: how near an enemy passes for a sentinel on guard to attack him.</summary>
         public const int SentinelReach = 6;
 
+        /// <summary>The resurrector's potion's effect (14443): his allies' tombs on his map rise.</summary>
+        public const int ResurrectorPotionEffect = 206;
+
+        /// <summary>The gravedigger's potion's effect (14442): his enemies' tombs on his map have their souls freed.</summary>
+        public const int GravediggerPotionEffect = 648;
+
         /// <summary>No role shown over a character (hof.f1, hon.f4): RoleplayEntitiesService.yab draws none for -1.</summary>
         private const int NoRole = -1;
 
@@ -208,6 +214,14 @@ namespace Jondo.Unity.Server.Handlers
         {
             var winner = AllianceStore.ById(winnerId);
             var fighters = FightersIn(war.SubAreaId);
+
+            // The conquest over, its tombs rise.
+            foreach (long fallen in war.Fallen.Keys.ToList())
+            {
+                var session = SessionRegistry.FindByCharacter(fallen);
+                if (session != null) await session.SendAsync(ConnectionProtocol.Push(Op.Kup, KothProtocol.BuildLifeState(KothProtocol.Alive)));
+            }
+            war.Fallen.Clear();
             if (winner != null)
             {
                 byte[] end = ConnectionProtocol.Push(Op.Mdz, KothProtocol.BuildEnd(winner));
@@ -284,7 +298,7 @@ namespace Jondo.Unity.Server.Handlers
         public static bool FightsInAWar(long characterId)
         {
             var session = SessionRegistry.FindByCharacter(characterId);
-            return session != null && Admit(session);
+            return session != null && Admit(session) && Conquests.In(SubAreaOf(WhereIs(session)))?.Fallen.ContainsKey(characterId) != true;
         }
 
         /// <summary>Lets a session into its zone's conquest, if it may come in; whether it is in.</summary>
@@ -317,7 +331,7 @@ namespace Jondo.Unity.Server.Handlers
             foreach (var session in FightersIn(subAreaId))
             {
                 long id = session.State.CharacterId;
-                if (war != null && war.Admitted.TryGetValue(id, out var admitted))
+                if (war != null && war.Admitted.TryGetValue(id, out var admitted) && !war.Fallen.ContainsKey(id))
                     present.Add(new Conquests.Presence(admitted.Alliance, WhereIs(session), id, admitted.Role));
             }
             return present;
@@ -338,14 +352,20 @@ namespace Jondo.Unity.Server.Handlers
             if (characterId == 0 || !AllianceStore.TakesPartInAva(characterId)) return;
             if (AllianceStore.AllianceOf(characterId) == null) return;
 
-            // Out of a zone, out of its conquest: his role's place is free again.
+            // Out of a zone, out of its conquest: his role's place is free again, and a tomb that
+            // left is alive again.
             foreach (var other in Conquests.All())
-                if (other.SubAreaId != subAreaId) Conquests.Release(other, characterId);
+            {
+                if (other.SubAreaId == subAreaId) continue;
+                if (other.Fallen.ContainsKey(characterId))
+                    await SendAsync(stream, ConnectionProtocol.Push(Op.Kup, KothProtocol.BuildLifeState(KothProtocol.Alive)));
+                Conquests.Release(other, characterId);
+            }
 
             var war = IsWarZone(subAreaId) ? Conquests.In(subAreaId) : null;
             int status = AllianceProtocol.AggressableStatus(characterId);
             if (war != null) await OnWalkedAsync(SessionRegistry.FindByCharacter(characterId));
-            if (war != null && status != AllianceProtocol.AvaAggressable)
+            if (war != null && status != AllianceProtocol.AvaAggressable && !war.Admitted.ContainsKey(characterId) && !war.Freed.ContainsKey(characterId))
                 await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, RoleFull)));
 
             // A scout on the prism's map gathers nothing there.
@@ -388,7 +408,8 @@ namespace Jondo.Unity.Server.Handlers
                     long them = other.State.CharacterId;
                     if (them == me || !war.Admitted.TryGetValue(them, out var theirs)) continue;
                     int role = theirs.Alliance == mine.Alliance || mine.Role == KothRoles.Seer ? theirs.Role : NoRole;
-                    hoh.Msg(1, AllianceProtocol.StatusOf(them, AllianceProtocol.AvaAggressable, role));
+                    int status = war.Fallen.ContainsKey(them) ? AllianceProtocol.AvaNotAggressable : AllianceProtocol.AvaAggressable;
+                    hoh.Msg(1, AllianceProtocol.StatusOf(them, status, role));
                 }
                 await viewer.SendAsync(ConnectionProtocol.Push(Op.Hoh, hoh.Build()));
             }
@@ -453,14 +474,14 @@ namespace Jondo.Unity.Server.Handlers
             if (me.State.IsInFight || me.State.FightId != 0 || target.State.IsInFight || target.State.FightId != 0) return;
 
             var mine = AllianceStore.AllianceOf(myId);
-            if (mine == null || !AllianceStore.TakesPartInAva(myId) || !IsWarZone(SubAreaOf(me.State.MapId)))
+            if (mine == null || !AllianceStore.TakesPartInAva(myId) || !IsWarZone(SubAreaOf(me.State.MapId)) || !FightsInAWar(myId))
             {
                 await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn,
                     ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, NotAnAvaFighter)));
                 return;
             }
             var theirs = AllianceStore.AllianceOf(targetId);
-            if (theirs == null || theirs.Id == mine.Id || !AllianceStore.TakesPartInAva(targetId)) return;
+            if (theirs == null || theirs.Id == mine.Id || !FightsInAWar(targetId)) return;
 
             Program.LogDebug($"[Conquest] {myId} of «{mine.Name}» attacks {targetId} of «{theirs.Name}».");
             await FightHandler.InitiatePvpAsync(new List<GameSession> { me }, new List<GameSession> { target },
@@ -483,18 +504,158 @@ namespace Jondo.Unity.Server.Handlers
             var winners = AlliancesOf(attackersWon ? fight.Azul : fight.Rojo);
             var losers = AlliancesOf(attackersWon ? fight.Rojo : fight.Azul);
             Conquests.FightOver(war, winners, losers);
+
+            // The losers fall: a tomb where they fought, or, the champion, his soul freed at once
+            // -- «cuando lo derrotan, su alma se libera, lo que impide su reencarnación in situ».
+            foreach (var loser in (attackersWon ? fight.Rojo : fight.Azul).Where(f => !f.IsMonster && !f.EsInvocado))
+            {
+                if (StaysAsTomb(fight, loser.Id)) await FallAsync(war, loser.Id);
+                else if (war.Admitted.ContainsKey(loser.Id))
+                {
+                    Conquests.Release(war, loser.Id);
+                    war.Freed[loser.Id] = true;
+                }
+            }
             await SendScoreAsync(war);
+            await SendRolesAsync(war);
         }
+
+        // ─── The fallen ─────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Whether one who lost this fight stays where he fought, a tomb, instead of going back to
+        /// his save point: an aggression of a running conquest, a fighter let into it, and no
+        /// champion, whose soul is freed when he is beaten.
+        /// </summary>
+        public static bool StaysAsTomb(FightInstance fight, long characterId)
+        {
+            if (fight == null || fight.Reglas != FightRules.Agresion) return false;
+            var war = Conquests.In(SubAreaOf(fight.RoleplayMapId));
+            return war != null && war.Admitted.TryGetValue(characterId, out var admitted) && admitted.Role != KothRoles.Champion;
+        }
+
+        /// <summary>
+        /// A fighter falls: a tomb (kup 1, the death popup), out of the count and of the fights --
+        /// not aggressable --, what a scout carried lost and a sentinel's guard over.
+        /// </summary>
+        private static async Task FallAsync(Conquests.War war, long characterId)
+        {
+            if (!war.Admitted.TryGetValue(characterId, out var admitted)) return;
+            war.Fallen[characterId] = admitted.Alliance;
+            war.ScoutCarried.TryRemove(characterId, out _);
+            war.Sentinels.TryRemove(characterId, out _);
+
+            var session = SessionRegistry.FindByCharacter(characterId);
+            if (session == null) return;
+            var (savePoint, _) = FightHandler.SavePointOf(characterId);
+            await session.SendAsync(ConnectionProtocol.Push(Op.Kup, KothProtocol.BuildLifeState(KothProtocol.Tomb, savePoint)));
+            _heard[characterId] = AllianceProtocol.AvaNotAggressable;
+            await session.SendAsync(ConnectionProtocol.Push(Op.Hon,
+                AllianceProtocol.BuildAggressableStatus(characterId, AllianceProtocol.AvaNotAggressable)));
+            Program.LogDebug($"[Conquest] {session.State.CharacterName} falls in subarea {war.SubAreaId}: a tomb.");
+        }
+
+        /// <summary>
+        /// A tomb's «Resucitar» on the death popup, or «Liberar alma» on his menu (kug): his soul is
+        /// freed. He is alive again (kup 0) at his save point, out of this conquest for good.
+        /// </summary>
+        public static async Task FreeSoulAsync(NetworkStream stream)
+        {
+            var me = SessionContext.Current;
+            long id = me.State.CharacterId;
+            var war = Conquests.All().FirstOrDefault(w => w.Fallen.ContainsKey(id));
+            if (war == null) return;
+            await FreeAsync(war, me);
+        }
+
+        /// <summary>A tomb's soul freed: alive again at his save point, never back in this conquest.</summary>
+        private static async Task FreeAsync(Conquests.War war, GameSession session)
+        {
+            long id = session.State.CharacterId;
+            Conquests.Release(war, id);
+            war.Freed[id] = true;
+            await session.SendAsync(ConnectionProtocol.Push(Op.Kup, KothProtocol.BuildLifeState(KothProtocol.Alive)));
+            var (savePoint, _) = FightHandler.SavePointOf(id);
+            using (SessionContext.Push(session)) await WorldMoveHandler.TeleportAsync(session.Stream, savePoint);
+            Program.LogDebug($"[Conquest] The soul of {session.State.CharacterName} is freed from subarea {war.SubAreaId}.");
+        }
+
+        /// <summary>
+        /// The resurrector's potion: his allies' tombs on his map rise, back in the count and the
+        /// fights. With none there, nothing is spent.
+        /// </summary>
+        private static async Task<bool> ResurrectorPotionAsync(NetworkStream stream, Equipment.Item item)
+        {
+            var (war, me, mine) = RoleHolder(KothRoles.Resurrector);
+            var risen = war == null ? new List<GameSession>()
+                : TombsAround(war, me, alliance => alliance == mine);
+            if (risen.Count == 0)
+            {
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, InfoMessages.RequirementsNotMet)));
+                return true;
+            }
+            if (!await ItemUseHandler.SpendOneAsync(stream, item.Uid)) return true;
+            foreach (var tomb in risen)
+            {
+                long id = tomb.State.CharacterId;
+                war.Fallen.TryRemove(id, out _);
+                await tomb.SendAsync(ConnectionProtocol.Push(Op.Kup, KothProtocol.BuildLifeState(KothProtocol.Alive)));
+                _heard[id] = AllianceProtocol.AvaAggressable;
+                await tomb.SendAsync(ConnectionProtocol.Push(Op.Hon,
+                    AllianceProtocol.BuildAggressableStatus(id, AllianceProtocol.AvaAggressable, RoleIn(war, id))));
+            }
+            Program.LogDebug($"[Conquest] Resurrector {me.State.CharacterName} raises {risen.Count} tomb(s).");
+            await SendRolesAsync(war);
+            return true;
+        }
+
+        /// <summary>
+        /// The gravedigger's potion: his enemies' tombs on his map have their souls freed -- out of
+        /// this conquest for good, sent back to their save points. With none there, nothing is spent.
+        /// </summary>
+        private static async Task<bool> GravediggerPotionAsync(NetworkStream stream, Equipment.Item item)
+        {
+            var (war, me, mine) = RoleHolder(KothRoles.Gravedigger);
+            var freed = war == null ? new List<GameSession>()
+                : TombsAround(war, me, alliance => alliance != mine);
+            if (freed.Count == 0)
+            {
+                await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, InfoMessages.RequirementsNotMet)));
+                return true;
+            }
+            if (!await ItemUseHandler.SpendOneAsync(stream, item.Uid)) return true;
+            foreach (var tomb in freed) await FreeAsync(war, tomb);
+            Program.LogDebug($"[Conquest] Gravedigger {me.State.CharacterName} frees {freed.Count} soul(s).");
+            await SendRolesAsync(war);
+            return true;
+        }
+
+        /// <summary>The conquest of the session being served, if it fights there with this role, and its alliance.</summary>
+        private static (Conquests.War War, GameSession Me, long Alliance) RoleHolder(int role)
+        {
+            var me = SessionContext.Current;
+            long id = me.State.CharacterId;
+            var war = Conquests.In(SubAreaOf(WhereIs(me)));
+            if (war == null || !FightsInAWar(id) || RoleIn(war, id) != role) return (null, me, 0);
+            return (war, me, war.Admitted[id].Alliance);
+        }
+
+        /// <summary>The tombs on the map of the session being served whose alliance passes the test.</summary>
+        private static List<GameSession> TombsAround(Conquests.War war, GameSession me, Func<long, bool> alliance)
+            => war.Fallen.Where(f => alliance(f.Value))
+                         .Select(f => SessionRegistry.FindByCharacter(f.Key))
+                         .Where(s => s != null && s.State.MapId == me.State.MapId)
+                         .ToList();
 
         // ─── The role potions ───────────────────────────────────────────────────
 
         /// <summary>
         /// A role potion used -- one whose criterion asks for a role's certificate, «PO=27659» --:
-        /// the scout's (<see cref="ScoutPotionEffect"/>) and the sentinel's
-        /// (<see cref="SentinelPotionEffect"/>) work; the resurrector's and the gravedigger's want
-        /// the tombs of the fallen, which this server's conquests have none of, and do nothing.
-        /// Only one holding the role and fighting in a conquest may drink one; anybody else hears
-        /// «No cumples los requisitos». False when the item is no role potion.
+        /// the scout's, the sentinel's, the resurrector's and the gravedigger's. Only one holding
+        /// the role and fighting in a conquest may drink one; anybody else hears «No cumples los
+        /// requisitos». False when the item is no role potion.
         /// </summary>
         public static async Task<bool> UseRolePotionAsync(NetworkStream stream, Equipment.Item item)
         {
@@ -506,6 +667,8 @@ namespace Jondo.Unity.Server.Handlers
             var effects = DatabaseManager.GetItemEffectsData(DatabaseManager.GetItemTemplatePossibleEffects(item.Template));
             if (effects.Any(e => e.EffectId == ScoutPotionEffect)) return await ScoutPotionAsync(stream, item);
             if (effects.Any(e => e.EffectId == SentinelPotionEffect)) return await SentinelPotionAsync(stream, item);
+            if (effects.Any(e => e.EffectId == ResurrectorPotionEffect)) return await ResurrectorPotionAsync(stream, item);
+            if (effects.Any(e => e.EffectId == GravediggerPotionEffect)) return await GravediggerPotionAsync(stream, item);
             await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn,
                 ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, InfoMessages.RequirementsNotMet)));
             return true;
@@ -543,12 +706,13 @@ namespace Jondo.Unity.Server.Handlers
             long id = mover.State.CharacterId;
             long map = mover.State.MapId;
             var war = Conquests.In(SubAreaOf(map));
-            if (war == null || war.Sentinels.IsEmpty || !war.Admitted.TryGetValue(id, out var mine)) return;
+            if (war == null || war.Sentinels.IsEmpty || !war.Admitted.TryGetValue(id, out var mine) || war.Fallen.ContainsKey(id)) return;
 
             foreach (var guard in war.Sentinels.ToArray())
             {
                 if (guard.Value != map || guard.Key == id) continue;
-                if (!war.Admitted.TryGetValue(guard.Key, out var theirs) || theirs.Alliance == mine.Alliance) continue;
+                if (!war.Admitted.TryGetValue(guard.Key, out var theirs) || theirs.Alliance == mine.Alliance
+                    || war.Fallen.ContainsKey(guard.Key)) continue;
                 var sentinel = SessionRegistry.FindByCharacter(guard.Key);
                 if (sentinel == null || sentinel.State.MapId != map)
                 {

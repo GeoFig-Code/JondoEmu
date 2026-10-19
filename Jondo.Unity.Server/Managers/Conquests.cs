@@ -116,6 +116,18 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>The sentinels on guard, each on the map he drank his potion on.</summary>
             public ConcurrentDictionary<long, long> Sentinels { get; } = new();
 
+            /// <summary>
+            /// The fallen, tombs where they lost, by alliance: out of the count until an allied
+            /// resurrector raises them or their soul is freed.
+            /// </summary>
+            public ConcurrentDictionary<long, long> Fallen { get; } = new();
+
+            /// <summary>
+            /// The freed souls, who «no podrán volver a participar en el combate de conquista en el
+            /// que han muerto» (Translations 354197).
+            /// </summary>
+            public ConcurrentDictionary<long, bool> Freed { get; } = new();
+
             private readonly Dictionary<long, Side> _sides = new();
 
             /// <summary>The defender first, then the others as they came.</summary>
@@ -177,7 +189,7 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static bool Admit(War war, long characterId, long allianceId, int role)
         {
-            if (war == null) return false;
+            if (war == null || war.Freed.ContainsKey(characterId)) return false;
             if (war.Admitted.TryGetValue(characterId, out var already) && already.Alliance == allianceId && already.Role == role)
                 return true;
             if (KothRoles.Limits.TryGetValue(role, out int limit)
@@ -193,6 +205,7 @@ namespace Jondo.Unity.Server.Managers
             if (war == null) return;
             war.Admitted.TryRemove(characterId, out _);
             war.Sentinels.TryRemove(characterId, out _);
+            war.Fallen.TryRemove(characterId, out _);
         }
 
         /// <summary>A scout drinking his potion on the prism's map: what he carried goes to his alliance's prism points.</summary>

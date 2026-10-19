@@ -917,6 +917,8 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.PrismHandler.CrystalWindowAsync(stream);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Med)))
                     await Handlers.AllianceFights.SwapAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kug)))
+                    await Handlers.ConquestHandler.FreeSoulAsync(stream);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Mab)))
                 {
                     // Listening to the applications: nothing is answered in the capture.

@@ -374,7 +374,9 @@ An alliance is made of characters, not guilds.
 - ✅ No zaap, travel item, haven bag or Koliseo search from a conquest's zone; a new prism cannot be
   attacked in its first hour
 - ✅ Taking a defender's place in an alliance fight
-- ❌ The top tax collectors, and the resurrector's and gravedigger's potions (no tombs in conquests)
+- ✅ Losing an aggression in a conquest leaves a tomb: an allied resurrector raises it, an enemy
+  gravedigger frees its soul, or the fallen frees it himself; a champion's soul goes at once
+- ❌ The top tax collectors
 
 ### 🎒 Character and inventory
 

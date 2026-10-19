@@ -58,6 +58,20 @@ namespace Jondo.Unity.Server.Network
             return men.VarIfNotZero(6, side.Present);
         }
 
+        /// <summary>The life states (kup.f1, the client's dus): alive, a tomb, a phantom.</summary>
+        public const int Alive = 0;
+        public const int Tomb = 1;
+        public const int Phantom = 2;
+
+        /// <summary>
+        /// A character's life state (kup): { f1 the state, f2 a map }. ees.wup keeps the state and
+        /// tells the death popup (dyx.uhp): a tomb gets «Has muerto» with «Observar» and
+        /// «Resucitar», the second answered with a kug; the f2 goes with the phoenix marker, read
+        /// here as where a freed soul goes back to.
+        /// </summary>
+        public static byte[] BuildLifeState(int state, long mapId = 0)
+            => Pb.New().VarIfNotZero(1, state).VarIfNotZero(2, mapId).Build();
+
         /// <summary>The conquest over (mdz): { f1 the winner }, «KohEnd» to the window.</summary>
         public static byte[] BuildEnd(AllianceStore.Alliance winner)
             => Pb.New().Msg(1, AllianceProtocol.Block(winner)).Build();

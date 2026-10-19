@@ -37,6 +37,7 @@ namespace Jondo.Unity.Tests.World
 
         private const long CharacterA = 8_940_100_001, AccountA = 8_940_000_001;
         private const long CharacterB = 8_940_100_002, AccountB = 8_940_000_002;
+        private const long CharacterC = 8_940_100_003, AccountC = 8_940_000_003;
 
         public ConquestTests()
         {
@@ -52,16 +53,19 @@ namespace Jondo.Unity.Tests.World
             {
                 world.Open();
                 var clean = world.CreateCommand();
-                clean.CommandText = "DELETE FROM CharacterItems WHERE CharacterId IN ($a, $b);";
+                clean.CommandText = "DELETE FROM CharacterItems WHERE CharacterId IN ($a, $b, $c);";
                 clean.Parameters.AddWithValue("$a", CharacterA);
                 clean.Parameters.AddWithValue("$b", CharacterB);
+                clean.Parameters.AddWithValue("$c", CharacterC);
                 clean.ExecuteNonQuery();
             }
             KothRoles.Forget();
             AllianceStore.SetTakesPartInAva(CharacterA, false);
             AllianceStore.SetTakesPartInAva(CharacterB, false);
+            AllianceStore.SetTakesPartInAva(CharacterC, false);
             ConquestHandler.Forget(CharacterA);
             ConquestHandler.Forget(CharacterB);
+            ConquestHandler.Forget(CharacterC);
             Conquests.Clear();
             PrismStore.ConnectionStringOverride = null;
             AllianceStore.ConnectionStringOverride = null;
@@ -559,6 +563,82 @@ namespace Jondo.Unity.Tests.World
             await ConquestHandler.AggressionEndedAsync(fight, attackersWon: true);
             Assert.Equal(Conquests.PointsPerFighter, war.SideOf(assault.Id).Scores[Conquests.ScoreOfFights]);
             Assert.Equal(-Conquests.PointsPerFighter, war.SideOf(defence.Id).Scores[Conquests.ScoreOfFights]);
+        }
+
+        /// <summary>
+        /// The fallen of a conquest: the loser of an aggression stays a tomb (kup 1), out of the
+        /// count and not aggressable; an allied resurrector's potion raises him (kup 0); fallen
+        /// again, his «Resucitar» on the death popup (kug) frees his soul, out of this conquest for
+        /// good. A champion is never a tomb.
+        /// </summary>
+        [Fact]
+        public async Task The_fallen_are_tombs_until_raised_or_freed()
+        {
+            if (MapManager.GetMapInfo(PrismMap) == null) MapManager.Initialize();
+            if (MapManager.GetMapInfo(PrismMap)?.SubAreaId != Zone || AllianceData.KothRoles.Count == 0) return;
+
+            var defence = AllianceStore.Create(CharacterA, "Defensa", "DEF", 1, 1, 1, 1, 1);
+            var assault = AllianceStore.Create(CharacterB, "Asalto", "ASA", 1, 1, 1, 1, 1);
+            AllianceStore.Join(CharacterC, assault.Id);
+            foreach (long id in new[] { CharacterA, CharacterB, CharacterC }) AllianceStore.SetTakesPartInAva(id, true);
+            var prism = PrismStore.Place(defence.Id, Zone, PrismMap, 300, 1);
+            PrismStore.SetState(prism, PrismStore.Vulnerable, 7_200_000);
+            var war = Conquests.Start(Zone, defence.Id, 0, 7_200_000, PrismMap);
+            var potion = DatabaseManager.AddPieceToInventory(CharacterC, 14443, "[]");
+
+            await using var a = await Economy.ClientPipe.OpenAsync(AccountA, CharacterA, PrismMap);
+            await using var b = await Economy.ClientPipe.OpenAsync(AccountB, CharacterB, PrismMap);
+            await using var c = await Economy.ClientPipe.OpenAsync(AccountC, CharacterC, PrismMap);
+            using (SessionContext.Push(c.Session))
+            {
+                Equipment.Add(9_400_001, KothRoles.CertificateOf(KothRoles.Resurrector), 1, Equipment.Bag, null);
+                Equipment.Add(potion.Uid, 14443, 1, Equipment.Bag, null);
+            }
+            Assert.True(ConquestHandler.FightsInAWar(CharacterA));
+            Assert.True(ConquestHandler.FightsInAWar(CharacterB));
+            Assert.True(ConquestHandler.FightsInAWar(CharacterC));
+            Assert.Equal(KothRoles.Resurrector, war.Admitted[CharacterC].Role);
+
+            FightInstance Lost()
+            {
+                var fight = new FightInstance(1, PrismMap) { Reglas = FightRules.Agresion };
+                fight.Azul.Add(new Fighter { Id = CharacterA });
+                fight.Rojo.Add(new Fighter { Id = CharacterB });
+                return fight;
+            }
+
+            // «Asalto»'s fighter loses: a tomb.
+            Assert.True(ConquestHandler.StaysAsTomb(Lost(), CharacterB));
+            await ConquestHandler.AggressionEndedAsync(Lost(), attackersWon: true);
+            var (savePoint, _) = FightHandler.SavePointOf(CharacterB);
+            Assert.Equal(KothProtocol.BuildLifeState(KothProtocol.Tomb, savePoint), await Economy.RecyclingTests.Until(b, Op.Kup));
+            Assert.Equal(AllianceProtocol.BuildAggressableStatus(CharacterB, AllianceProtocol.AvaNotAggressable), await b.Next(Op.Hon));
+            Assert.False(ConquestHandler.FightsInAWar(CharacterB));
+            Assert.Equal(AllianceProtocol.AvaNotAggressable, AllianceProtocol.AggressableStatus(CharacterB));
+            Assert.DoesNotContain(ConquestHandler.PresentIn(Zone), p => p.CharacterId == CharacterB);
+
+            // His ally the resurrector raises him.
+            using (SessionContext.Push(c.Session))
+                Assert.True(await ConquestHandler.UseRolePotionAsync(c.ToClient, Equipment.ByUid(potion.Uid)));
+            Assert.Equal(KothProtocol.BuildLifeState(KothProtocol.Alive), await Economy.RecyclingTests.Until(b, Op.Kup));
+            Assert.Empty(war.Fallen);
+            Assert.True(ConquestHandler.FightsInAWar(CharacterB));
+            using (SessionContext.Push(c.Session)) Assert.Equal(0, Equipment.HowMany(14443));
+
+            // Fallen again, he frees his soul himself: out of this conquest for good.
+            await ConquestHandler.AggressionEndedAsync(Lost(), attackersWon: true);
+            Assert.True(war.Fallen.ContainsKey(CharacterB));
+            using (SessionContext.Push(b.Session))
+                await ConquestHandler.FreeSoulAsync(b.ToClient);
+            Assert.True(war.Freed.ContainsKey(CharacterB));
+            Assert.False(war.Admitted.ContainsKey(CharacterB));
+            Assert.False(Conquests.Admit(war, CharacterB, assault.Id, AllianceData.DefaultKothRole));
+
+            // A champion is no tomb: his soul goes at once.
+            Assert.True(Conquests.Admit(war, 77, defence.Id, KothRoles.Champion));
+            var champion = new FightInstance(2, PrismMap) { Reglas = FightRules.Agresion };
+            Assert.False(ConquestHandler.StaysAsTomb(champion, 77));
+            Assert.False(ConquestHandler.StaysAsTomb(new FightInstance(3, PrismMap), CharacterA));   // no aggression
         }
 
         /// <summary>The aggression's rules: the kam's type 1, the usual clock, nothing to win, a defeat that costs.</summary>
