@@ -221,10 +221,13 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_role_goes_over_the_fighter()
         {
-            var hon = Fields(AllianceProtocol.BuildAggressableStatus(77, AllianceProtocol.AvaAggressable, KothRoles.Scout));
+            var hon = Fields(AllianceProtocol.BuildAggressableStatus(AllianceProtocol.AvaAggressable, KothRoles.Scout));
+            Assert.False(hon.ContainsKey(1));
+            Assert.Equal(1_800_000_000_000, (long)Fields(AllianceProtocol.BuildAggressableStatus(
+                AllianceProtocol.AvaPrequalified, -1, 1_800_000_000_000))[1].VarIntValue);
             Assert.Equal(KothRoles.Scout, (int)hon[4].VarIntValue);
             Assert.Equal(AllianceProtocol.AvaAggressable, (int)hon[5].VarIntValue);
-            Assert.False(Fields(AllianceProtocol.BuildAggressableStatus(77, AllianceProtocol.AvaNotAggressable, KothRoles.Scout)).ContainsKey(4));
+            Assert.False(Fields(AllianceProtocol.BuildAggressableStatus(AllianceProtocol.AvaNotAggressable, KothRoles.Scout)).ContainsKey(4));
 
             var hof = Fields(AllianceProtocol.StatusOf(77, AllianceProtocol.AvaAggressable, -1).Build());
             Assert.Equal(-1, (int)(long)hof[1].VarIntValue);
@@ -279,6 +282,27 @@ namespace Jondo.Unity.Tests.World
                 Assert.Equal(KothRoles.Seer, KothRoles.RoleOfCurrent());
                 Assert.Equal(0, Equipment.HowMany(27659));
             }
+        }
+
+        /// <summary>
+        /// Fighting where one's alliance holds the prism pays the client's 25 % more: only its
+        /// members, only in its subarea.
+        /// </summary>
+        [Fact]
+        public void The_own_prism_raises_the_experience()
+        {
+            if (MapManager.GetMapInfo(PrismMap) == null) MapManager.Initialize();
+            if (MapManager.GetMapInfo(PrismMap)?.SubAreaId != Zone) return;
+
+            var mine = AllianceStore.Create(CharacterA, "Mia", "MIA", 1, 1, 1, 1, 1);
+            AllianceStore.Create(CharacterB, "Otra", "OTR", 1, 1, 1, 1, 1);
+            Assert.False(CombatExperience.FightsUnderOwnPrism(CharacterA, OtherMap));
+
+            PrismStore.Place(mine.Id, Zone, PrismMap, 300, 1);
+            Assert.True(CombatExperience.FightsUnderOwnPrism(CharacterA, OtherMap));
+            Assert.False(CombatExperience.FightsUnderOwnPrism(CharacterB, OtherMap));
+            Assert.False(CombatExperience.FightsUnderOwnPrism(CharacterC, OtherMap));
+            Assert.Equal(1250, CombatExperience.WithCharacterBonus(1000, CombatExperience.AlliancePrismBonusPercent));
         }
 
         /// <summary>
@@ -501,7 +525,7 @@ namespace Jondo.Unity.Tests.World
             var aSaw = await a.Take(5);
             Assert.Equal(new[] { "ifa", "jsn", "lqn", "hon", "hoh" }, aSaw.Select(f => f.Opcode));
             Assert.Equal(ConnectionProtocol.BuildInfoMessage(2, 86, Zone.ToString()), aSaw[2].Payload);
-            Assert.Equal(AllianceProtocol.BuildAggressableStatus(CharacterA, AllianceProtocol.AvaAggressable, KothRolesDefault), aSaw[3].Payload);
+            Assert.Equal(AllianceProtocol.BuildAggressableStatus(AllianceProtocol.AvaAggressable, KothRolesDefault), aSaw[3].Payload);
             // «Asalto»'s fighter, his role hidden from one who is no seer.
             Assert.Equal(Pb.New().Msg(1, AllianceProtocol.StatusOf(CharacterB, AllianceProtocol.AvaAggressable, -1)).Build(), aSaw[4].Payload);
             bSaw = await b.Take(5);
@@ -522,7 +546,7 @@ namespace Jondo.Unity.Tests.World
             await b.Next(Op.Kmu);
             Assert.Equal(PrismProtocol.BuildGone(Zone), await b.Next(Op.Iew));
             Assert.Equal(ConnectionProtocol.BuildSystemMessage(1567, Zone.ToString(), "30"), await b.Next(Op.Lqn));
-            Assert.Equal(AllianceProtocol.BuildAggressableStatus(CharacterB, AllianceProtocol.AvaNotAggressable), await b.Next(Op.Hon));
+            Assert.Equal(AllianceProtocol.BuildAggressableStatus(AllianceProtocol.AvaNotAggressable), await b.Next(Op.Hon));
             Assert.Null(PrismStore.InSubArea(Zone));
             Assert.Null(Conquests.In(Zone));
 
@@ -615,7 +639,7 @@ namespace Jondo.Unity.Tests.World
             await ConquestHandler.AggressionEndedAsync(Lost(), attackersWon: true);
             var (savePoint, _) = FightHandler.SavePointOf(CharacterB);
             Assert.Equal(KothProtocol.BuildLifeState(KothProtocol.Tomb, savePoint), await Economy.RecyclingTests.Until(b, Op.Kup));
-            Assert.Equal(AllianceProtocol.BuildAggressableStatus(CharacterB, AllianceProtocol.AvaNotAggressable), await b.Next(Op.Hon));
+            Assert.Equal(AllianceProtocol.BuildAggressableStatus(AllianceProtocol.AvaNotAggressable), await b.Next(Op.Hon));
             Assert.False(ConquestHandler.FightsInAWar(CharacterB));
             Assert.Equal(AllianceProtocol.AvaNotAggressable, AllianceProtocol.AggressableStatus(CharacterB));
             Assert.DoesNotContain(ConquestHandler.PresentIn(Zone), p => p.CharacterId == CharacterB);

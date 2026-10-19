@@ -377,7 +377,7 @@ namespace Jondo.Unity.Server.Handlers
             if (status == before) return;
             _heard[characterId] = status;
             await SendAsync(stream, ConnectionProtocol.Push(Op.Hon,
-                AllianceProtocol.BuildAggressableStatus(characterId, status, RoleIn(war, characterId))));
+                AllianceProtocol.BuildAggressableStatus(status, RoleIn(war, characterId))));
 
             if (status != AllianceProtocol.AvaAggressable) return;
             var prism = PrismStore.InSubArea(subAreaId);
@@ -425,7 +425,7 @@ namespace Jondo.Unity.Server.Handlers
                 int status = AllianceProtocol.AggressableStatus(id);
                 _heard[id] = status;
                 await session.SendAsync(ConnectionProtocol.Push(Op.Hon,
-                    AllianceProtocol.BuildAggressableStatus(id, status, RoleIn(war, id))));
+                    AllianceProtocol.BuildAggressableStatus(status, RoleIn(war, id))));
                 if (session.State.IsInFight) continue;
 
                 var character = DatabaseManager.GetCharacterById(id);
@@ -551,7 +551,7 @@ namespace Jondo.Unity.Server.Handlers
             await session.SendAsync(ConnectionProtocol.Push(Op.Kup, KothProtocol.BuildLifeState(KothProtocol.Tomb, savePoint)));
             _heard[characterId] = AllianceProtocol.AvaNotAggressable;
             await session.SendAsync(ConnectionProtocol.Push(Op.Hon,
-                AllianceProtocol.BuildAggressableStatus(characterId, AllianceProtocol.AvaNotAggressable)));
+                AllianceProtocol.BuildAggressableStatus(AllianceProtocol.AvaNotAggressable)));
             Program.LogDebug($"[Conquest] {session.State.CharacterName} falls in subarea {war.SubAreaId}: a tomb.");
         }
 
@@ -603,7 +603,7 @@ namespace Jondo.Unity.Server.Handlers
                 await tomb.SendAsync(ConnectionProtocol.Push(Op.Kup, KothProtocol.BuildLifeState(KothProtocol.Alive)));
                 _heard[id] = AllianceProtocol.AvaAggressable;
                 await tomb.SendAsync(ConnectionProtocol.Push(Op.Hon,
-                    AllianceProtocol.BuildAggressableStatus(id, AllianceProtocol.AvaAggressable, RoleIn(war, id))));
+                    AllianceProtocol.BuildAggressableStatus(AllianceProtocol.AvaAggressable, RoleIn(war, id))));
             }
             Program.LogDebug($"[Conquest] Resurrector {me.State.CharacterName} raises {risen.Count} tomb(s).");
             await SendRolesAsync(war);

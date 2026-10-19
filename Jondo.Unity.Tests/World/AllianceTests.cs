@@ -339,9 +339,9 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
-        /// The «Alliance fight» switch: kept per character, answered with the hon {f1 character,
-        /// f5 status}, 4 when on and nothing when off, and carried by the map's actor (f1 of its
-        /// alliance option).
+        /// The «Alliance fight» switch: kept per character, answered with the hon {f5 status}, 4
+        /// when on and nothing when off -- its f1 is a prequalification's end, none here --, and
+        /// carried by the map's actor (f1 of its alliance option).
         /// </summary>
         [Fact]
         public void The_alliance_fight_switch_is_kept_and_answered()
@@ -351,12 +351,12 @@ namespace Jondo.Unity.Tests.World
 
             AllianceStore.SetTakesPartInAva(8413, true);
             Assert.Equal(AllianceProtocol.AvaNotAggressable, AllianceProtocol.AggressableStatus(8413));
-            Assert.Equal(Hex("08dd41" + "2804"), AllianceProtocol.BuildAggressableStatus(8413, AllianceProtocol.AggressableStatus(8413)));
+            Assert.Equal(Hex("2804"), AllianceProtocol.BuildAggressableStatus(AllianceProtocol.AggressableStatus(8413)));
             Assert.Equal(AllianceProtocol.AvaNotAggressable, AllianceStatusOption(ConnectionProtocol.BuildPlayerActorBlock(member, 341, 5, 65924386)));
 
             AllianceStore.SetTakesPartInAva(8413, false);
             Assert.Equal(AllianceProtocol.NotAggressable, AllianceProtocol.AggressableStatus(8413));
-            Assert.Equal(Hex("08dd41"), AllianceProtocol.BuildAggressableStatus(8413, AllianceProtocol.AggressableStatus(8413)));
+            Assert.Empty(AllianceProtocol.BuildAggressableStatus(AllianceProtocol.AggressableStatus(8413)));
             Assert.Equal(0, AllianceStatusOption(ConnectionProtocol.BuildPlayerActorBlock(member, 341, 5, 65924386)));
         }
 

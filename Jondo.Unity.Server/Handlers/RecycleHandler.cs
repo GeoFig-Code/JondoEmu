@@ -46,8 +46,9 @@ namespace Jondo.Unity.Server.Handlers
     ///   <item>When collecting a tax collector: its bag already in the window, half to the player and
     ///     half to the pot. «Se calcula a partir del conjunto de recicladores utilizados por la
     ///     alianza» (1094889): the prism modules that would change it do not exist here, so it is
-    ///     the help's even split. What is taken out of the window, or left in it on closing, goes to
-    ///     the bag.</item>
+    ///     the help's even split. What is taken out of the window goes to the bag; what is left in
+    ///     it on closing is gone with the tax collector: «Cuando cierres la ventana de recolecta, el
+    ///     recaudador, así como los recursos que todavía posee, desaparecen» (Translations 1149321).</item>
     /// </list>
     /// <para>
     /// <b>The pot</b> (NuggetsUi):
@@ -256,28 +257,29 @@ namespace Jondo.Unity.Server.Handlers
                               $"{toAlliance} to the pot of alliance {session.AllianceId}.");
         }
 
-        /// <summary>The window closes: a tax collector's items left in it go to the bag.</summary>
-        internal static async Task ClosingAsync(NetworkStream stream, WorkshopHandler.Bench bench)
+        /// <summary>
+        /// The window closes: a tax collector's items left in it are gone with it -- «Cuando cierres
+        /// la ventana de recolecta, el recaudador, así como los recursos que todavía posee,
+        /// desaparecen» (Translations 1149321).
+        /// </summary>
+        internal static Task ClosingAsync(NetworkStream stream, WorkshopHandler.Bench bench)
         {
-            var session = bench.Recycle!;
-            foreach (var (_, (gid, quantity)) in session.Loot.ToList())
-                await KeepAsync(stream, gid, quantity);
-            session.Loot.Clear();
-            bench.Slots.Clear();
+            Drop(SessionContext.Current, bench);
+            return Task.CompletedTask;
         }
 
         /// <summary>
         /// The player is gone with a tax collector's items still in the window -- disconnected, or
-        /// moved away -- and they go into his bag in the base.
+        /// moved away --: the window is closed, and they are gone as on closing it.
         /// </summary>
-        public static void Abandon(GameSession session)
+        public static void Abandon(GameSession session) => Drop(session, session.State.Workshop);
+
+        private static void Drop(GameSession session, WorkshopHandler.Bench bench)
         {
-            var bench = session.State.Workshop;
-            if (bench?.Recycle == null || bench.Recycle.Loot.Count == 0) return;
-            foreach (var (_, (gid, quantity)) in bench.Recycle.Loot.ToList())
-                StoreInBag(session.State.CharacterId, gid, quantity);
-            Console.WriteLine($"[Recycling] {session.State.CharacterName} leaves with a tax collector's " +
-                              $"{bench.Recycle.Loot.Count} stack(s) in the window: into the bag.");
+            if (bench?.Recycle == null) return;
+            if (bench.Recycle.Loot.Count > 0)
+                Console.WriteLine($"[Recycling] {session?.State.CharacterName} closes a collection with " +
+                                  $"{bench.Recycle.Loot.Count} stack(s) left in it: gone with the tax collector.");
             bench.Recycle.Loot.Clear();
             bench.Slots.Clear();
         }
@@ -288,20 +290,6 @@ namespace Jondo.Unity.Server.Handlers
             await Write(stream, Op.Lqn, ConnectionProtocol.BuildSystemMessage(
                 InfoMessages.ItemGained, quantity.ToString(), gid.ToString()));
             await ItemUseHandler.WeighAsync(stream);
-        }
-
-        private static void StoreInBag(long character, int gid, int quantity)
-        {
-            var template = Forgemagic.TemplateOf(gid);
-            if (template == null || quantity <= 0) return;
-            var dice = new Random();
-            bool stacks = Forgemagic.Stacks(template);
-            for (int i = 0; i < (stacks ? 1 : quantity); i++)
-            {
-                string effects = Forgemagic.Serialize(Forgemagic.Roll(template, dice));
-                DatabaseManager.InsertCharacterItem(DatabaseManager.NextItemUid(), character, gid,
-                                                    stacks ? quantity : 1, Equipment.Bag, effects);
-            }
         }
 
         // ─── The pot ─────────────────────────────────────────────────────────────────────────

@@ -346,12 +346,16 @@ An alliance is made of characters, not guilds.
 - ✅ The recruitment card, the alliance message and the bulletin
 - ✅ Changing the name, tag or emblem with their potions
 - ✅ The alliance chat channel
-- ✅ Tax collectors: placed with a tax collector potion, gathering from fights in their territory,
-  talked to, collected or attacked, with their own window — seven equipment slots and six spells —
-  and the alliance's default spells
+- ✅ Tax collectors: placed with a tax collector potion, outdoors or in a dungeon, one per alliance
+  for a territory and its dungeon, gathering from fights there, talked to, collected or attacked
+  (five attackers and five defenders at most), with their own window — seven equipment slots and
+  six spells — and the alliance's default spells
+- ✅ Collecting a tax collector: what is not taken or recycled before closing the window is gone
+  with it
 - ✅ Defending tax collectors and prisms from the alliance window's fights tab; giving up a defence
 - ✅ Prisms: one per subarea, in their alliance's emblem, listed on the world map, talked to, with
   their teleport; attacked and defended
+- ✅ 25 % more experience from fights where one's own alliance holds the prism
 - ✅ The alliance fight switch
 - ✅ The *Pócima del templo de las alianzas*; Hal Ylanza at the temple sells what Gremia sells
 - ✅ Nuggets: recycling resources at the neutral prism beside the temple; collecting a tax collector

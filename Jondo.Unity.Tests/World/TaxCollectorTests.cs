@@ -507,6 +507,32 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
+        /// Where one may stand (Translations 1149321): outdoors or in a dungeon's room -- whose rooms
+        /// are indoors --, not in any other indoor map; and one per group of territories, a
+        /// dungeon's rooms going with the territory of its entrance.
+        /// </summary>
+        [Fact]
+        public void Dungeons_take_them_one_per_group_of_territories()
+        {
+            if (!DungeonManager.IsLoaded) DungeonManager.Initialize();
+            if (MapManager.GetMapInfo(120063489) == null) MapManager.Initialize();
+            var dungeon = DungeonManager.Get(1);   // Corte del Jalató Real
+            var room = dungeon == null ? null : MapManager.GetMapInfo(dungeon.FirstRoom);
+            var entrance = dungeon == null ? null : MapManager.GetMapInfo(dungeon.EntranceMapId);
+            if (room == null || entrance == null) return;   // no world data
+
+            var alliance = AllianceStore.Create(990000051, "Mazmorras", "MAZ", 1, 1, 1, 1, 1);
+            Assert.False(room.Outdoor);
+            Assert.Equal(-1, TaxCollectorHandler.WhyNotHere(alliance, 990000051, room, 0));
+            var indoor = new MapInfo { MapId = 1, SubAreaId = entrance.SubAreaId, Outdoor = false };
+            Assert.Equal(TaxCollectorProtocol.ErrorCantHireHere, TaxCollectorHandler.WhyNotHere(alliance, 990000051, indoor, 0));
+
+            Assert.Equal(entrance.SubAreaId, TaxCollectorHandler.GroupOf(room.MapId, room.SubAreaId));
+            Assert.Equal(entrance.SubAreaId, TaxCollectorHandler.GroupOf(entrance.MapId, entrance.SubAreaId));
+            Assert.Equal(5, TaxCollectorHandler.FightPeopleCap);
+        }
+
+        /// <summary>
         /// The Temple of Alliances' board: «Consultar» marks it in use (iwn) and sends the tops (hks)
         /// -- the ten richest outside the dungeons in f1, by the worth of what they carry, and those
         /// in a dungeon in f3, each a whole lea.

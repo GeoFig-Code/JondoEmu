@@ -1274,13 +1274,13 @@ namespace Jondo.Unity.Server.Handlers
                 await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
                     ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, ConquestHandler.NoSwitchInAWar)));
                 await WriteAsync(stream, ConnectionProtocol.Push(Op.Hon,
-                    AllianceProtocol.BuildAggressableStatus(who, AllianceProtocol.AggressableStatus(who))));
+                    AllianceProtocol.BuildAggressableStatus(AllianceProtocol.AggressableStatus(who))));
                 return;
             }
 
             AllianceStore.SetTakesPartInAva(who, on);
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Hon,
-                AllianceProtocol.BuildAggressableStatus(who, AllianceProtocol.AggressableStatus(who))));
+                AllianceProtocol.BuildAggressableStatus(AllianceProtocol.AggressableStatus(who))));
         }
 
         /// <summary>The directory opens (mba): the empty mag the capture answers with.</summary>

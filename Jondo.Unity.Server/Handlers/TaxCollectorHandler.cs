@@ -35,10 +35,18 @@ namespace Jondo.Unity.Server.Handlers
         public const int PlaceEffect = 1153;
 
         /// <summary>
-        /// How many an alliance may have in one subarea: «No podéis poner más de {0} recaudador(es)
-        /// por zona» (info 1/168).
+        /// How many an alliance may have in one group of territories: «No podéis poner más de {0}
+        /// recaudador(es) por zona» (info 1/168); «una alianza solo puede controlar a un recaudador
+        /// por grupo de territorios. Un grupo suele componerse de un territorio y su mazmorra»
+        /// (Translations 1149321). See <see cref="GroupOf"/>.
         /// </summary>
         public const int PerSubArea = 1;
+
+        /// <summary>
+        /// How many attackers and how many defenders a tax collector's fight takes: «Un combate
+        /// contra un recaudador puede tener como máximo 5 atacantes y 5 defensores» (1149321).
+        /// </summary>
+        public const int FightPeopleCap = 5;
         private const int TooManyInZone = 168;
 
         /// <summary>«Uno de tus recaudadores ha sido destruido.», info 0/1579, to whoever placed it.</summary>
@@ -69,7 +77,8 @@ namespace Jondo.Unity.Server.Handlers
                 await SendAsync(stream, Op.Hla, TaxCollectorProtocol.BuildError(reason));
                 return true;
             }
-            if (TaxCollectorStore.OfAlliance(alliance.Id).Count(t => t.SubAreaId == map.SubAreaId) >= PerSubArea)
+            int group = GroupOf(map.MapId, map.SubAreaId);
+            if (TaxCollectorStore.OfAlliance(alliance.Id).Count(t => GroupOf(t.MapId, t.SubAreaId) == group) >= PerSubArea)
             {
                 await SendAsync(stream, Op.Lqn, ConnectionProtocol.BuildInfoMessage(
                     InfoMessages.Warning, TooManyInZone, PerSubArea.ToString()));
@@ -102,13 +111,18 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// Why a tax collector cannot be placed here (an hla reason), or -1 when it can. The map
-        /// must be one fought on: outdoors, not a dungeon's, a dream's or a raid's.
+        /// must be one fought on: outdoors or a dungeon's room, not a dream's or a raid's.
         /// </summary>
+        /// <remarks>
+        /// Dungeons take them: «Si se coloca a un recaudador en una mazmorra, solo se contarán los
+        /// combates dentro de esa mazmorra» (1149321), and the hks of the temple's board carries ten
+        /// in dungeons. Their rooms are almost all indoors (753 of 763), so they pass on their own.
+        /// </remarks>
         internal static int WhyNotHere(AllianceStore.Alliance alliance, long characterId, MapInfo map, int potion)
         {
             if (alliance == null || !AllianceStore.HasRight(characterId, AllianceData.PlaceTaxCollector))
                 return TaxCollectorProtocol.ErrorNoRights;
-            if (map == null || !map.Outdoor || map.SubAreaId <= 0 || DungeonManager.IsRoom(map.MapId)
+            if (map == null || map.SubAreaId <= 0 || (!map.Outdoor && !DungeonManager.IsRoom(map.MapId))
                 || Dreams.IsDreamMap(map.MapId) || GuildRaidManager.IsRaidMap(map.MapId))
                 return TaxCollectorProtocol.ErrorCantHireHere;
             if (!CriterionHolds(DatabaseManager.GetItemTemplateCriterion(potion), characterId,
@@ -116,6 +130,18 @@ namespace Jondo.Unity.Server.Handlers
                 return TaxCollectorProtocol.ErrorCantHireHere;
             if (TaxCollectorStore.OnMap(map.MapId) != null) return TaxCollectorProtocol.ErrorAlreadyOnMap;
             return -1;
+        }
+
+        /// <summary>
+        /// The group of territories a map is in, for the one tax collector an alliance may have in
+        /// each: its subarea, or for a dungeon's room the subarea of the dungeon's entrance -- «un
+        /// grupo suele componerse de un territorio y su mazmorra».
+        /// </summary>
+        internal static int GroupOf(long mapId, int subAreaId)
+        {
+            var dungeon = DungeonManager.OfRoom(mapId);
+            if (dungeon == null || dungeon.EntranceMapId == 0) return subAreaId;
+            return MapManager.GetMapInfo(dungeon.EntranceMapId)?.SubAreaId ?? subAreaId;
         }
 
         /// <summary>
@@ -422,6 +448,7 @@ namespace Jondo.Unity.Server.Handlers
             var alliance = AllianceStore.ById(tc.AllianceId);
 
             fight.TaxCollectorUuid = tc.Uuid;
+            fight.PeopleCap = FightPeopleCap;
             foreach (var fighter in fight.Rojo.Where(f => f.IsMonster && f.MonsterId == TaxCollectorProtocol.Monster))
             {
                 fighter.TaxCollectorFirstName = tc.FirstNameId;

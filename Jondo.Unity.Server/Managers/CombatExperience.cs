@@ -55,6 +55,23 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public const int CharacterBonusPercent = 5;
 
+        /// <summary>
+        /// The bonus for fighting in a subarea whose prism is one's own alliance's, in percent: the
+        /// 25 the client's tooltip returns (WorldRpMonstersGroupTooltipBuilder.ComputeXpAlliancePrismBonus,
+        /// 0x19 when the subarea's prism carries the player's alliance, whatever its state). The
+        /// client's guide says 50 (Translations 1149317); the client's code is what reckons, so 25.
+        /// Its tooltip then divides it by a hundred in whole numbers and never shows it.
+        /// </summary>
+        public const int AlliancePrismBonusPercent = 25;
+
+        /// <summary>Whether a character's alliance holds the prism of the subarea of a map.</summary>
+        public static bool FightsUnderOwnPrism(long characterId, long mapId)
+        {
+            int subArea = MapManager.GetMapInfo(mapId)?.SubAreaId ?? 0;
+            var prism = subArea == 0 ? null : PrismStore.InSubArea(subArea);
+            return prism != null && AllianceStore.AllianceOf(characterId)?.Id == prism.AllianceId;
+        }
+
         /// <summary>The level a character counts at for experience: up to 200.</summary>
         public static int CombatLevel(int level) => Math.Clamp(level, 1, 200);
 

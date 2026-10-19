@@ -158,6 +158,8 @@ namespace Jondo.Unity.Server.Handlers
                         xp = XpShare(xpBase, session.State.CharacterLevel, levels, strongest, monsterLevels, wisdom);
                     }
                     xp = CombatExperience.WithCharacterBonus(xp, CombatExperience.CharacterBonusPercent);
+                    if (CombatExperience.FightsUnderOwnPrism(fighter.Id, fight.RoleplayMapId))
+                        xp = CombatExperience.WithCharacterBonus(xp, CombatExperience.AlliancePrismBonusPercent);
                     xp = ServerSettings.WithBonus(ConElExtra(xp, extra), ServerSettings.Current.ExperienceBonusPercent);
                 }
                 // And last, as the client cuts its tooltip: the limit he set on what he earns.

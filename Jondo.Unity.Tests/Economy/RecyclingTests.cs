@@ -266,6 +266,7 @@ namespace Jondo.Unity.Tests.Economy
                     // Closing: nothing left in the window, nothing more given.
                     await WorkshopHandler.CloseAsync(a.ToClient);
                     await a.Next(Op.Khd);
+                    Assert.Equal(2, Equipment.All.Where(i => i.Template == BossDrop).Sum(i => i.Quantity));
 
                     // The pot, to the founder, who holds every right.
                     await RecycleHandler.ShowPotAsync(a.ToClient);

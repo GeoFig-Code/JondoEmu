@@ -93,8 +93,9 @@ public static class Op
     public const string Hol = "hol";
 
     /// <summary>
-    /// S→C: a character's aggressable status (eht.gmh): f1 the character, f5 the status (lbc,
-    /// 0 not aggressable, 3 and up AvA). The alliance window's «Alliance fight» switch is on above 2.
+    /// S→C: the player's own aggressable status (eht.gmh): f1 when his prequalification ends (ms),
+    /// f4 his conquest role, f5 the status (lbc, 0 not aggressable, 3 and up AvA). The alliance
+    /// window's «Alliance fight» switch is on above 2.
     /// </summary>
     public const string Hon = "hon";
 

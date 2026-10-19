@@ -38,6 +38,12 @@ namespace Jondo.Unity.Server.Network
         public const int AvaNotAggressable = 4;
 
         /// <summary>
+        /// Prequalified: the AvA panel counts down to the hon's f1 (AllianceAvaUi.UpdateKothStatus).
+        /// What puts a player in it, and for how long, is not in the client: never sent here.
+        /// </summary>
+        public const int AvaPrequalified = 6;
+
+        /// <summary>
         /// This character's status, from the alliance window's «Alliance fight» switch and where he
         /// stands: let into the conquest of a vulnerable prism's zone he is aggressable
         /// (Handlers.ConquestHandler).
@@ -56,14 +62,21 @@ namespace Jondo.Unity.Server.Network
             => Pb.New().Var(1, role).VarIfNotZero(2, status).Var(3, characterId);
 
         /// <summary>
-        /// A character's aggressable status (hon): f1 the character, f4 his conquest role, f5 the
-        /// status. eht.gmh hands the f4 to RoleplayEntitiesService.xzy, which draws «role{f4}» over
-        /// him while aggressable in a vulnerable prism's zone (yab; -1 draws none). f2, the
-        /// prequalification's end, and f3 are left out.
+        /// The player's own aggressable status (hon): f1 when his prequalification ends, f4 his
+        /// conquest role, f5 the status.
         /// </summary>
-        public static byte[] BuildAggressableStatus(long characterId, int status, int role = -1)
+        /// <remarks>
+        /// Read in Ghidra: eht.gmh sets the status on the played character -- whoever it is about
+        /// is not on the wire -- and raises bba(f5, f1); AllianceAvaUi.UpdateKothStatus takes the f1
+        /// as the probation's end in milliseconds, and with the status at 6 (prequalified) counts
+        /// down to it (UpdatePrequalifiedTime: f1 / 1000 − now in seconds). The f4 goes to
+        /// RoleplayEntitiesService.xzy, which draws «role{f4}» over him while aggressable in a
+        /// vulnerable prism's zone (yab; -1 draws none). f1 used to carry the character's id,
+        /// harmless only because no status 6 is ever sent. f2 and f3 are left out.
+        /// </remarks>
+        public static byte[] BuildAggressableStatus(int status, int role = -1, long probationEndMs = 0)
         {
-            var hon = Pb.New().Var(1, characterId);
+            var hon = Pb.New().VarIfNotZero(1, probationEndMs);
             if (status == AvaAggressable && role != -1) hon.Var(4, role);
             return hon.VarIfNotZero(5, status).Build();
         }
