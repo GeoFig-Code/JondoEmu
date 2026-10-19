@@ -48,7 +48,8 @@ namespace Jondo.Unity.Tests.World
         /// <summary>
         /// The map references land where the captures land: Otomai's potion on 28049408, Meriana's
         /// on 134403 and the ankla's Palacio del Rey Nidas on 129499136 (each capture's jru); Bonta's
-        /// and Brakmar's potions on their squares.
+        /// and Brakmar's potions on their squares; the Temple of Alliances' potion (14447, 826 of
+        /// 167) on the temple's prism square.
         /// </summary>
         [Theory]
         [InlineData(431, 28049408L, 411)]
@@ -56,6 +57,7 @@ namespace Jondo.Unity.Tests.World
         [InlineData(670, 129499136L, 399)]
         [InlineData(189, 217318404L, 395)]
         [InlineData(282, 216530944L, 439)]
+        [InlineData(167, 115081729L, 274)]
         public void A_map_reference_lands_where_the_capture_does(int reference, long map, int cell)
         {
             if (TravelData.ChoiceOf(28) == null) return;   // no datos/travel_*.json

@@ -2961,6 +2961,12 @@ public static class Op
     /// <summary>S→C: a tax collector to consult, f2 its lea (fgv.bexd): the window opens read-only.</summary>
     public const string Hkb = "hkb";
 
+    /// <summary>
+    /// S→C { f1 [lea] the world's top, f3 [lea] the dungeons' }: the top tax collectors, after
+    /// «Consultar» on the board of the Temple of Alliances (bby → fvl.birh, TopTaxCollectors).
+    /// </summary>
+    public const string Hks = "hks";
+
     /// <summary>C→S: modify a tax collector, f1 its uuid (the menu's «Modificar», eoy.edw).</summary>
     public const string Ker = "ker";
 

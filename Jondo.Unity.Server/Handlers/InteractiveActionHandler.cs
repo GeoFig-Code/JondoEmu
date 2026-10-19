@@ -167,6 +167,9 @@ namespace Jondo.Unity.Server.Handlers
                 case InteractiveActionKind.Recycle:
                     await RecycleHandler.OpenAtPrismAsync(stream, interactive.Element.Id, action.SkillId);
                     break;
+                case InteractiveActionKind.TopTaxCollectors:
+                    await TaxCollectorHandler.ShowTopsAsync(stream, interactive.Element.Id, action.SkillId);
+                    break;
                 case InteractiveActionKind.RaidStatue:
                     await GuildRaidExecrabe.PressAsync(stream, GameState.CharacterId, mapId,
                                                        interactive.Element.Id, action.SkillId);

@@ -376,7 +376,8 @@ An alliance is made of characters, not guilds.
 - ✅ Taking a defender's place in an alliance fight
 - ✅ Losing an aggression in a conquest leaves a tomb: an allied resurrector raises it, an enemy
   gravedigger frees its soul, or the fallen frees it himself; a champion's soul goes at once
-- ❌ The top tax collectors
+- ✅ The top tax collectors on the board in front of the Temple of Alliances: the ten richest in
+  the world and the ten richest in dungeons
 
 ### 🎒 Character and inventory
 

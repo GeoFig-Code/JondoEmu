@@ -243,6 +243,9 @@ namespace Jondo.Unity.Server.Managers
                 .ToList();
         }
 
+        /// <summary>Every tax collector of the server, oldest first.</summary>
+        public static List<TaxCollector> All() => ByMap.Values.OrderBy(t => t.Id).ToList();
+
         /// <summary>An alliance's tax collectors, oldest first.</summary>
         public static List<TaxCollector> OfAlliance(long allianceId)
             => ByMap.Values.Where(t => t.AllianceId == allianceId).OrderBy(t => t.Id).ToList();

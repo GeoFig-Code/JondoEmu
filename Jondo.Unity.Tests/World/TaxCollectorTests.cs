@@ -469,6 +469,60 @@ namespace Jondo.Unity.Tests.World
             }
         }
 
+        /// <summary>
+        /// The Temple of Alliances' board: «Consultar» marks it in use (iwn) and sends the tops (hks)
+        /// -- the ten richest outside the dungeons in f1, by the worth of what they carry, and those
+        /// in a dungeon in f3, each a whole lea.
+        /// </summary>
+        [Fact]
+        public async System.Threading.Tasks.Task The_board_shows_the_richest_ten()
+        {
+            if (!DungeonManager.IsLoaded) DungeonManager.Initialize();
+            long room = DungeonManager.All.Values.Select(d => d.FirstRoom).FirstOrDefault(r => r != 0);
+            var alliance = AllianceStore.Create(990000031, "Tops", "TOP", 1, 1, 1, 1, 1);
+            var placed = new List<TaxCollectorStore.TaxCollector>();
+            try
+            {
+                for (int i = 1; i <= 12; i++)
+                {
+                    var tc = TaxCollectorStore.Place(alliance.Id, 100 + i, "Owner", 9_200_000 + i, 9201, 300, 3, 35, 109);
+                    TaxCollectorStore.AddItem(tc, 287, i);
+                    placed.Add(tc);
+                }
+                TaxCollectorStore.TaxCollector inDungeon = null;
+                if (room != 0 && TaxCollectorStore.OnMap(room) == null)
+                {
+                    inDungeon = TaxCollectorStore.Place(alliance.Id, 200, "Deep", room, 9202, 300, 3, 35, 109);
+                    TaxCollectorStore.AddItem(inDungeon, 287, 50);
+                    placed.Add(inDungeon);
+                }
+
+                // The richest ten, richest first; the two poorest left out.
+                var top = TaxCollectorHandler.TopOf(placed.Take(12));
+                Assert.Equal(placed.Take(12).Reverse().Take(TaxCollectorHandler.TopSize), top);
+
+                await using var pipe = await Economy.ClientPipe.OpenAsync(990000030, 990000031, TaxCollectorHandler.TopsMap);
+                using (SessionContext.Push(pipe.Session))
+                    await TaxCollectorHandler.ShowTopsAsync(pipe.ToClient, TaxCollectorHandler.TopsBoard, TaxCollectorHandler.TopsSkill);
+                Assert.Equal(ConnectionProtocol.BuildElementInUse(TaxCollectorHandler.TopsBoard, TaxCollectorHandler.TopsSkill, 990000031),
+                             await pipe.Next(Op.Iwn));
+                var (_, blocks) = Fields(await pipe.Next(Op.Hks));
+                string[] world = blocks[1].Select(b => Fields(b).Blocks[12][0]).Select(System.Text.Encoding.UTF8.GetString).ToArray();
+                Assert.Equal(top.Select(t => t.Uuid), world.Where(u => placed.Any(t => t.Uuid == u)));
+                Assert.False(blocks.ContainsKey(2));
+                Assert.True(room == 0 || inDungeon != null);
+                if (inDungeon != null)
+                {
+                    Assert.DoesNotContain(inDungeon.Uuid, world);
+                    Assert.Contains(blocks[3], b => System.Text.Encoding.UTF8.GetString(Fields(b).Blocks[12][0]) == inDungeon.Uuid);
+                }
+            }
+            finally
+            {
+                foreach (var tc in placed) TaxCollectorStore.Remove(tc);
+            }
+        }
+
         /// <summary>«Leave» on a tax collector's dialogue closes it with the conversation's kld (reason 1).</summary>
         [Fact]
         public async System.Threading.Tasks.Task Leave_closes_the_talk()

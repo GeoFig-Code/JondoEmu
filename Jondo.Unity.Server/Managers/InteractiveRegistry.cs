@@ -90,6 +90,9 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>The neutral prism beside the Temple of Alliances: «Reciclar recursos» (RecycleHandler).</summary>
         Recycle,
+
+        /// <summary>The Temple of Alliances' board: «Consultar» opens the top tax collectors (TaxCollectorHandler).</summary>
+        TopTaxCollectors,
     }
 
     /// <summary>A skill offered by an interactive element.</summary>
@@ -369,6 +372,16 @@ namespace Jondo.Unity.Server.Managers
                 if (prism.Id != Handlers.RecycleHandler.PrismElement) continue;
                 Register(Handlers.RecycleHandler.PrismMap, prism, Handlers.RecycleHandler.PrismType,
                          InteractiveActionKind.Recycle, Handlers.RecycleHandler.RecycleSkill);
+            }
+
+            // The board in front of the Temple of Alliances, 488131 at cell 118: the same capture
+            // uses it -- iwo {18599, 488131} → iwn {1, 488131, f4 293}, skill 293 «Consultar» -- and
+            // gets the top tax collectors (hks). See TaxCollectorHandler.ShowTopsAsync.
+            foreach (var board in Interactives.ElementsOf(Handlers.TaxCollectorHandler.TopsMap))
+            {
+                if (board.Id != Handlers.TaxCollectorHandler.TopsBoard) continue;
+                Register(Handlers.TaxCollectorHandler.TopsMap, board, Interactives.TypeOfGfx(board.Gfx),
+                         InteractiveActionKind.TopTaxCollectors, Handlers.TaxCollectorHandler.TopsSkill);
             }
 
             // The six paddocks' gates, type 120 «Cercado», each with the skill that opens its paddock

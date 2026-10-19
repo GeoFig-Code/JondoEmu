@@ -199,6 +199,54 @@ namespace Jondo.Unity.Server.Handlers
         private static long WorthOf(IEnumerable<(int ItemId, int Quantity)> items)
             => items.Sum(i => NpcShops.PriceOf(i.ItemId) * i.Quantity);
 
+        // ─── The tops ───────────────────────────────────────────────────────────
+
+        /// <summary>The board's map: the Temple of Alliances' square.</summary>
+        public const long TopsMap = AllianceHandler.TempleMap;
+
+        /// <summary>The board, element 488131 at cell 118 of the square.</summary>
+        public const int TopsBoard = 488131;
+
+        /// <summary>Its skill, 293 «Consultar».</summary>
+        public const int TopsSkill = 293;
+
+        /// <summary>How many each top shows: ten and ten in the capture.</summary>
+        public const int TopSize = 10;
+
+        /// <summary>
+        /// «Consultar» on the board (iwo): the element in use (iwn) and the two tops (hks), the
+        /// world's and the dungeons'.
+        /// </summary>
+        public static async Task ShowTopsAsync(NetworkStream stream, int elementId, int skillId)
+        {
+            await SendAsync(stream, Op.Iwn, ConnectionProtocol.BuildElementInUse(elementId, skillId,
+                                                                               SessionContext.State.CharacterId));
+            var all = TaxCollectorStore.All().Where(t => AllianceStore.ById(t.AllianceId) != null).ToList();
+            var world = TopOf(all.Where(t => DungeonManager.OfRoom(t.MapId) == null));
+            var dungeons = TopOf(all.Where(t => DungeonManager.OfRoom(t.MapId) != null));
+            await SendAsync(stream, Op.Hks, TaxCollectorProtocol.BuildTops(Leas(world), Leas(dungeons)));
+        }
+
+        /// <summary>
+        /// The richest <see cref="TopSize"/>: by the worth of what they carry -- the column the
+        /// window shows, «valor estimado» --, the oldest first between equals.
+        /// </summary>
+        internal static List<TaxCollectorStore.TaxCollector> TopOf(IEnumerable<TaxCollectorStore.TaxCollector> taxCollectors)
+            => taxCollectors.Select(tc => (Tc: tc, Worth: WorthOf(TaxCollectorStore.Items(tc))))
+                            .OrderByDescending(r => r.Worth).ThenBy(r => r.Tc.Id)
+                            .Take(TopSize)
+                            .Select(r => r.Tc)
+                            .ToList();
+
+        private static IEnumerable<Pb> Leas(IEnumerable<TaxCollectorStore.TaxCollector> taxCollectors)
+        {
+            foreach (var tc in taxCollectors)
+            {
+                var alliance = AllianceStore.ById(tc.AllianceId);
+                if (alliance != null) yield return LeaOf(tc, alliance);
+            }
+        }
+
         // ─── Gathering ──────────────────────────────────────────────────────────
 
         /// <summary>

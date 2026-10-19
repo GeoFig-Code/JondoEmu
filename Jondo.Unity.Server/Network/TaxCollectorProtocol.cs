@@ -272,6 +272,21 @@ namespace Jondo.Unity.Server.Network
             return entry;
         }
 
+        // ─── The tops ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The top tax collectors (hks): { f1 the world's, f3 the dungeons' }, each a whole lea. The
+        /// capture's carry ten and ten and no f2. fvl.birh hands f3 and f1 to TopTaxCollectors.Init,
+        /// whose rows show each one's alliance, worth and place, sorted by the client.
+        /// </summary>
+        public static byte[] BuildTops(IEnumerable<Pb> world, IEnumerable<Pb> dungeons)
+        {
+            var hks = Pb.New();
+            foreach (var lea in world) hks.Msg(1, lea);
+            foreach (var lea in dungeons) hks.Msg(3, lea);
+            return hks.Build();
+        }
+
         // ─── Consulting and modifying ───────────────────────────────────────────
 
         /// <summary>
