@@ -357,6 +357,8 @@ An alliance is made of characters, not guilds.
 - ✅ Nuggets: recycling resources at the neutral prism beside the temple; collecting a tax collector
   recycles its bag half for you, half for the alliance's pot, more with neighbouring territories held
 - ✅ The alliance's nugget pot, handed out to the members' banks by those with the right
+- ✅ The alliance's share of the nuggets kept in its prisms, more in higher-level zones; at a
+  conquest's end the prism's nuggets go to the winner and the alliance that dominated most
 - ✅ A beaten prism turns weakened, then vulnerable a day later, with the territory's warnings
 - ✅ Conquests (King of the Hill): the conquest window's score each minute, points for the maps held
   by numbers and for aggressions won, twenty minutes of domination to win

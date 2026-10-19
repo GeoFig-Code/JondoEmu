@@ -166,6 +166,53 @@ namespace Jondo.Unity.Tests.Economy
         }
 
         private static void ClearBag(long character) => RecyclingTests.ClearBag(character);
+
+        /// <summary>
+        /// The alliance's share kept in its prisms by their zones' levels -- the rounding's leftover
+        /// to the highest --, taken out loose ones first then prism by prism, and a prism's held
+        /// nuggets shared at its war's end: half to the winner, half to the dominant.
+        /// </summary>
+        [Fact]
+        public void The_share_goes_to_the_prisms_and_a_war_shares_it_out()
+        {
+            const long Alliance = 8_930_500_001, Other = 8_930_500_002;
+            const long Low = 8_930_600_001, High = 8_930_600_002;
+            void Empty()
+            {
+                AllianceNuggets.TakeRetained(Low);
+                AllianceNuggets.TakeRetained(High);
+                foreach (long id in new[] { Alliance, Other }) AllianceNuggets.TryTake(id, AllianceNuggets.PotOf(id));
+            }
+            Empty();
+            try
+            {
+                AllianceNuggets.Collect(Alliance, 101, new[] { (Low, 50), (High, 150) });
+                Assert.Equal(25, AllianceNuggets.RetainedIn(Low));
+                Assert.Equal(76, AllianceNuggets.RetainedIn(High));
+                Assert.Equal(101, AllianceNuggets.PotOf(Alliance));
+
+                Assert.False(AllianceNuggets.TryTake(Alliance, 102));
+                Assert.True(AllianceNuggets.TryTake(Alliance, 30));
+                Assert.Equal(0, AllianceNuggets.RetainedIn(Low));
+                Assert.Equal(71, AllianceNuggets.RetainedIn(High));
+
+                var (toWinner, toDominant) = AllianceNuggets.ShareOutAfterWar(High, Other, Alliance);
+                Assert.Equal((36L, 35L), (toWinner, toDominant));
+                Assert.Equal(0, AllianceNuggets.RetainedIn(High));
+                Assert.Equal(36, AllianceNuggets.PotOf(Other));
+                Assert.Equal(35, AllianceNuggets.PotOf(Alliance));
+
+                // Without prisms it stays loose; a war with nobody else gives the winner all.
+                AllianceNuggets.Collect(Other, 4, System.Array.Empty<(long, int)>());
+                Assert.Equal(40, AllianceNuggets.PotOf(Other));
+                AllianceNuggets.Collect(Alliance, 10, new[] { (Low, 1) });
+                Assert.Equal((10L, 0L), AllianceNuggets.ShareOutAfterWar(Low, Alliance, 0));
+            }
+            finally
+            {
+                Empty();
+            }
+        }
         private static byte[] Kcr(int delta, long uid) => RecyclingTests.Kcr(delta, uid);
         private static byte[] Kep() => RecyclingTests.Kep();
         private static long Var(byte[] body, int field) => RecyclingTests.Var(body, field);

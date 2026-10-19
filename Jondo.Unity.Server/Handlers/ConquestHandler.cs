@@ -215,6 +215,15 @@ namespace Jondo.Unity.Server.Handlers
             }
             Conquests.End(war.SubAreaId);
 
+            // The nuggets the prism held: the winner's and the dominant's (Translations 997824).
+            long dominant = war.Sides.Where(s => s.AllianceId != winnerId && s.Domination > 0)
+                                     .OrderByDescending(s => s.Domination).ThenByDescending(s => s.Total)
+                                     .Select(s => s.AllianceId).FirstOrDefault();
+            var (toWinner, toDominant) = AllianceNuggets.ShareOutAfterWar(prism.Id, winnerId, dominant);
+            if (toWinner + toDominant > 0)
+                Program.LogDebug($"[Conquest] The prism of subarea {prism.SubAreaId} held {toWinner + toDominant} nugget(s): " +
+                                 $"{toWinner} to {winnerId}, {toDominant} to {dominant}.");
+
             if (winnerId == prism.AllianceId || winner == null)
             {
                 await ChangeStateAsync(prism, PrismStore.Normal, 0);

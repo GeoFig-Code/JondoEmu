@@ -240,7 +240,10 @@ namespace Jondo.Unity.Server.Handlers
 
             var (toPlayer, toAlliance) = Recycling.Split(nuggets, session.ToPlayer, session.ToAlliance, session.Bonus);
             if (toPlayer > 0) await WorkshopHandler.GiveAsync(stream, Recycling.Nugget, (int)Math.Min(toPlayer, int.MaxValue));
-            if (toAlliance > 0) AllianceNuggets.Add(session.AllianceId, toAlliance);
+            // The alliance's share goes to its prisms, by their zones' levels (AllianceNuggets.Collect).
+            if (toAlliance > 0)
+                AllianceNuggets.Collect(session.AllianceId, toAlliance,
+                    PrismStore.OfAlliance(session.AllianceId).Select(p => (p.Id, Interactives.LevelOfSubArea(p.SubAreaId))).ToList());
             await ItemUseHandler.WeighAsync(stream);
 
             await Write(stream, "kgh", Pb.New().VarIfNotZero(1, toAlliance).VarIfNotZero(2, toPlayer).Build());

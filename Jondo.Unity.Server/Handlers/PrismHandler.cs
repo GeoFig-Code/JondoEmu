@@ -482,6 +482,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             foreach (var prism in PrismStore.OfAlliance(allianceId))
             {
+                AllianceNuggets.TakeRetained(prism.Id);
                 PrismStore.Remove(prism);
                 await GoneAsync(prism);
             }
