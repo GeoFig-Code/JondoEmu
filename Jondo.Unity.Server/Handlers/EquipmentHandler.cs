@@ -70,6 +70,17 @@ namespace Jondo.Unity.Server.Handlers
             if (position != Bag)
             {
                 var loSuyo = Managers.Equipment.ByUid(uid);
+
+                // A tax collector's piece is not the character's, though its slots share their
+                // numbers: it goes back where it was.
+                if (loSuyo != null && Managers.Equipment.IsTaxCollectorPiece(loSuyo.Template))
+                {
+                    Console.WriteLine($"[Equipment] Item {uid} is a tax collector's piece. It is not put on.");
+                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                        ConnectionProtocol.Push(Op.Ivq, Pb.New().Var(1, uid).Var(2, loSuyo.Position).Build()));
+                    return;
+                }
+
                 int pide = loSuyo != null ? DatabaseManager.ItemLevelRequirement(loSuyo.Template) : 0;
 
                 if (pide > SessionContext.State.CharacterLevel)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Jondo.Unity.Protocol;
+using Jondo.Unity.Server;
 using Jondo.Unity.Server.Handlers;
 using Jondo.Unity.Server.Managers;
 using Jondo.Unity.Server.Network;
@@ -372,6 +373,42 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(5, TaxCollectorProtocol.SlotOfType[279]);
             Assert.Equal(4, TaxCollectorProtocol.SlotOfType[280]);
             Assert.Equal(7, TaxCollectorProtocol.SlotOfType.Values.Distinct().Count());
+        }
+
+        /// <summary>
+        /// A tax collector's piece is not the character's: its superType shares the character's slot
+        /// numbers, so the client drags it onto one (iuk), and it goes back to the bag (ivq 63).
+        /// </summary>
+        [Fact]
+        public async System.Threading.Tasks.Task Its_pieces_are_not_worn_by_the_character()
+        {
+            if (Forgemagic.TemplateOf(28204) == null) return;   // no item data
+            Assert.True(Equipment.IsTaxCollectorPiece(28204));   // Alforjas GaPM, type 280
+            Assert.False(Equipment.IsTaxCollectorPiece(10800));  // a cape
+
+            const long character = 990000041;
+            var piece = DatabaseManager.AddPieceToInventory(character, 28204, "[]");
+            try
+            {
+                await using var pipe = await Economy.ClientPipe.OpenAsync(990000040, character, 1);
+                using (SessionContext.Push(pipe.Session))
+                {
+                    Equipment.Add(piece.Uid, 28204, 1, Equipment.Bag, null);
+                    await EquipmentHandler.MoveAsync(pipe.ToClient,
+                        ConnectionProtocol.Push(Op.Iuk, Pb.New().Var(2, piece.Uid).Var(3, 4).Build()));
+                    Assert.Equal(Pb.New().Var(1, piece.Uid).Var(2, Equipment.Bag).Build(), await pipe.Next(Op.Ivq));
+                    Assert.Equal(Equipment.Bag, Equipment.ByUid(piece.Uid).Position);
+                }
+            }
+            finally
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+                var clean = connection.CreateCommand();
+                clean.CommandText = "DELETE FROM CharacterItems WHERE CharacterId = $c;";
+                clean.Parameters.AddWithValue("$c", character);
+                clean.ExecuteNonQuery();
+            }
         }
 
         /// <summary>

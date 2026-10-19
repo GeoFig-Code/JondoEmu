@@ -172,7 +172,7 @@ namespace Jondo.Unity.Server.Handlers
             SessionContext.State.OpenActorDialogue = contextId;
             await SendAsync(stream, Op.Ioc, ConnectionProtocol.BuildNpcDialog(mapId, contextId));
             await SendAsync(stream, Op.Ion, TaxCollectorProtocol.BuildDialog(alliance, PodsOf(items),
-                TaxCollectorStore.OfAlliance(alliance.Id).Count, WorthOf(items)));
+                TaxCollectorStore.OfAlliance(alliance.Id).Count, WorthOf(items), MaxPodsOf(tc), ProspectingOf(tc)));
             return true;
         }
 

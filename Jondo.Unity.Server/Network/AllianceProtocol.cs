@@ -120,19 +120,23 @@ namespace Jondo.Unity.Server.Network
 
         /// <summary>
         /// The card (lel) the directory and the alliance's sheet show: f1 the recruitment card,
-        /// f2 when it was founded in seconds, f4 how many prisms it has and f5 how many members.
+        /// f2 when it was founded in seconds, f3 the territories it holds, f4 its tax collectors and
+        /// f5 how many members.
         /// </summary>
         /// <remarks>
         /// From the directory: «A B S I N T O» {f2 1774821557, f5 46}, «RIGHT» {f2 1785200130, f4 3,
-        /// f5 27}. The f4 only shows on the alliances that hold territory, so it is read as their
-        /// prisms; f3 shows on none.
+        /// f5 27}. The client reads them so (Ghidra): ks.ffk puts the f3 in the directory's
+        /// «Territorios» column (fnx.bhcy), and fgv.bexk hands the f4 to the card's «Recaudadores
+        /// recolectando» (AllianceCardUI). The f4 was taken for the prisms, so a prism counted as a
+        /// tax collector and the territories stayed at 0.
         /// </remarks>
         public static Pb Card(AllianceStore.Alliance alliance, AllianceStore.Profile profile, string leaderName,
-                              int members, int prisms = 0)
+                              int members, int territories = 0, int taxCollectors = 0)
             => Pb.New()
                 .Msg(1, Recruitment(alliance, profile, leaderName))
                 .Var(2, alliance.CreatedUtcS)
-                .VarIfNotZero(4, prisms)
+                .VarIfNotZero(3, territories)
+                .VarIfNotZero(4, taxCollectors)
                 .Var(5, members);
 
         /// <summary>
@@ -259,8 +263,9 @@ namespace Jondo.Unity.Server.Network
 
         /// <summary>
         /// An alliance's card seen from the directory (mcl), the answer to the mck: f1 the members it
-        /// shows, f5 the alliance with its card -- the fields fgv's handler reads (bexk, in Ghidra);
-        /// its f2 and f4 are left out, their meaning not read. It shows the leader.
+        /// shows, f2 the subareas of its prisms, f4 its leader, f5 the alliance with its card -- the
+        /// fields fgv's handler reads (bexk, in Ghidra): the f2 becomes the card's prism list, whose
+        /// count is its «Prismas». It shows the leader.
         /// </summary>
         /// <remarks>
         /// Each member is { f1 { f2 name, f3 level, f6 his rank }, f2 the character }. The member's
@@ -269,7 +274,8 @@ namespace Jondo.Unity.Server.Network
         /// the client, the card was never stored and its window never opened.
         /// </remarks>
         public static byte[] BuildCardView(AllianceStore.Alliance alliance, Pb card,
-                                           IEnumerable<(MemberRow Row, AllianceStore.Rank Rank)> shown)
+                                           IEnumerable<(MemberRow Row, AllianceStore.Rank Rank)> shown,
+                                           IReadOnlyCollection<int> prismSubAreas = null, long leaderId = 0)
         {
             var mcl = Pb.New();
             foreach (var (row, rank) in shown)
@@ -278,7 +284,9 @@ namespace Jondo.Unity.Server.Network
                     .Msg(1, Pb.New().Str(2, row.Name).Var(3, row.Level).Msg(6, Rank(rank)))
                     .Var(2, row.Member.CharacterId));
             }
-            return mcl.Msg(5, Block(alliance, card)).Build();
+            return mcl.PackedIfAny(2, prismSubAreas ?? Array.Empty<int>())
+                      .VarIfNotZero(4, leaderId)
+                      .Msg(5, Block(alliance, card)).Build();
         }
 
         /// <summary>A directory alliance, with its card already built.</summary>

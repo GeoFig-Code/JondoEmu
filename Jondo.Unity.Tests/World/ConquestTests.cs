@@ -297,7 +297,10 @@ namespace Jondo.Unity.Tests.World
 
             var ours = Fields(PrismProtocol.State(prism, alliance, own: true).Build());
             Assert.Equal(PrismProtocol.MaxCrystals - 1, ours[1].VarIntValue);
-            Assert.Empty(ours[6].BytesValue);                                       // no crystal in it
+            // No crystal in it: still a lec, with an empty item (f5), or the client throws.
+            var empty = Fields(ours[6].BytesValue);
+            Assert.False(empty.ContainsKey(3));
+            Assert.Empty(Fields(empty[2].BytesValue)[5].BytesValue);
 
             prism.CrystalGid = 27632;
             prism.State = PrismStore.Pacified;

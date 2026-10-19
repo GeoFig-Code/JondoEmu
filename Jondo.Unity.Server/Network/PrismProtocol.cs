@@ -90,9 +90,10 @@ namespace Jondo.Unity.Server.Network
         /// Its own alliance sees more (<paramref name="own"/>): the f1, an optional field the client
         /// takes for «mine», is the crystals it may still consume -- the crystal window's «{0} de 4
         /// cristales posibles», which takes none at 0 --, and the f6 (lno) the crystal it holds:
-        /// { f2 the crystal, as an item of the bag (lec), f3 1 while it works }. With the f1 and no
-        /// f6 the client throws (ku.fhn reads the f6 unchecked). None of the 1,869 prisms of the
-        /// captures is the player's own, so this side is all the client's code.
+        /// { f2 the crystal, as an item of the bag (lec), f3 1 while it works }. With the f1 the
+        /// client reads the f6's crystal unchecked (ku.fhn → me.ogk), so a prism with none still
+        /// carries a lec, with an empty item: see <see cref="Crystal"/>. None of the 1,869 prisms of
+        /// the captures is the player's own, so this side is all the client's code.
         /// </remarks>
         public static Pb State(PrismStore.Prism prism, AllianceStore.Alliance alliance, bool own = false)
         {
@@ -107,10 +108,17 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>The crystal it holds (lno): { f2 the crystal (lec), f3 1 while it pacifies the prism }.</summary>
+        /// <remarks>
+        /// With no crystal the lec is still there, with an empty item (template 0): me.ogk throws on a
+        /// missing lec or item, and the window's OnPrismAddOrUpdate leaves the slot empty for a
+        /// template 0. Without it the owners' client threw on every prism of theirs without a crystal
+        /// -- ifa on placing it, ife on entering the world --: no name over it, none on the minimap,
+        /// and the map left half loaded, menus working and the character unable to move.
+        /// </remarks>
         public static Pb Crystal(PrismStore.Prism prism)
         {
             var lno = Pb.New();
-            if (prism.CrystalGid == 0) return lno;
+            if (prism.CrystalGid == 0) return lno.Msg(2, Pb.New().Msg(5, Pb.New()));
             var effects = DatabaseManager.TryGetItemTemplateEffects(prism.CrystalGid, out string json)
                 ? Managers.Equipment.ParseEffects(json)
                 : Array.Empty<Managers.Equipment.ItemEffect>();

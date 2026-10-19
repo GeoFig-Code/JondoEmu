@@ -1073,7 +1073,9 @@ namespace Jondo.Unity.Server.Handlers
             var shown = leader == null
                 ? Array.Empty<(AllianceProtocol.MemberRow, AllianceStore.Rank)>()
                 : new[] { (leader.Value, AllianceStore.Ranks(alliance.Id).FirstOrDefault(r => r.Id == leader.Value.Member.Rank)) };
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Mcl, AllianceProtocol.BuildCardView(alliance, CardOf(alliance), shown)));
+            var prisms = PrismStore.OfAlliance(alliance.Id).Select(p => p.SubAreaId).ToList();
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Mcl, AllianceProtocol.BuildCardView(
+                alliance, CardOf(alliance), shown, prisms, leader?.Member.CharacterId ?? 0)));
         }
 
         // ─── Invitations ────────────────────────────────────────────────────────
@@ -1441,13 +1443,18 @@ namespace Jondo.Unity.Server.Handlers
             }
         }
 
-        /// <summary>The alliance's card: its recruitment, its founding, how many it is.</summary>
+        /// <summary>
+        /// The alliance's card: its recruitment, its founding, how many it is, the territories its
+        /// prisms hold and its tax collectors.
+        /// </summary>
         internal static Pb CardOf(AllianceStore.Alliance alliance)
         {
             var leader = AllianceStore.LeaderOf(alliance.Id);
             string leaderName = leader == null ? "" : DatabaseManager.GetCharacterById(leader.CharacterId)?.Name ?? "";
+            int territories = PrismStore.OfAlliance(alliance.Id).Select(p => p.SubAreaId).Distinct().Count();
             return AllianceProtocol.Card(alliance, AllianceStore.ProfileOf(alliance.Id), leaderName,
-                                         AllianceStore.Members(alliance.Id).Count, PrismStore.OfAlliance(alliance.Id).Count);
+                                         AllianceStore.Members(alliance.Id).Count, territories,
+                                         TaxCollectorStore.OfAlliance(alliance.Id).Count);
         }
 
         /// <summary>The sheet (mcx) of an alliance: its tax collectors, its card and a line per member.</summary>

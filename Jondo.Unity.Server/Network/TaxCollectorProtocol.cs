@@ -426,15 +426,17 @@ namespace Jondo.Unity.Server.Network
         ///   f4 how many tax collectors the alliance has (#5)      f5 its prospecting (#3)
         ///   f7 what what it carries is worth (#7)
         ///
-        /// {429, 1000, «Orifl-Ames», 20, 200, 23836} in the capture.
+        /// {429, 1000, «Orifl-Ames», 20, 200, 23836} in the capture. The pods it can carry and its
+        /// prospecting are its own, with what its saddlebags and chests add.
         /// </summary>
-        public static byte[] BuildDialog(AllianceStore.Alliance alliance, int pods, int taxCollectors, long worth)
+        public static byte[] BuildDialog(AllianceStore.Alliance alliance, int pods, int taxCollectors, long worth,
+                                         int maxPods = MaxPods, int prospecting = Prospecting)
             => Pb.New()
                 .VarIfNotZero(1, pods)
-                .Var(2, MaxPods)
+                .Var(2, maxPods)
                 .Msg(3, AllianceProtocol.Block(alliance))
                 .VarIfNotZero(4, taxCollectors)
-                .Var(5, Prospecting)
+                .Var(5, prospecting)
                 .VarIfNotZero(7, worth)
                 .Build();
 

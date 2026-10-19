@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -201,6 +202,12 @@ namespace Jondo.Unity.Server.Managers
                 {
                     Console.WriteLine($"[Equipment] {doubled.Count} items were sharing a slot " +
                                       "with another; they have been sent back to the bag.");
+                }
+                var taxCollectors = RepairTaxCollectorPieces();
+                if (taxCollectors.Count > 0)
+                {
+                    Console.WriteLine($"[Equipment] {taxCollectors.Count} tax collector piece(s) were worn " +
+                                      "by the character; they have been sent back to the bag.");
                 }
 
                 Console.WriteLine($"[Equipment] {Items.Count} items from the database, {Worn} worn.");
@@ -411,6 +418,28 @@ namespace Jondo.Unity.Server.Managers
         /// on in slot 8 will not be able to take them off one by one, because the client only knows about the
         /// last. It is done when loading the inventory and written to the database, so it is paid once.
         /// </summary>
+        /// <summary>
+        /// Whether an item is a tax collector's equipment: the seven types of superType 69 (tunic,
+        /// plate, banner, daggers, saddlebags, chests, horseshoes). The client's data gives that
+        /// superType the positions 0 and 2 to 7, the numbers of the character's own slots, so the
+        /// client lets them be dragged onto the character; they are only for a tax collector.
+        /// </summary>
+        public static bool IsTaxCollectorPiece(int template)
+            => Network.TaxCollectorProtocol.SlotOfType.ContainsKey(Forgemagic.TemplateOf(template)?.Type ?? 0);
+
+        /// <summary>A tax collector's piece worn by the character goes back to the bag, out of the worn cache.</summary>
+        private static List<Item> RepairTaxCollectorPieces()
+        {
+            var moved = Items.Values.Where(i => IsWorn(i.Position) && IsTaxCollectorPiece(i.Template)).ToList();
+            foreach (var item in moved)
+            {
+                item.Position = Bag;
+                DatabaseManager.SaveItemPosition(item.Uid, Bag, SessionContext.State.CharacterId);
+                RememberWorn(item.Uid, Bag, (string?)null);
+            }
+            return moved;
+        }
+
         private static List<Item> RepairDoubledSlots()
         {
             var moved = new List<Item>();

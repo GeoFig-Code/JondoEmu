@@ -2728,11 +2728,36 @@ namespace Jondo.Unity.Server
         /// The identifier is the largest there is plus one. The uids of his items come from a band of their
         /// own per character, so that they do not collide with anybody's.
         /// </summary>
+        /// <remarks>
+        /// Two creations at once read the same largest id, and the second one's INSERT failed on the
+        /// key: «no se ha podido crear». One at a time, then, and again with the next id when the one
+        /// read was taken meanwhile by something else that writes characters.
+        /// </remarks>
         public static long CreateCharacter(long accountId, int serverId, string name, int breed,
                                            int sex, int headId, IReadOnlyList<long> colors,
                                            long mapId, int level, long kamas, int stat,
                                            IReadOnlyList<(int Gid, int Slot)> starterSet)
         {
+            lock (CharacterIdGate)
+            {
+                for (int attempt = 0; attempt < 5; attempt++)
+                {
+                    long id = InsertCharacter(accountId, serverId, name, breed, sex, headId, colors,
+                                              mapId, level, kamas, stat, starterSet, out bool idTaken);
+                    if (id != 0 || !idTaken) return id;
+                }
+                return 0;
+            }
+        }
+
+        private static readonly object CharacterIdGate = new();
+
+        private static long InsertCharacter(long accountId, int serverId, string name, int breed,
+                                            int sex, int headId, IReadOnlyList<long> colors,
+                                            long mapId, int level, long kamas, int stat,
+                                            IReadOnlyList<(int Gid, int Slot)> starterSet, out bool idTaken)
+        {
+            idTaken = false;
             try
             {
                 using var connection = new SqliteConnection(WorldConnectionString);
@@ -2807,6 +2832,11 @@ namespace Jondo.Unity.Server
 
                 transaction.Commit();
                 return id;
+            }
+            catch (SqliteException ex) when (ex.SqliteErrorCode == 19 && ex.Message.Contains("Characters.Id"))
+            {
+                idTaken = true;
+                return 0;
             }
             catch (Exception ex)
             {

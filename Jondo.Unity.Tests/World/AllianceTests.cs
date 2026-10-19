@@ -319,6 +319,26 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
+        /// The card's numbers where the client reads them (Ghidra): in the lel, f3 the territories
+        /// (the directory's «Territorios»), f4 the tax collectors and f5 the members; in the mcl, f2
+        /// the subareas of its prisms (the card's «Prismas») and f4 its leader.
+        /// </summary>
+        [Fact]
+        public void The_card_counts_where_the_client_reads_them()
+        {
+            var card = ProtoMessage.Parse(AllianceProtocol.Card(Absinto, new AllianceStore.Profile(), "L", 3,
+                                                                territories: 2, taxCollectors: 1).Build());
+            Assert.Equal(2, card.Fields.Single(f => f.FieldNumber == 3).VarIntValue);
+            Assert.Equal(1, card.Fields.Single(f => f.FieldNumber == 4).VarIntValue);
+            Assert.Equal(3, card.Fields.Single(f => f.FieldNumber == 5).VarIntValue);
+
+            var mcl = ProtoMessage.Parse(AllianceProtocol.BuildCardView(
+                Absinto, Pb.New(), Array.Empty<(AllianceProtocol.MemberRow, AllianceStore.Rank)>(), new[] { 178, 179 }, 8412));
+            Assert.Equal(new byte[] { 0xB2, 0x01, 0xB3, 0x01 }, mcl.Fields.Single(f => f.FieldNumber == 2).BytesValue);
+            Assert.Equal(8412, mcl.Fields.Single(f => f.FieldNumber == 4).VarIntValue);
+        }
+
+        /// <summary>
         /// The «Alliance fight» switch: kept per character, answered with the hon {f1 character,
         /// f5 status}, 4 when on and nothing when off, and carried by the map's actor (f1 of its
         /// alliance option).
