@@ -55,6 +55,25 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
+        /// The board in front of the temple, 488131 on cell 118, is declared with the capture's
+        /// «Consultar» (skill 293) and nothing else: it opens the top tax collectors.
+        /// </summary>
+        [Fact]
+        public void The_board_shows_the_top_tax_collectors()
+        {
+            Interactives.Initialize();
+            if (Interactives.ElementsOf(TaxCollectorHandler.TopsMap).Count == 0) return;   // no world data
+            InteractiveRegistry.Initialize();
+
+            var board = Assert.Single(InteractiveRegistry.OnMap(TaxCollectorHandler.TopsMap),
+                                      i => i.Element.Id == TaxCollectorHandler.TopsBoard);
+            Assert.Equal(118, board.Element.Cell);
+            var action = Assert.Single(board.Actions);
+            Assert.Equal(InteractiveActionKind.TopTaxCollectors, action.Kind);
+            Assert.Equal(TaxCollectorHandler.TopsSkill, action.SkillId);
+        }
+
+        /// <summary>
         /// The 2.68 passage on the door is left out of the routes, and not only out of the registry:
         /// kept as a route, the start's guard found a passage that resolved to the alliance's
         /// door and stopped the server, and its cell let anybody walk in without the gem.
