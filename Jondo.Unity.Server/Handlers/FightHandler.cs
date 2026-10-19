@@ -600,7 +600,7 @@ namespace Jondo.Unity.Server.Handlers
             if (fighter.IsBot) return (fighter.BotLook ?? Array.Empty<byte>(), fighter.Breed, fighter.Sex);
             var ficha = DatabaseManager.GetCharacterById(fighter.Id);
             byte[] look = ficha != null
-                ? Managers.BreedLookTable.BuildLook(ficha.Breed, ficha.Sex, ficha.HeadId, null, ficha.Id)
+                ? Managers.BreedLookTable.BuildLook(ficha)
                 : Array.Empty<byte>();
             return (look, ficha?.Breed ?? 0, ficha?.Sex ?? 0);
         }
@@ -1611,8 +1611,7 @@ namespace Jondo.Unity.Server.Handlers
 
             var character = DatabaseManager.GetCharacterById(fighter.DoubleOf != 0 ? fighter.DoubleOf : fighter.Id);
             return character != null
-                ? Managers.BreedLookTable.BuildLook(character.Breed, character.Sex,
-                                                     character.HeadId, null, character.Id, onFoot: onFoot)
+                ? Managers.BreedLookTable.BuildLook(character, onFoot: onFoot)
                 : Array.Empty<byte>();
         }
 

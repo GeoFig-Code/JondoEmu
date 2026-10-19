@@ -25,8 +25,8 @@ namespace Jondo.Unity.Server.Managers
     ///     f7 : sub-entities (mount, pet), with the same nested layout
     ///
     /// It is rebuilt from the client data instead of reusing the look that ended up stored in the
-    /// database: that one was captured from an earlier version of the protocol, with a different
-    /// field numbering, and cannot be trusted.
+    /// database: older rows use a different protocol layout and current equipment can change.
+    /// Only the palette is recovered from a stored look in the current layout.
     /// </summary>
     public static class BreedLookTable
     {
@@ -153,6 +153,56 @@ namespace Jondo.Unity.Server.Managers
             return null;
         }
 
+        /// <summary>Resolve the creation screen's bare RGB values and -1 defaults without moving slots.</summary>
+        public static List<long> CreationColors(int breedId, int sex, IReadOnlyList<long> colors)
+        {
+            var defaults = Get(breedId, sex)?.Colors;
+            var rgb = new List<long>();
+            int count = defaults?.Count ?? colors.Count;
+            for (int i = 0; i < count; i++)
+                rgb.Add(i < colors.Count && colors[i] >= 0
+                    ? colors[i] & 0xFFFFFF
+                    : (defaults != null ? defaults[i] : 0));
+            return IndexColors(rgb);
+        }
+
+        /// <summary>
+        /// Read only the palette from the persisted look; body, equipment and mounts are rebuilt.
+        /// Older protocol layouts have no packed f1 and fall back to the breed's palette.
+        /// </summary>
+        public static List<long> SavedColors(DatabaseManager.DbCharacter character)
+        {
+            if (!string.IsNullOrEmpty(character.LookHex))
+            {
+                try
+                {
+                    var look = ProtoMessage.Parse(Convert.FromHexString(character.LookHex));
+                    foreach (var field in look.Fields)
+                    {
+                        if (field.FieldNumber != 1 || field.WireType != 2) continue;
+                        var colors = new List<long>();
+                        using var input = new Google.Protobuf.CodedInputStream(field.BytesValue);
+                        while (!input.IsAtEnd) colors.Add(input.ReadInt64());
+                        if (colors.Count == 0) continue;
+
+                        // Creations made before the fix stored bare RGB in this field.
+                        if (colors.TrueForAll(c => c >= 0 && c <= 0xFFFFFF))
+                            return IndexColors(colors);
+                        return colors;
+                    }
+                }
+                catch (FormatException) { }
+                catch (Google.Protobuf.InvalidProtocolBufferException) { }
+            }
+            return IndexedColors(character.Breed, character.Sex);
+        }
+
+        /// <summary>Rebuild a character with their persisted palette and current equipment.</summary>
+        public static byte[] BuildLook(DatabaseManager.DbCharacter character,
+                                       bool paraLaVentana = false, bool onFoot = false)
+            => BuildLook(character.Breed, character.Sex, character.HeadId, SavedColors(character),
+                         character.Id, paraLaVentana, onFoot);
+
         /// <summary>
         /// Assembles a character's look block. If custom colors are passed those are used;
         /// otherwise, the six defaults of the breed.
@@ -161,6 +211,7 @@ namespace Jondo.Unity.Server.Managers
         /// A character created in the real game came back as skins [110, 2172] — base and head —
         /// and without the second one the client draws it with no face.
         /// </summary>
+        /// <param name="customColors">Colours already indexed for the look. CreationColors converts the creation screen's RGB values.</param>
         /// <param name="paraLaVentana">
         /// True only for the appearance panel's preview. It changes one thing: mounted, the appearance
         /// PET does not go out to the world -- a mount and a pet cannot be carried at once, because they
@@ -427,7 +478,7 @@ namespace Jondo.Unity.Server.Managers
             if (skins.Count == 0) return "";
 
             var colours = new List<string>();
-            var plain = PlainColors(character.Breed, character.Sex, null);
+            var plain = PlainColors(character.Breed, character.Sex, SavedColors(character));
             for (int i = 0; i < plain.Count; i++)
             {
                 colours.Add($"{i + 1}=#{plain[i] & 0xFFFFFF:X6}");

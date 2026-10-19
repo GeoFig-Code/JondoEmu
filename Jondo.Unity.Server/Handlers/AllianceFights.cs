@@ -271,7 +271,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             var character = DatabaseManager.GetCharacterById(characterId);
             if (character == null) return TaxCollectorProtocol.Fighter(characterId, "", 1, null, 0);
-            byte[] look = BreedLookTable.BuildLook(character.Breed, character.Sex, character.HeadId, null, character.Id);
+            byte[] look = BreedLookTable.BuildLook(character);
             return TaxCollectorProtocol.Fighter(characterId, character.Name, character.Level, look, character.Breed);
         }
 

@@ -2746,12 +2746,11 @@ namespace Jondo.Unity.Server
                 var zaap = Managers.Interactives.ZaapOf(mapId);
                 int cell = MapManager.GetNearestWalkableCell(mapId, zaap.Cell);
 
-                // The colours the client sends as -1 are "the breed's"; they are stored empty and
-                // BreedLookTable puts its own.
-                var propios = new List<long>();
-                foreach (long c in colors) if (c >= 0) propios.Add(c);
+                // Resolve defaults in place, then store the indexed palette in Look. Dropping -1
+                // entries shifts every following colour into the wrong slot.
+                var propios = Managers.BreedLookTable.CreationColors(breed, sex, colors);
                 byte[] look = Managers.BreedLookTable.BuildLook(breed, sex, headId,
-                                                               propios.Count > 0 ? propios : null);
+                                                               propios, characterId: id);
 
                 // They are reserved before opening the transaction: NextItemUid queries the same
                 // database with another connection the first time and SQLite must not find it locked here.

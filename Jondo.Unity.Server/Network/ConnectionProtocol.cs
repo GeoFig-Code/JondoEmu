@@ -406,8 +406,7 @@ namespace Jondo.Unity.Server.Network
 
             // With the id, so that on the selection screen he comes out mounted if he is. Without it the
             // mount was only known for the character already playing.
-            traits.Bytes(6, BreedLookTable.BuildLook(
-                character.Breed, character.Sex, character.HeadId, null, character.Id));
+            traits.Bytes(6, BreedLookTable.BuildLook(character));
             traits.VarIfNotZero(7, character.Breed);
 
             return Pb.New()
@@ -1801,8 +1800,7 @@ namespace Jondo.Unity.Server.Network
                 .Msg(1, Pb.New().Var(1, cell).Var(2, facing))
                 .Msg(2, Pb.New()
                     .Msg(1, Pb.New().Msg(5, humanoid))
-                    .Bytes(3, BreedLookTable.BuildLook(
-                        character.Breed, character.Sex, character.HeadId, null, character.Id)))
+                    .Bytes(3, BreedLookTable.BuildLook(character)))
                 .Var(3, character.Id);
         }
 
@@ -1849,9 +1847,7 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildLookChanged(DatabaseManager.DbCharacter character)
             => Pb.New()
                 .Str(1, LookIdOf(character.Id))
-                .Bytes(2, BreedLookTable.BuildLook(
-                    character.Breed, character.Sex, character.HeadId, null, character.Id,
-                    paraLaVentana: true))
+                .Bytes(2, BreedLookTable.BuildLook(character, paraLaVentana: true))
                 .Build();
 
         /// <summary>
@@ -1882,7 +1878,8 @@ namespace Jondo.Unity.Server.Network
             // The outfit's colours, bare and without an index. Without this the client blows up on opening
             // the cosmetics window: its own log says so, ColorSet..ctor with the null
             // list, inside the lyt handler.
-            var colores = BreedLookTable.PlainColors(character.Breed, character.Sex, null);
+            var colores = BreedLookTable.PlainColors(character.Breed, character.Sex,
+                                                    BreedLookTable.SavedColors(character));
             if (colores.Count > 0) body.Msg(1, Pb.New().Packed(2, colores));
 
             body
@@ -1892,9 +1889,7 @@ namespace Jondo.Unity.Server.Network
                 .Var(8, AppearanceStateKind)
                 .VarIfNotZero(10, title)
                 .VarIfNotZero(11, character.Level)
-                .Bytes(12, BreedLookTable.BuildLook(
-                    character.Breed, character.Sex, character.HeadId, null, character.Id,
-                    paraLaVentana: true))
+                .Bytes(12, BreedLookTable.BuildLook(character, paraLaVentana: true))
                 .Var(15, -1)
                 .VarIfNotZero(16, ornament);
 
