@@ -384,7 +384,7 @@ An alliance is made of characters, not guilds.
 - ✅ **929 item sets** with their bonuses
 - ✅ Boxes that open with a double click, by their own drop tables
 - ✅ Travel items: recall potion, city, class and quest potions, home potion, anklas
-- ✅ Food and potions that restore life and energy
+- ✅ Food and potions that restore life and energy; the lower the energy, the less life they give back
 - ✅ Characteristic scrolls and breads
 - ✅ Books and documents
 - ✅ Experience and job scrolls

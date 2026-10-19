@@ -62,6 +62,11 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal((10, 0), RecoveryItemHandler.WouldGive(bread, 10, DefeatPenalty.MaxEnergy, dice));
             Assert.Equal((0, 0), RecoveryItemHandler.WouldGive(bread, 0, 0, dice));
 
+            // The energy is the share of the roll that heals: half the gauge, half the bread; one
+            // point at the bottom.
+            Assert.Equal((15, 0), RecoveryItemHandler.WouldGive(bread, 100, DefeatPenalty.MaxEnergy / 2, dice));
+            Assert.Equal((1, 0), RecoveryItemHandler.WouldGive(bread, 100, 1, dice));
+
             var energy = Of(Effect(139, 390));
             Assert.Equal((0, 10), RecoveryItemHandler.WouldGive(energy, 50, DefeatPenalty.MaxEnergy - 10, dice));
             Assert.Equal((0, 0), RecoveryItemHandler.WouldGive(energy, 50, DefeatPenalty.MaxEnergy, dice));

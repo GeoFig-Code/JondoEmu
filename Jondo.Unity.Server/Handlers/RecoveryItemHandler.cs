@@ -68,9 +68,22 @@ namespace Jondo.Unity.Server.Handlers
         /// What using it would give back now: the life healed and the energy, each up to what is
         /// missing. Both zero means there is nothing to give back.
         /// </summary>
+        /// <remarks>
+        /// The life is as much of the roll as the energy is of its gauge: «La energía incrementa la
+        /// eficacia de los consumibles que regeneran vida del personaje, en un rango del 0 al 100%»
+        /// (Translations 1156704). INFERRED: in a straight line, and never below a point while some
+        /// life is missing -- the energy here never goes below 1, and nothing healed would read as
+        /// «la vida ya está al máximo».
+        /// </remarks>
         internal static (int Life, int Energy) WouldGive(Recovery recovery, int lifeMissing, int energy, Random dice)
         {
-            int life = recovery.Life == null || lifeMissing <= 0 ? 0 : Math.Min(Roll(recovery.Life, dice), lifeMissing);
+            int life = 0;
+            if (recovery.Life != null && lifeMissing > 0)
+            {
+                long rolled = Roll(recovery.Life, dice);
+                long scaled = rolled * Math.Clamp(energy, 0, DefeatPenalty.MaxEnergy) / DefeatPenalty.MaxEnergy;
+                life = (int)Math.Min(Math.Max(rolled > 0 ? 1 : 0, scaled), lifeMissing);
+            }
             int toFull = Math.Max(0, DefeatPenalty.MaxEnergy - energy);
             int gained = recovery.Energy == null || toFull == 0 ? 0 : Math.Min(Roll(recovery.Energy, dice), toFull);
             return (Math.Max(0, life), Math.Max(0, gained));
