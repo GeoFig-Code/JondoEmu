@@ -154,8 +154,7 @@ namespace Jondo.Unity.Server.Handlers
             // BuildLook is the same one the jss uses, which does know about mounts and appearances.
             var quien = DatabaseManager.GetCharacterById(GameState.CharacterId);
             byte[] aspecto = quien != null
-                ? Managers.BreedLookTable.BuildLook(quien.Breed, quien.Sex, quien.HeadId,
-                                                    null, quien.Id)
+                ? Managers.BreedLookTable.BuildLook(quien)
                 : GameState.LookBytes;
             byte[] detalles = aspecto != null && aspecto.Length > 0
                 ? DatabaseManager.ReconstructActorDetails(aspecto, GameState.CharacterName)

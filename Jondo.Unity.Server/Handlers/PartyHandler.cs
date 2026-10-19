@@ -455,8 +455,7 @@ namespace Jondo.Unity.Server.Handlers
 
             var traits = Pb.New()
                 .Msg(2, enElGrupo)
-                .Bytes(6, BreedLookTable.BuildLook(
-                    character.Breed, character.Sex, character.HeadId, null, character.Id))
+                .Bytes(6, BreedLookTable.BuildLook(character))
                 .VarIfNotZero(7, character.Breed);
 
             return Pb.New()
@@ -483,8 +482,7 @@ namespace Jondo.Unity.Server.Handlers
             return Pb.New()
                 .Var(2, partyId)
                 .Msg(3, Pb.New()
-                    .Bytes(1, BreedLookTable.BuildLook(
-                        character.Breed, character.Sex, character.HeadId, null, character.Id))
+                    .Bytes(1, BreedLookTable.BuildLook(character))
                     .Str(2, character.Name)
                     .Var(3, guestId)
                     .Var(5, hostId)

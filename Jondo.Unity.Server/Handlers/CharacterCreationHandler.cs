@@ -158,7 +158,8 @@ namespace Jondo.Unity.Server.Handlers
                     if (f.FieldNumber == 1 && f.WireType == 2) name = Encoding.UTF8.GetString(f.BytesValue);
                     else if (f.FieldNumber == 2 && f.WireType == 0) head = (int)f.VarIntValue;
                     else if (f.FieldNumber == 3 && f.WireType == 2) colors = Packed(f.BytesValue);
-                    else if (f.FieldNumber == 4 && f.WireType == 0) sex = (int)f.VarIntValue;
+                    // lpj.f6 is the sex enum; f4 is a separate submessage.
+                    else if (f.FieldNumber == 6 && f.WireType == 0) sex = (int)f.VarIntValue;
                     else if (f.FieldNumber == 7 && f.WireType == 0) breed = (int)f.VarIntValue;
                 }
             }

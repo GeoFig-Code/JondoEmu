@@ -604,20 +604,24 @@ inside the haven bag.
 `Handlers/CharacterCreationHandler.cs`, `DatabaseManager.CreateCharacter`.
 
 ```
-C  kvz { f1 { f1: name, f2: head, f3: colours, f5: 26, f7: breed } }
+C  kvz { f1 { f1: name, f2: head, f3: colours, f5: ?, f6: sex, f7: breed } }
 S  kvb                 EMPTY — that is how yes is said
 S  kvi                 the character list again, with the new one in it
 ```
 
-That is the whole message, field for field, in both recorded creations. `f5` is 26 in both and
-nothing explains it. The handler also reads **`f4` as the sex**, and no capture shows an `f4` at all:
-two creations were recorded and neither needed the field, so the sex is the one part of this message
-that is unconfirmed.
+The original captures have `f5 = 26`; a later Ouginak creation has `f5 = 42`, still unexplained.
+The creation body's `f6` is the sex enum (0 male, 1 female), confirmed by the client schema and the
+2026-10-19 female Ouginak capture. `f4` is a separate submessage, not the sex. Reading `f4` as an
+integer left female characters stored as male while retaining their chosen female head.
 
 The same `kvb` carrying a reason means no: 1 refused, 2 name taken, 3 the character limit (that last
 one from the capture of a failed creation). Colours arrive as six signed varints and −1 means
 "whatever the breed brings"; the client sends all six as −1 when the palette is untouched, which is
-what both captures show.
+what the original captures show. Custom values are bare RGB: creation resolves each -1 at its
+original position and adds the slot index before saving the palette in `Characters.Look`.
+Rebuilt looks recover that palette for selection, maps, combat and appearance updates; outfits
+strip the indices back off for their bare RGB colour lists. Existing current-layout looks with
+bare RGB from the old creation bug can also be read without rewriting the database.
 
 A new character gets:
 
