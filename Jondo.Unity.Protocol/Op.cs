@@ -50,6 +50,9 @@ public static class Op
     /// <summary>A treasure hunt over: f2 type.</summary>
     public const string Hgm = "hgm";
 
+    /// <summary>A divine dimension's world portal crossed with «Usar» (client): f3 the portal.</summary>
+    public const string Hhu = "hhu";
+
     /// <summary>What the account owns; the client already has the whole catalogue and what is not in this list comes out grey. It is sent once on entering the world. In the replay it is replaced by those of the account playing.</summary>
     public const string Hhy = "hhy";
 

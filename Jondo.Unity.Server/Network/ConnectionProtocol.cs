@@ -909,6 +909,7 @@ namespace Jondo.Unity.Server.Network
             // prism, of kind 2.
             Handlers.TaxCollectorHandler.AddToMap(jss, mapId);
             Handlers.PrismHandler.AddToMap(jss, mapId);
+            Handlers.DimensionPortalHandler.AddToMap(jss, mapId);
 
             // Behind the actors, which is where the capture puts it.
             var where = MapManager.GetMapInfo(mapId);

@@ -47,10 +47,12 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>
         /// A divine dimension: its alteration, the mechanism's name for it, its staging, where its
-        /// portal leads, and its model in the localization room with the legendary hunt it launches.
+        /// portal leads, its model in the localization room with the legendary hunt it launches,
+        /// and the portal it has out in the world -- the client's portal type and the NPC that is
+        /// that portal (DimensionPortals); Osavora has none.
         /// </summary>
         public sealed record Dimension(string Name, int Alteration, int OpenName, int Staging, long EntryMap, int EntryCell,
-                                       int Model, int ModelType, int Legendary);
+                                       int Model, int ModelType, int Legendary, int PortalType, int PortalNpc);
 
         public const int TeleporterType = 235;
         public const int PortalType = 232;
@@ -103,11 +105,11 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static readonly IReadOnlyList<Dimension> Dimensions = new[]
         {
-            new Dimension("Anutropía", 763, 346, 4, 131596288, 429, 484967, 441, 58),
-            new Dimension("Sramvil", 764, 347, 5, 134351108, 372, 485536, 442, 59),
-            new Dimension("Xelorium", 765, 348, 6, 145100034, 269, 486664, 443, 61),
-            new Dimension("Zurcalia", 766, 349, 7, 161351684, 399, 502767, 444, 60),
-            new Dimension("Osavora", 767, 350, 8, 234751496, 516, 539218, 445, 62),
+            new Dimension("Anutropía", 763, 346, 4, 131596288, 429, 484967, 441, 58, 1, 2374),
+            new Dimension("Sramvil", 764, 347, 5, 134351108, 372, 485536, 442, 59, 2, 2594),
+            new Dimension("Xelorium", 765, 348, 6, 145100034, 269, 486664, 443, 61, 3, 2667),
+            new Dimension("Zurcalia", 766, 349, 7, 161351684, 399, 502767, 444, 60, 4, 3136),
+            new Dimension("Osavora", 767, 350, 8, 234751496, 516, 539218, 445, 62, 0, 0),
         };
 
         /// <summary>The dimensions' portals back, by map: the arrival's and the others the client data draws.</summary>

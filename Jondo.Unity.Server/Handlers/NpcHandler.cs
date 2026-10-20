@@ -106,6 +106,8 @@ namespace Jondo.Unity.Server.Handlers
             if (action == Npcs.Talk && await TaxCollectorHandler.TalkAsync(stream, mapId, contextualId)) return;
             // And a prism, the same way, with its own question (iot).
             if (action == Npcs.Talk && await PrismHandler.TalkAsync(stream, mapId, contextualId)) return;
+            // And a divine dimension's portal, which speaks as its NPC (DimensionPortalHandler).
+            if (action == Npcs.Talk && await DimensionPortalHandler.TalkAsync(stream, mapId, contextualId)) return;
 
             var npc = Npcs.Find(mapId, contextualId);
             if (npc == null)
@@ -827,6 +829,9 @@ namespace Jondo.Unity.Server.Handlers
             {
                 if (field.FieldNumber == 1 && field.WireType == 0) reply = field.VarIntValue;
             }
+
+            // A dimension's portal: its one reply goes through it.
+            if (await DimensionPortalHandler.ReplyAsync(stream, reply)) return;
 
             // Did a luminomachine answer? Neither quests nor written tree: what each of its answers
             // does is said by the answer itself.

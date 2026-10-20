@@ -218,6 +218,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
   (level 50) — five stages of five steps, flags, digs and four tries — that ends in a fight against
   the fissure; whoever wins it gets the portal for good, and the hunter its divine chest
 - 🟡 The hunts' steps say how many maps to walk, not which landmark to look for
+- ✅ Portals to Anutropía, Sramvil, Xelorium and Zurcalia out in the world, on a random outdoor
+  map: anybody can talk to one (uses left and when it closes) or cross it; after 128 crossings, or
+  a day with nobody crossing, it closes and opens somewhere else
 - ✅ **16 temporal anomalies** with their 120-minute countdown
 <img width="2560" height="1514" alt="image" src="https://github.com/user-attachments/assets/942d4d71-9711-45f1-9156-5381f7ad14b8" />
 

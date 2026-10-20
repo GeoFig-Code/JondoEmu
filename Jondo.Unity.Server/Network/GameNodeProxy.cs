@@ -958,6 +958,9 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.GuildHandler.RerollMissionAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jej)))
                     await Handlers.GuildHandler.InterestAsync(stream, payload);
+                // A divine dimension's world portal crossed (DimensionPortalHandler).
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hhu)))
+                    await Handlers.DimensionPortalHandler.UseAsync(stream, payload);
                 // The treasure hunts: flags, digs and give-ups (TreasureHuntHandler).
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hhv)))
                     await Handlers.TreasureHuntHandler.FlagAsync(stream, payload);
