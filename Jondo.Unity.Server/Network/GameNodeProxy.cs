@@ -524,6 +524,8 @@ namespace Jondo.Unity.Server.Network
                         await Managers.GuildRaidStagings.OnMapLoadedAsync(stream, GameState.CharacterId, GameState.MapId);
                         // And in the Travelers' Tower's portal room, the portal as it stands.
                         await Handlers.TravelersTowerHandler.OnMapLoadedAsync(stream, GameState.MapId);
+                        // And on Osavora's maps, the look of the season.
+                        await Handlers.OsavoraSeasonHandler.OnMapLoadedAsync(stream, GameState.MapId);
 
                         // And what depends on having arrived here: the objectives met
                         // by stepping on a map or a zone.

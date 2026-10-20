@@ -1,0 +1,1080 @@
+{
+ "version": "3.6.10.11",
+ "maps": {
+  "234618880": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234618881": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234618882": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234619137": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234619392": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234619393": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234619400": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234619649": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234619904": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234619905": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234620161": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234620162": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234620416": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234620417": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234620673": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234620674": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234620675": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234620676": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234620677": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234620928": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234620929": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234621185": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234621186": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234621187": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234621188": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234621189": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234621190": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234621697": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234621698": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234621699": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234621700": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234621701": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234621702": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234622211": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234622212": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234622213": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234622214": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234622721": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234623745": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234623747": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234623750": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234623754": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234623758": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234623762": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234625802": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234627584": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234627586": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234627842": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234627844": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234627846": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234750464": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234750465": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234750466": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234750721": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234750976": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234750977": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234750978": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234751491": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234751496": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234752517": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234753031": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "234753281": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235143169": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235143171": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235143425": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235143427": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235143429": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235145728": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235145985": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235145986": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235145990": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235146240": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235146497": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235146498": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235146499": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235147009": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235147010": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235147011": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235147526": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235405312": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235405313": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235405317": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235405569": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235405571": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235405573": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235405824": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235405825": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235406081": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235406083": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235407360": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235407362": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235407364": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235407618": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235407620": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235536896": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235536897": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235536898": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235537153": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235537412": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235537413": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235537667": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235537669": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235537921": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235538177": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235667968": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235667971": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235668227": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235668230": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235668233": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235668236": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235668239": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235669504": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235669509": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235669512": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235669763": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235669766": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235669769": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235673859": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235673868": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235675395": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235676931": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235678467": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235680003": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235799552": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235799557": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235799560": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235799811": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235799814": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235799817": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235801093": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "235929600": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235929602": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235930624": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "235930626": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "236453888": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "236453891": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "236454912": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "236716546": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "236717056": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "236718080": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "236978176": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "236978435": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "236979200": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "236980224": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3
+  },
+  "237240320": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  },
+  "237240579": {
+   "Chasse": 2,
+   "Naissance": 1,
+   "Repos": 3,
+   "S_parasiteBOOST": 6,
+   "S_parasiteOFF": 5,
+   "S_parasiteON": 4
+  }
+ }
+}

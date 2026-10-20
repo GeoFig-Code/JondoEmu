@@ -218,10 +218,13 @@ Built with **Avalonia**, the same toolkit as the Studio.
   (level 50) — five stages of five steps, flags, digs and four tries — that ends in a fight against
   the fissure; whoever wins it gets the portal for good, and the hunter its divine chest
 - 🟡 The hunts' steps say how many maps to walk, not which landmark to look for
-- ✅ Optional, from the server settings: portals to Anutropía, Sramvil, Xelorium and Zurcalia out in
-  the world, as before version 3.2, on a random outdoor map: anybody can talk to one (uses left and
-  when it closes) or cross it; after 128 crossings, or a day with nobody crossing, it opens elsewhere
+- ✅ A nod to the old days: the portals to Anutropía, Sramvil, Xelorium and Zurcalia, gone from the game
+  since version 3.2, stand for good in the Amakna village square by the vendors — anybody can talk to
+  them or cross them, as often as they like
 - ✅ Zurcarák's herald at Zurcalia's entry
+- ✅ Osavora's seasons — Naissance, Chasse and Repos, one a week from Monday 8:00 — change the look of
+  the dimension's maps
+- ❌ What the seasons change in Osavora's monsters and weekly quests
 - ✅ **16 temporal anomalies** with their 120-minute countdown
 <img width="2560" height="1514" alt="image" src="https://github.com/user-attachments/assets/942d4d71-9711-45f1-9156-5381f7ad14b8" />
 
