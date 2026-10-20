@@ -133,7 +133,13 @@ namespace Jondo.Unity.Tests.World
 
             var frames = await wire.Drain();
             Assert.Equal(new[] { "jdb", "jff" }, frames.Select(f => f.Op));
-            Assert.Equal("120b0a00120508011" + "8fa011a00", Hex(frames[0].Payload));
+            // The capture's jdb: f2 { f1 {} the preferences, f2 { f1 1, f3 250 }, f3 the missions }
+            // -- twelve, drawn as the tier is chosen (see GuildMissionTests).
+            var jcy = ProtoMessage.Parse(ProtoMessage.Parse(frames[0].Payload).Fields.Single(f => f.FieldNumber == 2).BytesValue);
+            Assert.Empty(jcy.Fields.Single(f => f.FieldNumber == 1).BytesValue);
+            Assert.Equal("080118fa01", Hex(jcy.Fields.Single(f => f.FieldNumber == 2).BytesValue));
+            Assert.Equal(GuildMissions.All.Count == 0 ? 0 : GuildMissions.PerWeek,
+                         ProtoMessage.Parse(jcy.Fields.Single(f => f.FieldNumber == 3).BytesValue).Fields.Count(f => f.FieldNumber == 2));
             Assert.Equal("12070a05080118fa01", Hex(frames[1].Payload));
         }
 

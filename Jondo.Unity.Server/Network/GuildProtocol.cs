@@ -378,12 +378,44 @@ namespace Jondo.Unity.Server.Network
         /// missions } }". The client reads f3 without asking whether it is there, so it always goes,
         /// empty until missions are drawn.
         /// </summary>
-        public static byte[] BuildTierChosen(GuildActivity.Week week, int tokenCap, int tokens)
+        public static byte[] BuildTierChosen(GuildActivity.Week week, int tokenCap, int tokens,
+                                             IEnumerable<GuildMissions.Drawn> missions = null)
             => Pb.New().Msg(2, Pb.New()
                     .Bytes(1, week.Preferences ?? Array.Empty<byte>())
                     .Msg(2, WeekBlock(week, tokenCap, tokens))
-                    .Bytes(3, Array.Empty<byte>()))
+                    .Msg(3, MissionsBlock(missions)))
                 .Build();
+
+        /// <summary>
+        /// The week's missions (jdf): f2 each mission. The capture's: twelve in f2 and the eight
+        /// of the live events in f4, which this server has none of.
+        /// </summary>
+        public static Pb MissionsBlock(IEnumerable<GuildMissions.Drawn> missions)
+        {
+            var jdf = Pb.New();
+            foreach (var mission in missions ?? Array.Empty<GuildMissions.Drawn>()) jdf.Msg(2, Mission(mission));
+            return jdf;
+        }
+
+        /// <summary>
+        /// One mission (jdx): f1 its uuid, f3 the mission, f4 { f1 {}, f4 its objective } -- every
+        /// one of the capture's twenty, whatever its kind: «ad92a545-…», 65, { {}, 65 }; 417's
+        /// objective is 418.
+        /// </summary>
+        public static Pb Mission(GuildMissions.Drawn mission)
+            => Pb.New()
+                .Str(1, mission.Uuid)
+                .Var(3, mission.MissionId)
+                .Msg(4, Pb.New().Msg(1, Pb.New()).Var(4, mission.ObjectiveId));
+
+        /// <summary>
+        /// The missions tab (jei, the answer to jeu): f1 { f1 the week's missions }. A guild with no
+        /// tier gets the empty f3 the tab had before.
+        /// </summary>
+        public static byte[] BuildMissions(IReadOnlyCollection<GuildMissions.Drawn> missions)
+            => missions == null || missions.Count == 0
+                ? BuildEmptyTab(3)
+                : Pb.New().Msg(1, Pb.New().Msg(1, MissionsBlock(missions))).Build();
 
         /// <summary>
         /// The guild's message (jci), empty: what the real server answers to the jiy {f2: 4} of

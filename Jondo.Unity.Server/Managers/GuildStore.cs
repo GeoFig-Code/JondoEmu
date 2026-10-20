@@ -158,6 +158,15 @@ namespace Jondo.Unity.Server.Managers
                     NextPreferences BLOB,
                     PRIMARY KEY (GuildId, Week)
                 );
+                CREATE TABLE IF NOT EXISTS GuildMissionDraws (
+                    GuildId INTEGER NOT NULL,
+                    Week TEXT NOT NULL,
+                    Slot INTEGER NOT NULL,
+                    MissionId INTEGER NOT NULL,
+                    Uuid TEXT NOT NULL,
+                    ObjectiveId INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (GuildId, Week, Slot)
+                );
                 CREATE TABLE IF NOT EXISTS GuildTokenWeeks (
                     CharacterId INTEGER NOT NULL,
                     Week TEXT NOT NULL,

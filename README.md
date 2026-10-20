@@ -285,7 +285,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Leaving and expelling; assigning ranks; handing the guild over
 - ✅ The weekly activity tier, contributions and the oracle shop
 - ✅ The guild chest — see [Banks and marketplaces](#-banks-and-marketplaces)
-- ❌ The weekly missions of the *Encargos* tab and the *Casas* tab
+- ✅ The *Encargos* tab's twelve weekly missions, drawn in the ranks and categories the guild chose
+- ❌ The missions' progress and rewards, and the *Casas* tab
 
 **Raids** — the Eternal Gardens Sanctuary and the Gigalodón Abyss — run on the client's own screens.
 

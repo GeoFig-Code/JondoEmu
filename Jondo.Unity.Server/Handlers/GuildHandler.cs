@@ -367,8 +367,22 @@ namespace Jondo.Unity.Server.Handlers
             if (!week.HasActivity) return;
 
             await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jdb,
-                GuildProtocol.BuildTierChosen(week, GuildActivity.TokenCapOf(guild), GuildActivity.TokensOf(who, now)),
+                GuildProtocol.BuildTierChosen(week, GuildActivity.TokenCapOf(guild), GuildActivity.TokensOf(who, now),
+                                              GuildMissions.Of(guild.Id, now)),
                 ConnectionProtocol.RequestId(frame)));
+        }
+
+        /// <summary>
+        /// The missions tab (jeu → jei): the week's twelve, drawn the first time they are asked
+        /// while the guild has a tier (GuildMissions); the empty tab without one.
+        /// </summary>
+        public static async Task MissionsAsync(NetworkStream stream, byte[] frame)
+        {
+            long who = SessionContext.State.CharacterId;
+            var guild = who == 0 ? null : GuildStore.GuildOf(who);
+            var missions = guild == null ? Array.Empty<GuildMissions.Drawn>() : GuildMissions.Of(guild.Id, DateTimeOffset.UtcNow);
+            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jei, GuildProtocol.BuildMissions(missions.ToList()),
+                                                               ConnectionProtocol.RequestId(frame)));
         }
 
         // ─── Ranks ─────────────────────────────────────────────────────────────

@@ -951,7 +951,7 @@ namespace Jondo.Unity.Server.Network
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jfv)))
                     await Handlers.GuildHandler.EmptyTabAsync(stream, payload, Op.Jfs, 0);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jeu)))
-                    await Handlers.GuildHandler.EmptyTabAsync(stream, payload, Op.Jei, 3);
+                    await Handlers.GuildHandler.MissionsAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jga)))
                     await Handlers.GuildHandler.EmptyTabAsync(stream, payload, Op.Jfz, 1);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jgr)))
