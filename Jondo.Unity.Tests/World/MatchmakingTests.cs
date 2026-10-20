@@ -161,8 +161,9 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
-        /// The window's state counts who waits for each dungeon, and a search without the key is
-        /// refused with the client's code for it.
+        /// The window's state lists every dungeon of the search, whether anybody waits or not --
+        /// the classic list came out empty, and a second client saw only the dungeon the first one
+        /// waited for --, and a search without the key is refused with the client's code for it.
         /// </summary>
         [Fact]
         public async Task The_handler_answers_the_window_and_a_keyless_search()
@@ -179,10 +180,13 @@ namespace Jondo.Unity.Tests.World
             }
             var frames = await wire.Drain();
             Assert.Equal(new[] { "kis", "kjb" }, frames.Select(f => f.Op));
-            var entries = ProtoMessage.Parse(frames[0].Payload).Fields.Where(f => f.FieldNumber == 3)
-                                      .Select(f => ProtoMessage.Parse(f.BytesValue)).ToList();
-            Assert.Equal(new long[] { 3, 141 }, entries.Select(e => e.Fields.Single(f => f.FieldNumber == 5).VarIntValue));
-            Assert.All(entries, e => Assert.Equal(1, e.Fields.Single(f => f.FieldNumber == 2).VarIntValue));
+            var listed = ProtoMessage.Parse(frames[0].Payload).Fields.Where(f => f.FieldNumber == 3)
+                                     .Select(f => ProtoMessage.Parse(f.BytesValue).Fields.Single().VarIntValue).ToList();
+            Assert.Equal(DungeonManager.All.Values.Count(d => d.AutoGroup && d.FirstRoom != 0), listed.Count);
+            Assert.Equal(listed.OrderBy(d => d), listed);
+            Assert.Contains(141L, listed);
+            Assert.Contains(8L, listed);
+            Assert.Equal("1a0228" + "01", Hex(MatchmakingProtocol.BuildState(new[] { 1 })));
 
             // Dungeon 8 asks for its key (8143) and level 10: the level is checked first.
             var refused = ProtoMessage.Parse(ProtoMessage.Parse(frames[1].Payload).Fields.Single(f => f.FieldNumber == 1).BytesValue);

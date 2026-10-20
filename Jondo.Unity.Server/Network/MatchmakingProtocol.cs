@@ -99,14 +99,20 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildMatchFailed() => Pb.New().EmptyMsg(2).Build();
 
         /// <summary>
-        /// The window's state (kis, the answer to kjx): f3 one entry per dungeon somebody waits for,
-        /// { f2 how many, f5 the dungeon } -- the capture's «{ f2 34, f5 3 }».
+        /// The window's state (kis, the answer to kjx): f3 one entry per dungeon the search offers,
+        /// { f2 its anomaly, in percent, f5 the dungeon }, by id -- the capture's 118, «{ f2 34, f5 3 }».
+        /// It is the classic search's list: a dungeon left out is not in it, which is how an entry
+        /// per dungeon somebody waited for showed only those, and their count as the anomaly.
         /// </summary>
-        public static byte[] BuildState(IReadOnlyDictionary<int, int> waiting)
+        /// <remarks>
+        /// The anomaly is the dungeons' own, which this server does not run (Anomalies is the
+        /// zaaps' temporal ones), so it goes as 0.
+        /// </remarks>
+        public static byte[] BuildState(IEnumerable<int> dungeons)
         {
             var kis = Pb.New();
-            foreach (var (dungeon, count) in waiting.OrderBy(w => w.Key))
-                kis.Msg(3, Pb.New().VarIfNotZero(2, count).Var(5, dungeon));
+            foreach (int dungeon in dungeons.Distinct().OrderBy(d => d))
+                kis.Msg(3, Pb.New().Var(5, dungeon));
             return kis.Build();
         }
 

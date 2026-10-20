@@ -82,10 +82,14 @@ namespace Jondo.Unity.Server.Handlers
 
         // ─── The window ─────────────────────────────────────────────────────
 
-        /// <summary>The window opened (kjx → kis): how many wait for each dungeon.</summary>
+        /// <summary>The window opened (kjx → kis): every dungeon the search offers, its classic list.</summary>
         public static async Task StateAsync(NetworkStream stream, byte[] frame)
             => await WriteAsync(stream, ConnectionProtocol.Answer(Op.Kis,
-                MatchmakingProtocol.BuildState(Matchmaking.Waiting()), ConnectionProtocol.RequestId(frame)));
+                MatchmakingProtocol.BuildState(SearchDungeons().Select(d => d.Id)), ConnectionProtocol.RequestId(frame)));
+
+        /// <summary>The dungeons the search offers: autoGroup in the client data, with a room to go to.</summary>
+        private static IEnumerable<DungeonManager.Dungeon> SearchDungeons()
+            => DungeonManager.All.Values.Where(d => d.AutoGroup && d.FirstRoom != 0);
 
         // ─── Searching ──────────────────────────────────────────────────────
 
@@ -117,7 +121,7 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             var offered = (kind == MatchmakingProtocol.Kind.Random
-                    ? DungeonManager.All.Values.Where(d => d.AutoGroup).Select(d => d.Id)
+                    ? SearchDungeons().Select(d => d.Id)
                     : asked.Distinct())
                 .Select(DungeonManager.Get)
                 .Where(d => d != null && d.AutoGroup && d.FirstRoom != 0)
