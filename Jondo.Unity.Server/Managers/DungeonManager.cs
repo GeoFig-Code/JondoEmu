@@ -55,6 +55,12 @@ namespace Jondo.Unity.Server.Managers
             public bool OnKeyring { get; set; }
 
             /// <summary>
+            /// Whether the automatic dungeon search offers it: the client data's autoGroup, 117 of
+            /// the 187 (Matchmaking).
+            /// </summary>
+            public bool AutoGroup { get; set; }
+
+            /// <summary>
             /// What has to be in the bag to get in: item id and how many. 126 of the 187 ask for
             /// something.
             /// </summary>
@@ -593,6 +599,7 @@ namespace Jondo.Unity.Server.Managers
                     }
 
                     dungeon.OnKeyring = Number(entry.Value, "keyring") != 0;
+                    dungeon.AutoGroup = Number(entry.Value, "autoGroup") != 0;
                     if (entry.Value.TryGetProperty("required", out var required))
                     {
                         foreach (var pair in required.EnumerateArray())

@@ -1,0 +1,144 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Jondo.Unity.Server.Managers;
+
+namespace Jondo.Unity.Server.Network
+{
+    /// <summary>
+    /// The automatic dungeon search's messages. Tags read off the client's own parsers in Ghidra
+    /// (kis, kif, kjb, kjl, kkk and their parts), checked against the capture «busqueda automatica
+    /// de grupo-encuentra para una dung-aceptar-autoteleporte de todos y creacion de grupo».
+    /// </summary>
+    public static class MatchmakingProtocol
+    {
+        /// <summary>What the search asks for (kke): f1 { f1 dungeons } a classic one, f2 a random one, f3 completing a party.</summary>
+        public enum Kind { None = 0, Classic = 1, Random = 2, Completing = 3 }
+
+        /// <summary>The client's codes for refusing a search (kjb's error, fgr.bepu).</summary>
+        public static class JoinCode
+        {
+            public const int EmptySlice = 2;
+            public const int BadRequiredLevel = 5;
+            public const int NoDungeonLeft = 9;
+            public const int InvalidRequest = 11;
+            public const int NotLeader = 12;
+            public const int KeyMissing = 16;
+        }
+
+        /// <summary>The client's codes for a yes that cannot be taken (kjv, fgr.beqe).</summary>
+        public static class AcceptCode
+        {
+            public const int Ok = 0;
+            public const int PlayerOccupied = 1;
+            public const int KeyNeeded = 4;
+            public const int NoWaitingInvitation = 5;
+        }
+
+        // ─── Requests ───────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The search (kke): its kind and, for a classic one, the dungeons -- the capture's 90 ids
+        /// packed in f1 { f1 }.
+        /// </summary>
+        public static (Kind Kind, List<int> Dungeons) ReadSearch(byte[] kke)
+        {
+            foreach (var field in ProtoMessage.Parse(kke ?? Array.Empty<byte>()).Fields)
+            {
+                if (field.WireType != 2) continue;
+                if (field.FieldNumber == 1) return (Kind.Classic, Ints(field.BytesValue, 1));
+                if (field.FieldNumber == 2) return (Kind.Random, new List<int>());
+                if (field.FieldNumber == 3) return (Kind.Completing, new List<int>());
+            }
+            return (Kind.None, new List<int>());
+        }
+
+        // ─── Answers and notices ────────────────────────────────────────────
+
+        /// <summary>The search taken (kjb): f2 {}, the capture's «f2 = ''».</summary>
+        public static byte[] BuildSearchTaken() => Pb.New().EmptyMsg(2).Build();
+
+        /// <summary>The search refused (kjb): f1 { f2 the code }.</summary>
+        public static byte[] BuildSearchRefused(int code) => Pb.New().Msg(1, Pb.New().Var(2, code)).Build();
+
+        /// <summary>
+        /// Searching (kkk): f1 { f3 the dungeons }, f4 0 -- the capture's, right after the search
+        /// is taken.
+        /// </summary>
+        public static byte[] BuildSearching(IEnumerable<int> dungeons)
+            => Pb.New().Msg(1, Pb.New().Packed(3, dungeons.Select(d => (long)d))).Var(4, 0).Build();
+
+        /// <summary>The search stopped (kje): f1 the code, 0 for fine.</summary>
+        public static byte[] BuildStopped(int code = 0) => Pb.New().VarIfNotZero(1, code).Build();
+
+        /// <summary>A place in the ready check (kid): f1 1 while waiting, f2 sex, f3 breed.</summary>
+        public sealed record Place(bool Waiting, int Sex, int Breed);
+
+        /// <summary>
+        /// The ready check (kif): f1 each place, f2 the seconds left, f3 whether this player said
+        /// yes, f4 the dungeon -- the capture's { {1,1,15}, {1,_,9}, {1,_,11}, {1,_,9} }, 59, 141.
+        /// </summary>
+        public static byte[] BuildReadyCheck(IEnumerable<Place> places, long secondsLeft, bool accepted, int dungeonId)
+        {
+            var kif = Pb.New();
+            foreach (var place in places)
+                kif.Msg(1, Pb.New().VarIfNotZero(1, place.Waiting ? 1 : 0).VarIfNotZero(2, place.Sex).Var(3, place.Breed));
+            return kif.Var(2, Math.Max(0, secondsLeft))
+                      .VarIfNotZero(3, accepted ? 1 : 0)
+                      .Var(4, dungeonId)
+                      .Build();
+        }
+
+        /// <summary>The answer to a yes (kjv): f1 the code; the capture's is empty.</summary>
+        public static byte[] BuildAccepted(int code = AcceptCode.Ok) => Pb.New().VarIfNotZero(1, code).Build();
+
+        /// <summary>The group made (kjl): f1 { f1 the dungeon } -- the capture's «f1 { f1 141 }».</summary>
+        public static byte[] BuildMatched(int dungeonId) => Pb.New().Msg(1, Pb.New().Var(1, dungeonId)).Build();
+
+        /// <summary>The group not made (kjl): f2 {}, the client's «matchFail».</summary>
+        public static byte[] BuildMatchFailed() => Pb.New().EmptyMsg(2).Build();
+
+        /// <summary>
+        /// The window's state (kis, the answer to kjx): f3 one entry per dungeon somebody waits for,
+        /// { f2 how many, f5 the dungeon } -- the capture's «{ f2 34, f5 3 }».
+        /// </summary>
+        public static byte[] BuildState(IReadOnlyDictionary<int, int> waiting)
+        {
+            var kis = Pb.New();
+            foreach (var (dungeon, count) in waiting.OrderBy(w => w.Key))
+                kis.Msg(3, Pb.New().VarIfNotZero(2, count).Var(5, dungeon));
+            return kis.Build();
+        }
+
+        /// <summary>A repeated int32 in a message's field, packed or not.</summary>
+        private static List<int> Ints(byte[] message, int number)
+        {
+            var found = new List<int>();
+            foreach (var field in ProtoMessage.Parse(message ?? Array.Empty<byte>()).Fields)
+            {
+                if (field.FieldNumber != number) continue;
+                if (field.WireType == 0)
+                {
+                    found.Add((int)field.VarIntValue);
+                    continue;
+                }
+                var bytes = field.BytesValue ?? Array.Empty<byte>();
+                int i = 0;
+                while (i < bytes.Length)
+                {
+                    ulong value = 0;
+                    int shift = 0;
+                    while (i < bytes.Length)
+                    {
+                        byte b = bytes[i++];
+                        value |= (ulong)(b & 0x7F) << shift;
+                        if ((b & 0x80) == 0) break;
+                        shift += 7;
+                    }
+                    found.Add((int)value);
+                }
+            }
+            return found;
+        }
+    }
+}

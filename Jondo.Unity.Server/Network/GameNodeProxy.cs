@@ -956,6 +956,17 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.GuildHandler.RerollMissionAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jej)))
                     await Handlers.GuildHandler.InterestAsync(stream, payload);
+                // The automatic dungeon search (MatchmakingHandler).
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kjx)))
+                    await Handlers.MatchmakingHandler.StateAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kke)))
+                    await Handlers.MatchmakingHandler.SearchAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kkm)))
+                    await Handlers.MatchmakingHandler.StopAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kkl)))
+                    await Handlers.MatchmakingHandler.AcceptAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kij)))
+                    await Handlers.MatchmakingHandler.RefuseAsync(stream, payload);
                 // The party search's board and announcements (LobbyHandler).
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jmu)))
                     await Handlers.LobbyHandler.BoardAsync(stream, payload);

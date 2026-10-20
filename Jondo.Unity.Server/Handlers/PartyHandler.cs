@@ -396,6 +396,31 @@ namespace Jondo.Unity.Server.Handlers
         /// The order of the members makes no difference: the client draws them top to bottom sorted by
         /// initiative, not by how they arrive.
         /// </summary>
+        /// <summary>
+        /// Players put together in one party without inviting each other -- the automatic dungeon
+        /// search's group: into the party one of them already leads, or a new one around the first.
+        /// Everybody gets the whole party (ing), as the search's capture has it. The party.
+        /// </summary>
+        internal static async Task<Managers.Parties.Party> FormAsync(IReadOnlyList<long> members)
+        {
+            var party = members.Select(Parties.Of).FirstOrDefault(p => p != null && members.Contains(p.LeaderId))
+                        ?? Parties.Create(members[0]);
+            foreach (long member in members)
+            {
+                if (Parties.IsInParty(member) && Parties.Of(member) == party) continue;
+                if (Parties.Invite(party, member, party.LeaderId)) Parties.Accept(party, member);
+            }
+
+            byte[] whole = ConnectionProtocol.Push(Op.Ing, BuildParty(party));
+            foreach (long member in Parties.MembersOf(party))
+            {
+                var session = SessionRegistry.FindByCharacter(member);
+                if (session != null) await session.SendAsync(whole);
+            }
+            Console.WriteLine($"[Party] The dungeon search makes party {party.Id} of {Parties.MembersOf(party).Count}.");
+            return party;
+        }
+
         private static byte[] BuildParty(Managers.Parties.Party party)
         {
             var ing = Pb.New();

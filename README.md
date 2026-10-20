@@ -272,7 +272,11 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Administrators' characters have every attitude of the game
 - ✅ Party search: post an announcement, browse the board, apply or join at once, accept or reject
   applicants, edit it, leave it, take it down
-- ❌ The party invitation's *Details* button and the automatic dungeon matchmaking
+- ✅ Automatic dungeon search: wait for the dungeons you choose, or any, alone or as a party; the ready
+  check; then one party, the key spent and everybody in the first room (fewer than four players in the
+  server settings for small servers)
+- ❌ The party invitation's *Details* button; the votes to give up or to put someone out inside a
+  dungeon found by the search
 
 ### ⚜️ Guilds and raids
 

@@ -2099,8 +2099,49 @@ public static class Op
     /// <summary>The chest was closed.</summary>
     public const string Khd = "khd";
 
-    /// <summary>Part of the 3.6.4.3 initialisation burst that kkn fires. It does not appear in any of the 242 captures.</summary>
+    /// <summary>
+    /// C→S in 3.6.10.11: the automatic dungeon search stopped (DungeonMatchmaking.ToggleLaunch).
+    /// Answered with <see cref="Kje"/>. The world loading still sends an empty one as in 3.6.4.3,
+    /// where it was part of kkn's burst; the client has no reader for it.
+    /// </summary>
     public const string Kkm = "kkm";
+
+    // ─── The automatic dungeon search (DungeonMatchmaking) ────────────────────────────────────
+    // Read off the client (fgk sends, fgr reads) and «Busqueda grupo/busqueda automatica de
+    // grupo-encuentra para una dung-aceptar-autoteleporte de todos y creacion de grupo-abandonarlo».
+
+    /// <summary>C→S: the search window opened (its OnEnabled). Answered with <see cref="Kis"/>.</summary>
+    public const string Kjx = "kjx";
+
+    /// <summary>S→C: the search's state: f3 { f2 how many wait, f5 the dungeon } per dungeon.</summary>
+    public const string Kis = "kis";
+
+    /// <summary>C→S: a search: f1 { f1 dungeons } classic, f2 random, f3 completing a party. Answered with <see cref="Kjb"/>.</summary>
+    public const string Kke = "kke";
+
+    /// <summary>S→C: the answer to <see cref="Kke"/>: f2 {} taken, f1 { f2 code } refused.</summary>
+    public const string Kjb = "kjb";
+
+    /// <summary>S→C: searching: f1 { f3 the dungeons }, f4 0.</summary>
+    public const string Kkk = "kkk";
+
+    /// <summary>S→C: the search stopped, the answer to <see cref="Kkm"/>: f1 the code.</summary>
+    public const string Kje = "kje";
+
+    /// <summary>S→C: the ready check: f1 { f1 waiting, f2 sex, f3 breed } per place, f2 seconds left, f3 said yes, f4 the dungeon.</summary>
+    public const string Kif = "kif";
+
+    /// <summary>C→S: yes to the ready check. Answered with <see cref="Kjv"/>.</summary>
+    public const string Kkl = "kkl";
+
+    /// <summary>S→C: the answer to <see cref="Kkl"/>: f1 the code.</summary>
+    public const string Kjv = "kjv";
+
+    /// <summary>C→S: no to the ready check (the modal's quit).</summary>
+    public const string Kij = "kij";
+
+    /// <summary>S→C: the group made, f1 { f1 the dungeon }, or not, f2 {}.</summary>
+    public const string Kjl = "kjl";
 
     /// <summary>Old map load request (3.6.4.3). It appears in no capture.</summary>
     public const string Kkr = "kkr";

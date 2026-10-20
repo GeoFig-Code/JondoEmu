@@ -171,6 +171,47 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
+        /// Whether the player can go in by the automatic search: high enough, and with the way in
+        /// a door that asks nothing would take -- the keyring while this week's free entry is
+        /// left, or the dungeon's own key.
+        /// </summary>
+        internal static bool CanEnterByMatch(DungeonManager.Dungeon dungeon, int level, long characterId)
+        {
+            if (dungeon == null || dungeon.FirstRoom == 0) return false;
+            if (dungeon.MinLevel > 0 && level < dungeon.MinLevel) return false;
+            bool freeEntryLeft = dungeon.OnKeyring && DungeonKeyring.FreeEntryLeft(characterId, dungeon.Id, DateTime.Now);
+            var method = Chosen(dungeon, new DungeonDoor.Options(), 0, freeEntryLeft) ?? EntryMethod.Key;
+            return TryTakeTheKey(dungeon, method, method == EntryMethod.Keyring && freeEntryLeft, out _, out _);
+        }
+
+        /// <summary>
+        /// The automatic search's way in: the key spent as at the door, then straight into the
+        /// first room -- the capture's iun and jru, room 1 of dungeon 141. False when the key is
+        /// gone by now.
+        /// </summary>
+        internal static async Task<bool> EnterByMatchAsync(NetworkStream stream, DungeonManager.Dungeon dungeon)
+        {
+            var state = SessionContext.State;
+            bool freeEntryLeft = dungeon.OnKeyring && DungeonKeyring.FreeEntryLeft(state.CharacterId, dungeon.Id, DateTime.Now);
+            var method = Chosen(dungeon, new DungeonDoor.Options(), 0, freeEntryLeft) ?? EntryMethod.Key;
+            bool freeEntry = method == EntryMethod.Keyring && freeEntryLeft;
+            if (!TryTakeTheKey(dungeon, method, freeEntry, out long uid, out int item))
+            {
+                await TellAsync(stream, Refusal(dungeon, method, false, freeEntryLeft, DateTime.Now));
+                return false;
+            }
+            if (uid != 0)
+            {
+                if (!await ItemUseHandler.SpendOneAsync(stream, uid)) return false;
+                Console.WriteLine($"[Dungeon] {dungeon.Name}: one unit of item {item} is spent by the search.");
+            }
+            if (method == EntryMethod.Keyring) DungeonKeyring.SpendFreeEntry(state.CharacterId, dungeon.Id, DateTime.Now);
+
+            Console.WriteLine($"[Dungeon] {state.CharacterName} enters {dungeon.Name} by the search, room 1 of {dungeon.Rooms.Count}.");
+            return await TeleportHandler.ToMapAsync(stream, dungeon.FirstRoom) >= 0;
+        }
+
+        /// <summary>
         /// Where a fight in a dungeon room should leave the winner: the next room, or the way out.
         /// </summary>
         /// <remarks>

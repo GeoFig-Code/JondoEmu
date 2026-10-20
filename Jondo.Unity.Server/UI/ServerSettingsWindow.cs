@@ -28,7 +28,7 @@ namespace Jondo.Unity.Server.UI
         private readonly float _escala;
         private int E(int px) => (int)Math.Round(px * _escala);
 
-        private readonly NumberStepper _raidMin, _maxAp, _maxMp, _xp, _drop, _kamas, _randomLootChance;
+        private readonly NumberStepper _raidMin, _matchmaking, _maxAp, _maxMp, _xp, _drop, _kamas, _randomLootChance;
         private readonly NumberStepper _weakenedHours, _conquestMinutes, _invulnerableHours, _protectionMinutes;
         private readonly ToggleSwitch _hardcore, _noEnergy, _randomLoot;
         private readonly LauncherField _welcome;
@@ -59,7 +59,7 @@ namespace Jondo.Unity.Server.UI
             public string Culture, Caption, Title, Subtitle;
             public string Rates, Xp, Drop, Kamas, RatesHint;
             public string Characters, MaxAp, MaxMp, CapHint, NoEnergy, NoEnergyHint;
-            public string Raids, RaidMin, RaidMinHint;
+            public string Raids, RaidMin, RaidMinHint, Matchmaking, MatchmakingHint;
             public string Conquests, Weakened, WeakenedHint, ConquestMax, ConquestMaxHint, Invulnerable, InvulnerableHint;
             public string Protection, ProtectionHint;
             public string Loot, RandomLoot, RandomLootHint, Chance, ChanceHint, LootLevels;
@@ -86,8 +86,9 @@ namespace Jondo.Unity.Server.UI
                 MaxAp = "PA máximos", MaxMp = "PM máximos",
                 CapHint = "0 = sin tope (los oficiales: 12 PA y 6 PM).",
                 NoEnergy = "Morir no cuesta energía", NoEnergyHint = "Perder un combate no gasta energía.",
-                Raids = "RAIDS DE GREMIO",
+                Raids = "RAIDS Y BÚSQUEDA DE GRUPO",
                 RaidMin = "Jugadores mínimos para iniciar una raid", RaidMinHint = "0 = los del juego (8).",
+                Matchmaking = "Jugadores de la búsqueda automática de mazmorras", MatchmakingHint = "0 = los del juego (4).",
                 Conquests = "CONQUISTAS DE ALIANZA",
                 Weakened = "Horas de prisma debilitado", WeakenedHint = "Hasta que se vuelve vulnerable. 0 = enseguida.",
                 ConquestMax = "Duración máxima de una conquista",
@@ -133,8 +134,9 @@ namespace Jondo.Unity.Server.UI
                 MaxAp = "Most action points", MaxMp = "Most movement points",
                 CapHint = "0 = no cap (the official ones: 12 AP and 6 MP).",
                 NoEnergy = "Dying costs no energy", NoEnergyHint = "A lost fight spends no energy.",
-                Raids = "GUILD RAIDS",
+                Raids = "RAIDS AND PARTY SEARCH",
                 RaidMin = "Fewest players to start a raid", RaidMinHint = "0 = the game's (8).",
+                Matchmaking = "Players in the automatic dungeon search", MatchmakingHint = "0 = the game's (4).",
                 Conquests = "ALLIANCE CONQUESTS",
                 Weakened = "Hours a prism stays weakened", WeakenedHint = "Until it turns vulnerable. 0 = at once.",
                 ConquestMax = "Longest a conquest lasts",
@@ -180,8 +182,9 @@ namespace Jondo.Unity.Server.UI
                 MaxAp = "PA maximum", MaxMp = "PM maximum",
                 CapHint = "0 = sans plafond (les officiels : 12 PA et 6 PM).",
                 NoEnergy = "Mourir ne coûte pas d'énergie", NoEnergyHint = "Perdre un combat ne dépense pas d'énergie.",
-                Raids = "RAIDS DE GUILDE",
+                Raids = "RAIDS ET RECHERCHE DE GROUPE",
                 RaidMin = "Joueurs minimum pour lancer un raid", RaidMinHint = "0 = ceux du jeu (8).",
+                Matchmaking = "Joueurs de la recherche automatique de donjon", MatchmakingHint = "0 = ceux du jeu (4).",
                 Conquests = "CONQUÊTES D'ALLIANCE",
                 Weakened = "Heures de prisme affaibli", WeakenedHint = "Avant qu'il devienne vulnérable. 0 = tout de suite.",
                 ConquestMax = "Durée maximale d'une conquête",
@@ -247,6 +250,7 @@ namespace Jondo.Unity.Server.UI
             _maxMp = Stepper(_saved.MaxMovementPoints, 0, 20, 1, 0, "");
             _noEnergy = Toggle(_saved.NoEnergyLoss);
             _raidMin = Stepper(_saved.RaidMinPlayers, 0, 16, 1, 0, "");
+            _matchmaking = Stepper(_saved.MatchmakingGroupSize, 0, 4, 1, 0, "");
             _weakenedHours = Stepper(_saved.PrismWeakenedHours, 0, 168, 1, 0, "h");
             _conquestMinutes = Stepper(_saved.ConquestMaxMinutes, 20, 1440, 10, 0, "min");
             _invulnerableHours = Stepper(_saved.ConquestInvulnerabilityHours, 0, 168, 1, 0, "h");
@@ -273,7 +277,8 @@ namespace Jondo.Unity.Server.UI
             var characters = Card(_t.Characters,
                                   Row(_t.MaxAp, null, _maxAp), Row(_t.MaxMp, _t.CapHint, _maxMp),
                                   Row(_t.NoEnergy, _t.NoEnergyHint, _noEnergy));
-            var raids = Card(_t.Raids, Row(_t.RaidMin, _t.RaidMinHint, _raidMin));
+            var raids = Card(_t.Raids, Row(_t.RaidMin, _t.RaidMinHint, _raidMin),
+                             Row(_t.Matchmaking, _t.MatchmakingHint, _matchmaking));
             var conquests = Card(_t.Conquests,
                                  Row(_t.Weakened, _t.WeakenedHint, _weakenedHours),
                                  Row(_t.ConquestMax, _t.ConquestMaxHint, _conquestMinutes),
@@ -479,6 +484,7 @@ namespace Jondo.Unity.Server.UI
             edited.MaxMovementPoints = (int)_maxMp.Value;
             edited.NoEnergyLoss = _noEnergy.Checked;
             edited.RaidMinPlayers = (int)_raidMin.Value;
+            edited.MatchmakingGroupSize = (int)_matchmaking.Value;
             edited.PrismWeakenedHours = (int)_weakenedHours.Value;
             edited.ConquestMaxMinutes = (int)_conquestMinutes.Value;
             edited.ConquestInvulnerabilityHours = (int)_invulnerableHours.Value;

@@ -19,6 +19,12 @@ namespace Jondo.Unity.Server
         /// <summary>The fewest players a guild raid starts with; 0 keeps the client's data (eight).</summary>
         public int RaidMinPlayers { get; set; }
 
+        /// <summary>
+        /// How many players the automatic dungeon search groups; 0 keeps the game's four. Lower
+        /// for a server with few players.
+        /// </summary>
+        public int MatchmakingGroupSize { get; set; }
+
         /// <summary>The most action points a character can have; 0 means no cap (the official one is 12).</summary>
         public int MaxActionPoints { get; set; }
 
