@@ -288,7 +288,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The *Encargos* tab's twelve weekly missions, drawn in the ranks and categories the guild chose
 - ✅ Dungeon, expedition, monster-family and Infinite Dreams missions count as you play, once per member,
   with the «¡Encargo terminado!» notice, *gremichas* and activity points
-- ❌ Anomaly and dream-trial missions, rerolling missions, and the *Casas* tab
+- ✅ Rerolling a mission with guild kamas, and marking missions as interesting for the rest of the guild
+- ❌ Anomaly and dream-trial missions, and the *Casas* tab
 
 **Raids** — the Eternal Gardens Sanctuary and the Gigalodón Abyss — run on the client's own screens.
 

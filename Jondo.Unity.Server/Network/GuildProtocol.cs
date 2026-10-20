@@ -380,11 +380,12 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         public static byte[] BuildTierChosen(GuildActivity.Week week, int tokenCap, int tokens,
                                              IEnumerable<GuildMissions.Drawn> missions = null,
-                                             IReadOnlyDictionary<int, GuildMissions.Standing> standings = null)
+                                             IReadOnlyDictionary<int, GuildMissions.Standing> standings = null,
+                                             IReadOnlyDictionary<int, List<Subscriber>> subscribers = null)
             => Pb.New().Msg(2, Pb.New()
                     .Bytes(1, week.Preferences ?? Array.Empty<byte>())
                     .Msg(2, WeekBlock(week, tokenCap, tokens))
-                    .Msg(3, MissionsBlock(missions, standings)))
+                    .Msg(3, MissionsBlock(missions, standings, subscribers)))
                 .Build();
 
         /// <summary>The guild's week changed (jex): f1 the week, as the contributing capture sends it.</summary>
@@ -396,16 +397,36 @@ namespace Jondo.Unity.Server.Network
         /// of the live events in f4, which this server has none of.
         /// </summary>
         public static Pb MissionsBlock(IEnumerable<GuildMissions.Drawn> missions,
-                                       IReadOnlyDictionary<int, GuildMissions.Standing> standings = null)
+                                       IReadOnlyDictionary<int, GuildMissions.Standing> standings = null,
+                                       IReadOnlyDictionary<int, List<Subscriber>> subscribers = null)
         {
             var jdf = Pb.New();
             foreach (var mission in missions ?? Array.Empty<GuildMissions.Drawn>())
             {
                 var standing = standings != null && standings.TryGetValue(mission.Slot, out var s) ? s : GuildMissions.Standing.None;
-                jdf.Msg(2, Mission(mission, standing));
+                var interested = subscribers != null && subscribers.TryGetValue(mission.Slot, out var l) ? l : null;
+                jdf.Msg(2, Mission(mission, standing, interested));
             }
             return jdf;
         }
+
+        /// <summary>
+        /// A member interested in a mission (jdv), as the subscribers window draws him
+        /// (GuildMissionSubscribersUi.BindItem): f1 connected, f2 name, f3 breed and f7 sex for the
+        /// class icon, f5 level, f6 whether he has done it, f8 the character. f4 is not read.
+        /// </summary>
+        public sealed record Subscriber(long CharacterId, string Name, int Breed, int Sex, int Level,
+                                        bool Connected, bool Finished);
+
+        public static Pb SubscriberBlock(Subscriber subscriber)
+            => Pb.New()
+                .VarIfNotZero(1, subscriber.Connected ? 1 : 0)
+                .Str(2, subscriber.Name)
+                .Var(3, subscriber.Breed)
+                .Var(5, subscriber.Level)
+                .VarIfNotZero(6, subscriber.Finished ? 1 : 0)
+                .VarIfNotZero(7, subscriber.Sex)
+                .Var(8, subscriber.CharacterId);
 
         /// <summary>
         /// One mission (jdx): f1 its uuid, f3 the mission, f4 its objective's state (jdu) -- a oneof
@@ -414,21 +435,39 @@ namespace Jondo.Unity.Server.Network
         /// «ad92a545-…», 65, { {}, 65 }. The client shows the count as «Progresión: n/target» when
         /// the target is above one, and marks the card done when its objective is (jk.npb).
         /// </summary>
-        public static Pb Mission(GuildMissions.Drawn mission, GuildMissions.Standing standing = default)
+        public static Pb Mission(GuildMissions.Drawn mission, GuildMissions.Standing standing = default,
+                                 IEnumerable<Subscriber> subscribers = null)
         {
             var objective = Pb.New();
             if (standing.Done) objective.Msg(2, Pb.New());
             else if (standing.Count > 0) objective.Msg(3, Pb.New().Var(1, standing.Count));
             else objective.Msg(1, Pb.New());
-            return Pb.New()
-                .Str(1, mission.Uuid)
+            var jdx = Pb.New().Str(1, mission.Uuid);
+            foreach (var subscriber in subscribers ?? Array.Empty<Subscriber>()) jdx.Msg(2, SubscriberBlock(subscriber));
+            return jdx
                 .Var(3, mission.MissionId)
                 .Msg(4, objective.Var(4, mission.ObjectiveId));
         }
 
         /// <summary>One mission changed (jdc): f1 the mission as it now stands for the member.</summary>
-        public static byte[] BuildMissionChanged(GuildMissions.Drawn mission, GuildMissions.Standing standing)
-            => Pb.New().Msg(1, Mission(mission, standing)).Build();
+        public static byte[] BuildMissionChanged(GuildMissions.Drawn mission, GuildMissions.Standing standing,
+                                                 IEnumerable<Subscriber> subscribers = null)
+            => Pb.New().Msg(1, Mission(mission, standing, subscribers)).Build();
+
+        /// <summary>
+        /// The answer to marking a mission interesting (jdk): f2 { f2 the mission as it now stands },
+        /// which the client puts on its card (fft.beic).
+        /// </summary>
+        public static byte[] BuildInterestAnswer(GuildMissions.Drawn mission, GuildMissions.Standing standing,
+                                                 IEnumerable<Subscriber> subscribers)
+            => Pb.New().Msg(2, Pb.New().Msg(2, Mission(mission, standing, subscribers))).Build();
+
+        /// <summary>A mission rerolled (jed): f2 { f1 the old one's uuid, f3 the new one }.</summary>
+        public static byte[] BuildRerolled(string oldUuid, GuildMissions.Drawn fresh)
+            => Pb.New().Msg(2, Pb.New().Str(1, oldUuid).Msg(3, Mission(fresh))).Build();
+
+        /// <summary>No mission left to reroll into (jed): f3 {}.</summary>
+        public static byte[] BuildRerollRefused() => Pb.New().Msg(3, Pb.New()).Build();
 
         /// <summary>A mission done (jen): f1 the mission, for the client's «¡ENCARGO TERMINADO!».</summary>
         public static byte[] BuildMissionDone(int missionId) => Pb.New().Var(1, missionId).Build();
@@ -438,10 +477,11 @@ namespace Jondo.Unity.Server.Network
         /// tier gets the empty f3 the tab had before.
         /// </summary>
         public static byte[] BuildMissions(IReadOnlyCollection<GuildMissions.Drawn> missions,
-                                           IReadOnlyDictionary<int, GuildMissions.Standing> standings = null)
+                                           IReadOnlyDictionary<int, GuildMissions.Standing> standings = null,
+                                           IReadOnlyDictionary<int, List<Subscriber>> subscribers = null)
             => missions == null || missions.Count == 0
                 ? BuildEmptyTab(3)
-                : Pb.New().Msg(1, Pb.New().Msg(1, MissionsBlock(missions, standings))).Build();
+                : Pb.New().Msg(1, Pb.New().Msg(1, MissionsBlock(missions, standings, subscribers))).Build();
 
         /// <summary>
         /// The guild's message (jci), empty: what the real server answers to the jiy {f2: 4} of

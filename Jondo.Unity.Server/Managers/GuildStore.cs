@@ -167,6 +167,19 @@ namespace Jondo.Unity.Server.Managers
                     ObjectiveId INTEGER NOT NULL DEFAULT 0,
                     PRIMARY KEY (GuildId, Week, Slot)
                 );
+                CREATE TABLE IF NOT EXISTS GuildMissionInterest (
+                    GuildId INTEGER NOT NULL,
+                    Week TEXT NOT NULL,
+                    Slot INTEGER NOT NULL,
+                    CharacterId INTEGER NOT NULL,
+                    PRIMARY KEY (GuildId, Week, Slot, CharacterId)
+                );
+                CREATE TABLE IF NOT EXISTS GuildMissionRerolls (
+                    GuildId INTEGER NOT NULL,
+                    Week TEXT NOT NULL,
+                    MissionId INTEGER NOT NULL,
+                    PRIMARY KEY (GuildId, Week, MissionId)
+                );
                 CREATE TABLE IF NOT EXISTS GuildMissionProgress (
                     GuildId INTEGER NOT NULL,
                     Week TEXT NOT NULL,

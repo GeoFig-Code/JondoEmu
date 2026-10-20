@@ -368,7 +368,8 @@ namespace Jondo.Unity.Server.Handlers
 
             await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jdb,
                 GuildProtocol.BuildTierChosen(week, GuildActivity.TokenCapOf(guild), GuildActivity.TokensOf(who, now),
-                                              GuildMissions.Of(guild.Id, now), GuildMissions.StandingsOf(guild.Id, who, now)),
+                                              GuildMissions.Of(guild.Id, now), GuildMissions.StandingsOf(guild.Id, who, now),
+                                              GuildMissionWatcher.SubscribersOf(guild.Id, now)),
                 ConnectionProtocol.RequestId(frame)));
         }
 
@@ -384,8 +385,82 @@ namespace Jondo.Unity.Server.Handlers
             var now = DateTimeOffset.UtcNow;
             var missions = guild == null ? Array.Empty<GuildMissions.Drawn>() : GuildMissions.Of(guild.Id, now);
             var standings = guild == null ? null : GuildMissions.StandingsOf(guild.Id, who, now);
-            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jei, GuildProtocol.BuildMissions(missions.ToList(), standings),
+            var subscribers = guild == null ? null : GuildMissionWatcher.SubscribersOf(guild.Id, now);
+            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jei, GuildProtocol.BuildMissions(missions.ToList(), standings, subscribers),
                                                                ConnectionProtocol.RequestId(frame)));
+        }
+
+        /// <summary>
+        /// Marking a mission as interesting, or not (jej: f1 on, f2 its uuid): the guide's
+        /// favourites, whose count shows on each card. Answered with the card as it now stands
+        /// (jdk), and the card to every other member connected.
+        /// </summary>
+        public static async Task InterestAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jej = ConnectionProtocol.ReadPayload(frame, Op.Jej);
+            long who = SessionContext.State.CharacterId;
+            var guild = jej == null || who == 0 ? null : GuildStore.GuildOf(who);
+            if (guild == null) return;
+
+            string uuid = null;
+            bool interested = false;
+            foreach (var field in ProtoMessage.Parse(jej).Fields)
+            {
+                if (field.FieldNumber == 2 && field.WireType == 2) uuid = System.Text.Encoding.UTF8.GetString(field.BytesValue);
+                if (field.FieldNumber == 1 && field.WireType == 0) interested = field.VarIntValue != 0;
+            }
+            var now = DateTimeOffset.UtcNow;
+            var mission = GuildMissions.Of(guild.Id, now).FirstOrDefault(m => m.Uuid == uuid);
+            if (mission == null) return;
+
+            GuildMissions.SetInterest(guild.Id, mission.Slot, who, interested, now);
+            var standing = GuildMissions.StandingsOf(guild.Id, who, now).GetValueOrDefault(mission.Slot, GuildMissions.Standing.None);
+            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jdk,
+                GuildProtocol.BuildInterestAnswer(mission, standing, GuildMissionWatcher.SubscribersOf(guild.Id, now).GetValueOrDefault(mission.Slot)),
+                ConnectionProtocol.RequestId(frame)));
+            await GuildMissionWatcher.TellMissionAsync(guild, mission, now, except: who);
+        }
+
+        /// <summary>
+        /// Rerolling a mission (jeq: f2 its uuid, f1 an enum the card leaves at 0): with the right «Gestionar los encargos» and the
+        /// tier's price in guild kamas (50 to 750), the card's mission is swapped for another of its
+        /// rank and category not seen this week (GuildMissions.Reroll). The answer (jed) goes to the
+        /// one who asked and to every member connected, whose cards change too; the guild's kamas to
+        /// everybody. With none left, the jed that makes the client say so.
+        /// </summary>
+        public static async Task RerollMissionAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jeq = ConnectionProtocol.ReadPayload(frame, Op.Jeq);
+            long who = SessionContext.State.CharacterId;
+            var guild = jeq == null || who == 0 ? null : GuildStore.GuildOf(who);
+            if (guild == null || !GuildStore.HasRight(who, GuildMissions.ManageMissionsRight)) return;
+            var field = ProtoMessage.Parse(jeq).Fields.FirstOrDefault(f => f.FieldNumber == 2 && f.WireType == 2);
+            string uuid = field == null ? null : System.Text.Encoding.UTF8.GetString(field.BytesValue);
+            if (string.IsNullOrEmpty(uuid)) return;
+
+            var now = DateTimeOffset.UtcNow;
+            var tier = GuildActivity.TierOf(GuildActivity.Of(guild.Id, now).ActivityId);
+            if (tier == null) return;
+
+            var (outcome, old, fresh) = GuildMissions.Reroll(guild.Id, uuid, now, Random.Shared,
+                () => GuildStore.SpendGuildKamas(guild.Id, tier.RerollCost));
+            if (outcome == GuildMissions.RerollOutcome.NoneLeft)
+                await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jed, GuildProtocol.BuildRerollRefused(),
+                                                                   ConnectionProtocol.RequestId(frame)));
+            if (outcome != GuildMissions.RerollOutcome.Done) return;
+
+            Console.WriteLine($"[Guild] «{guild.Name}» rerolls mission {old.MissionId} into {fresh.MissionId} " +
+                              $"for {tier.RerollCost} guild kamas.");
+            byte[] jed = GuildProtocol.BuildRerolled(old.Uuid, fresh);
+            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jed, jed, ConnectionProtocol.RequestId(frame)));
+            foreach (var member in GuildStore.Members(guild.Id))
+            {
+                if (member.CharacterId == who) continue;
+                var session = SessionRegistry.FindByCharacter(member.CharacterId);
+                if (session != null) await session.SendAsync(ConnectionProtocol.Push(Op.Jed, jed));
+            }
+            var paid = GuildStore.ById(guild.Id) ?? guild;
+            await TellEveryoneAsync(paid, ConnectionProtocol.Push(Op.Jia, GuildProtocol.BuildGuildKamas(paid.GuildKamas)));
         }
 
         // ─── Ranks ─────────────────────────────────────────────────────────────

@@ -105,6 +105,87 @@ namespace Jondo.Unity.Tests.World
                                                             .Fields.Count(f => f.FieldNumber == 2));
         }
 
+        /// <summary>
+        /// Rerolling: the same place, rank and category, a new uuid, nobody's progress, and never a
+        /// mission seen this week -- until there is none left, which the client is told with f3 {}.
+        /// Unpaid, nothing moves.
+        /// </summary>
+        [Fact]
+        public void A_reroll_never_brings_back_a_mission_of_the_week()
+        {
+            Assert.Equal("1a00", Hex(GuildProtocol.BuildRerollRefused()));
+            if (GuildMissions.All.Count == 0) return;   // no client data
+            var guild = GuildStore.Create(7104, "Relanzadores", 165, 8, 16744448, 9476018);
+            GuildActivity.Choose(guild.Id, 1, Array.Empty<byte>(), ThisWeek);
+            var first = GuildMissions.Of(guild.Id, ThisWeek).ToList();
+            var old = first[2];
+            var kind = GuildMissions.MissionOf(old.MissionId);
+            GuildMissions.Advance(guild.Id, 7104, old, 1, ThisWeek);
+
+            Assert.Equal(GuildMissions.RerollOutcome.Unknown, GuildMissions.Reroll(guild.Id, "nope", ThisWeek, new Random(1), () => true).Outcome);
+            Assert.Equal(GuildMissions.RerollOutcome.NotPaid, GuildMissions.Reroll(guild.Id, old.Uuid, ThisWeek, new Random(1), () => false).Outcome);
+            Assert.Equal(first.Select(d => d.Uuid), GuildMissions.Of(guild.Id, ThisWeek).Select(d => d.Uuid));
+
+            var seen = first.Select(d => d.MissionId).ToHashSet();
+            var current = old;
+            for (int i = 0; i < 1000; i++)
+            {
+                var (outcome, was, fresh) = GuildMissions.Reroll(guild.Id, current.Uuid, ThisWeek, new Random(i), () => true);
+                if (outcome == GuildMissions.RerollOutcome.NoneLeft) break;
+                Assert.Equal(GuildMissions.RerollOutcome.Done, outcome);
+                Assert.Equal(current.Uuid, was.Uuid);
+                Assert.Equal(old.Slot, fresh.Slot);
+                Assert.NotEqual(current.Uuid, fresh.Uuid);
+                Assert.True(seen.Add(fresh.MissionId), $"mission {fresh.MissionId} came back");
+                var mission = GuildMissions.MissionOf(fresh.MissionId);
+                Assert.Equal((kind.RankId, kind.SuperCategoryId), (mission.RankId, mission.SuperCategoryId));
+                Assert.Equal(fresh.Uuid, GuildMissions.Of(guild.Id, ThisWeek)[old.Slot].Uuid);
+                Assert.False(GuildMissions.StandingsOf(guild.Id, 7104, ThisWeek).ContainsKey(old.Slot));
+
+                var jed = ProtoMessage.Parse(ProtoMessage.Parse(GuildProtocol.BuildRerolled(was.Uuid, fresh))
+                                                         .Fields.Single(f => f.FieldNumber == 2).BytesValue);
+                Assert.Equal(was.Uuid, System.Text.Encoding.UTF8.GetString(jed.Fields.Single(f => f.FieldNumber == 1).BytesValue));
+                current = fresh;
+            }
+            Assert.Equal(GuildMissions.RerollOutcome.NoneLeft,
+                         GuildMissions.Reroll(guild.Id, current.Uuid, ThisWeek, new Random(5), () => true).Outcome);
+            Assert.Equal(GuildMissions.PerWeek, GuildMissions.Of(guild.Id, ThisWeek).Select(d => d.MissionId).Distinct().Count());
+        }
+
+        /// <summary>
+        /// The interested members: kept by mission of the week, dropped with a reroll, and drawn in
+        /// the jdx's f2 as the subscribers window reads them -- f1 connected, f2 name, f3 breed,
+        /// f5 level, f6 done, f7 sex, f8 the character.
+        /// </summary>
+        [Fact]
+        public void The_interested_members_ride_with_their_mission()
+        {
+            var drawn = new GuildMissions.Drawn(0, 65, "ad92a545-9dc2-4688-8dc3-91f3e4b0ccdf", 65);
+            var keka = new GuildProtocol.Subscriber(7105, "Keka", 18, 1, 200, true, true);
+            Assert.Equal("080112044b656b61181228c8013001380140c137", Hex(GuildProtocol.SubscriberBlock(keka).Build()));
+            var jdx = ProtoMessage.Parse(GuildProtocol.Mission(drawn, GuildMissions.Standing.None, new[] { keka }).Build());
+            Assert.Equal(new[] { 1, 2, 3, 4 }, jdx.Fields.Select(f => f.FieldNumber));
+            var jdk = ProtoMessage.Parse(GuildProtocol.BuildInterestAnswer(drawn, GuildMissions.Standing.None, new[] { keka }));
+            var jdh = ProtoMessage.Parse(jdk.Fields.Single(f => f.FieldNumber == 2).BytesValue);
+            Assert.Equal(2, jdh.Fields.Single().FieldNumber);
+
+            if (GuildMissions.All.Count == 0) return;   // no client data
+            var guild = GuildStore.Create(7105, "Interesados", 165, 8, 16744448, 9476018);
+            GuildActivity.Choose(guild.Id, 1, Array.Empty<byte>(), ThisWeek);
+            var missions = GuildMissions.Of(guild.Id, ThisWeek);
+            GuildMissions.SetInterest(guild.Id, missions[1].Slot, 7105, true, ThisWeek);
+            GuildMissions.SetInterest(guild.Id, missions[1].Slot, 7106, true, ThisWeek);
+            GuildMissions.SetInterest(guild.Id, missions[4].Slot, 7105, true, ThisWeek);
+            GuildMissions.SetInterest(guild.Id, missions[4].Slot, 7105, false, ThisWeek);
+            var interest = GuildMissions.InterestOf(guild.Id, ThisWeek);
+            Assert.Equal(new long[] { 7105, 7106 }, interest[missions[1].Slot].OrderBy(c => c));
+            Assert.False(interest.ContainsKey(missions[4].Slot));
+            Assert.Empty(GuildMissions.InterestOf(guild.Id, NextWeek));
+
+            GuildMissions.Reroll(guild.Id, missions[1].Uuid, ThisWeek, new Random(2), () => true);
+            Assert.False(GuildMissions.InterestOf(guild.Id, ThisWeek).ContainsKey(missions[1].Slot));
+        }
+
         /// <summary>The objective's state of a mission (jdx f4), whatever comes before it.</summary>
         private static string ObjectiveState(byte[] jdx)
             => Hex(ProtoMessage.Parse(jdx).Fields.Single(f => f.FieldNumber == 4).BytesValue);

@@ -1140,6 +1140,24 @@ public static class Op
     /// <summary>S→C: a guild mission done, f1 the mission: the «¡ENCARGO TERMINADO!» notice (fft.beig).</summary>
     public const string Jen = "jen";
 
+    /// <summary>C→S: mark a guild mission as interesting, f1 on or off, f2 its uuid (ffr.befp). Answered with <see cref="Jdk"/>.</summary>
+    public const string Jej = "jej";
+
+    /// <summary>S→C: answer to the jej, f2 { f2 the mission as it now stands } (fft.beic).</summary>
+    public const string Jdk = "jdk";
+
+    /// <summary>
+    /// C→S: reroll a guild mission, f2 its uuid; f1 is an enum (jeq.jep.jeo) the card leaves at 0
+    /// (ffr.befo, the card's button). Answered with <see cref="Jed"/>.
+    /// </summary>
+    public const string Jeq = "jeq";
+
+    /// <summary>
+    /// S→C: a guild mission rerolled: f2 { f1 the old uuid, f3 the new mission }, or f3 {} when there
+    /// is no other to give -- the client's «No se puede sustituir el encargo» (fft.beia).
+    /// </summary>
+    public const string Jed = "jed";
+
     /// <summary>
     /// S→C: the guild's week changed, f1 the week (jfl). The contributing capture sends it after the
     /// tokens: { f1 1, f2 500, f3 250, f4 50 }.

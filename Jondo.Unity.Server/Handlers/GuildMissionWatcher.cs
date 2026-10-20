@@ -158,8 +158,14 @@ namespace Jondo.Unity.Server.Handlers
                 var moved = worth > 0 ? GuildMissions.Advance(guild.Id, who, mission, worth, now) : null;
                 if (moved == null) continue;
 
-                await WriteAsync(stream, ConnectionProtocol.Push(Op.Jdc, GuildProtocol.BuildMissionChanged(mission, moved.Value.Now)));
-                if (moved.Value.JustDone) await RewardAsync(stream, guild, who, mission, now);
+                var interested = SubscribersOf(guild.Id, now);
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Jdc,
+                    GuildProtocol.BuildMissionChanged(mission, moved.Value.Now, interested.GetValueOrDefault(mission.Slot))));
+                if (!moved.Value.JustDone) continue;
+                await RewardAsync(stream, guild, who, mission, now);
+                // Done shows as a tick by his name in the others' list of the interested.
+                if (GuildMissions.InterestOf(guild.Id, now).GetValueOrDefault(mission.Slot)?.Contains(who) == true)
+                    await TellMissionAsync(guild, mission, now, except: who);
             }
         }
 
@@ -183,6 +189,46 @@ namespace Jondo.Unity.Server.Handlers
             {
                 var fresh = GuildStore.ById(guild.Id) ?? guild;
                 await GuildHandler.TellEveryoneAsync(fresh, GuildHandler.HeaderFrame(fresh));
+            }
+        }
+
+        /// <summary>
+        /// The members interested in each mission of the week, as the subscribers window shows them:
+        /// connected or not, their class, level, and whether they have done it.
+        /// </summary>
+        public static Dictionary<int, List<GuildProtocol.Subscriber>> SubscribersOf(long guildId, DateTimeOffset now)
+        {
+            var found = new Dictionary<int, List<GuildProtocol.Subscriber>>();
+            foreach (var (slot, characters) in GuildMissions.InterestOf(guildId, now))
+            {
+                var list = new List<GuildProtocol.Subscriber>();
+                foreach (long id in characters)
+                {
+                    var character = DatabaseManager.GetCharacterById(id);
+                    if (character == null) continue;
+                    bool done = GuildMissions.StandingsOf(guildId, id, now).TryGetValue(slot, out var standing) && standing.Done;
+                    list.Add(new GuildProtocol.Subscriber(id, character.Name, character.Breed, character.Sex, character.Level,
+                                                          SessionRegistry.FindByCharacter(id) != null, done));
+                }
+                found[slot] = list;
+            }
+            return found;
+        }
+
+        /// <summary>One mission (jdc) to every member connected, each with his own standing on it.</summary>
+        public static async Task TellMissionAsync(GuildStore.Guild guild, GuildMissions.Drawn mission, DateTimeOffset now,
+                                                  long except = 0)
+        {
+            var interested = SubscribersOf(guild.Id, now).GetValueOrDefault(mission.Slot);
+            foreach (var member in GuildStore.Members(guild.Id))
+            {
+                if (member.CharacterId == except) continue;
+                var session = SessionRegistry.FindByCharacter(member.CharacterId);
+                if (session == null) continue;
+                var standing = GuildMissions.StandingsOf(guild.Id, member.CharacterId, now)
+                                            .GetValueOrDefault(mission.Slot, GuildMissions.Standing.None);
+                await session.SendAsync(ConnectionProtocol.Push(Op.Jdc,
+                    GuildProtocol.BuildMissionChanged(mission, standing, interested)));
             }
         }
 

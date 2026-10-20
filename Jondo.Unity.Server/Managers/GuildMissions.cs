@@ -35,6 +35,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The super category of the event missions, drawn by live events: left out.</summary>
         public const int EventsSuperCategory = 6;
 
+        /// <summary>The client's guild right 39, «Gestionar los encargos»: rerolling one.</summary>
+        public const int ManageMissionsRight = 39;
+
         public sealed record Mission(int Id, string Name, int CategoryId, int SuperCategoryId, int RankId,
                                      int RecommendedLevel, int ActivityPoints, int Tokens, List<int> Objectives);
 
@@ -210,6 +213,111 @@ namespace Jondo.Unity.Server.Managers
                 Program.LogDebug($"[Guild] Guild {guildId} draws {result.Count} mission(s) for week {week.Name}.");
                 return result;
             }
+        }
+
+        public enum RerollOutcome { Done, Unknown, NoneLeft, NotPaid }
+
+        /// <summary>
+        /// A mission of the week swapped for another: the guide's «se pueden utilizar kamas de gremio
+        /// para reiniciarlos. Tras cada reinicio, no podrá volver a aparecer un encargo que ya haya
+        /// aparecido durante la semana». The new one keeps the old one's rank and category (the
+        /// DofusPourLesNoobs guide) and its place, with a new uuid and nobody's progress. Paid only
+        /// once there is one to give.
+        /// </summary>
+        public static (RerollOutcome Outcome, Drawn Old, Drawn Fresh) Reroll(long guildId, string uuid, DateTimeOffset when,
+                                                                             Random dice, Func<bool> pay)
+        {
+            lock (_lock)
+            {
+                var week = GuildActivity.Of(guildId, when);
+                var drawn = Of(guildId, when);
+                var old = drawn.FirstOrDefault(d => d.Uuid == uuid);
+                var mission = old == null ? null : MissionOf(old.MissionId);
+                if (mission == null) return (RerollOutcome.Unknown, old, null);
+
+                var seen = drawn.Select(d => d.MissionId).Concat(RerolledAway(guildId, week.Name)).ToHashSet();
+                var pool = Data.Missions
+                    .Where(m => m.RankId == mission.RankId && m.SuperCategoryId == mission.SuperCategoryId)
+                    .Where(m => !seen.Contains(m.Id) && FirstObjectiveOf(m) > 0)
+                    .ToList();
+                if (pool.Count == 0) return (RerollOutcome.NoneLeft, old, null);
+                if (!pay()) return (RerollOutcome.NotPaid, old, null);
+
+                var pick = pool[dice.Next(pool.Count)];
+                var fresh = new Drawn(old.Slot, pick.Id, Guid.NewGuid().ToString(), FirstObjectiveOf(pick));
+                using var connection = GuildStore.Open();
+                using var transaction = connection.BeginTransaction();
+                var swap = connection.CreateCommand();
+                swap.Transaction = transaction;
+                swap.CommandText = @"
+                    UPDATE GuildMissionDraws SET MissionId = $m, Uuid = $u, ObjectiveId = $o
+                    WHERE GuildId = $g AND Week = $w AND Slot = $s;
+                    INSERT OR IGNORE INTO GuildMissionRerolls (GuildId, Week, MissionId) VALUES ($g, $w, $old);
+                    DELETE FROM GuildMissionProgress WHERE GuildId = $g AND Week = $w AND Slot = $s;
+                    DELETE FROM GuildMissionInterest WHERE GuildId = $g AND Week = $w AND Slot = $s;";
+                swap.Parameters.AddWithValue("$g", guildId);
+                swap.Parameters.AddWithValue("$w", week.Name);
+                swap.Parameters.AddWithValue("$s", old.Slot);
+                swap.Parameters.AddWithValue("$m", fresh.MissionId);
+                swap.Parameters.AddWithValue("$u", fresh.Uuid);
+                swap.Parameters.AddWithValue("$o", fresh.ObjectiveId);
+                swap.Parameters.AddWithValue("$old", old.MissionId);
+                swap.ExecuteNonQuery();
+                transaction.Commit();
+                return (RerollOutcome.Done, old, fresh);
+            }
+        }
+
+        /// <summary>
+        /// A member marks a mission of the week as interesting, or stops: the guide's «un jugador
+        /// puede mostrar interés por uno o varios encargos marcándolos como favoritos».
+        /// </summary>
+        public static void SetInterest(long guildId, int slot, long characterId, bool interested, DateTimeOffset when)
+        {
+            using var connection = GuildStore.Open();
+            var write = connection.CreateCommand();
+            write.CommandText = interested
+                ? "INSERT OR IGNORE INTO GuildMissionInterest (GuildId, Week, Slot, CharacterId) VALUES ($g, $w, $s, $c);"
+                : "DELETE FROM GuildMissionInterest WHERE GuildId = $g AND Week = $w AND Slot = $s AND CharacterId = $c;";
+            write.Parameters.AddWithValue("$g", guildId);
+            write.Parameters.AddWithValue("$w", GuildActivity.Of(guildId, when).Name);
+            write.Parameters.AddWithValue("$s", slot);
+            write.Parameters.AddWithValue("$c", characterId);
+            write.ExecuteNonQuery();
+        }
+
+        /// <summary>Who is interested in each mission of the guild's week, by slot.</summary>
+        public static Dictionary<int, List<long>> InterestOf(long guildId, DateTimeOffset when)
+        {
+            var found = new Dictionary<int, List<long>>();
+            using var connection = GuildStore.Open();
+            var query = connection.CreateCommand();
+            query.CommandText = @"
+                SELECT Slot, CharacterId FROM GuildMissionInterest WHERE GuildId = $g AND Week = $w ORDER BY Slot;";
+            query.Parameters.AddWithValue("$g", guildId);
+            query.Parameters.AddWithValue("$w", GuildActivity.Of(guildId, when).Name);
+            using var reader = query.ExecuteReader();
+            while (reader.Read())
+            {
+                int slot = reader.GetInt32(0);
+                if (!found.TryGetValue(slot, out var list)) found[slot] = list = new List<long>();
+                list.Add(reader.GetInt64(1));
+            }
+            return found;
+        }
+
+        /// <summary>The missions a guild rerolled away this week, which do not come back.</summary>
+        private static List<int> RerolledAway(long guildId, string week)
+        {
+            var found = new List<int>();
+            using var connection = GuildStore.Open();
+            var query = connection.CreateCommand();
+            query.CommandText = "SELECT MissionId FROM GuildMissionRerolls WHERE GuildId = $g AND Week = $w;";
+            query.Parameters.AddWithValue("$g", guildId);
+            query.Parameters.AddWithValue("$w", week);
+            using var reader = query.ExecuteReader();
+            while (reader.Read()) found.Add(reader.GetInt32(0));
+            return found;
         }
 
         /// <summary>A member's standing on one mission of the week: how far, and whether done.</summary>
