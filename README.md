@@ -210,6 +210,10 @@ Built with **Avalonia**, the same toolkit as the Studio.
 
 - ✅ Boats
 - ✅ The karts of route 666 in the Landas de Sidimote: seven stops, 100 kamas a trip
+- ✅ The Travelers' Tower: its seven rooms joined by their teleporters, and the dimensional portal —
+  the mechanism opens it to Anutropía, Sramvil, Xelorium, Zurcalia or Osavora for those with that
+  dimension's *Portal* alteration, everybody in the room sees it change, and each dimension's portal
+  leads back to the tower
 - ✅ **16 temporal anomalies** with their 120-minute countdown
 <img width="2560" height="1514" alt="image" src="https://github.com/user-attachments/assets/942d4d71-9711-45f1-9156-5381f7ad14b8" />
 

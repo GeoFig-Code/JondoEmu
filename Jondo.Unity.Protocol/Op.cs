@@ -2110,6 +2110,9 @@ public static class Op
     // Read off the client (fgk sends, fgr reads) and «Busqueda grupo/busqueda automatica de
     // grupo-encuentra para una dung-aceptar-autoteleporte de todos y creacion de grupo-abandonarlo».
 
+    /// <summary>S→C: a character put on another cell of his map, f1 the character, f2 the cell (the Travelers' Tower's teleporter on its own room).</summary>
+    public const string Jse = "jse";
+
     /// <summary>C→S: the search window opened (its OnEnabled). Answered with <see cref="Kis"/>.</summary>
     public const string Kjx = "kjx";
 

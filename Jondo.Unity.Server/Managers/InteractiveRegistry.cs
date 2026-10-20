@@ -93,6 +93,18 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>The Temple of Alliances' board: «Consultar» opens the top tax collectors (TaxCollectorHandler).</summary>
         TopTaxCollectors,
+
+        /// <summary>A Travelers' Tower room's teleporter: to the room its skill names (TravelersTower).</summary>
+        TowerRoom,
+
+        /// <summary>The dimensional portal's mechanism: opens the portal to a dimension, or closes it (TravelersTower).</summary>
+        TowerCreator,
+
+        /// <summary>The dimensional portal: into the dimension it is open to (TravelersTower).</summary>
+        TowerPortal,
+
+        /// <summary>A divine dimension's portal back to the tower (TravelersTower).</summary>
+        DimensionExit,
     }
 
     /// <summary>A skill offered by an interactive element.</summary>
@@ -147,6 +159,14 @@ namespace Jondo.Unity.Server.Managers
             // several, the following ones get the contiguous uids still free.
             int instance = Interactives.SkillInstanceOf(Element.Id);
             while (ContainsInstance(instance)) instance++;
+            _actions.Add(new InteractiveAction(kind, skillId, instance, skillNameId));
+        }
+
+        /// <summary>A named action with the skill instance it is to have.</summary>
+        internal void AddNamed(InteractiveActionKind kind, int skillId, int skillNameId, int instance)
+        {
+            if (ContainsInstance(instance))
+                throw new InvalidOperationException($"Skill instance {instance} declared twice on element {Element.Id}.");
             _actions.Add(new InteractiveAction(kind, skillId, instance, skillNameId));
         }
 
@@ -394,6 +414,11 @@ namespace Jondo.Unity.Server.Managers
                     Register(paddock.MapId, gate, Breeding.GateType, InteractiveActionKind.PaddockGate, paddock.Skill);
                 }
             }
+
+            // The Travelers' Tower: its rooms' teleporters, the dimensional portal's mechanism and
+            // portal, and the dimensions' portals back. Each skill with its own instance, as the
+            // mechanism offers the same skill (184) under six names.
+            RegisterTravelersTower();
 
             // The passages between maps. Houses have already gone through above with their jqw protocol;
             // only the generic ones TeleportManager has validated and left active come in here.
@@ -658,6 +683,49 @@ namespace Jondo.Unity.Server.Managers
                                      InteractiveActionKind kind, int skillId)
         {
             Declared(mapId, element, type).Add(kind, skillId);
+        }
+
+        private static void RegisterTravelersTower()
+        {
+            Interactives.Element? Find(long mapId, int id)
+            {
+                foreach (var element in Interactives.ElementsOf(mapId))
+                    if (element.Id == id) return element;
+                return null;
+            }
+
+            foreach (var room in TravelersTower.Rooms)
+            {
+                if (Find(room.MapId, room.Teleporter) is not { } teleporter) continue;
+                var declared = Declared(room.MapId, teleporter, TravelersTower.TeleporterType);
+                int index = 0;
+                foreach (var to in TravelersTower.Rooms)
+                    declared.Add(InteractiveActionKind.TowerRoom, to.Skill, TravelersTower.InstanceOf(teleporter.Id, index++));
+            }
+
+            if (Find(TravelersTower.PortalRoom, TravelersTower.Creator) is { } creator)
+            {
+                var declared = Declared(TravelersTower.PortalRoom, creator, TravelersTower.CreatorType);
+                int index = 0;
+                declared.AddNamed(InteractiveActionKind.TowerCreator, TravelersTower.UseSkill, TravelersTower.CloseName,
+                                  TravelersTower.InstanceOf(creator.Id, index++));
+                foreach (var dimension in TravelersTower.Dimensions.OrderByDescending(d => d.OpenName))
+                    declared.AddNamed(InteractiveActionKind.TowerCreator, TravelersTower.UseSkill, dimension.OpenName,
+                                      TravelersTower.InstanceOf(creator.Id, index++));
+            }
+            if (Find(TravelersTower.PortalRoom, TravelersTower.Portal) is { } portal)
+            {
+                Declared(TravelersTower.PortalRoom, portal, TravelersTower.PortalType)
+                    .Add(InteractiveActionKind.TowerPortal, TravelersTower.UseSkill, TravelersTower.InstanceOf(portal.Id, 0));
+            }
+
+            foreach (var (mapId, id) in TravelersTower.WaysBack)
+            {
+                if (Find(mapId, id) is not { } back) continue;
+                var declared = Declared(mapId, back, TravelersTower.PortalType);
+                declared.Add(InteractiveActionKind.DimensionExit, TravelersTower.StaySkill, TravelersTower.InstanceOf(back.Id, 0));
+                declared.Add(InteractiveActionKind.DimensionExit, TravelersTower.LeaveSkill, TravelersTower.InstanceOf(back.Id, 1));
+            }
         }
 
         private static RegisteredInteractive Declared(long mapId, Interactives.Element element, int type)

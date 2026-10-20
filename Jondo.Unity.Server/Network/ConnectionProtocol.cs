@@ -1314,8 +1314,11 @@ namespace Jondo.Unity.Server.Network
             if (gathering && usable) declaration.Var(2, 0);
 
             // A house's door and chests offer each viewer his own skills: the owner sells, a
-            // stranger buys. Every other element offers all of them.
-            foreach (var action in Handlers.HouseHandler.VisibleActions(interactive, viewerAccountId))
+            // stranger buys; the dimensional portal's mechanism, the dimensions he has. Every other
+            // element offers all of them.
+            var visible = Handlers.TravelersTowerHandler.VisibleActions(interactive, Network.SessionContext.State.CharacterId)
+                          ?? Handlers.HouseHandler.VisibleActions(interactive, viewerAccountId);
+            foreach (var action in visible)
             {
                 declaration.Msg(usable ? 4 : 3, Pb.New()
                     .Var(1, action.SkillInstanceId)
@@ -1348,7 +1351,10 @@ namespace Jondo.Unity.Server.Network
                 if (action.Kind == Managers.InteractiveActionKind.Teleport
                     || action.Kind == Managers.InteractiveActionKind.Dream
                     || action.Kind == Managers.InteractiveActionKind.DreamDoor
-                    || action.Kind == Managers.InteractiveActionKind.Marketplace) sinColocacion = true;
+                    || action.Kind == Managers.InteractiveActionKind.Marketplace
+                    || action.Kind is Managers.InteractiveActionKind.TowerRoom or Managers.InteractiveActionKind.TowerCreator
+                        or Managers.InteractiveActionKind.TowerPortal or Managers.InteractiveActionKind.DimensionExit)
+                    sinColocacion = true;
             }
             if (interactive.Actions.Count == 0 || sinColocacion) return;
 

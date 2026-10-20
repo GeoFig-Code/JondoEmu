@@ -195,6 +195,18 @@ namespace Jondo.Unity.Server.Handlers
                     await GuildRaidEfedra.PressAsync(stream, GameState.CharacterId, mapId,
                                                      interactive.Element.Id, action.SkillId);
                     break;
+                case InteractiveActionKind.TowerRoom:
+                    await TravelersTowerHandler.UseRoomAsync(stream, interactive, action);
+                    break;
+                case InteractiveActionKind.TowerCreator:
+                    await TravelersTowerHandler.UseCreatorAsync(stream, interactive, action);
+                    break;
+                case InteractiveActionKind.TowerPortal:
+                    await TravelersTowerHandler.UsePortalAsync(stream, interactive, action);
+                    break;
+                case InteractiveActionKind.DimensionExit:
+                    await TravelersTowerHandler.UseWayBackAsync(stream, interactive, action);
+                    break;
                 default:
                     throw new InvalidOperationException($"Unhandled interactive action: {action.Kind}.");
             }
