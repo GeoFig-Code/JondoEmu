@@ -49,13 +49,6 @@ namespace Jondo.Unity.Server
         public bool NoEnergyLoss { get; set; }
 
         /// <summary>
-        /// The divine dimensions' portals out in the world, on a random outdoor map
-        /// (Managers.DimensionPortals), as the game had them before its 3.2 update left only the
-        /// Travelers' Tower's -- the 3.6 client still draws and crosses them. Off, the game as it is.
-        /// </summary>
-        public bool WorldPortals { get; set; }
-
-        /// <summary>
         /// Random loot: besides its own table, a monster can drop a handful of items picked at random
         /// around its level (<see cref="Managers.RandomLoot"/>).
         /// </summary>

@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
-using System.Threading;
 using System.Threading.Tasks;
 using Jondo.Unity.Protocol;
 using Jondo.Unity.Server.Managers;
@@ -11,83 +9,15 @@ using Jondo.Unity.Server.Network;
 namespace Jondo.Unity.Server.Handlers
 {
     /// <summary>
-    /// The divine dimensions' portals in the world (DimensionPortals, DimensionPortalProtocol):
-    /// among their maps' actors, talked to, crossed, and moved when spent or left unused.
+    /// The divine dimensions' old portals in the Amakna village (DimensionPortals,
+    /// DimensionPortalProtocol): among the square's actors, talked to and crossed.
     /// </summary>
     /// <remarks>
-    /// Anybody can cross one: the portal is a way in, not the tower's for-good access. A crossing
-    /// takes to the dimension's entry, as the tower's portal does. The ones on the map are told
-    /// when a portal leaves (kmu) or arrives (jsn); a clock looks every minute for the ones left a
-    /// day unused.
+    /// Anybody can cross one, as often as they like: a crossing takes to the dimension's entry, as
+    /// the Travelers' Tower's portal does.
     /// </remarks>
     public static class DimensionPortalHandler
     {
-        private static readonly Random _dice = new();
-        private static Timer? _clock;
-        private static int _ticking;
-
-        private static long NowMs => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-        /// <summary>
-        /// Where a portal can stand on a map: its inner walkable cells, with nothing clickable and no
-        /// NPC on them. The monster groups are left to walk round it, as they do round each other.
-        /// </summary>
-        private static IReadOnlyList<int> CellsOf(long mapId)
-        {
-            var taken = Npcs.Of(mapId).Select(n => n.Cell).ToHashSet();
-            return MobSpawnManager.GetInnerWalkableCells(mapId).Where(c => !taken.Contains(c)).ToList();
-        }
-
-        /// <summary>The portals placed, and their clock started. At the server's start, when the settings want them.</summary>
-        public static void Start()
-        {
-            if (!ServerSettings.Current.WorldPortals)
-            {
-                Console.WriteLine("[Portals] No portals in the world: the settings leave only the tower's.");
-                return;
-            }
-            try
-            {
-                DimensionPortals.Load(TreasureHunts.World, CellsOf, NowMs, _dice);
-                foreach (var portal in DimensionPortals.All)
-                    Console.WriteLine($"[Portals] The portal to {portal.Dimension.Name} is on {portal.MapId}, " +
-                                      $"cell {portal.Cell}, {portal.UsesLeft} crossings left.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[Portals] The portals could not be placed: {ex.Message}");
-            }
-            _clock ??= new Timer(_ =>
-            {
-                if (Interlocked.Exchange(ref _ticking, 1) != 0) return;
-                try { TickAsync().GetAwaiter().GetResult(); }
-                catch (Exception ex) { Console.WriteLine($"[Portals] The clock failed: {ex.Message}"); }
-                finally { Interlocked.Exchange(ref _ticking, 0); }
-            }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
-        }
-
-        /// <summary>The portals left a day unused, closed and opened elsewhere.</summary>
-        public static async Task TickAsync()
-        {
-            foreach (var portal in DimensionPortals.All)
-            {
-                if (!DimensionPortals.Expired(portal, NowMs)) continue;
-                Console.WriteLine($"[Portals] Nobody has crossed the portal to {portal.Dimension.Name} for a day.");
-                await MoveAsync(portal);
-            }
-        }
-
-        /// <summary>A portal closed where it was and opened somewhere else, both maps told.</summary>
-        private static async Task MoveAsync(DimensionPortals.Portal portal)
-        {
-            long from = DimensionPortals.Move(portal, TreasureHunts.World, CellsOf, NowMs, _dice);
-            if (from == 0) return;
-            await SessionRegistry.BroadcastToMapAsync(from, ConnectionProtocol.BuildActorRemoved(portal.ContextId));
-            var shown = Shown(portal);
-            if (shown != null) await SessionRegistry.BroadcastToMapAsync(portal.MapId, ConnectionProtocol.Push(Op.Jsn, shown));
-            Console.WriteLine($"[Portals] The portal to {portal.Dimension.Name} opens on {portal.MapId}, cell {portal.Cell}.");
-        }
-
         /// <summary>The portal's NPC look and the dimension's area, as the actor carries them.</summary>
         private static (int Area, byte[] Look)? Drawing(DimensionPortals.Portal portal)
         {
@@ -100,9 +30,6 @@ namespace Jondo.Unity.Server.Handlers
             int area = Interactives.AreaOfSubArea(MapManager.GetMapInfo(portal.Dimension.EntryMap)?.SubAreaId ?? 0);
             return (Math.Max(0, area), look);
         }
-
-        private static byte[]? Shown(DimensionPortals.Portal portal)
-            => Drawing(portal) is { } drawing ? DimensionPortalProtocol.BuildShown(portal, drawing.Area, drawing.Look) : null;
 
         /// <summary>The map's portals among its actors.</summary>
         public static void AddToMap(Pb jss, long mapId)
@@ -132,7 +59,7 @@ namespace Jondo.Unity.Server.Handlers
             state.OpenDialogueMessage = template.DialogMessageId;
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Ioc, DimensionPortalProtocol.BuildDialog(portal)));
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Ios,
-                DimensionPortalProtocol.BuildQuestion(portal, template.DialogMessageId, template.Replies)));
+                DimensionPortalProtocol.BuildQuestion(template.DialogMessageId, template.Replies, DateTimeOffset.UtcNow)));
             return true;
         }
 
@@ -160,7 +87,7 @@ namespace Jondo.Unity.Server.Handlers
             byte[] body = ConnectionProtocol.ReadPayload(frame, Op.Hhu);
             if (body == null) return;
             var portal = DimensionPortals.OfType(DimensionPortalProtocol.ReadUse(body));
-            if (portal == null || portal.MapId != SessionContext.State.MapId) return;
+            if (portal == null) return;
             await CrossAsync(stream, portal);
         }
 
@@ -168,15 +95,8 @@ namespace Jondo.Unity.Server.Handlers
         {
             var state = SessionContext.State;
             if (state.IsInFight || portal.MapId != state.MapId) return;
-            bool spent = DimensionPortals.Cross(portal, NowMs);
-            DimensionPortals.Save(portal);
-            Console.WriteLine($"[Portals] {state.CharacterName} crosses the portal to {portal.Dimension.Name}: {portal.UsesLeft} left.");
+            Console.WriteLine($"[Portals] {state.CharacterName} crosses the village's portal to {portal.Dimension.Name}.");
             await TeleportHandler.ToMapAsync(stream, portal.Dimension.EntryMap, portal.Dimension.EntryCell);
-            if (spent)
-            {
-                Console.WriteLine($"[Portals] The portal to {portal.Dimension.Name} is spent.");
-                await MoveAsync(portal);
-            }
         }
 
         private static Task WriteAsync(NetworkStream stream, byte[] frame)

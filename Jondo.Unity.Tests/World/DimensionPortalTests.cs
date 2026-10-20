@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Jondo.Unity.Server;
 using Jondo.Unity.Server.Managers;
 using Jondo.Unity.Server.Network;
 using Xunit;
@@ -8,58 +9,40 @@ using Xunit;
 namespace Jondo.Unity.Tests.World
 {
     /// <summary>
-    /// The divine dimensions' portals in the world, as the 3.6.10.11 client reads them: map actor
-    /// kind 3, the ioc that names the portal's type, its NPC's sentence, the hhu that crosses it.
+    /// The divine dimensions' old portals, kept in the Amakna village square, as the 3.6.10.11
+    /// client reads them: map actor kind 3, the ioc that names the portal's type, its NPC's
+    /// sentence, the hhu that crosses it.
     /// </summary>
     [Collection("MapManager")]
     public class DimensionPortalTests
     {
-        private static DimensionPortals.Portal Anutropia(long mapId = 88081171, int cell = 300)
+        [Fact]
+        public void Four_portals_stand_in_the_village()
         {
-            var portal = new DimensionPortals.Portal { Dimension = TravelersTower.Dimensions[0] };
-            DimensionPortals.Open(portal, mapId, cell, 1_000_000);
-            return portal;
+            Assert.Equal(new[] { (1, 2374, 297), (2, 2594, 299), (3, 2667, 301), (4, 3136, 303) },
+                DimensionPortals.All.Select(p => (p.Type, p.Dimension.PortalNpc, p.Cell)));
+            Assert.All(DimensionPortals.All, p => Assert.Equal(DimensionPortals.VillageMap, p.MapId));
+            Assert.DoesNotContain(DimensionPortals.All, p => p.Dimension.Name == "Osavora");
+            Assert.Equal(4, DimensionPortals.OnMap(DimensionPortals.VillageMap).Count());
+            Assert.Empty(DimensionPortals.OnMap(TravelersTower.PortalRoom));
+            Assert.Equal("Xelorium", DimensionPortals.OfType(3)!.Dimension.Name);
+            Assert.Equal(3, DimensionPortals.ByContext(DimensionPortals.ContextBase - 3)!.Type);
         }
 
+        /// <summary>Their cells walkable, and none where a vendor or something clickable stands.</summary>
         [Fact]
-        public void Four_dimensions_have_a_portal_in_the_world()
+        public void The_portals_stand_where_nothing_else_does()
         {
-            Assert.Equal(new[] { (1, 2374), (2, 2594), (3, 2667), (4, 3136) },
-                DimensionPortals.WithPortal.Select(d => (d.PortalType, d.PortalNpc)));
-            Assert.DoesNotContain(DimensionPortals.WithPortal, d => d.Name == "Osavora");
-        }
-
-        /// <summary>JOL's numbers: 128 crossings, and a day unused before it closes; each crossing starts the day again.</summary>
-        [Fact]
-        public void A_portal_closes_spent_or_left_unused()
-        {
-            var portal = Anutropia();
-            Assert.Equal(128, portal.UsesLeft);
-            Assert.Equal(1_000_000 + 86_400_000L, portal.ClosesMs);
-            Assert.False(DimensionPortals.Expired(portal, 1_000_000 + 86_399_999L));
-            Assert.True(DimensionPortals.Expired(portal, 1_000_000 + 86_400_000L));
-
-            Assert.False(DimensionPortals.Cross(portal, 2_000_000));
-            Assert.Equal(127, portal.UsesLeft);
-            Assert.Equal(2_000_000 + 86_400_000L, portal.ClosesMs);
-            portal.UsesLeft = 1;
-            Assert.True(DimensionPortals.Cross(portal, 3_000_000));
-            Assert.Equal(0, portal.UsesLeft);
-        }
-
-        [Fact]
-        public void A_portal_opens_where_no_other_stands()
-        {
-            var grid = new TreasureHunts.Grid(new[] { (1L, 0, 0), (2L, 1, 0), (3L, 2, 0) });
-            var dice = new Random(4);
-            for (int i = 0; i < 20; i++)
+            if (!MapManager.WalkableCells.ContainsKey(DimensionPortals.VillageMap)) MapManager.Initialize();
+            if (!MapManager.WalkableCells.ContainsKey(DimensionPortals.VillageMap)) return;   // no world data
+            Interactives.Initialize();
+            var clickable = Interactives.ElementsOf(DimensionPortals.VillageMap).Select(e => e.Cell).ToHashSet();
+            foreach (var portal in DimensionPortals.All)
             {
-                var place = DimensionPortals.Place(grid, new[] { 1L, 2L }, m => new[] { 300, 301 }, dice);
-                Assert.Equal(3L, place!.Value.MapId);
-                Assert.Contains(place.Value.Cell, new[] { 300, 301 });
+                Assert.True(MapManager.IsCellWalkable(portal.MapId, portal.Cell));
+                Assert.DoesNotContain(portal.Cell, clickable);
+                Assert.DoesNotContain(Npcs.Of(portal.MapId), n => n.Cell == portal.Cell);
             }
-            Assert.Null(DimensionPortals.Place(grid, new[] { 1L, 2L, 3L }, m => new[] { 300 }, dice));
-            Assert.Null(DimensionPortals.Place(grid, Array.Empty<long>(), m => Array.Empty<int>(), dice));
         }
 
         /// <summary>
@@ -69,12 +52,13 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_messages_go_as_the_client_reads_them()
         {
-            var portal = Anutropia(88081171, 300);
+            var portal = DimensionPortals.OfType(1)!;
             byte[] look = ConnectionProtocol.BuildNpcLook(2720, Array.Empty<long>(), Array.Empty<long>(), Array.Empty<long>());
             var actor = ProtoMessage.Parse(DimensionPortalProtocol.Actor(portal, 53, look).Build());
             Assert.Equal(new[] { 1, 2, 3 }, actor.Fields.Select(f => f.FieldNumber));
             Assert.Equal(DimensionPortals.ContextBase - 1, actor.Fields[2].VarIntValue);
-            Assert.Equal(300, ProtoMessage.Parse(actor.Fields[0].BytesValue).Fields.Single().VarIntValue);
+            Assert.Equal(new[] { (1, 297L), (2, (long)DimensionPortals.Facing) },
+                ProtoMessage.Parse(actor.Fields[0].BytesValue).Fields.Select(f => (f.FieldNumber, f.VarIntValue)));
             var shape = ProtoMessage.Parse(actor.Fields[1].BytesValue);
             Assert.Equal(look, shape.Fields.Single(f => f.FieldNumber == 3).BytesValue);
             var kind = ProtoMessage.Parse(shape.Fields.Single(f => f.FieldNumber == 1).BytesValue).Fields.Single();
@@ -82,22 +66,22 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(new[] { (2, 1L), (3, 53L) }, ProtoMessage.Parse(kind.BytesValue).Fields.Select(f => (f.FieldNumber, f.VarIntValue)));
 
             var ioc = ProtoMessage.Parse(DimensionPortalProtocol.BuildDialog(portal));
-            Assert.Equal(new[] { (2, 1L), (4, 88081171L), (5, DimensionPortals.ContextBase - 1) },
+            Assert.Equal(new[] { (2, 1L), (4, DimensionPortals.VillageMap), (5, DimensionPortals.ContextBase - 1) },
                 ioc.Fields.Select(f => (f.FieldNumber, f.VarIntValue)));
 
             Assert.Equal(3, DimensionPortalProtocol.ReadUse(Pb.New().Var(3, 3).Build()));
         }
 
-        /// <summary>The sentence's #1 the crossings left, its $time#2 the closing time in unix seconds.</summary>
+        /// <summary>The sentence's #1 says the crossings never run out, its $time#2 a moment a century off, in unix seconds.</summary>
         [Fact]
-        public void The_portal_says_its_uses_and_when_it_closes()
+        public void The_portal_says_it_never_closes()
         {
-            var portal = Anutropia();
-            var ios = ProtoMessage.Parse(DimensionPortalProtocol.BuildQuestion(portal, 17474, new[] { 21290L }));
+            var now = new DateTimeOffset(2026, 10, 21, 12, 0, 0, TimeSpan.Zero);
+            var ios = ProtoMessage.Parse(DimensionPortalProtocol.BuildQuestion(17474, new[] { 21290L }, now));
             Assert.Equal(17474, ios.Fields.First(f => f.FieldNumber == 1).VarIntValue);
             Assert.Equal(21290, ProtoMessage.Parse(ios.Fields.Single(f => f.FieldNumber == 2).BytesValue).Fields[0].VarIntValue);
             var parameters = ios.Fields.Where(f => f.FieldNumber == 3).Select(f => System.Text.Encoding.UTF8.GetString(f.BytesValue)).ToList();
-            Assert.Equal(new[] { "128", ((1_000_000 + 86_400_000L) / 1000).ToString() }, parameters);
+            Assert.Equal(new[] { "∞", now.AddYears(100).ToUnixTimeSeconds().ToString() }, parameters);
         }
 
         /// <summary>The portals' NPCs as the client's data has them: their look, sentence and reply.</summary>

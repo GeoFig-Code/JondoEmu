@@ -257,8 +257,8 @@ namespace Jondo.Unity.Server
                 },
                 null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
-            // The divine dimensions' portals in the world, and their clock (DimensionPortalHandler).
-            Handlers.DimensionPortalHandler.Start();
+            // Osavora's seasons, one a week (OsavoraSeasonHandler).
+            Handlers.OsavoraSeasonHandler.Start();
 
             // And its window: the log and the figures. If it could not be opened —no desktop, for
             // example— the server keeps working the same: the window is for looking, not for
