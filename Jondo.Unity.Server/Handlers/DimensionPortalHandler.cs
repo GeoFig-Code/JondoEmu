@@ -38,9 +38,14 @@ namespace Jondo.Unity.Server.Handlers
             return MobSpawnManager.GetInnerWalkableCells(mapId).Where(c => !taken.Contains(c)).ToList();
         }
 
-        /// <summary>The portals placed, and their clock started. At the server's start.</summary>
+        /// <summary>The portals placed, and their clock started. At the server's start, when the settings want them.</summary>
         public static void Start()
         {
+            if (!ServerSettings.Current.WorldPortals)
+            {
+                Console.WriteLine("[Portals] No portals in the world: the settings leave only the tower's.");
+                return;
+            }
             try
             {
                 DimensionPortals.Load(TreasureHunts.World, CellsOf, NowMs, _dice);

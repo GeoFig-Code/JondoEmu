@@ -27,6 +27,13 @@ namespace Jondo.Unity.Server.Managers
     /// unused. The maps are the hunts' outdoor ones (TreasureHunts.World).
     /// </para>
     /// <para>
+    /// The game took these portals out with its 3.2 update (July 2025, Osavora): the way into a
+    /// dimension became the Travelers' Tower's portal with its alteration, and the localization
+    /// room's models answer «not available» to whoever has it -- no hunt leads to a world portal
+    /// any more. So they are a server setting (<see cref="ServerSettings.WorldPortals"/>), off by
+    /// default.
+    /// </para>
+    /// <para>
     /// Kept in world.db, in a table of its own created at first use:
     /// </para>
     /// <code>

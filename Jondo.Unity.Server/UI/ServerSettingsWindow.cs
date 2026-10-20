@@ -30,7 +30,7 @@ namespace Jondo.Unity.Server.UI
 
         private readonly NumberStepper _raidMin, _matchmaking, _maxAp, _maxMp, _xp, _drop, _kamas, _randomLootChance;
         private readonly NumberStepper _weakenedHours, _conquestMinutes, _invulnerableHours, _protectionMinutes;
-        private readonly ToggleSwitch _hardcore, _noEnergy, _randomLoot;
+        private readonly ToggleSwitch _hardcore, _noEnergy, _randomLoot, _worldPortals;
         private readonly LauncherField _welcome;
         private readonly RarityTable _rarities;
         private readonly SettingNote _lootLevels;
@@ -64,7 +64,7 @@ namespace Jondo.Unity.Server.UI
             public string Protection, ProtectionHint;
             public string Loot, RandomLoot, RandomLootHint, Chance, ChanceHint, LootLevels;
             public string Consumables, Equipment, Cosmetics, Creatures, Dofus, Legendary, Perfect, Percent;
-            public string Modes, Hardcore, HardcoreHint;
+            public string Modes, Hardcore, HardcoreHint, WorldPortals, WorldPortalsHint;
             public string Welcome, WelcomeHint, WelcomePlaceholder;
             public string Close, Cancel, Back, Save, SaveRestart, ConfirmRestart;
             public string Unsaved, Pending, RestartAsk, RestartAskEmpty, Counting;
@@ -109,6 +109,8 @@ namespace Jondo.Unity.Server.UI
                 Modes = "MODOS DE JUEGO",
                 Hardcore = "Modo hardcore",
                 HardcoreHint = "Monstruos al doble de tamaño, con el triple de vida y características.",
+                WorldPortals = "Portales de dimensión en el mundo",
+                WorldPortalsHint = "Como antes de la versión 3.2: uno por dimensión en un mapa exterior al azar, 128 usos.",
                 Welcome = "BIENVENIDA",
                 WelcomeHint = "Una línea en el chat al entrar al mundo. Vacío = ninguna.",
                 WelcomePlaceholder = "Sin mensaje",
@@ -157,6 +159,8 @@ namespace Jondo.Unity.Server.UI
                 Modes = "GAME MODES",
                 Hardcore = "Hardcore mode",
                 HardcoreHint = "Monsters at twice their size, with three times their life and characteristics.",
+                WorldPortals = "Dimension portals in the world",
+                WorldPortalsHint = "As before version 3.2: one per dimension on a random outdoor map, 128 uses.",
                 Welcome = "WELCOME",
                 WelcomeHint = "A line in the chat on coming into the world. Empty = none.",
                 WelcomePlaceholder = "No message",
@@ -205,6 +209,8 @@ namespace Jondo.Unity.Server.UI
                 Modes = "MODES DE JEU",
                 Hardcore = "Mode hardcore",
                 HardcoreHint = "Monstres deux fois plus grands, avec trois fois leur vie et leurs caractéristiques.",
+                WorldPortals = "Portails de dimension dans le monde",
+                WorldPortalsHint = "Comme avant la version 3.2 : un par dimension sur une carte extérieure au hasard, 128 passages.",
                 Welcome = "BIENVENUE",
                 WelcomeHint = "Une ligne dans le chat en entrant dans le monde. Vide = aucune.",
                 WelcomePlaceholder = "Aucun message",
@@ -258,6 +264,7 @@ namespace Jondo.Unity.Server.UI
             _randomLoot = Toggle(_saved.RandomLoot);
             _randomLootChance = Stepper((decimal)_saved.RandomLootChancePercent, 0, 100, 1, 2, "%");
             _hardcore = Toggle(_saved.Hardcore);
+            _worldPortals = Toggle(_saved.WorldPortals);
             _welcome = new LauncherField
             {
                 Value = _saved.WelcomeMessage ?? "",
@@ -288,7 +295,8 @@ namespace Jondo.Unity.Server.UI
                             Row(_t.RandomLoot, _t.RandomLootHint, _randomLoot),
                             Row(_t.Chance, _t.ChanceHint, _randomLootChance),
                             _rarities, _lootLevels);
-            var modes = Card(_t.Modes, Row(_t.Hardcore, _t.HardcoreHint, _hardcore));
+            var modes = Card(_t.Modes, Row(_t.Hardcore, _t.HardcoreHint, _hardcore),
+                             Row(_t.WorldPortals, _t.WorldPortalsHint, _worldPortals));
             var welcome = Card(_t.Welcome, new SettingNote(_t.WelcomeHint), _welcome);
             _left = new[] { rates, characters, conquests, welcome };
             _right = new[] { loot, modes, raids };
@@ -492,6 +500,7 @@ namespace Jondo.Unity.Server.UI
             edited.RandomLoot = _randomLoot.Checked;
             edited.RandomLootChancePercent = (double)_randomLootChance.Value;
             edited.Hardcore = _hardcore.Checked;
+            edited.WorldPortals = _worldPortals.Checked;
             edited.WelcomeMessage = _welcome.Value.Trim();
             return edited;
         }
