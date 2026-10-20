@@ -4,7 +4,7 @@
   "",
   "NO esta inventado ni colocado a ojo: cada vez que el jugador entraba en un mapa, el servidor",
   "real le declaraba en el jss los NPCs que habia con su casilla y su orientacion. Barriendo las",
-  "305 capturas salen 422 NPCs en 202 mapas, de 327 plantillas distintas. Esto es ese barrido.",
+  "305 capturas salen 423 NPCs en 203 mapas, de 328 plantillas distintas. Esto es ese barrido.",
   "",
   "El mapa 88212759 -el del zaap del pueblo de Amakna, donde estan nuestros vendedores- NO",
   "aparece aqui: en las capturas no hay ni un NPC en el, asi que no hay nada que respetar y los",
@@ -1434,6 +1434,13 @@
    "casilla": 308,
    "orientacion": 3,
    "_quien": "[!] PNJ décors- Soldat bontarien 3"
+  },
+  {
+   "mapa": 161351684,
+   "npc": 3098,
+   "casilla": 255,
+   "orientacion": 1,
+   "_quien": "Heraldo de Zurcarák"
   },
   {
    "mapa": 171705355,
