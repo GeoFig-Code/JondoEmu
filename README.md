@@ -603,9 +603,9 @@ One fight engine serves four kinds of fight:
 - ✅ A won fight is shared among the players
 - ✅ Experience as the monster group's tooltip counts it: group bonus, levels, wisdom and the 5 % bonus
 - ✅ Limit on earned experience, from the characteristics panel
-- ❌ Experience given to a mount or a guild
-- ✅ Losing costs energy and half the life, and sends you back to the zaap
-- ❌ Ghosts, tombs and phoenixes
+- ✅ As in Dofus 3, mounts gain experience by breeding and guilds by their weekly activity
+- ✅ Losing costs energy and half the life, and sends you back to the zaap; no ghosts or phoenixes,
+  as in Dofus 3 (tombs only in conquests)
 
 ### 🤺 Duels
 <img width="2560" height="1506" alt="image" src="https://github.com/user-attachments/assets/286367e0-6342-4aef-b07b-52d3bdbdf9d4" />
