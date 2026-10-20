@@ -4307,11 +4307,7 @@ namespace Jondo.Unity.Server.Handlers
                 // A weapon's range is its own and nothing makes it longer but a dream's "Armes :
                 // +1 Portée maximale", which SpellModifiers.Range adds.
                 int maximo = spell == 0 ? limites.AlcanceMaximo
-                           : limites.AlcanceMaximo
-                           + caster.Range
-                           + caster.Buffs.De(AlcanceCaracteristica, fight.RoundNumber)
-                           + caster.Buffs.DelHechizo(spell, Jondo.Unity.World.Fights.SpellAspect.AlcanceMaximo,
-                                                     fight.RoundNumber);
+                           : ReachBeforeModifiers(caster, spell, limites.AlcanceMaximo, limites.Flags, fight.RoundNumber);
 
                 // Range TRACE: where each addend comes from. With this it can be seen at a glance
                 // whether what fails is the equipment, the generic buff or the one aimed at this spell.
@@ -4319,7 +4315,8 @@ namespace Jondo.Unity.Server.Handlers
                                  $"minimum {minimo} = base {limites.AlcanceMinimo} + buff " +
                                  $"{caster.Buffs.DelHechizo(spell, Jondo.Unity.World.Fights.SpellAspect.AlcanceMinimo, fight.RoundNumber)}. " +
                                  $"maximum {maximo} = base {limites.AlcanceMaximo} + equipment {caster.Range} + " +
-                                 $"characteristic {caster.Buffs.De(AlcanceCaracteristica, fight.RoundNumber)} + buff " +
+                                 $"characteristic {caster.Buffs.De(AlcanceCaracteristica, fight.RoundNumber)} " +
+                                 $"(counted only if boostable: {(limites.Flags & Managers.SpellLevelFlags.RangeCanBeBoosted) != 0}) + buff " +
                                  $"{caster.Buffs.DelHechizo(spell, Jondo.Unity.World.Fights.SpellAspect.AlcanceMaximo, fight.RoundNumber)}");
 
                 // And the rest of the spell's modifiers: 294/295 take range away, 2905/2906 pin it.

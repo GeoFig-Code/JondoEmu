@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using Jondo.Unity.Server.Handlers;
 using Jondo.Unity.Server.Managers;
 using Jondo.Unity.Server.Network;
 using Jondo.Unity.World.Fights;
@@ -21,6 +22,24 @@ namespace Jondo.Unity.Tests.Combat
             Id = id, TeamId = 0, CellId = cell, MaxHP = 2000, CurrentHP = 2000, Level = 200,
             MaxAP = 12, CurrentAP = 12, MaxMP = 6, CurrentMP = 6,
         };
+
+        /// <summary>
+        /// Range taken away never strands a spell, and only a spell whose range can be boosted feels
+        /// it. Three Pío azul taking 2 range each left the Sacrogrito's Absorción, a fixed 1-6
+        /// (flags 516), at «1 to 0»: nothing could be cast that turn. The client adds the
+        /// characteristic only with RangeCanBeBoosted and ends with Max(minimum, maximum) (hv.nhu).
+        /// </summary>
+        [Fact]
+        public void Range_taken_away_never_strands_a_spell()
+        {
+            var me = Player(13825568, 300);
+            me.Range = -6;
+            Assert.Equal(6, FightHandler.ReachBeforeModifiers(me, 12734, 6, 516, 2));
+            Assert.Equal(0, FightHandler.ReachBeforeModifiers(me, 12734, 6, SpellLevelFlags.RangeCanBeBoosted, 2));
+            Assert.Equal((1, 1), SpellModifiers.Range(me, 12734, 1, 0, 2));
+            Assert.Equal((1, 1), SpellModifiers.Range(me, 12734, 1, -5, 2));
+            Assert.Equal((1, 6), SpellModifiers.Range(me, 12734, 1, 6, 2));
+        }
 
         /// <summary>
         /// The beast form, cast in round 2 in "molosse": nineteen "2905" rows pin the maximum range

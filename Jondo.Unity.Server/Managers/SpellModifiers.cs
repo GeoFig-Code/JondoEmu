@@ -100,7 +100,9 @@ namespace Jondo.Unity.Server.Managers
         /// The range a cast may reach: the minimum the level's plus 280 less 295, the maximum what
         /// the caller already added up (level, characteristic, 281) less 294; and a live 2906 or
         /// 2905 is the minimum or the maximum whatever else -- the Uginak's beast form "solo puede
-        /// atacar hasta 2 AL máximo", in its class sheet, and its 13791 is pinned to 0-0.
+        /// atacar hasta 2 AL máximo", in its class sheet, and its 13791 is pinned to 0-0. The
+        /// maximum never falls below the minimum: the client ends with Math.Max(minimum, maximum)
+        /// (hv.nhu), so taking range away never leaves a spell that cannot be cast at all.
         /// </summary>
         public static (int Min, int Max) Range(Fighter caster, int spell, int min, int max, int round)
         {
@@ -114,7 +116,8 @@ namespace Jondo.Unity.Server.Managers
             int? pinnedMax = caster.Buffs.FijadoDelHechizo(spell, SpellAspect.MaxRangeSet, round);
             if (pinnedMin.HasValue) min = pinnedMin.Value;
             if (pinnedMax.HasValue) max = pinnedMax.Value;
-            return (Math.Max(0, min), Math.Max(0, max));
+            min = Math.Max(0, min);
+            return (min, Math.Max(min, max));
         }
 
         /// <summary>Casts per turn: the level's cap plus 290, the spell's and every spell's. No cap stays no cap.</summary>

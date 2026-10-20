@@ -67,6 +67,24 @@ namespace Jondo.Unity.Server.Handlers
         internal static int CapOf(FightInstance fight)
             => fight.PeopleCap > 0 ? Math.Min(fight.PeopleCap, MaxPeoplePerTeam) : MaxPeoplePerTeam;
 
+        /// <summary>
+        /// How far a spell reaches before its own modifiers: the level's maximum, the characteristic
+        /// -- equipment and buffs -- and the 281 aimed at this spell.
+        /// </summary>
+        /// <remarks>
+        /// Only a spell whose range can be boosted takes the characteristic, for better or worse
+        /// (SpellLevelFlags.RangeCanBeBoosted, 64): the client adds characteristic 19 to the level's
+        /// range only then (hv.nhu, read in Ghidra). Absorción (12734, flags 516) has a fixed 1-6,
+        /// and three Pío azul taking 2 range each left it at «1 to 0»: no spell could be cast.
+        /// </remarks>
+        internal static int ReachBeforeModifiers(Fighter caster, int spell, int levelMax, int flags, int round)
+        {
+            bool boostable = (flags & Managers.SpellLevelFlags.RangeCanBeBoosted) != 0;
+            return levelMax
+                 + (boostable ? caster.Range + caster.Buffs.De(AlcanceCaracteristica, round) : 0)
+                 + caster.Buffs.DelHechizo(spell, Jondo.Unity.World.Fights.SpellAspect.AlcanceMaximo, round);
+        }
+
         /// <summary>What a fight keeps for the map: its flags, and its group while there is one.</summary>
         private sealed class OnTheMap
         {
