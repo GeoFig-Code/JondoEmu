@@ -788,6 +788,9 @@ namespace Jondo.Unity.Server.Network
             // Back on a dream's map: the dream again, or out of it when there is none to go back to.
             await Handlers.DreamHandler.OnWorldEntryAsync(stream);
 
+            // The treasure hunts under way (hhf), as they stand.
+            await Handlers.TreasureHuntHandler.OnWorldEntryAsync(stream, character.Id);
+
             // What the account sold in the marketplaces, and what came back unsold, for the sales
             // history window: its "last connection" box is the part since the last logout.
             byte[]? sales = Handlers.MarketplaceHandler.SalesHistoryAtEntry(character.Id, SessionContext.Current.AccountId);

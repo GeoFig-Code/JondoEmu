@@ -521,6 +521,8 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>The monsters of a map's subarea, as <c>Subareas.Monsters</c> lists them.</summary>
+        public static IReadOnlyList<int> RosterOfMap(long mapId) => RosterOf(mapId);
+
         private static IReadOnlyList<int> RosterOf(long mapId)
         {
             var info = MapManager.GetMapInfo(mapId);

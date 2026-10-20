@@ -1353,7 +1353,8 @@ namespace Jondo.Unity.Server.Network
                     || action.Kind == Managers.InteractiveActionKind.DreamDoor
                     || action.Kind == Managers.InteractiveActionKind.Marketplace
                     || action.Kind is Managers.InteractiveActionKind.TowerRoom or Managers.InteractiveActionKind.TowerCreator
-                        or Managers.InteractiveActionKind.TowerPortal or Managers.InteractiveActionKind.DimensionExit)
+                        or Managers.InteractiveActionKind.TowerPortal or Managers.InteractiveActionKind.DimensionExit
+                        or Managers.InteractiveActionKind.FissureModel)
                     sinColocacion = true;
             }
             if (interactive.Actions.Count == 0 || sinColocacion) return;

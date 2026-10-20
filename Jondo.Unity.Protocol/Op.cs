@@ -23,14 +23,32 @@ public static class Op
     /// <summary>The opcode as it travels: with its prefix in front.</summary>
     public static string Uri(string opcode) => Prefix + opcode;
 
-    /// <summary>Only reachable from isi, which never arrives. 1 message in 1 file.</summary>
+    /// <summary>A treasure hunt as it stands (TreasureHuntProtocol): stages, flags, tries, start, steps.</summary>
     public const string Hhf = "hhf";
 
-    /// <summary>Unidentified. 4 uses in the emulator.</summary>
+    /// <summary>A treasure hunt's flag taken away (client): f1 step, f2 type.</summary>
     public const string Hhh = "hhh";
 
-    /// <summary>Unidentified. 2 uses in the emulator.</summary>
+    /// <summary>The answer to a treasure hunt's flag: f1 result, f2 step, f3 type.</summary>
     public const string Hhq = "hhq";
+
+    /// <summary>The answer to a treasure hunt asked for: f1 type, f2 result (5 the silent one).</summary>
+    public const string Hhk = "hhk";
+
+    /// <summary>A treasure hunt's flag put (client): f1 type, f2 step.</summary>
+    public const string Hhv = "hhv";
+
+    /// <summary>A treasure hunt's dig (client): f1 type.</summary>
+    public const string Hgj = "hgj";
+
+    /// <summary>The answer to a treasure hunt's dig: f1 result, f3 wrong flags, f4 type.</summary>
+    public const string Hht = "hht";
+
+    /// <summary>A treasure hunt given up (client): f1 type.</summary>
+    public const string Hgn = "hgn";
+
+    /// <summary>A treasure hunt over: f2 type.</summary>
+    public const string Hgm = "hgm";
 
     /// <summary>What the account owns; the client already has the whole catalogue and what is not in this list comes out grey. It is sent once on entering the world. In the replay it is replaced by those of the account playing.</summary>
     public const string Hhy = "hhy";

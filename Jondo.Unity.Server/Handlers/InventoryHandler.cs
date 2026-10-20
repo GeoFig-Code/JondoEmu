@@ -87,11 +87,6 @@ namespace Jondo.Unity.Server.Handlers
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, luyPacket);
                 LogDebug("[Inventory] Sent luy (InventoryTransactionFinished)");
 
-                // 4. Shortcut bar content packets (hhf / hhh)
-                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, BuildHhfPacket());
-                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, BuildHhhPacket());
-                LogDebug("[Inventory] Sent hhf and hhh (ShortcutBar)");
-
                 // 5. Update character appearance
                 byte[]? lookBytes = UpdateCharacterLook();
 
@@ -251,24 +246,6 @@ namespace Jondo.Unity.Server.Handlers
             output.WriteTag((uint)((2 << 3) | 0)); output.WriteInt64(characterId);                    // Field 2: Character ID
             output.Flush();
             return NetworkEnvelope.BuildGameNodePacket(Op.Uri(Op.Kku), ms.ToArray());
-        }
-
-        private static byte[] BuildHhfPacket()
-        {
-            using var ms = new MemoryStream();
-            var output = new CodedOutputStream(ms);
-            output.WriteTag((uint)((1 << 3) | 0)); output.WriteInt32(2); // HGZ_EBYW shortcut bar state
-            output.Flush();
-            return NetworkEnvelope.BuildGameNodePacket(Op.Uri(Op.Hhf), ms.ToArray());
-        }
-
-        private static byte[] BuildHhhPacket()
-        {
-            using var ms = new MemoryStream();
-            var output = new CodedOutputStream(ms);
-            output.WriteTag((uint)((1 << 3) | 0)); output.WriteInt32(2); // HGZ_EBYW shortcut bar state
-            output.Flush();
-            return NetworkEnvelope.BuildGameNodePacket(Op.Uri(Op.Hhh), ms.ToArray());
         }
 
         private static byte[] BuildKnsPacket()

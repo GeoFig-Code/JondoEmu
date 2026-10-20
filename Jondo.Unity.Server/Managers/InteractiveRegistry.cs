@@ -105,6 +105,9 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>A divine dimension's portal back to the tower (TravelersTower).</summary>
         DimensionExit,
+
+        /// <summary>A divine dimension's model in the localization room: launches its legendary hunt (TreasureHuntHandler).</summary>
+        FissureModel,
     }
 
     /// <summary>A skill offered by an interactive element.</summary>
@@ -725,6 +728,14 @@ namespace Jondo.Unity.Server.Managers
                 var declared = Declared(mapId, back, TravelersTower.PortalType);
                 declared.Add(InteractiveActionKind.DimensionExit, TravelersTower.StaySkill, TravelersTower.InstanceOf(back.Id, 0));
                 declared.Add(InteractiveActionKind.DimensionExit, TravelersTower.LeaveSkill, TravelersTower.InstanceOf(back.Id, 1));
+            }
+
+            foreach (var dimension in TravelersTower.Dimensions)
+            {
+                if (Find(TravelersTower.FissureRoom, dimension.Model) is not { } model) continue;
+                Declared(TravelersTower.FissureRoom, model, dimension.ModelType)
+                    .AddNamed(InteractiveActionKind.FissureModel, TravelersTower.UseSkill, TravelersTower.LocateName,
+                              TravelersTower.InstanceOf(model.Id, 0));
             }
         }
 

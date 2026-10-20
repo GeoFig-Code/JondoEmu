@@ -32,14 +32,25 @@ namespace Jondo.Unity.Server.Managers
     /// back on it (jse). Their staging is the room's «TP» (2). The «Prisión - Bajos fondos» (455)
     /// is offered by none of the seven captured.
     /// </para>
+    /// <para>
+    /// The alteration is had by finding the dimension's fissure: in the «Sala de localización»
+    /// each dimension's model (types 441-445, «Localizar una fisura», skill 184 named 360)
+    /// launches its legendary hunt (TreasureHunts), and winning the fight at its end gives the
+    /// alteration to everybody who fought it (DofusPourLesNoobs, Quêtes d'Osavora). Level 50 at
+    /// least, says the guide for Osavora; the others are taken to ask the same.
+    /// </para>
     /// </remarks>
     public static class TravelersTower
     {
         /// <summary>A room: the teleporter skill that leads there, its map, its teleporter and where one lands.</summary>
         public sealed record Room(int Skill, string Name, long MapId, int Teleporter, int Cell);
 
-        /// <summary>A divine dimension: its alteration, the mechanism's name for it, its staging and where its portal leads.</summary>
-        public sealed record Dimension(string Name, int Alteration, int OpenName, int Staging, long EntryMap, int EntryCell);
+        /// <summary>
+        /// A divine dimension: its alteration, the mechanism's name for it, its staging, where its
+        /// portal leads, and its model in the localization room with the legendary hunt it launches.
+        /// </summary>
+        public sealed record Dimension(string Name, int Alteration, int OpenName, int Staging, long EntryMap, int EntryCell,
+                                       int Model, int ModelType, int Legendary);
 
         public const int TeleporterType = 235;
         public const int PortalType = 232;
@@ -60,6 +71,15 @@ namespace Jondo.Unity.Server.Managers
         public const long PortalRoom = 130155011;
         public const int Creator = 539177, Portal = 539176;
 
+        /// <summary>The «Sala de localización», with the dimensions' models.</summary>
+        public const long FissureRoom = 130025985;
+
+        /// <summary>«Localizar una fisura», the models' skill name.</summary>
+        public const int LocateName = 360;
+
+        /// <summary>The level a fissure's hunt asks for.</summary>
+        public const int LocateLevel = 50;
+
         /// <summary>Where one lands in the portal room coming back from a dimension.</summary>
         public const int BackCell = 315;
 
@@ -77,15 +97,17 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>
         /// The five dimensions. Entry cells measured for Anutropía, Sramvil and Zurcalia; Xelorium's
-        /// and Osavora's are their portal back's cells, the nearest walkable taken on arrival.
+        /// and Osavora's are their portal back's cells, the nearest walkable taken on arrival. The
+        /// models as the capture's jss declares them, their type named after the dimension; the
+        /// legendary hunts are the client's «Tesoro de X» rows, whose monster is «Fisura de X».
         /// </summary>
         public static readonly IReadOnlyList<Dimension> Dimensions = new[]
         {
-            new Dimension("Anutropía", 763, 346, 4, 131596288, 429),
-            new Dimension("Sramvil", 764, 347, 5, 134351108, 372),
-            new Dimension("Xelorium", 765, 348, 6, 145100034, 269),
-            new Dimension("Zurcalia", 766, 349, 7, 161351684, 399),
-            new Dimension("Osavora", 767, 350, 8, 234751496, 516),
+            new Dimension("Anutropía", 763, 346, 4, 131596288, 429, 484967, 441, 58),
+            new Dimension("Sramvil", 764, 347, 5, 134351108, 372, 485536, 442, 59),
+            new Dimension("Xelorium", 765, 348, 6, 145100034, 269, 486664, 443, 61),
+            new Dimension("Zurcalia", 766, 349, 7, 161351684, 399, 502767, 444, 60),
+            new Dimension("Osavora", 767, 350, 8, 234751496, 516, 539218, 445, 62),
         };
 
         /// <summary>The dimensions' portals back, by map: the arrival's and the others the client data draws.</summary>
@@ -104,6 +126,10 @@ namespace Jondo.Unity.Server.Managers
         public static Room RoomOf(int skill) => Rooms.FirstOrDefault(r => r.Skill == skill);
 
         public static Dimension DimensionOf(int openName) => Dimensions.FirstOrDefault(d => d.OpenName == openName);
+
+        public static Dimension ModelOf(int element) => Dimensions.FirstOrDefault(d => d.Model == element);
+
+        public static Dimension LegendaryOf(int legendary) => Dimensions.FirstOrDefault(d => d.Legendary == legendary);
 
         public static bool IsWayBack(long mapId, int element) => WaysBack.Contains((mapId, element));
 

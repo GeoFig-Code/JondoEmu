@@ -207,6 +207,9 @@ namespace Jondo.Unity.Server.Handlers
                 case InteractiveActionKind.DimensionExit:
                     await TravelersTowerHandler.UseWayBackAsync(stream, interactive, action);
                     break;
+                case InteractiveActionKind.FissureModel:
+                    await TreasureHuntHandler.LocateFissureAsync(stream, interactive, action);
+                    break;
                 default:
                     throw new InvalidOperationException($"Unhandled interactive action: {action.Kind}.");
             }

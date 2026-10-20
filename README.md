@@ -214,6 +214,10 @@ Built with **Avalonia**, the same toolkit as the Studio.
   the mechanism opens it to Anutropía, Sramvil, Xelorium, Zurcalia or Osavora for those with that
   dimension's *Portal* alteration, everybody in the room sees it change, and each dimension's portal
   leads back to the tower
+- ✅ Finding a fissure: each model in the localization room launches its dimension's legendary hunt
+  (level 50) — five stages of five steps, flags, digs and four tries — that ends in a fight against
+  the fissure; whoever wins it gets the portal for good, and the hunter its divine chest
+- 🟡 The hunts' steps say how many maps to walk, not which landmark to look for
 - ✅ **16 temporal anomalies** with their 120-minute countdown
 <img width="2560" height="1514" alt="image" src="https://github.com/user-attachments/assets/942d4d71-9711-45f1-9156-5381f7ad14b8" />
 

@@ -334,7 +334,7 @@ namespace Jondo.Protocol
 
                 // === Context: World Loading - 33 Packets Transition Burst ===
                 case Op.Kqo: return ("World Loading", "Interfaces", "ChatChannelsReadMessage (Chat channels open for reading)");
-                case Op.Hhq: return ("World Loading", "Interfaces", "SocialGroupPackets (Guild and alliance information)");
+                case Op.Hhq: return ("Treasure hunts", "Flags", "TreasureHuntFlagAnswer (A flag put or taken away)");
                 case Op.Hml: return ("World Loading", "Interfaces", "SocialPreferences (The player's social settings)");
                 case Op.Isf: return ("World Loading", "Sync", "QuestListMessage (Notification of the active quests)");
                 case Op.Lol: return ("World Loading", "Interfaces", "NotificationListMessage (Quest notifications)");
@@ -356,8 +356,8 @@ namespace Jondo.Protocol
                 case "lvk": return ("World Loading", "Interfaces", "OrnamentListMessage (Available graphical ornaments)");
                 case Op.Lwb: return ("World Loading", "Character", "EmoteListMessage (Unlocked emoticons)");
                 case Op.Luy: return ("World Loading", "Inventory", "JobDescriptionMessage (List of learned jobs)");
-                case Op.Hhf: return ("World Loading", "Interfaces", "SocialGroupRights (Rights granted within the guild)");
-                case Op.Hhh: return ("World Loading", "Interfaces", "SocialGroupDetails (Descriptive sheet of the guild)");
+                case Op.Hhf: return ("Treasure hunts", "State", "TreasureHunt (The hunt as it stands)");
+                case Op.Hhh: return ("Treasure hunts", "Flags", "TreasureHuntFlagRemove (A flag taken away)");
                 case Op.Luq: return ("World Loading", "Interfaces", "JobCrafterDirectorySettings (Job directory visibility settings)");
                 case "hhi": return ("World Loading", "Interfaces", "SocialGroupAlliance (Sheet of the alliance)");
                 case Op.Idf: return ("Guild", "Raids", "RaidStartPrompt (the start asked of a participant)");

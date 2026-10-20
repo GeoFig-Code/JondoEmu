@@ -292,6 +292,10 @@ namespace Jondo.Unity.Server.Managers
             // would also let anybody walk in without the gem.
             if (mapId == Handlers.AllianceHandler.TempleMap && elementId == Handlers.AllianceHandler.TempleDoor)
                 return true;
+            // The localization room's models: 3.6 launches a legendary hunt with them («Localizar
+            // una fisura»), where the 2.68 routes took straight into the dimension.
+            if (mapId == TravelersTower.FissureRoom && TravelersTower.ModelOf(elementId) != null)
+                return true;
             return false;
         }
 

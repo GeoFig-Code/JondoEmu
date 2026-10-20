@@ -958,6 +958,15 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.GuildHandler.RerollMissionAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jej)))
                     await Handlers.GuildHandler.InterestAsync(stream, payload);
+                // The treasure hunts: flags, digs and give-ups (TreasureHuntHandler).
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hhv)))
+                    await Handlers.TreasureHuntHandler.FlagAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hhh)))
+                    await Handlers.TreasureHuntHandler.RemoveFlagAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hgj)))
+                    await Handlers.TreasureHuntHandler.DigAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hgn)))
+                    await Handlers.TreasureHuntHandler.GiveUpAsync(stream, payload);
                 // The automatic dungeon search (MatchmakingHandler).
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kjx)))
                     await Handlers.MatchmakingHandler.StateAsync(stream, payload);
