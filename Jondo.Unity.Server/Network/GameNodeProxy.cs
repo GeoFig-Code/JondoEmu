@@ -956,6 +956,27 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.GuildHandler.RerollMissionAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jej)))
                     await Handlers.GuildHandler.InterestAsync(stream, payload);
+                // The party search's board and announcements (LobbyHandler).
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jmu)))
+                    await Handlers.LobbyHandler.BoardAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jop)))
+                    await Handlers.LobbyHandler.CloseAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jpr)))
+                    await Handlers.LobbyHandler.MineAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jnv)))
+                    await Handlers.LobbyHandler.PostAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jov)))
+                    await Handlers.LobbyHandler.EditAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jog)))
+                    await Handlers.LobbyHandler.DeleteAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Joc)))
+                    await Handlers.LobbyHandler.ApplyAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jny)))
+                    await Handlers.LobbyHandler.LeaveAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jom)))
+                    await Handlers.LobbyHandler.AnswerAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Joh)))
+                    await Handlers.LobbyHandler.FreeAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jga)))
                     await Handlers.GuildHandler.EmptyTabAsync(stream, payload, Op.Jfz, 1);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jgr)))

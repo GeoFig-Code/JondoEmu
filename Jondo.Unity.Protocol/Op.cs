@@ -1484,16 +1484,20 @@ public static class Op
     /// <summary>Unidentified. 1 use in the emulator.</summary>
     public const string Joa = "joa";
 
-    /// <summary>Unidentified. 1 use in the emulator.</summary>
+    /// <summary>C→S: party search, taking one's announcement down: f1 its uid. Answered with <see cref="Jnk"/>.</summary>
     public const string Jog = "jog";
 
-    /// <summary>Part of the 3.6.4.3 initialisation burst that kkn fires. It does not appear in any of the 242 captures.</summary>
+    /// <summary>
+    /// C→S in 3.6.10.11: party search, throwing rejected applicants away, f1 each uid
+    /// (LobbyApplicantsUi's bin). The map change still sends one as it did in 3.6.4.3, where it was
+    /// the current map; the client has no reader for it.
+    /// </summary>
     public const string Joh = "joh";
 
     /// <summary>Movement across the map outside a fight: the path the client asks for when walking.</summary>
     public const string Joi = "joi";
 
-    /// <summary>Unidentified. 1 use in the emulator.</summary>
+    /// <summary>S→C: party search, the answer to <see cref="Jny"/>: its code in f3 (fgr.beqv).</summary>
     public const string Jol = "jol";
 
     /// <summary>
@@ -1528,16 +1532,86 @@ public static class Op
     /// <summary>Old map change (3.6.4.3), replaced by jqk. It appears in no capture.</summary>
     public const string Jos = "jos";
 
-    /// <summary>Unidentified. 1 use in the emulator.</summary>
+    /// <summary>S→C: party search, the answer to <see cref="Joh"/>: f1 { f1 each { f1 character, f2 done, f3 uid } }.</summary>
     public const string Jpb = "jpb";
+
+    // ─── Party search («Búsqueda de grupo»: the client's lobbies) ─────────────────────────────
+    // Read off the client (fgk sends, fgr reads) and «Busqueda grupo/busqueda de grupo-crear
+    // anuncio-postularse a otro-autoeliminacion de mi anuncio».
+
+    /// <summary>C→S: the board, on opening the tab and on refreshing it. Answered with <see cref="Jpx"/>.</summary>
+    public const string Jmu = "jmu";
+
+    /// <summary>S→C: the board: f1 { f1 each announcement (jos), f2 one's waiting applications }.</summary>
+    public const string Jpx = "jpx";
+
+    /// <summary>C→S: the tab closed. Answered with <see cref="Jns"/>, empty.</summary>
+    public const string Jop = "jop";
+
+    /// <summary>S→C: the answer to <see cref="Jop"/>, empty.</summary>
+    public const string Jns = "jns";
+
+    /// <summary>C→S: one's own announcement, on opening the tab. Answered with <see cref="Jng"/>.</summary>
+    public const string Jpr = "jpr";
+
+    /// <summary>S→C: one's own announcement: f1 { f1 applicants, f4 the announcement, f5 the rejected }; empty with none.</summary>
+    public const string Jng = "jng";
+
+    /// <summary>C→S: posting an announcement. Answered with <see cref="Joq"/>.</summary>
+    public const string Jnv = "jnv";
+
+    /// <summary>S→C: the answer to <see cref="Jnv"/>: f1 the code, f2 the new uid.</summary>
+    public const string Joq = "joq";
+
+    /// <summary>C→S: editing one's announcement: f1 tags, f2 text. Answered with <see cref="Jps"/>.</summary>
+    public const string Jov = "jov";
+
+    /// <summary>S→C: an announcement edited: f1 uid, f2 text, f3 tags («anuncio modificado»).</summary>
+    public const string Jnt = "jnt";
+
+    /// <summary>S→C: the answer to <see cref="Jog"/>: f1 the code.</summary>
+    public const string Jnk = "jnk";
+
+    /// <summary>S→C: an announcement taken down: f1 its uid («ya no está disponible»).</summary>
+    public const string Jnz = "jnz";
+
+    /// <summary>C→S: applying to an announcement: f1 its uid. Answered with <see cref="Jnn"/>.</summary>
+    public const string Joc = "joc";
+
+    /// <summary>S→C: the answer to <see cref="Joc"/>: f1 0 applied, 1 joined at once, or an error.</summary>
+    public const string Jnn = "jnn";
+
+    /// <summary>S→C: a member in: f1 the player, f2 the announcement.</summary>
+    public const string Jpk = "jpk";
+
+    /// <summary>S→C: after joining an announcement, empty, as the capture sends it.</summary>
+    public const string Jnu = "jnu";
+
+    /// <summary>C→S: leaving an announcement, or taking an application back: f1 its uid. Answered with <see cref="Jol"/>.</summary>
+    public const string Jny = "jny";
+
+    /// <summary>S→C: a member out: f1 the announcement, f3 his uid.</summary>
+    public const string Jor = "jor";
+
+    /// <summary>S→C: to an owner, a new applicant: f1 the player, f2 the announcement («nuevas candidaturas»).</summary>
+    public const string Jpq = "jpq";
+
+    /// <summary>C→S: an owner answers an applicant: f1 his uid, f2 accepted. Answered with <see cref="Jpe"/>.</summary>
+    public const string Jom = "jom";
+
+    /// <summary>S→C: the answer to <see cref="Jom"/>: f1 0 rejected, 1 accepted, or an error; f2 the applicant.</summary>
+    public const string Jpe = "jpe";
+
+    /// <summary>S→C: to an applicant, his application answered: f1 the announcement, f2 accepted.</summary>
+    public const string Jmv = "jmv";
 
     /// <summary>Unidentified. 1 use in the emulator.</summary>
     public const string Jpg = "jpg";
 
-    /// <summary>Unidentified. 1 use in the emulator.</summary>
+    /// <summary>S→C: party search, to an owner: an applicant took his application back, f1 the player.</summary>
     public const string Jpj = "jpj";
 
-    /// <summary>Unidentified. 1 use in the emulator.</summary>
+    /// <summary>S→C: party search, the answer to editing one's announcement (<see cref="Jov"/>): f1 the code.</summary>
     public const string Jps = "jps";
 
     /// <summary>Unidentified. 3 uses in the emulator.</summary>

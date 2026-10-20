@@ -270,7 +270,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Commands answer in Spanish, English or French
 - ✅ Emotes, sitting included, and smileys; emotes learned from scrolls and potions
 - ✅ Administrators' characters have every attitude of the game
-- ❌ The party invitation's *Details* button and party search
+- ✅ Party search: post an announcement, browse the board, apply or join at once, accept or reject
+  applicants, edit it, leave it, take it down
+- ❌ The party invitation's *Details* button and the automatic dungeon matchmaking
 
 ### ⚜️ Guilds and raids
 
