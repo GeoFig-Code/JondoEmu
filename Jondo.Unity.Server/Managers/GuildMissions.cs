@@ -38,7 +38,26 @@ namespace Jondo.Unity.Server.Managers
         public sealed record Mission(int Id, string Name, int CategoryId, int SuperCategoryId, int RankId,
                                      int RecommendedLevel, int ActivityPoints, int Tokens, List<int> Objectives);
 
-        public sealed record Objective(int Id, int MissionId, int Order);
+        /// <summary>
+        /// What a mission asks for, as the client's GuildMissionObjectiveData has it. The client tells
+        /// the kinds apart in this order (jk.bbt): a monster, a family of monsters, an anomaly
+        /// category (4-6), a dream's intensity, a dream seed, an item, a quest.
+        /// </summary>
+        public sealed record Objective(int Id, int MissionId, int Order)
+        {
+            public int MonsterId { get; init; }
+            public bool InDungeon { get; init; }
+            public int Quantity { get; init; }
+            public int FamilyId { get; init; }
+            public List<int> FamilyMonsters { get; init; } = new();
+            public int AreaId { get; init; }
+            public int SubareaId { get; init; }
+            public int MapId { get; init; }
+            public int Intensity { get; init; }
+            public int Stage { get; init; }
+            public int SeedId { get; init; }
+            public int ObjectId { get; init; }
+        }
 
         /// <summary>A mission of a guild's week: where it is, which, its uuid and its first objective.</summary>
         public sealed record Drawn(int Slot, int MissionId, string Uuid, int ObjectiveId);
@@ -76,6 +95,15 @@ namespace Jondo.Unity.Server.Managers
         public static IReadOnlyList<Mission> All => Data.Missions;
 
         public static Mission MissionOf(int id) => Data.Missions.FirstOrDefault(m => m.Id == id);
+
+        public static Objective ObjectiveOf(int id) => Data.Objectives.FirstOrDefault(o => o.Id == id);
+
+        /// <summary>
+        /// How far an objective counts before it is done, as the client's wrappers set it: one for
+        /// a monster (ja), the quantity for a family (jb) and the rest that carry one.
+        /// </summary>
+        public static int TargetOf(Objective objective)
+            => objective == null || objective.MonsterId > 0 ? 1 : Math.Max(1, objective.Quantity);
 
         /// <summary>A mission's first objective, by its order: the one its line shows first.</summary>
         public static int FirstObjectiveOf(Mission mission)
@@ -181,6 +209,64 @@ namespace Jondo.Unity.Server.Managers
                 transaction.Commit();
                 Program.LogDebug($"[Guild] Guild {guildId} draws {result.Count} mission(s) for week {week.Name}.");
                 return result;
+            }
+        }
+
+        /// <summary>A member's standing on one mission of the week: how far, and whether done.</summary>
+        public readonly record struct Standing(int Count, bool Done)
+        {
+            public static readonly Standing None = new(0, false);
+        }
+
+        /// <summary>A member's standing on each mission of his guild's week, by slot.</summary>
+        public static Dictionary<int, Standing> StandingsOf(long guildId, long characterId, DateTimeOffset when)
+        {
+            var found = new Dictionary<int, Standing>();
+            string week = GuildActivity.Of(guildId, when).Name;
+            using var connection = GuildStore.Open();
+            var query = connection.CreateCommand();
+            query.CommandText = @"
+                SELECT Slot, Count, Done FROM GuildMissionProgress
+                WHERE GuildId = $g AND Week = $w AND CharacterId = $c;";
+            query.Parameters.AddWithValue("$g", guildId);
+            query.Parameters.AddWithValue("$w", week);
+            query.Parameters.AddWithValue("$c", characterId);
+            using var reader = query.ExecuteReader();
+            while (reader.Read())
+                found[reader.GetInt32(0)] = new Standing(reader.GetInt32(1), reader.GetInt32(2) != 0);
+            return found;
+        }
+
+        /// <summary>
+        /// A member gets further on one mission: his count goes up, up to the objective's target, and
+        /// reaching it does the mission -- once, the guide's «una vez». What it stands at after, and
+        /// whether this was what did it; null when it did not move (done already, or nothing to add).
+        /// </summary>
+        public static (Standing Now, bool JustDone)? Advance(long guildId, long characterId, Drawn mission,
+                                                             int by, DateTimeOffset when)
+        {
+            int target = TargetOf(ObjectiveOf(mission.ObjectiveId));
+            string week = GuildActivity.Of(guildId, when).Name;
+            lock (_lock)
+            {
+                StandingsOf(guildId, characterId, when).TryGetValue(mission.Slot, out var before);
+                if (before.Done || by <= 0) return null;
+
+                var now = new Standing(Math.Min(target, before.Count + by), before.Count + by >= target);
+                using var connection = GuildStore.Open();
+                var save = connection.CreateCommand();
+                save.CommandText = @"
+                    INSERT INTO GuildMissionProgress (GuildId, Week, Slot, CharacterId, Count, Done)
+                    VALUES ($g, $w, $s, $c, $n, $d)
+                    ON CONFLICT (GuildId, Week, Slot, CharacterId) DO UPDATE SET Count = $n, Done = $d;";
+                save.Parameters.AddWithValue("$g", guildId);
+                save.Parameters.AddWithValue("$w", week);
+                save.Parameters.AddWithValue("$s", mission.Slot);
+                save.Parameters.AddWithValue("$c", characterId);
+                save.Parameters.AddWithValue("$n", now.Count);
+                save.Parameters.AddWithValue("$d", now.Done ? 1 : 0);
+                save.ExecuteNonQuery();
+                return (now, now.Done);
             }
         }
 

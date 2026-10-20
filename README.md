@@ -283,10 +283,12 @@ Built with **Avalonia**, the same toolkit as the Studio.
   and directory search
 - ✅ Applications and invitations, accepting and refusing
 - ✅ Leaving and expelling; assigning ranks; handing the guild over
-- ✅ The weekly activity tier, contributions and the oracle shop
+- ✅ The weekly activity tier, contributions (with their *gremichas* in the bag) and the oracle shop
 - ✅ The guild chest — see [Banks and marketplaces](#-banks-and-marketplaces)
 - ✅ The *Encargos* tab's twelve weekly missions, drawn in the ranks and categories the guild chose
-- ❌ The missions' progress and rewards, and the *Casas* tab
+- ✅ Dungeon, expedition, monster-family and Infinite Dreams missions count as you play, once per member,
+  with the «¡Encargo terminado!» notice, *gremichas* and activity points
+- ❌ Anomaly and dream-trial missions, rerolling missions, and the *Casas* tab
 
 **Raids** — the Eternal Gardens Sanctuary and the Gigalodón Abyss — run on the client's own screens.
 

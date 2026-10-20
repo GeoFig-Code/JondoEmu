@@ -1131,6 +1131,21 @@ public static class Op
     /// <summary>S→C: answer to the jet.</summary>
     public const string Jdb = "jdb";
 
+    /// <summary>
+    /// S→C: one guild mission changed, f1 the mission (jdx). The client finds its card by the uuid,
+    /// rebuilds it and redraws it (fft.beib → buw).
+    /// </summary>
+    public const string Jdc = "jdc";
+
+    /// <summary>S→C: a guild mission done, f1 the mission: the «¡ENCARGO TERMINADO!» notice (fft.beig).</summary>
+    public const string Jen = "jen";
+
+    /// <summary>
+    /// S→C: the guild's week changed, f1 the week (jfl). The contributing capture sends it after the
+    /// tokens: { f1 1, f2 500, f3 250, f4 50 }.
+    /// </summary>
+    public const string Jex = "jex";
+
     /// <summary>C→S: a guild tab, with hzc and hvx. Answered with <see cref="Jfr"/>, empty.</summary>
     public const string Jfw = "jfw";
 

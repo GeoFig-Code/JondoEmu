@@ -330,6 +330,9 @@ namespace Jondo.Unity.Server.Handlers
                 Dreams.AnadirFranja(sueno);
                 Console.WriteLine($"[Dreams] Band {sueno.Franja} open: " +
                                   $"{sueno.Salas.Count} rooms in all.");
+
+                // And the band it closes is done: the guild missions that asked for it.
+                await GuildMissionWatcher.DreamBandDoneAsync(stream, sueno.Dificultad, sala.Franja);
             }
 
             Persist(sueno);

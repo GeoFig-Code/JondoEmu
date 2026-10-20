@@ -368,20 +368,23 @@ namespace Jondo.Unity.Server.Handlers
 
             await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jdb,
                 GuildProtocol.BuildTierChosen(week, GuildActivity.TokenCapOf(guild), GuildActivity.TokensOf(who, now),
-                                              GuildMissions.Of(guild.Id, now)),
+                                              GuildMissions.Of(guild.Id, now), GuildMissions.StandingsOf(guild.Id, who, now)),
                 ConnectionProtocol.RequestId(frame)));
         }
 
         /// <summary>
         /// The missions tab (jeu → jei): the week's twelve, drawn the first time they are asked
-        /// while the guild has a tier (GuildMissions); the empty tab without one.
+        /// while the guild has a tier (GuildMissions), each as the member stands on it
+        /// (GuildMissionWatcher); the empty tab without one.
         /// </summary>
         public static async Task MissionsAsync(NetworkStream stream, byte[] frame)
         {
             long who = SessionContext.State.CharacterId;
             var guild = who == 0 ? null : GuildStore.GuildOf(who);
-            var missions = guild == null ? Array.Empty<GuildMissions.Drawn>() : GuildMissions.Of(guild.Id, DateTimeOffset.UtcNow);
-            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jei, GuildProtocol.BuildMissions(missions.ToList()),
+            var now = DateTimeOffset.UtcNow;
+            var missions = guild == null ? Array.Empty<GuildMissions.Drawn>() : GuildMissions.Of(guild.Id, now);
+            var standings = guild == null ? null : GuildMissions.StandingsOf(guild.Id, who, now);
+            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jei, GuildProtocol.BuildMissions(missions.ToList(), standings),
                                                                ConnectionProtocol.RequestId(frame)));
         }
 
@@ -627,7 +630,7 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>A frame for everybody in the guild who is connected.</summary>
-        private static async Task TellEveryoneAsync(GuildStore.Guild guild, byte[] frame)
+        internal static async Task TellEveryoneAsync(GuildStore.Guild guild, byte[] frame)
         {
             foreach (var member in GuildStore.Members(guild.Id))
             {
@@ -978,7 +981,8 @@ namespace Jondo.Unity.Server.Handlers
         /// Contributing (jlb): ten thousand kamas of the character for ten of the guild, five times a
         /// week at most, and with them ten tokens for him and a hundred activity points for the guild
         /// (<see cref="GuildActivity"/>). It is answered with the contribution made, the guild's
-        /// kamas and the character's.
+        /// kamas and the character's. The tokens are items in his bag (32441), told as the capture
+        /// «contribuir» tells them: ivj, lqn 21, then the week (jex).
         /// </summary>
         /// <remarks>
         /// Only with a tier chosen, as the client has it: without one its button says to choose a
@@ -1001,7 +1005,7 @@ namespace Jondo.Unity.Server.Handlers
             var credited = GuildActivity.Credit(guild, who, GuildActivity.ContributionTokens,
                                                 GuildActivity.ContributionActivityPoints, now);
 
-            // The capture's order: ivf, jgz, (ivj), jia, (iun, khd), jle.
+            // The capture's order: ivf, jgz, ivj, lqn, jex, jia, iun, (khd), jle.
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Ivf,
                 ConnectionProtocol.BuildKamas(GameState.Kamas)));
             var me = GuildStore.MemberOf(who);
@@ -1010,8 +1014,11 @@ namespace Jondo.Unity.Server.Handlers
             {
                 await TellEveryoneAsync(guild, ConnectionProtocol.Push(Op.Jgz, MemberUpdated(me, myself)));
             }
+            await GuildMissionWatcher.GiveTokensAsync(stream, credited.Tokens, weigh: false);
+            await GuildMissionWatcher.TellTheWeekAsync(guild, now);
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jia,
                 GuildProtocol.BuildGuildKamas(GuildStore.GuildOf(who).GuildKamas)));
+            if (credited.Tokens > 0) await ItemUseHandler.WeighAsync(stream);
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jle,
                 GuildProtocol.BuildContribution(GuildStore.ContributionKamas, left)));
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jla, GuildProtocol.BuildContributionsLeft(left)));

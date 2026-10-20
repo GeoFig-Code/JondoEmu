@@ -27,7 +27,7 @@ namespace Jondo.Unity.Server.Managers
     ///   - a contribution of 10,000 kamas gives 10 tokens and 100 activity points (the capture's jff
     ///     goes from {100, 10} to {200, 20} with it).
     ///
-    /// Until the missions are done, contributions are the only activity there is.
+    /// The activity comes from contributions and from the weekly missions (GuildMissionWatcher).
     /// </remarks>
     public static class GuildActivity
     {

@@ -9237,6 +9237,9 @@ namespace Jondo.Unity.Server.Handlers
             // And the wild rides he caught with his net, in his bag if the fight was won.
             await Managers.RideCapture.FightEndedAsync(stream, fight, GameState.CharacterId, won);
 
+            // And his guild's weekly missions that asked for what fell.
+            await GuildMissionWatcher.FightEndedAsync(stream, fight, won);
+
             // And this is where it is applied. On the wire it does NOT travel broken down: the
             // percentage only exists inside the placement's ldd, and the final figure arrives with
             // the bonus already added. The 68 jyg of the captures were reviewed and there is no slot

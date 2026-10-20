@@ -379,43 +379,69 @@ namespace Jondo.Unity.Server.Network
         /// empty until missions are drawn.
         /// </summary>
         public static byte[] BuildTierChosen(GuildActivity.Week week, int tokenCap, int tokens,
-                                             IEnumerable<GuildMissions.Drawn> missions = null)
+                                             IEnumerable<GuildMissions.Drawn> missions = null,
+                                             IReadOnlyDictionary<int, GuildMissions.Standing> standings = null)
             => Pb.New().Msg(2, Pb.New()
                     .Bytes(1, week.Preferences ?? Array.Empty<byte>())
                     .Msg(2, WeekBlock(week, tokenCap, tokens))
-                    .Msg(3, MissionsBlock(missions)))
+                    .Msg(3, MissionsBlock(missions, standings)))
                 .Build();
+
+        /// <summary>The guild's week changed (jex): f1 the week, as the contributing capture sends it.</summary>
+        public static byte[] BuildWeekChanged(GuildActivity.Week week, int tokenCap, int tokens)
+            => Pb.New().Msg(1, WeekBlock(week, tokenCap, tokens)).Build();
 
         /// <summary>
         /// The week's missions (jdf): f2 each mission. The capture's: twelve in f2 and the eight
         /// of the live events in f4, which this server has none of.
         /// </summary>
-        public static Pb MissionsBlock(IEnumerable<GuildMissions.Drawn> missions)
+        public static Pb MissionsBlock(IEnumerable<GuildMissions.Drawn> missions,
+                                       IReadOnlyDictionary<int, GuildMissions.Standing> standings = null)
         {
             var jdf = Pb.New();
-            foreach (var mission in missions ?? Array.Empty<GuildMissions.Drawn>()) jdf.Msg(2, Mission(mission));
+            foreach (var mission in missions ?? Array.Empty<GuildMissions.Drawn>())
+            {
+                var standing = standings != null && standings.TryGetValue(mission.Slot, out var s) ? s : GuildMissions.Standing.None;
+                jdf.Msg(2, Mission(mission, standing));
+            }
             return jdf;
         }
 
         /// <summary>
-        /// One mission (jdx): f1 its uuid, f3 the mission, f4 { f1 {}, f4 its objective } -- every
-        /// one of the capture's twenty, whatever its kind: «ad92a545-…», 65, { {}, 65 }; 417's
-        /// objective is 418.
+        /// One mission (jdx): f1 its uuid, f3 the mission, f4 its objective's state (jdu) -- a oneof
+        /// the client reads by its case (iz.ctor): f1 {} not started, f3 { f1 count } on the way,
+        /// f2 {} done -- and f4 the objective. The capture's twenty all go { {}, objective }:
+        /// «ad92a545-…», 65, { {}, 65 }. The client shows the count as «Progresión: n/target» when
+        /// the target is above one, and marks the card done when its objective is (jk.npb).
         /// </summary>
-        public static Pb Mission(GuildMissions.Drawn mission)
-            => Pb.New()
+        public static Pb Mission(GuildMissions.Drawn mission, GuildMissions.Standing standing = default)
+        {
+            var objective = Pb.New();
+            if (standing.Done) objective.Msg(2, Pb.New());
+            else if (standing.Count > 0) objective.Msg(3, Pb.New().Var(1, standing.Count));
+            else objective.Msg(1, Pb.New());
+            return Pb.New()
                 .Str(1, mission.Uuid)
                 .Var(3, mission.MissionId)
-                .Msg(4, Pb.New().Msg(1, Pb.New()).Var(4, mission.ObjectiveId));
+                .Msg(4, objective.Var(4, mission.ObjectiveId));
+        }
+
+        /// <summary>One mission changed (jdc): f1 the mission as it now stands for the member.</summary>
+        public static byte[] BuildMissionChanged(GuildMissions.Drawn mission, GuildMissions.Standing standing)
+            => Pb.New().Msg(1, Mission(mission, standing)).Build();
+
+        /// <summary>A mission done (jen): f1 the mission, for the client's «¡ENCARGO TERMINADO!».</summary>
+        public static byte[] BuildMissionDone(int missionId) => Pb.New().Var(1, missionId).Build();
 
         /// <summary>
         /// The missions tab (jei, the answer to jeu): f1 { f1 the week's missions }. A guild with no
         /// tier gets the empty f3 the tab had before.
         /// </summary>
-        public static byte[] BuildMissions(IReadOnlyCollection<GuildMissions.Drawn> missions)
+        public static byte[] BuildMissions(IReadOnlyCollection<GuildMissions.Drawn> missions,
+                                           IReadOnlyDictionary<int, GuildMissions.Standing> standings = null)
             => missions == null || missions.Count == 0
                 ? BuildEmptyTab(3)
-                : Pb.New().Msg(1, Pb.New().Msg(1, MissionsBlock(missions))).Build();
+                : Pb.New().Msg(1, Pb.New().Msg(1, MissionsBlock(missions, standings))).Build();
 
         /// <summary>
         /// The guild's message (jci), empty: what the real server answers to the jiy {f2: 4} of
