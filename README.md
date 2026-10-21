@@ -497,6 +497,8 @@ An alliance is made of characters, not guilds.
 - ✅ **6,468 NPC templates** with their looks and dialogue trees
 - ✅ **422 NPCs** placed across **202 maps**
 - ✅ **5,134 monsters**, quest monsters and archmonsters included
+- ✅ Soul capture: wear an empty soul stone, cast Captura de Almas, win with its state still on —
+  the group's souls go into full stones, each archmonster and guardian in its own, up to the stone's level
 <img width="1700" height="930" alt="image" src="https://github.com/user-attachments/assets/02254e58-ec87-4839-82ac-f142ec5ef9cd" />
 
 - ✅ **38,744 monster groups**, respawned and kept populated, across **562 sub-areas**

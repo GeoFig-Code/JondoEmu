@@ -9301,6 +9301,9 @@ namespace Jondo.Unity.Server.Handlers
             // And a divine dimension's fissure beaten: its portal, and the hunt that led to it over.
             await TreasureHuntHandler.FightEndedAsync(stream, fight, won);
 
+            // And the souls of the beaten, for whoever cast «Captura de Almas» with a stone on.
+            await SoulCaptureHandler.FightEndedAsync(stream, fight, won);
+
             // And this is where it is applied. On the wire it does NOT travel broken down: the
             // percentage only exists inside the placement's ldd, and the final figure arrives with
             // the bonus already added. The 68 jyg of the captures were reviewed and there is no slot

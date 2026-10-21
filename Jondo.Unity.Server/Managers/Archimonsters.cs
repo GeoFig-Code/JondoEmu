@@ -56,6 +56,9 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         private static readonly object _gate = new object();
 
+        /// <summary>Whether a monster is an archmonster.</summary>
+        public static bool Is(int monsterId) => _ordinary.ContainsKey(monsterId);
+
         public static void Initialize(SqliteConnection connection)
         {
             lock (_gate)

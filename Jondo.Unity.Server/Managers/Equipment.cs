@@ -354,6 +354,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The item with that identifier, if we have it.</summary>
         public static Item? ByUid(long uid) => Items.TryGetValue(uid, out var item) ? item : null;
 
+        /// <summary>The item worn in a slot, or null.</summary>
+        public static Item? InSlot(int position) => Items.Values.FirstOrDefault(i => i.Position == position);
+
         /// <summary>
         /// Removes from the in-memory inventory what has gone somewhere else -- into the haven bag chest, for
         /// instance --. If units remain, they are subtracted; if not, it disappears.
