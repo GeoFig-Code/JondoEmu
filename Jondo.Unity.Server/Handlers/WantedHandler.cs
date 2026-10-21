@@ -50,9 +50,9 @@ namespace Jondo.Unity.Server.Handlers
                 if (criminal == null || !Wants(log, criminal)) continue;
 
                 await Quests.TickAsync(stream, criminal.Quest, criminal.Catch);
-                var away = WantedPosters.Captured(monster, Now, _dice);
+                var away = WantedPosters.Captured(monster, fight.RoleplayMapId, fight.DefenderLeaderId, Now, _dice);
                 Console.WriteLine($"[Wanted] {SessionContext.State.CharacterName} takes criminal {monster} " +
-                                  $"(quest {criminal.Quest}); he is away for {away.TotalHours:0.#} h.");
+                                  $"(quest {criminal.Quest})" + (away is { } h ? $"; he is away for {h.TotalHours:0.#} h." : "."));
             }
         }
 

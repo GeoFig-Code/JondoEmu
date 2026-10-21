@@ -74,6 +74,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>When each criminal that is standing nowhere may come back, in Unix milliseconds.</summary>
         private static readonly Dictionary<int, long> _awayUntil = new();
 
+        /// <summary>The group each criminal last stood in, once it has gone: whoever beat it may still say he took him.</summary>
+        private static readonly Dictionary<int, (long Map, long Group)> _lastStood = new();
+
         /// <summary>Reads the file, once.</summary>
         public static void Load()
         {
@@ -108,6 +111,7 @@ namespace Jondo.Unity.Server.Managers
                 _loaded = true;
                 _placed.Clear();
                 _awayUntil.Clear();
+                _lastStood.Clear();
                 Read(root);
             }
         }
@@ -195,6 +199,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 _placed[monster] = (map, group);
                 _awayUntil.Remove(monster);
+                _lastStood.Remove(monster);
             }
         }
 
@@ -209,6 +214,7 @@ namespace Jondo.Unity.Server.Managers
                 foreach (var pair in _placed.Where(p => p.Value.Map == map && p.Value.Group == group).ToList())
                 {
                     _placed.Remove(pair.Key);
+                    _lastStood[pair.Key] = pair.Value;
                     long back = nowMs + (long)Grace.TotalMilliseconds;
                     _awayUntil[pair.Key] = _awayUntil.TryGetValue(pair.Key, out long until) ? Math.Max(until, back) : back;
                 }
@@ -223,17 +229,25 @@ namespace Jondo.Unity.Server.Managers
             foreach (long group in groups) Released(map, group, nowMs);
         }
 
-        /// <summary>Somebody took him: he is away for two to six hours.</summary>
-        public static TimeSpan Captured(int monster, long nowMs, Random dice)
+        /// <summary>
+        /// Somebody took him out of that group: he is away for two to six hours, whether the group
+        /// is still standing or has just gone -- each fighter's end of fight says it, before or after
+        /// the group is taken off. Null when he was not standing there: the criminal a legendary
+        /// hunt digs up is his own, and the one roaming the zone stays.
+        /// </summary>
+        public static TimeSpan? Captured(int monster, long map, long group, long nowMs, Random dice)
         {
-            var away = ShortestAbsence + TimeSpan.FromMinutes(dice.Next((int)(LongestAbsence - ShortestAbsence).TotalMinutes + 1));
             lock (_gate)
             {
-                _placed.Remove(monster);
+                bool there = (_placed.TryGetValue(monster, out var at) && at == (map, group))
+                             || (_lastStood.TryGetValue(monster, out var was) && was == (map, group));
+                if (!there) return null;
+
+                var away = ShortestAbsence + TimeSpan.FromMinutes(dice.Next((int)(LongestAbsence - ShortestAbsence).TotalMinutes + 1));
                 long until = nowMs + (long)away.TotalMilliseconds;
                 _awayUntil[monster] = _awayUntil.TryGetValue(monster, out long already) ? Math.Max(already, until) : until;
+                return away;
             }
-            return away;
         }
 
         /// <summary>

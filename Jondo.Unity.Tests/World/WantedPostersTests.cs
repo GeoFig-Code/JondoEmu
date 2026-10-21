@@ -113,8 +113,10 @@ namespace Jondo.Unity.Tests.World
             Assert.DoesNotContain(900500, WantedPosters.Due(now).Select(c => c.Monster));
             Assert.Contains(900500, WantedPosters.Due(now + (long)WantedPosters.Grace.TotalMilliseconds).Select(c => c.Monster));
 
-            // Taken: hours.
-            var away = WantedPosters.Captured(900500, now, new Random(3));
+            // Taken out of the group he stood in, even once it is gone: hours. Out of another -- a
+            // legendary hunt's own --: nothing.
+            Assert.Null(WantedPosters.Captured(900500, 77, -6, now, new Random(3)));
+            var away = WantedPosters.Captured(900500, 77, -5, now, new Random(3))!.Value;
             Assert.InRange(away, WantedPosters.ShortestAbsence, WantedPosters.LongestAbsence);
             Assert.DoesNotContain(900500, WantedPosters.Due(now + (long)away.TotalMilliseconds - 1).Select(c => c.Monster));
             Assert.Contains(900500, WantedPosters.Due(now + (long)away.TotalMilliseconds).Select(c => c.Monster));
