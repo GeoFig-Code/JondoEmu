@@ -130,6 +130,13 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // An estate agent's «Consultar las casas».
+            if (action == EstateAgencyHandler.Action)
+            {
+                await EstateAgencyHandler.OpenAsync(stream);
+                return;
+            }
+
             Console.WriteLine($"[NPC] Action {action} on NPC {npc.NpcId}, which is not done.");
         }
 

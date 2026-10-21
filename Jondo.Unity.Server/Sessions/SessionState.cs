@@ -242,6 +242,9 @@ namespace Jondo.Unity.Server
         /// </summary>
         public int WantedAskedAbout { get; set; }
 
+        /// <summary>The estate agency's last search while its window is open; null when it is not.</summary>
+        public Handlers.EstateAgencyHandler.Filter? EstateFilter { get; set; }
+
         /// <summary>
         /// Which map the haven bag was entered from, to go back there with the same key.
         /// </summary>

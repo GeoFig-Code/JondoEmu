@@ -400,6 +400,10 @@ namespace Jondo.Unity.Server.Managers
         public static bool TryGetDoor(long mapId, int elementId, out Door door)
             => _byElement.TryGetValue((mapId, elementId), out door);
 
+        /// <summary>Every house once: its door on the map it is kept under.</summary>
+        public static IEnumerable<Door> AllHouses()
+            => _canonical.OrderBy(p => (p.Value, p.Key)).Select(p => _byElement[(p.Value, p.Key)]);
+
         /// <summary>The map this door's house is kept under; the map itself for anything that is not a door.</summary>
         public static long CanonicalMapOf(long mapId, int elementId)
             => _byElement.ContainsKey((mapId, elementId)) && _canonical.TryGetValue(elementId, out long kept) ? kept : mapId;

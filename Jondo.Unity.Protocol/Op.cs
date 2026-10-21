@@ -963,6 +963,15 @@ public static class Op
     /// <summary>Client to server: share a house with the guild, { f1: share, f2: house, f3: instance, f4: rights } (equ, on dbb).</summary>
     public const string Jao = "jao";
 
+    /// <summary>Server to client: the estate agency's houses on sale, { f1: izw each, f2: page, f3: pages } (EstateAgencyHandler).</summary>
+    public const string Izy = "izy";
+
+    /// <summary>Client to server: the estate agency's search, { f1: price, f2: rooms, f3: skill, f4: area, f5: chests, f6: order }.</summary>
+    public const string Jaj = "jaj";
+
+    /// <summary>Client to server: another page of the estate agency's search, { f1: page }.</summary>
+    public const string Jam = "jam";
+
     /// <summary>Server to client: jjt { f3: instance, f4: house }, a house going on sale (sale frame 15).</summary>
     public const string Jjt = "jjt";
 

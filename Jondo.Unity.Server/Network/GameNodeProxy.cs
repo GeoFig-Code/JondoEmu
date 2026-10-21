@@ -1240,6 +1240,16 @@ namespace Jondo.Unity.Server.Network
                     // A house shared with the guild, or not any more.
                     await HouseHandler.ShareWithGuildAsync(stream, payload);
                 }
+                else if (payloadStr.Contains(Op.Uri(Op.Jaj)))
+                {
+                    // The estate agency's search.
+                    await EstateAgencyHandler.SearchAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Jam)))
+                {
+                    // Another page of it.
+                    await EstateAgencyHandler.PageAsync(stream, payload);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Khv)))
                 {
                     // An owner's code keypad: the door's or a chest's.
@@ -1519,6 +1529,7 @@ namespace Jondo.Unity.Server.Network
                     else if (WorkshopHandler.IsOpen) await WorkshopHandler.CloseAsync(stream);
                     else if (BankHandler.IsOpen) await BankHandler.CloseAsync(stream);
                     else if (await HouseHandler.CloseDialogAsync(stream)) { }
+                    else if (await EstateAgencyHandler.CloseAsync(stream)) { }
                     else if (StorageHandler.IsOpen) await StorageHandler.CloseAsync(stream);
                     else if (ChestHandler.IsOpen) await ChestHandler.CloseAsync(stream);
                     else if (NpcHandler.IsShopOpen) await NpcHandler.CloseShopAsync(stream);

@@ -148,6 +148,34 @@ namespace Jondo.Unity.Server.Network
             return jak.VarIfNotZero(3, rights).Var(4, houseId).Build();
         }
 
+        /// <summary>
+        /// The estate agency's page (izy): { f1: izw each, f2: page, f3: pages }; a house { f1:
+        /// owner, f2: chests, f3 { f1: x, f2: y }, f4: owned, f5: price, f6: house, f7: owner's tag,
+        /// f8: rooms, f9: locked, f11: model, f14: subarea }. See EstateAgencyHandler.
+        /// </summary>
+        public static byte[] BuildEstateList(IEnumerable<Handlers.EstateAgencyHandler.Listing> houses, int page, int pages,
+                                             IReadOnlyDictionary<long, (string Name, string Tag)> owners)
+        {
+            var izy = Pb.New();
+            foreach (var house in houses)
+            {
+                owners.TryGetValue(house.OwnerAccount, out var owner);
+                izy.Msg(1, Pb.New()
+                    .StrIfNotEmpty(1, owner.Name ?? "")
+                    .VarIfNotZero(2, house.Chests)
+                    .Msg(3, Pb.New().VarIfNotZero(1, house.X).VarIfNotZero(2, house.Y))
+                    .VarIfNotZero(4, house.OwnerAccount > 0 ? 1 : 0)
+                    .VarIfNotZero(5, house.Price)
+                    .VarIfNotZero(6, house.HouseId)
+                    .StrIfNotEmpty(7, owner.Tag ?? "")
+                    .VarIfNotZero(8, house.Rooms)
+                    .VarIfNotZero(9, house.Locked ? 1 : 0)
+                    .VarIfNotZero(11, house.Model)
+                    .VarIfNotZero(14, house.SubArea));
+            }
+            return izy.Var(2, page).Var(3, pages).Build();
+        }
+
         /// <summary>The answer to izv (izr, response): { f1: full plaque }. Frame 5 of the sale.</summary>
         public static byte[] BuildInfo(Plaque plaque) => Pb.New().Msg(1, Build(plaque, true)).Build();
 

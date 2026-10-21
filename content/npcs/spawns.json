@@ -535,6 +535,20 @@
       "npc": 8000,
       "cell": 276,
       "orientation": 1
+    },
+    {
+      "map": 217056264,
+      "npc": 6386,
+      "cell": 370,
+      "orientation": 1,
+      "why": "Bonta's estate agent, «Consultar las casas» (action 9). The Dev'Blog that brought the agency puts the agents in Bonta's and Brakmar's Hôtel des métiers; the client's hint 2936 «Casa de los oficios» is street map 212599811 (-32,-56), whose door leads here. Which agent stands in which city, and the cell, are inferred."
+    },
+    {
+      "map": 214695942,
+      "npc": 6409,
+      "cell": 398,
+      "orientation": 1,
+      "why": "Brakmar's estate agent, as Bonta's: hint 3014 «Casa de los oficios», street map 212862981 (-24,38). Cell inferred."
     }
   ]
 }

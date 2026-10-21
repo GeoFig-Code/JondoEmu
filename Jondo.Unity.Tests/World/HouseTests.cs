@@ -700,3 +700,47 @@ namespace Jondo.Unity.Tests.World
                             HouseProtocol.BuildGuildRights(522652, 22, null, 9));
     }
 }
+
+namespace Jondo.Unity.Tests.World
+{
+    /// <summary>The estate agency: the houses on sale, searched, ordered and paged as the client asks.</summary>
+    public class EstateAgencyTests
+    {
+        private static EstateAgencyHandler.Listing House(int id, long price, int rooms, int chests, int area, string name)
+            => new(id, 400 + id, name, price, rooms, chests, 100 + area, area, 0, 0, 0, false);
+
+        private static readonly EstateAgencyHandler.Listing[] Street =
+        {
+            House(1, 1_000_000, 1, 0, 7, "Casa pequeña de Bonta"),
+            House(2, 2_500_000, 3, 2, 7, "Casa grande de Bonta"),
+            House(3, 2_000_000, 2, 1, 48, "Casa mediana del burgo de Frigost"),
+            House(4, 5_000_000, 4, 4, 11, "Casa gigantesca de herrero"),
+        };
+
+        [Fact]
+        public void A_search_keeps_what_it_asks_for()
+        {
+            var any = EstateAgencyHandler.Search(Street, EstateAgencyHandler.Filter.Any);
+            Assert.Equal(new[] { 1, 3, 2, 4 }, any.Select(h => h.HouseId));
+
+            var bonta = EstateAgencyHandler.Search(Street, EstateAgencyHandler.Filter.Any with { Area = 7, Rooms = 2 });
+            Assert.Equal(new[] { 2 }, bonta.Select(h => h.HouseId));
+
+            var cheap = EstateAgencyHandler.Search(Street, EstateAgencyHandler.Filter.Any with { MaxPrice = 2_000_000, Order = EstateAgencyHandler.Order.PriceDown });
+            Assert.Equal(new[] { 3, 1 }, cheap.Select(h => h.HouseId));
+
+            Assert.Empty(EstateAgencyHandler.Search(Street, EstateAgencyHandler.Filter.Any with { Skill = 15 }));
+        }
+
+        [Fact]
+        public void Pages_start_at_one_and_there_is_always_one()
+        {
+            var many = Enumerable.Range(1, 23).Select(i => House(i, i, 1, 0, 1, "x")).ToList();
+            var (first, pages) = EstateAgencyHandler.PageOf(many, 1);
+            Assert.Equal(3, pages);
+            Assert.Equal(EstateAgencyHandler.PageSize, first.Count);
+            Assert.Equal(3, EstateAgencyHandler.PageOf(many, 3).Page.Count);
+            Assert.Equal(1, EstateAgencyHandler.PageOf(new List<EstateAgencyHandler.Listing>(), 5).Pages);
+        }
+    }
+}

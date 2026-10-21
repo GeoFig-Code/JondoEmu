@@ -301,6 +301,39 @@ namespace Jondo.Unity.Server.Managers
             };
         }
 
+        /// <summary>Every house with an owner, by its door: what the estate agency lists from.</summary>
+        public static Dictionary<(long MapId, int ElementId), House> AllOwned()
+        {
+            EnsureTables();
+            var houses = new Dictionary<(long, int), House>();
+            try
+            {
+                using var connection = Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT MapId, ElementId, AccountId, Price, AccessCode, GuildId, GuildRights FROM Houses WHERE AccountId > 0;";
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    var house = new House
+                    {
+                        MapId = reader.GetInt64(0),
+                        ElementId = reader.GetInt32(1),
+                        AccountId = reader.GetInt64(2),
+                        Price = reader.GetInt64(3),
+                        AccessCode = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                        GuildId = reader.GetInt64(5),
+                        GuildRights = reader.GetInt32(6),
+                    };
+                    houses[(house.MapId, house.ElementId)] = house;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Houses] Could not read the owned houses: {ex.Message}");
+            }
+            return houses;
+        }
+
         /// <summary>Every house this account owns, by door.</summary>
         public static List<House> OwnedBy(long accountId)
         {
