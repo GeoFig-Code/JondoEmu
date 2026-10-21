@@ -2,14 +2,15 @@
   "_comment": [
     "Interactives that open a document when clicked: posters, books, plaques.",
     "",
-    "The client shows them with a kkt that only carries the document's id, measured in the capture",
-    "'abrir libro el escudo de feca y leerlo': the client sends iuu and the server answers",
-    "kkt { f2: 217 }, which is the book's document. Nothing else: neither title nor text travel, the",
-    "client has them in its own documents table.",
+    "The client shows them with a kkt that only carries the document's id; neither title nor text",
+    "travel, the client has them in its own documents table (dofus3_data/documents.json). Measured in",
+    "every reading of the captures: the client sends iwo, the server answers iwn { 1, element, 184,",
+    "character } and kkt { f2: document }, and the close button's kla gets the empty kld.",
     "",
-    "The document is looked up in dofus3_data/documents.json, which pairs the id with the texts of the",
-    "title and of the content. 420 is 554597 'Oferta de trabajo' and 554600 'Se busca desratizador",
-    "para sanear la bodega de una taberna'.",
+    "A document whose text links a quest ('event:startquest,1633') starts it with the client's ido",
+    "{ f1: quest }: the job offer of the Incarnam tavern does exactly that in 'mision matarratas",
+    "completa'. A row may still ask a question of its own (question/accept/decline): the reply that",
+    "accepts is what records having read it.",
     "",
     "Reading one is noted down in CharacterElements like any other interactive use, and from there",
     "comes the afterElement condition of the NPCs' replies."
@@ -19,10 +20,67 @@
       "map": 153878787,
       "element": 489412,
       "document": 420,
-      "why": "The job offer of the Incarnam tavern. The guide says «Cliquez pour accepter l'offre» and document 420 is exactly that text. The element carries the same id on the two adjacent maps [0,-3] and [1,-3], which is what a building that spans both does; the map's other two odd candidates were discarded because drawing 32613 is the phoenix rocks and 42509 is the entrance door. It is a reasoned inference, not a measurement. It asks with the poster's own text (554600) and two replies that exist in the client: 27068 «Aceptar la oferta.» and 28887 «Rechazar.». Accepting is what records having read it; looking at it and walking away does not count, or the button would be an ornament. The poster's dialog is not measured in any capture: the guide says «Cliquez pour accepter l offre» and does not detail what it opens, so this part is ours.",
-      "question": 554600,
-      "accept": 27068,
-      "decline": 28887
+      "why": "The job offer of the Incarnam tavern, measured in 'mision matarratas completa': iwo on element 489412, iwn with skill 184, kkt 420, and the client's ido { 1633 } from the document's link starts «Matarratas». No question: the earlier one, with 27068 «Aceptar la oferta.», was ours and the capture has none."
+    },
+    {
+      "map": 153879299,
+      "element": 489412,
+      "document": 420,
+      "why": "The same sign on the adjacent map [1,-3]: the client's data puts element 489412 on both, the building spans them."
+    },
+    {
+      "map": 137363456,
+      "element": 485515,
+      "document": 385,
+      "why": "The wanted poster «On recherche Gein» at Srambad's travellers' outpost, measured in 'carteles de se busca': iwo 485515, iwn 184, kkt 385; its link starts quest 1563."
+    },
+    {
+      "map": 137363456,
+      "element": 485517,
+      "document": 386,
+      "why": "«On recherche la Mouchâme», the same capture: element 485517, document 386, quest 1564."
+    },
+    {
+      "map": 137363456,
+      "element": 485516,
+      "document": 387,
+      "why": "«On recherche Pantèroz», the same capture: element 485516, document 387, quest 1565."
+    },
+    {
+      "map": 88213783,
+      "element": 473995,
+      "document": 256,
+      "why": "Vulkania's notice board, measured in 'abriendo y cerrando tablon anuncios interactivo en -3,0': element 473995, document 256 «Vulkania»; the client's data puts the element on map 88213783."
+    },
+    {
+      "map": 76287498,
+      "element": 461859,
+      "document": 248,
+      "why": "The «Carta de los Derechos del Turista» of Vulkania, measured in 'barco hacia vulkania...': element 461859, document 248."
+    },
+    {
+      "map": 106168320,
+      "element": 509854,
+      "document": 659,
+      "why": "«Acerca de los gremios», the scroll of the guild's house, measured in 'comprar gremialogema-crear gremio...': element 509854, document 659."
+    },
+    {
+      "map": 203689218,
+      "element": 517987,
+      "document": 621,
+      "why": "«Registro del santuario» in the temple of the Last Hope, measured in 'diversos movimientos en templo ultima esperanza...': element 517987, document 621."
+    },
+    {
+      "map": 203689218,
+      "element": 518006,
+      "document": 622,
+      "why": "«Notas del consejo», the same temple and capture: element 518006, document 622."
+    },
+    {
+      "map": 203689218,
+      "element": 518155,
+      "document": 625,
+      "why": "«Notas de Pandora», the same temple and capture: element 518155, document 625."
     }
   ]
 }

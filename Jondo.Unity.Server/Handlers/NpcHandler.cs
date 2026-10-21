@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -250,6 +251,10 @@ namespace Jondo.Unity.Server.Handlers
 
                 respuestas = todas.ToArray();
             }
+
+            // And a jailer takes the criminals carried and sells the news of those still out.
+            long[] wanted = WantedHandler.OpeningReplies(npc.NpcId, mapId);
+            if (wanted.Length > 0) respuestas = wanted.Concat(respuestas.Where(r => !wanted.Contains(r))).ToArray();
 
             // And a banker offers the bank: his reply in front of the rest, the way the Bontarian
             // banker offers it in frame 74 of the bank capture. See BankHandler.
@@ -874,6 +879,24 @@ namespace Jondo.Unity.Server.Handlers
             if (SessionContext.State.OpenDialogueNpcId == Kanojedo.MasterNpc && Kanojedo.Owns(reply))
             {
                 await MasterReplyAsync(stream, reply);
+                return;
+            }
+
+            // A jailer's: a criminal handed over, or his news paid for.
+            var wanted = await WantedHandler.ReplyAsync(stream, SessionContext.State.OpenDialogueNpcId,
+                SessionContext.State.OpenDialogueMapId != 0 ? SessionContext.State.OpenDialogueMapId : SessionContext.State.MapId,
+                reply);
+            if (wanted is { } next)
+            {
+                if (next.Question == 0)
+                {
+                    CerrarConversacion();
+                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                        ConnectionProtocol.Push(Op.Kld, ConnectionProtocol.BuildDialogClosed(ConnectionProtocol.NpcDialogCloseReason)));
+                    return;
+                }
+                SessionContext.State.OpenDialogueMessage = next.Question;
+                await PreguntarAsync(stream, next.Question, next.Replies);
                 return;
             }
 

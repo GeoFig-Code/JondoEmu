@@ -1175,8 +1175,8 @@ namespace Jondo.Unity.Server.Network
         /// happened with the tavern's job offer.
         ///
         /// It goes apart from the quest ones because they depend on none: a sign is read with or without
-        /// one, and that is why nothing is asked of the journal here. The skill is the same generic «Utiliser»
-        /// the quest elements use.
+        /// one, and that is why nothing is asked of the journal here. The skill is the readables' own,
+        /// 184, and the type the -1 every element with that skill carries in the captures.
         /// </remarks>
         private static void AddReadableElements(Pb jss, long mapId)
         {
@@ -1189,7 +1189,7 @@ namespace Jondo.Unity.Server.Network
                     .Var(1, 1)
                     .Msg(4, Pb.New()
                         .Var(1, Managers.Interactives.SkillInstanceOf(elementId))
-                        .Var(2, Jondo.Unity.World.Quests.QuestBinding.DefaultSkill))
+                        .Var(2, Managers.Readables.Skill))
                     .Var(5, elementId)
                     .Var(6, Jondo.Unity.World.Quests.QuestBinding.DefaultType));
 

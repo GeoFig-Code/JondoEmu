@@ -234,6 +234,10 @@ namespace Jondo.Unity.Server.Managers
             // groups are read, because they are thinned as they come in.
             Archimonsters.Initialize(connection);
 
+            // And who is wanted: the criminals come out of the groups as they are read, and are
+            // put back one to a zone (PlaceCriminals).
+            WantedPosters.Load();
+
             // Who lives in each subarea, which is who a dungeon room is made of.
             _subareaRosters = LoadSubareaRosters(connection);
 
@@ -245,6 +249,7 @@ namespace Jondo.Unity.Server.Managers
             cmdMapMobs.CommandText = "SELECT MapId, MobId, CellId, MembersJson FROM MapMobs ORDER BY MapId, MobId;";
             int count = 0;
             int archmonsters = 0;
+            int criminals = 0;
             int bajoTecho = 0;
             using (var reader = cmdMapMobs.ExecuteReader())
             {
@@ -263,6 +268,7 @@ namespace Jondo.Unity.Server.Managers
                         MobId = mobId,
                         CellId = cellId
                     };
+                    bool hadCriminal = false;
 
                     try {
                         using var doc = System.Text.Json.JsonDocument.Parse(membersJson);
@@ -285,6 +291,9 @@ namespace Jondo.Unity.Server.Managers
                             if (Archimonsters.Thin(mapId, mobId, ids) != 0) archmonsters++;
 
                             for (int i = 0; i < ids.Count; i++) {
+                                // A wanted criminal stands in one group of his zone, not in the
+                                // 6,352 the database puts him in.
+                                if (WantedPosters.Is(ids[i])) { criminals++; hadCriminal = true; continue; }
                                 if (_monsters.TryGetValue(ids[i], out var mData)) {
                                     // Same as above: the database stores grades the
                                     // client does not accept, and they have to be trimmed here too.
@@ -300,6 +309,9 @@ namespace Jondo.Unity.Server.Managers
                             }
                         }
                     } catch {}
+
+                    // A group that was only its criminal is no group.
+                    if (group.Members.Count == 0 && hadCriminal) continue;
 
                     if (!_mapMobs.ContainsKey(mapId))
                         _mapMobs[mapId] = new List<MobGroup>();
@@ -343,6 +355,8 @@ namespace Jondo.Unity.Server.Managers
                               "the ones spawned on the fly carry on below.");
             Console.WriteLine($"[MobSpawnManager] {archmonsters} groups keep an archmonster " +
                               $"({100.0 * archmonsters / Math.Max(1, count):0.0}% of them), one per map and one per zone.");
+            Console.WriteLine($"[MobSpawnManager] {criminals} wanted criminals taken out of the groups; " +
+                              "each comes back in one group of its zone when the first map is loaded.");
             // The two numbers separately, not the subtraction. With one group placed and another removed the
             // subtraction gives zero and the line does not come out, which is exactly the start where it is most needed
             // to see that content/ has touched something.
@@ -550,7 +564,9 @@ namespace Jondo.Unity.Server.Managers
                     if (array.ValueKind != System.Text.Json.JsonValueKind.Array) continue;
                     rosters[reader.GetInt32(0)] = array.EnumerateArray()
                         .Where(e => e.ValueKind == System.Text.Json.JsonValueKind.Number)
-                        .Select(e => e.GetInt32()).ToList();
+                        .Select(e => e.GetInt32())
+                        .Where(id => !WantedPosters.Is(id))
+                        .ToList();
                 }
             }
             catch (Exception ex)
@@ -700,6 +716,9 @@ namespace Jondo.Unity.Server.Managers
         {
             lock (_candado)
             {
+                // The wanted criminals that may come back, back in a group of their zone.
+                PlaceCriminals(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
                 // A map with written groups that has been emptied stays empty: what fills a map on
                 // the fly is for maps that have none written (GetSpawnableMonsterIds). Where a beaten
                 // group is replaced, its fight already put one back; where it is not -- a dream room,
@@ -791,6 +810,10 @@ namespace Jondo.Unity.Server.Managers
             var map = MapManager.GetMapInfo(mapId);
             if (map != null) Archimonsters.MayComeBack(map.SubAreaId, ids);
             Archimonsters.Thin(mapId, group.MobId, ids);
+
+            // And no criminal: each stands in one group of his zone, and that one is chosen by
+            // PlaceCriminals, not drawn from the roster.
+            WantedPosters.Strip(ids);
 
             foreach (int monsterId in ids)
             {
@@ -923,6 +946,7 @@ namespace Jondo.Unity.Server.Managers
         {
             lock (_candado)
             {
+                WantedPosters.ReleasedFrom(mapId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                 var groups = _asLoaded.TryGetValue(mapId, out var loaded) ? loaded.Select(CloneOf).ToList() : new List<MobGroup>();
                 _mapMobs[mapId] = groups;
                 _emptiedByHand.Remove(mapId);
@@ -935,6 +959,7 @@ namespace Jondo.Unity.Server.Managers
         {
             lock (_candado)
             {
+                WantedPosters.ReleasedFrom(mapId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                 _mapMobs[mapId] = new List<MobGroup>();
                 _emptiedByHand.Add(mapId);
             }
@@ -1243,13 +1268,89 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>
         /// A group that leaves its map lets its archmonster go, so the zone can have it again
-        /// somewhere else (<see cref="Archimonsters.MayComeBack"/>).
+        /// somewhere else (<see cref="Archimonsters.MayComeBack"/>), and its criminal, who comes back
+        /// in another group (<see cref="PlaceCriminals"/>).
         /// </summary>
         private static void ReleaseArchmonster(long mapId, List<MobGroup> mobs, long mobId)
         {
             var group = mobs.Find(m => m.MobId == mobId);
             if (group == null) return;
             Archimonsters.Release(mapId, group.Members.Where(m => m.Monster != null).Select(m => m.Monster.Id));
+            WantedPosters.Released(mapId, mobId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        }
+
+        /// <summary>When the criminals may next be looked at: GetMobsForMap runs on every map load.</summary>
+        private static long _criminalsDueAt;
+
+        /// <summary>Places the criminals that may come back now, whenever they were last looked at.</summary>
+        internal static int PlaceCriminalsNow()
+        {
+            lock (_candado)
+            {
+                _criminalsDueAt = 0;
+                return PlaceCriminals(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            }
+        }
+
+        /// <summary>
+        /// Puts every criminal that may come back into a group of his zone, swapping one of its
+        /// members for him, the way the guides meet them: «Alliés de circonstance», weaker for each
+        /// monster beside him. Under the lock; at most once a minute.
+        /// </summary>
+        /// <remarks>
+        /// Lazily, on a map load, because the zones are the maps' and MapManager is read after the
+        /// groups. A zone with no written group gets him once one of its maps has been filled.
+        /// </remarks>
+        private static int PlaceCriminals(long nowMs)
+        {
+            if (nowMs < _criminalsDueAt || MapManager.Maps.Count == 0) return 0;
+            _criminalsDueAt = nowMs + 60_000;
+
+            var due = WantedPosters.Due(nowMs);
+            if (due.Count == 0) return 0;
+
+            var zones = new Dictionary<int, List<long>>();
+            foreach (long mapId in _mapMobs.Keys)
+            {
+                var info = MapManager.GetMapInfo(mapId);
+                if (info == null || (DungeonManager.IsLoaded && DungeonManager.IsRoom(mapId))) continue;
+                if (!zones.TryGetValue(info.SubAreaId, out var maps)) zones[info.SubAreaId] = maps = new List<long>();
+                maps.Add(mapId);
+            }
+
+            int placed = 0;
+            foreach (var criminal in due)
+            {
+                if (!_monsters.TryGetValue(criminal.Monster, out var data) || data.Grades.Count == 0) continue;
+                var candidates = new List<(long Map, MobGroup Group)>();
+                foreach (int zone in criminal.Subareas)
+                {
+                    if (!zones.TryGetValue(zone, out var maps)) continue;
+                    foreach (long mapId in maps)
+                        foreach (var group in _mapMobs[mapId])
+                            if (group.Members.Count > 0 && !group.Modular) candidates.Add((mapId, group));
+                }
+                if (candidates.Count == 0) continue;
+
+                var (where, chosen) = candidates[_rand.Next(candidates.Count)];
+                int grade = _rand.Next(Math.Min(data.Grades.Count, MobMember.MaxGradesPerMonster));
+                // A new list, not the old one changed: the groups are read outside the lock (the
+                // list GetMobsForMap hands out is a copy, its groups are not), and changing a list
+                // somebody is walking throws.
+                var members = new List<MobMember>(chosen.Members);
+                members[_rand.Next(members.Count)] = new MobMember
+                {
+                    Monster = data,
+                    GradeIndex = grade,
+                    Level = data.Grades[grade].Level,
+                };
+                chosen.Members = members;
+                WantedPosters.Placed(criminal.Monster, where, chosen.MobId);
+                placed++;
+            }
+
+            if (placed > 0) Console.WriteLine($"[Wanted] {placed} criminal(s) back in their zones.");
+            return placed;
         }
 
         public static MobGroup? GetMobGroupById(long mobId)

@@ -57,6 +57,11 @@ namespace Jondo.Unity.Server.Handlers
             // and it still has to be shown.
             if (lectura != null)
             {
+                // In use by whoever reads it, then the document: iwn and kkt, the order of every
+                // reading in the captures.
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Iwn,
+                    ConnectionProtocol.BuildElementInUse(elementId, Readables.Skill, SessionContext.State.CharacterId)));
+
                 // A plain document awaits its close button; one that asks closes as the question does.
                 if (lectura.Asks)
                     await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,

@@ -1,0 +1,2048 @@
+{
+ "_comment": [
+  "The wanted posters, read off the client's data by tools/extract_wanted.py.",
+  "",
+  "A criminal is a monster with isBounty 1; its drops carry the criterion Qs=<step> of",
+  "the quest it is wanted by, which has two objectives: catch it ('Localiser et",
+  "neutraliser X') and deliver it ('Ramener X ...', with the map). The jailers are the",
+  "NPCs whose replies say 'Livrer X.' and '500 kamas ... concernant X.'. The bribe's",
+  "messages are worked out from the texts' ids: see the tool."
+ ],
+ "jailers": [
+  {
+   "npc": 606,
+   "ask": 78811,
+   "first": 57721,
+   "offer": 78810,
+   "second": 57722,
+   "keep": 79097,
+   "listen": 78808,
+   "another": 78812,
+   "leave": 78813,
+   "shrug": 78815
+  },
+  {
+   "npc": 1281,
+   "ask": 78103,
+   "first": 0,
+   "offer": 0,
+   "second": 58092,
+   "keep": 79101,
+   "listen": 78095,
+   "another": 78310,
+   "leave": 78294,
+   "shrug": 78302
+  },
+  {
+   "npc": 1366,
+   "ask": 78620,
+   "first": 57625,
+   "offer": 78619,
+   "second": 57626,
+   "keep": 79099,
+   "listen": 78623,
+   "another": 78624,
+   "leave": 78625,
+   "shrug": 78627
+  },
+  {
+   "npc": 1378,
+   "ask": 78293,
+   "first": 0,
+   "offer": 0,
+   "second": 58105,
+   "keep": 79102,
+   "listen": 78273,
+   "another": 78269,
+   "leave": 78270,
+   "shrug": 78271
+  },
+  {
+   "npc": 1999,
+   "ask": 78589,
+   "first": 57608,
+   "offer": 78588,
+   "second": 57609,
+   "keep": 79100,
+   "listen": 78590,
+   "another": 78591,
+   "leave": 78592,
+   "shrug": 78592
+  },
+  {
+   "npc": 2185,
+   "ask": 78945,
+   "first": 57788,
+   "offer": 78944,
+   "second": 57789,
+   "keep": 79095,
+   "listen": 78942,
+   "another": 78938,
+   "leave": 78939,
+   "shrug": 78941
+  },
+  {
+   "npc": 2188,
+   "ask": 78789,
+   "first": 57710,
+   "offer": 78787,
+   "second": 57711,
+   "keep": 79098,
+   "listen": 78785,
+   "another": 78781,
+   "leave": 78782,
+   "shrug": 78784
+  },
+  {
+   "npc": 2358,
+   "ask": 78879,
+   "first": 57756,
+   "offer": 78878,
+   "second": 57757,
+   "keep": 79096,
+   "listen": 78876,
+   "another": 78880,
+   "leave": 78881,
+   "shrug": 78883
+  },
+  {
+   "npc": 3063,
+   "ask": 78326,
+   "first": 57488,
+   "offer": 78332,
+   "second": 57489,
+   "keep": 78331,
+   "listen": 78329,
+   "another": 78327,
+   "leave": 78328,
+   "shrug": 78407
+  },
+  {
+   "npc": 3064,
+   "ask": 78582,
+   "first": 57548,
+   "offer": 78580,
+   "second": 57549,
+   "keep": 78579,
+   "listen": 78469,
+   "another": 78465,
+   "leave": 78466,
+   "shrug": 78468
+  },
+  {
+   "npc": 3338,
+   "ask": 79047,
+   "first": 57843,
+   "offer": 79046,
+   "second": 57844,
+   "keep": 79093,
+   "listen": 79052,
+   "another": 79048,
+   "leave": 79049,
+   "shrug": 79051
+  },
+  {
+   "npc": 3605,
+   "ask": 79025,
+   "first": 57829,
+   "offer": 79024,
+   "second": 57830,
+   "keep": 79094,
+   "listen": 79022,
+   "another": 79018,
+   "leave": 79019,
+   "shrug": 79021
+  }
+ ],
+ "wanted": [
+  {
+   "quest": 119,
+   "monster": 446,
+   "subareas": [
+    234
+   ],
+   "catch": 431,
+   "deliver": 432,
+   "map": 192414730,
+   "jailers": [
+    {
+     "npc": 606,
+     "deliver": 2554,
+     "pay": 78857,
+     "found": 57744,
+     "seen": 57745,
+     "unseen": 57746
+    }
+   ],
+   "_who": "On recherche Aermyne 'Braco' Scalptaras"
+  },
+  {
+   "quest": 29,
+   "monster": 459,
+   "subareas": [
+    69
+   ],
+   "catch": 215,
+   "deliver": 216,
+   "map": 192414730,
+   "jailers": [
+    {
+     "npc": 606,
+     "deliver": 2108,
+     "pay": 78869,
+     "found": 57750,
+     "seen": 57751,
+     "unseen": 57752
+    }
+   ],
+   "_who": "On recherche Padgref Demoël"
+  },
+  {
+   "quest": 30,
+   "monster": 460,
+   "subareas": [
+    97
+   ],
+   "catch": 213,
+   "deliver": 214,
+   "map": 192414730,
+   "jailers": [
+    {
+     "npc": 606,
+     "deliver": 2109,
+     "pay": 78821,
+     "found": 57726,
+     "seen": 57727,
+     "unseen": 57728
+    }
+   ],
+   "_who": "On recherche Frakacia Leukocytine"
+  },
+  {
+   "quest": 35,
+   "monster": 462,
+   "subareas": [
+    280
+   ],
+   "catch": 313,
+   "deliver": 205,
+   "map": 192414730,
+   "jailers": [
+    {
+     "npc": 606,
+     "deliver": 2114,
+     "pay": 78827,
+     "found": 57729,
+     "seen": 57730,
+     "unseen": 57731
+    }
+   ],
+   "_who": "On recherche Ogivol Scalarcin"
+  },
+  {
+   "quest": 34,
+   "monster": 463,
+   "subareas": [
+    95
+   ],
+   "catch": 207,
+   "deliver": 208,
+   "map": 192414730,
+   "jailers": [
+    {
+     "npc": 606,
+     "deliver": 2113,
+     "pay": 78809,
+     "found": 57723,
+     "seen": 57724,
+     "unseen": 57725
+    }
+   ],
+   "_who": "On recherche Fouduglen l'écureuil"
+  },
+  {
+   "quest": 33,
+   "monster": 464,
+   "subareas": [
+    57
+   ],
+   "catch": 209,
+   "deliver": 210,
+   "map": 192414730,
+   "jailers": [
+    {
+     "npc": 606,
+     "deliver": 2112,
+     "pay": 78833,
+     "found": 57732,
+     "seen": 57733,
+     "unseen": 57734
+    }
+   ],
+   "_who": "On recherche Brumen Tinctorias"
+  },
+  {
+   "quest": 32,
+   "monster": 481,
+   "subareas": [
+    61
+   ],
+   "catch": 310,
+   "deliver": 312,
+   "map": 192414730,
+   "jailers": [
+    {
+     "npc": 606,
+     "deliver": 2111,
+     "pay": 78845,
+     "found": 57738,
+     "seen": 57739,
+     "unseen": 57740
+    }
+   ],
+   "_who": "On recherche Qil Bil"
+  },
+  {
+   "quest": 115,
+   "monster": 550,
+   "subareas": [
+    231
+   ],
+   "catch": 421,
+   "deliver": 422,
+   "map": 192414730,
+   "jailers": [
+    {
+     "npc": 606,
+     "deliver": 2550,
+     "pay": 78863,
+     "found": 57747,
+     "seen": 57748,
+     "unseen": 57749
+    }
+   ],
+   "_who": "On recherche Rok Gnorok"
+  },
+  {
+   "quest": 116,
+   "monster": 552,
+   "subareas": [
+    334
+   ],
+   "catch": 423,
+   "deliver": 424,
+   "map": 192414730,
+   "jailers": [
+    {
+     "npc": 606,
+     "deliver": 2551,
+     "pay": 78851,
+     "found": 57741,
+     "seen": 57742,
+     "unseen": 57743
+    }
+   ],
+   "_who": "On recherche Musha l'Oni"
+  },
+  {
+   "quest": 117,
+   "monster": 554,
+   "subareas": [
+    54
+   ],
+   "catch": 425,
+   "deliver": 426,
+   "map": 192414730,
+   "jailers": [
+    {
+     "npc": 606,
+     "deliver": 2552,
+     "pay": 78839,
+     "found": 57735,
+     "seen": 57736,
+     "unseen": 57737
+    }
+   ],
+   "_who": "On recherche Marzwel le Gobelin"
+  },
+  {
+   "quest": 118,
+   "monster": 555,
+   "subareas": [
+    943
+   ],
+   "catch": 428,
+   "deliver": 429,
+   "map": 192414730,
+   "jailers": [
+    {
+     "npc": 606,
+     "deliver": 2553,
+     "pay": 78875,
+     "found": 57753,
+     "seen": 57754,
+     "unseen": 57755
+    }
+   ],
+   "_who": "On recherche Zatoïshwan"
+  },
+  {
+   "quest": 544,
+   "monster": 2901,
+   "subareas": [
+    602
+   ],
+   "catch": 4019,
+   "deliver": 4020,
+   "map": 54536207,
+   "jailers": [
+    {
+     "npc": 1366,
+     "deliver": 8174,
+     "pay": 78621,
+     "found": 57627,
+     "seen": 57628,
+     "unseen": 57629
+    }
+   ],
+   "_who": "On recherche Bouflouth"
+  },
+  {
+   "quest": 545,
+   "monster": 2902,
+   "subareas": [
+    615
+   ],
+   "catch": 3841,
+   "deliver": 3842,
+   "map": 54536207,
+   "jailers": [
+    {
+     "npc": 1366,
+     "deliver": 8175,
+     "pay": 78633,
+     "found": 57630,
+     "seen": 57631,
+     "unseen": 57632
+    }
+   ],
+   "_who": "On recherche Monsieur Pingouin"
+  },
+  {
+   "quest": 546,
+   "monster": 2903,
+   "subareas": [
+    604
+   ],
+   "catch": 4017,
+   "deliver": 4018,
+   "map": 54536207,
+   "jailers": [
+    {
+     "npc": 1366,
+     "deliver": 8176,
+     "pay": 78639,
+     "found": 57633,
+     "seen": 57634,
+     "unseen": 57635
+    }
+   ],
+   "_who": "On recherche Katigrou"
+  },
+  {
+   "quest": 547,
+   "monster": 2904,
+   "subareas": [
+    609
+   ],
+   "catch": 3839,
+   "deliver": 3840,
+   "map": 54536207,
+   "jailers": [
+    {
+     "npc": 1366,
+     "deliver": 8177,
+     "pay": 78645,
+     "found": 57636,
+     "seen": 57637,
+     "unseen": 57638
+    }
+   ],
+   "_who": "On recherche Fantômayte"
+  },
+  {
+   "quest": 548,
+   "monster": 2905,
+   "subareas": [
+    610
+   ],
+   "catch": 3837,
+   "deliver": 3838,
+   "map": 54536207,
+   "jailers": [
+    {
+     "npc": 1366,
+     "deliver": 8178,
+     "pay": 78651,
+     "found": 57639,
+     "seen": 57640,
+     "unseen": 57641
+    }
+   ],
+   "_who": "On recherche Vengeuse Masquée"
+  },
+  {
+   "quest": 549,
+   "monster": 2906,
+   "subareas": [
+    606
+   ],
+   "catch": 3835,
+   "deliver": 3836,
+   "map": 54536207,
+   "jailers": [
+    {
+     "npc": 1366,
+     "deliver": 8179,
+     "pay": 78657,
+     "found": 57642,
+     "seen": 57643,
+     "unseen": 57644
+    }
+   ],
+   "_who": "On recherche le YeCh'Ti"
+  },
+  {
+   "quest": 551,
+   "monster": 2908,
+   "subareas": [
+    605
+   ],
+   "catch": 4265,
+   "deliver": 4266,
+   "map": 54171466,
+   "jailers": [
+    {
+     "npc": 1281,
+     "deliver": 8547,
+     "pay": 79400,
+     "found": 58093,
+     "seen": 58094,
+     "unseen": 58095
+    },
+    {
+     "npc": 1378,
+     "deliver": 8454,
+     "pay": 79425,
+     "found": 58106,
+     "seen": 58107,
+     "unseen": 58108
+    }
+   ],
+   "_who": "On recherche Dremoan"
+  },
+  {
+   "quest": 552,
+   "monster": 2909,
+   "subareas": [
+    608
+   ],
+   "catch": 4267,
+   "deliver": 4268,
+   "map": 54536207,
+   "jailers": [
+    {
+     "npc": 1281,
+     "deliver": 8548,
+     "pay": 79406,
+     "found": 58096,
+     "seen": 58097,
+     "unseen": 58098
+    },
+    {
+     "npc": 1378,
+     "deliver": 8455,
+     "pay": 79431,
+     "found": 58109,
+     "seen": 58110,
+     "unseen": 58111
+    }
+   ],
+   "_who": "On recherche Flasho"
+  },
+  {
+   "quest": 553,
+   "monster": 2910,
+   "subareas": [
+    753
+   ],
+   "catch": 4269,
+   "deliver": 4270,
+   "map": 54171466,
+   "jailers": [
+    {
+     "npc": 1281,
+     "deliver": 8549,
+     "pay": 79411,
+     "found": 58099,
+     "seen": 58100,
+     "unseen": 58101
+    },
+    {
+     "npc": 1378,
+     "deliver": 8456,
+     "pay": 79437,
+     "found": 58112,
+     "seen": 58113,
+     "unseen": 58114
+    }
+   ],
+   "_who": "On recherche Viti Glourson"
+  },
+  {
+   "quest": 550,
+   "monster": 2970,
+   "subareas": [
+    622
+   ],
+   "catch": 4263,
+   "deliver": 4264,
+   "map": 54171466,
+   "jailers": [
+    {
+     "npc": 1281,
+     "deliver": 8546,
+     "pay": 79417,
+     "found": 58102,
+     "seen": 58103,
+     "unseen": 58104
+    },
+    {
+     "npc": 1378,
+     "deliver": 8453,
+     "pay": 79443,
+     "found": 58115,
+     "seen": 58116,
+     "unseen": 58117
+    }
+   ],
+   "_who": "On recherche Fuji Givrefoux"
+  },
+  {
+   "quest": 1289,
+   "monster": 3373,
+   "subareas": [
+    785
+   ],
+   "catch": 7304,
+   "deliver": 7305,
+   "map": 108922368,
+   "jailers": [
+    {
+     "npc": 1999,
+     "deliver": 17405,
+     "pay": 78587,
+     "found": 57610,
+     "seen": 57611,
+     "unseen": 57612
+    }
+   ],
+   "_who": "On recherche Glourdorak"
+  },
+  {
+   "quest": 1332,
+   "monster": 3400,
+   "subareas": [
+    652
+   ],
+   "catch": 7314,
+   "deliver": 7315,
+   "map": 54536207,
+   "jailers": [
+    {
+     "npc": 1366,
+     "deliver": 17399,
+     "pay": 78663,
+     "found": 57645,
+     "seen": 57646,
+     "unseen": 57647
+    }
+   ],
+   "_who": "On recherche le Docteur Eggob"
+  },
+  {
+   "quest": 1290,
+   "monster": 3401,
+   "subareas": [
+    786
+   ],
+   "catch": 7306,
+   "deliver": 7307,
+   "map": 108922368,
+   "jailers": [
+    {
+     "npc": 1999,
+     "deliver": 17406,
+     "pay": 78600,
+     "found": 57613,
+     "seen": 57614,
+     "unseen": 57615
+    }
+   ],
+   "_who": "On recherche Mekamouth"
+  },
+  {
+   "quest": 1293,
+   "monster": 3402,
+   "subareas": [
+    789
+   ],
+   "catch": 7312,
+   "deliver": 7313,
+   "map": 108922368,
+   "jailers": [
+    {
+     "npc": 1999,
+     "deliver": 17409,
+     "pay": 78618,
+     "found": 57622,
+     "seen": 57623,
+     "unseen": 57624
+    }
+   ],
+   "_who": "On recherche Culbutœuf"
+  },
+  {
+   "quest": 1292,
+   "monster": 3403,
+   "subareas": [
+    788
+   ],
+   "catch": 7310,
+   "deliver": 7311,
+   "map": 108922368,
+   "jailers": [
+    {
+     "npc": 1999,
+     "deliver": 17408,
+     "pay": 78612,
+     "found": 57619,
+     "seen": 57620,
+     "unseen": 57621
+    }
+   ],
+   "_who": "On recherche le Chevalier de Glace"
+  },
+  {
+   "quest": 1291,
+   "monster": 3413,
+   "subareas": [
+    787
+   ],
+   "catch": 7308,
+   "deliver": 7309,
+   "map": 108922368,
+   "jailers": [
+    {
+     "npc": 1999,
+     "deliver": 17407,
+     "pay": 78606,
+     "found": 57616,
+     "seen": 57617,
+     "unseen": 57618
+    }
+   ],
+   "_who": "On recherche le Psikopompe"
+  },
+  {
+   "quest": 1430,
+   "monster": 3524,
+   "subareas": [
+    471
+   ],
+   "catch": 7937,
+   "deliver": 7938,
+   "map": 101713427,
+   "jailers": [
+    {
+     "npc": 2185,
+     "deliver": 19658,
+     "pay": 78969,
+     "found": 57802,
+     "seen": 57803,
+     "unseen": 57804
+    }
+   ],
+   "_who": "On recherche Ali Grothor"
+  },
+  {
+   "quest": 1434,
+   "monster": 3525,
+   "subareas": [
+    3
+   ],
+   "catch": 7947,
+   "deliver": 7948,
+   "map": 121900032,
+   "jailers": [
+    {
+     "npc": 2188,
+     "deliver": 19484
+    }
+   ],
+   "_who": "On recherche les Guman"
+  },
+  {
+   "quest": 1435,
+   "monster": 3527,
+   "subareas": [
+    233
+   ],
+   "catch": 7949,
+   "deliver": 7950,
+   "map": 121900032,
+   "jailers": [
+    {
+     "npc": 2188,
+     "deliver": 19485,
+     "pay": 78795,
+     "found": 57712,
+     "seen": 57713,
+     "unseen": 57714
+    }
+   ],
+   "_who": "On recherche Gadoo"
+  },
+  {
+   "quest": 1436,
+   "monster": 3528,
+   "subareas": [
+    455
+   ],
+   "catch": 7951,
+   "deliver": 7952,
+   "map": 121900032,
+   "jailers": [
+    {
+     "npc": 2188,
+     "deliver": 19486,
+     "pay": 78801,
+     "found": 57715,
+     "seen": 57716,
+     "unseen": 57717
+    }
+   ],
+   "_who": "On recherche Amy l'empoisonneuse"
+  },
+  {
+   "quest": 1437,
+   "monster": 3533,
+   "subareas": [
+    806
+   ],
+   "catch": 7953,
+   "deliver": 7955,
+   "map": 121900032,
+   "jailers": [
+    {
+     "npc": 2188,
+     "deliver": 19487,
+     "pay": 78807,
+     "found": 57718,
+     "seen": 57719,
+     "unseen": 57720
+    }
+   ],
+   "_who": "On recherche l'Hyperscampe"
+  },
+  {
+   "quest": 1520,
+   "monster": 3668,
+   "subareas": [
+    822
+   ],
+   "catch": 8551,
+   "deliver": 8552,
+   "map": 130023937,
+   "jailers": [
+    {
+     "npc": 2358,
+     "deliver": 21142,
+     "pay": 78895,
+     "found": 57764,
+     "seen": 57765,
+     "unseen": 57766
+    }
+   ],
+   "_who": "On recherche Voldelor"
+  },
+  {
+   "quest": 1519,
+   "monster": 3669,
+   "subareas": [
+    821
+   ],
+   "catch": 8549,
+   "deliver": 8550,
+   "map": 130023937,
+   "jailers": [
+    {
+     "npc": 2358,
+     "deliver": 21141,
+     "pay": 78889,
+     "found": 57761,
+     "seen": 57762,
+     "unseen": 57763
+    }
+   ],
+   "_who": "On recherche Aigripoil"
+  },
+  {
+   "quest": 1518,
+   "monster": 3670,
+   "subareas": [
+    820
+   ],
+   "catch": 8547,
+   "deliver": 8548,
+   "map": 130023937,
+   "jailers": [
+    {
+     "npc": 2358,
+     "deliver": 21140,
+     "pay": 78877,
+     "found": 57758,
+     "seen": 57759,
+     "unseen": 57760
+    }
+   ],
+   "_who": "On recherche la Maxi-Malle"
+  },
+  {
+   "quest": 1564,
+   "monster": 3760,
+   "subareas": [
+    828
+   ],
+   "catch": 8932,
+   "deliver": 8933,
+   "map": 130023937,
+   "jailers": [
+    {
+     "npc": 2358,
+     "deliver": 21724,
+     "pay": 78907,
+     "found": 57770,
+     "seen": 57771,
+     "unseen": 57772
+    }
+   ],
+   "_who": "On recherche la Mouchâme"
+  },
+  {
+   "quest": 1563,
+   "monster": 3761,
+   "subareas": [
+    829
+   ],
+   "catch": 8930,
+   "deliver": 8931,
+   "map": 130023937,
+   "jailers": [
+    {
+     "npc": 2358,
+     "deliver": 21723,
+     "pay": 78913,
+     "found": 57773,
+     "seen": 57774,
+     "unseen": 57775
+    }
+   ],
+   "_who": "On recherche Gein"
+  },
+  {
+   "quest": 1565,
+   "monster": 3762,
+   "subareas": [
+    827
+   ],
+   "catch": 8934,
+   "deliver": 8935,
+   "map": 130023937,
+   "jailers": [
+    {
+     "npc": 2358,
+     "deliver": 21725,
+     "pay": 78901,
+     "found": 57767,
+     "seen": 57768,
+     "unseen": 57769
+    }
+   ],
+   "_who": "On recherche Pantèroz"
+  },
+  {
+   "quest": 1604,
+   "monster": 3845,
+   "subareas": [
+    836
+   ],
+   "catch": 9323,
+   "deliver": 9324,
+   "map": 130023937,
+   "jailers": [
+    {
+     "npc": 2358,
+     "deliver": 23471,
+     "pay": 78919,
+     "found": 57776,
+     "seen": 57777,
+     "unseen": 57778
+    }
+   ],
+   "_who": "On recherche Morblok"
+  },
+  {
+   "quest": 1605,
+   "monster": 3848,
+   "subareas": [
+    837
+   ],
+   "catch": 9325,
+   "deliver": 9326,
+   "map": 130023937,
+   "jailers": [
+    {
+     "npc": 2358,
+     "deliver": 23472,
+     "pay": 78925,
+     "found": 57779,
+     "seen": 57780,
+     "unseen": 57781
+    }
+   ],
+   "_who": "On recherche Hin"
+  },
+  {
+   "quest": 1606,
+   "monster": 3851,
+   "subareas": [
+    838
+   ],
+   "catch": 9327,
+   "deliver": 9328,
+   "map": 130023937,
+   "jailers": [
+    {
+     "npc": 2358,
+     "deliver": 23473,
+     "pay": 78931,
+     "found": 57782,
+     "seen": 57783,
+     "unseen": 57784
+    }
+   ],
+   "_who": "On recherche Sicogne"
+  },
+  {
+   "quest": 1622,
+   "monster": 4014,
+   "subareas": [
+    168
+   ],
+   "catch": 9588,
+   "deliver": 9595,
+   "map": 101713427,
+   "jailers": [
+    {
+     "npc": 2185,
+     "deliver": 24479,
+     "pay": 78943,
+     "found": 57790,
+     "seen": 57791,
+     "unseen": 57792
+    }
+   ],
+   "_who": "On recherche Tyranne la Terrible"
+  },
+  {
+   "quest": 1625,
+   "monster": 4015,
+   "subareas": [
+    523
+   ],
+   "catch": 9591,
+   "deliver": 9598,
+   "map": 101713427,
+   "jailers": [
+    {
+     "npc": 2185,
+     "deliver": 24482,
+     "pay": 78981,
+     "found": 57808,
+     "seen": 57809,
+     "unseen": 57810
+    }
+   ],
+   "_who": "On recherche Fojumo"
+  },
+  {
+   "quest": 1627,
+   "monster": 4016,
+   "subareas": [
+    611
+   ],
+   "catch": 9593,
+   "deliver": 9600,
+   "map": 101713427,
+   "jailers": [
+    {
+     "npc": 2185,
+     "deliver": 24484,
+     "pay": 78999,
+     "found": 57817,
+     "seen": 57818,
+     "unseen": 57819
+    }
+   ],
+   "_who": "On recherche le Guerrier du K.O"
+  },
+  {
+   "quest": 1626,
+   "monster": 4017,
+   "subareas": [
+    519
+   ],
+   "catch": 9592,
+   "deliver": 9599,
+   "map": 101713427,
+   "jailers": [
+    {
+     "npc": 2185,
+     "deliver": 24483,
+     "pay": 78987,
+     "found": 57811,
+     "seen": 57812,
+     "unseen": 57813
+    }
+   ],
+   "_who": "On recherche Anatak Diskedor"
+  },
+  {
+   "quest": 1623,
+   "monster": 4027,
+   "subareas": [
+    799
+   ],
+   "catch": 9589,
+   "deliver": 9596,
+   "map": 101713427,
+   "jailers": [
+    {
+     "npc": 2185,
+     "deliver": 24480,
+     "pay": 78963,
+     "found": 57799,
+     "seen": 57800,
+     "unseen": 57801
+    }
+   ],
+   "_who": "On recherche Naganita"
+  },
+  {
+   "quest": 1628,
+   "monster": 4028,
+   "subareas": [
+    804
+   ],
+   "catch": 9594,
+   "deliver": 9601,
+   "map": 101713427,
+   "jailers": [
+    {
+     "npc": 2185,
+     "deliver": 24485,
+     "pay": 79011,
+     "found": 57823,
+     "seen": 57824,
+     "unseen": 57825
+    }
+   ],
+   "_who": "On recherche le Grand Kongoku"
+  },
+  {
+   "quest": 1624,
+   "monster": 4041,
+   "subareas": [
+    457
+   ],
+   "catch": 9590,
+   "deliver": 9597,
+   "map": 101713427,
+   "jailers": [
+    {
+     "npc": 2185,
+     "deliver": 24481,
+     "pay": 78975,
+     "found": 57805,
+     "seen": 57806,
+     "unseen": 57807
+    }
+   ],
+   "_who": "On recherche Nenufor Tilotus"
+  },
+  {
+   "quest": 1674,
+   "monster": 4240,
+   "subareas": [
+    165
+   ],
+   "catch": 10229,
+   "deliver": 10230,
+   "map": 101713427,
+   "jailers": [
+    {
+     "npc": 2185,
+     "deliver": 26458,
+     "pay": 78993,
+     "found": 57814,
+     "seen": 57815,
+     "unseen": 57816
+    }
+   ],
+   "_who": "On recherche Trukipik"
+  },
+  {
+   "quest": 1680,
+   "monster": 4266,
+   "subareas": [
+    173
+   ],
+   "catch": 10335,
+   "deliver": 10336,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 26732,
+     "pay": 78330,
+     "found": 57490,
+     "seen": 57491,
+     "unseen": 57528
+    },
+    {
+     "npc": 3064,
+     "deliver": 26742,
+     "pay": 78470,
+     "found": 57550,
+     "seen": 57551,
+     "unseen": 57552
+    }
+   ],
+   "_who": "On recherche Sam Sagaz"
+  },
+  {
+   "quest": 1681,
+   "monster": 4268,
+   "subareas": [
+    22
+   ],
+   "catch": 10337,
+   "deliver": 10338,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 26733,
+     "pay": 78337,
+     "found": 57492,
+     "seen": 57493,
+     "unseen": 57529
+    },
+    {
+     "npc": 3064,
+     "deliver": 26743,
+     "pay": 78476,
+     "found": 57553,
+     "seen": 57554,
+     "unseen": 57555
+    }
+   ],
+   "_who": "On recherche Maître Boulet"
+  },
+  {
+   "quest": 1682,
+   "monster": 4270,
+   "subareas": [
+    6
+   ],
+   "catch": 10339,
+   "deliver": 10340,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 26734,
+     "pay": 78341,
+     "found": 57494,
+     "seen": 57495,
+     "unseen": 57530
+    },
+    {
+     "npc": 3064,
+     "deliver": 26744,
+     "pay": 78482,
+     "found": 57556,
+     "seen": 57557,
+     "unseen": 57558
+    }
+   ],
+   "_who": "On recherche Roub' Ignolles"
+  },
+  {
+   "quest": 1683,
+   "monster": 4272,
+   "subareas": [
+    178
+   ],
+   "catch": 10341,
+   "deliver": 10342,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 26735,
+     "pay": 78345,
+     "found": 57496,
+     "seen": 57497,
+     "unseen": 57531
+    },
+    {
+     "npc": 3064,
+     "deliver": 26745,
+     "pay": 78488,
+     "found": 57559,
+     "seen": 57560,
+     "unseen": 57561
+    }
+   ],
+   "_who": "On recherche Bouss Baybe"
+  },
+  {
+   "quest": 1684,
+   "monster": 4273,
+   "subareas": [
+    164
+   ],
+   "catch": 10343,
+   "deliver": 10344,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 26736,
+     "pay": 78349,
+     "found": 57498,
+     "seen": 57499,
+     "unseen": 57532
+    },
+    {
+     "npc": 3064,
+     "deliver": 26746,
+     "pay": 78494,
+     "found": 57562,
+     "seen": 57563,
+     "unseen": 57564
+    }
+   ],
+   "_who": "On recherche Nono le Wobot"
+  },
+  {
+   "quest": 1685,
+   "monster": 4274,
+   "subareas": [
+    461
+   ],
+   "catch": 10345,
+   "deliver": 10346,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 26737,
+     "pay": 78353,
+     "found": 57500,
+     "seen": 57501,
+     "unseen": 57533
+    },
+    {
+     "npc": 3064,
+     "deliver": 26747,
+     "pay": 78500,
+     "found": 57565,
+     "seen": 57566,
+     "unseen": 57567
+    }
+   ],
+   "_who": "On recherche Armada l'Invincible"
+  },
+  {
+   "quest": 1686,
+   "monster": 4275,
+   "subareas": [
+    235
+   ],
+   "catch": 10347,
+   "deliver": 10348,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 26738,
+     "pay": 78357,
+     "found": 57502,
+     "seen": 57503,
+     "unseen": 57534
+    },
+    {
+     "npc": 3064,
+     "deliver": 26748,
+     "pay": 78506,
+     "found": 57568,
+     "seen": 57569,
+     "unseen": 57570
+    }
+   ],
+   "_who": "On recherche Dragodingo"
+  },
+  {
+   "quest": 1687,
+   "monster": 4276,
+   "subareas": [
+    167
+   ],
+   "catch": 10349,
+   "deliver": 10350,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 26739,
+     "pay": 78361,
+     "found": 57504,
+     "seen": 57505,
+     "unseen": 57535
+    },
+    {
+     "npc": 3064,
+     "deliver": 26749,
+     "pay": 78512,
+     "found": 57571,
+     "seen": 57572,
+     "unseen": 57573
+    }
+   ],
+   "_who": "On recherche Degolas"
+  },
+  {
+   "quest": 1688,
+   "monster": 4277,
+   "subareas": [
+    11
+   ],
+   "catch": 10351,
+   "deliver": 10352,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 26740,
+     "pay": 78365,
+     "found": 57506,
+     "seen": 57507,
+     "unseen": 57536
+    },
+    {
+     "npc": 3064,
+     "deliver": 26750,
+     "pay": 78518,
+     "found": 57574,
+     "seen": 57575,
+     "unseen": 57576
+    }
+   ],
+   "_who": "On recherche le Prince Marchand"
+  },
+  {
+   "quest": 1714,
+   "monster": 4329,
+   "subareas": [
+    857
+   ],
+   "catch": 10480,
+   "deliver": 10481,
+   "map": 130023937,
+   "jailers": [
+    {
+     "npc": 606,
+     "deliver": 2113,
+     "pay": 78809,
+     "found": 57723,
+     "seen": 57724,
+     "unseen": 57725
+    },
+    {
+     "npc": 2358,
+     "deliver": 27326,
+     "pay": 78937,
+     "found": 57785,
+     "seen": 57786,
+     "unseen": 57787
+    }
+   ],
+   "_who": "On recherche Atcham"
+  },
+  {
+   "quest": 1761,
+   "monster": 4506,
+   "subareas": [
+    865
+   ],
+   "catch": 11263,
+   "deliver": 11264,
+   "map": 170132488,
+   "jailers": [
+    {
+     "npc": 3338,
+     "deliver": 29241,
+     "pay": 79045,
+     "found": 57845,
+     "seen": 57846,
+     "unseen": 57847
+    }
+   ],
+   "_who": "On recherche Buldalazred"
+  },
+  {
+   "quest": 1762,
+   "monster": 4507,
+   "subareas": [
+    868
+   ],
+   "catch": 11265,
+   "deliver": 11266,
+   "map": 170132488,
+   "jailers": [
+    {
+     "npc": 3338,
+     "deliver": 29242,
+     "pay": 79058,
+     "found": 57848,
+     "seen": 57849,
+     "unseen": 57850
+    }
+   ],
+   "_who": "On recherche Takomako"
+  },
+  {
+   "quest": 1767,
+   "monster": 4532,
+   "subareas": [
+    862
+   ],
+   "catch": 11305,
+   "deliver": 11306,
+   "map": 170132488,
+   "jailers": [
+    {
+     "npc": 3338,
+     "deliver": 29523,
+     "pay": 79064,
+     "found": 57851,
+     "seen": 57852,
+     "unseen": 57853
+    }
+   ],
+   "_who": "On recherche le Homard Medali"
+  },
+  {
+   "quest": 1783,
+   "monster": 4618,
+   "subareas": [
+    872
+   ],
+   "catch": 11483,
+   "deliver": 11497,
+   "map": 173936130,
+   "jailers": [
+    {
+     "npc": 3605,
+     "deliver": 31164,
+     "pay": 79023,
+     "found": 57831,
+     "seen": 57832,
+     "unseen": 57833
+    }
+   ],
+   "_who": "On recherche Tournade"
+  },
+  {
+   "quest": 1808,
+   "monster": 4622,
+   "subareas": [
+    873
+   ],
+   "catch": 11823,
+   "deliver": 11825,
+   "map": 173936130,
+   "jailers": [
+    {
+     "npc": 3605,
+     "deliver": 30241,
+     "pay": 79031,
+     "found": 57834,
+     "seen": 57835,
+     "unseen": 57836
+    }
+   ],
+   "_who": "On recherche le Roi Camole"
+  },
+  {
+   "quest": 1834,
+   "monster": 4734,
+   "subareas": [
+    881
+   ],
+   "catch": 12128,
+   "deliver": 12129,
+   "map": 173936130,
+   "jailers": [
+    {
+     "npc": 3605,
+     "deliver": 31754,
+     "pay": 79037,
+     "found": 57837,
+     "seen": 57838,
+     "unseen": 57839
+    }
+   ],
+   "_who": "On recherche le Khepricorne"
+  },
+  {
+   "quest": 1837,
+   "monster": 4737,
+   "subareas": [
+    878
+   ],
+   "catch": 12158,
+   "deliver": 12159,
+   "map": 173936130,
+   "jailers": [
+    {
+     "npc": 3605,
+     "deliver": 31758,
+     "pay": 79043,
+     "found": 57840,
+     "seen": 57841,
+     "unseen": 57842
+    }
+   ],
+   "_who": "On recherche Ka'Youloud"
+  },
+  {
+   "quest": 1852,
+   "monster": 4814,
+   "subareas": [
+    526
+   ],
+   "catch": 12247,
+   "deliver": 12248,
+   "map": 101713427,
+   "jailers": [
+    {
+     "npc": 2185,
+     "deliver": 33543,
+     "pay": 78951,
+     "found": 57793,
+     "seen": 57794,
+     "unseen": 57795
+    }
+   ],
+   "_who": "On recherche Simbadas"
+  },
+  {
+   "quest": 1855,
+   "monster": 4815,
+   "subareas": [
+    522
+   ],
+   "catch": 12350,
+   "deliver": 12351,
+   "map": 101713427,
+   "jailers": [
+    {
+     "npc": 2185,
+     "deliver": 33544,
+     "pay": 79017,
+     "found": 57826,
+     "seen": 57827,
+     "unseen": 57828
+    }
+   ],
+   "_who": "On recherche Carlita de l'Aguerfelde"
+  },
+  {
+   "quest": 1856,
+   "monster": 4816,
+   "subareas": [
+    71
+   ],
+   "catch": 12352,
+   "deliver": 12353,
+   "map": 101713427,
+   "jailers": [
+    {
+     "npc": 2185,
+     "deliver": 33545,
+     "pay": 78957,
+     "found": 57796,
+     "seen": 57797,
+     "unseen": 57798
+    }
+   ],
+   "_who": "On recherche le Shushu Debruk'Sayl"
+  },
+  {
+   "quest": 1857,
+   "monster": 4834,
+   "subareas": [
+    883
+   ],
+   "catch": 12354,
+   "deliver": 12355,
+   "map": 101713427,
+   "jailers": [
+    {
+     "npc": 2185,
+     "deliver": 33546,
+     "pay": 79005,
+     "found": 57820,
+     "seen": 57821,
+     "unseen": 57822
+    }
+   ],
+   "_who": "On recherche Predagob"
+  },
+  {
+   "quest": 1924,
+   "monster": 4949,
+   "subareas": [
+    944
+   ],
+   "catch": 13388,
+   "deliver": 13389,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 35374,
+     "pay": 78377,
+     "found": 57512,
+     "seen": 57513,
+     "unseen": 57539
+    },
+    {
+     "npc": 3064,
+     "deliver": 35384,
+     "pay": 78536,
+     "found": 57583,
+     "seen": 57584,
+     "unseen": 57585
+    }
+   ],
+   "_who": "On recherche Jérart Dupaindur"
+  },
+  {
+   "quest": 1933,
+   "monster": 4953,
+   "subareas": [
+    892
+   ],
+   "catch": 13410,
+   "deliver": 13411,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 35381,
+     "pay": 78405,
+     "found": 57526,
+     "seen": 57527,
+     "unseen": 57546
+    },
+    {
+     "npc": 3064,
+     "deliver": 35391,
+     "pay": 78578,
+     "found": 57604,
+     "seen": 57605,
+     "unseen": 57606
+    }
+   ],
+   "_who": "On recherche le Fantôme Braïdeur"
+  },
+  {
+   "quest": 1922,
+   "monster": 5073,
+   "subareas": [
+    454
+   ],
+   "catch": 13390,
+   "deliver": 13391,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 35372,
+     "pay": 78369,
+     "found": 57508,
+     "seen": 57509,
+     "unseen": 57537
+    },
+    {
+     "npc": 3064,
+     "deliver": 35382,
+     "pay": 78524,
+     "found": 57577,
+     "seen": 57578,
+     "unseen": 57579
+    }
+   ],
+   "_who": "On recherche Gobrechaun"
+  },
+  {
+   "quest": 1923,
+   "monster": 5074,
+   "subareas": [
+    209
+   ],
+   "catch": 13392,
+   "deliver": 13393,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 35373,
+     "pay": 78373,
+     "found": 57510,
+     "seen": 57511,
+     "unseen": 57538
+    },
+    {
+     "npc": 3064,
+     "deliver": 35383,
+     "pay": 78530,
+     "found": 57580,
+     "seen": 57581,
+     "unseen": 57582
+    }
+   ],
+   "_who": "On recherche la Vashkiwi"
+  },
+  {
+   "quest": 1932,
+   "monster": 5076,
+   "subareas": [
+    469
+   ],
+   "catch": 13408,
+   "deliver": 13409,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 35375,
+     "pay": 78381,
+     "found": 57514,
+     "seen": 57515,
+     "unseen": 57540
+    },
+    {
+     "npc": 3064,
+     "deliver": 35385,
+     "pay": 78542,
+     "found": 57586,
+     "seen": 57587,
+     "unseen": 57588
+    }
+   ],
+   "_who": "On recherche Darma"
+  },
+  {
+   "quest": 1926,
+   "monster": 5077,
+   "subareas": [
+    518
+   ],
+   "catch": 13396,
+   "deliver": 13397,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 35376,
+     "pay": 78385,
+     "found": 57516,
+     "seen": 57517,
+     "unseen": 57541
+    },
+    {
+     "npc": 3064,
+     "deliver": 35386,
+     "pay": 78548,
+     "found": 57589,
+     "seen": 57590,
+     "unseen": 57591
+    }
+   ],
+   "_who": "On recherche Mogligli"
+  },
+  {
+   "quest": 1927,
+   "monster": 5081,
+   "subareas": [
+    464
+   ],
+   "catch": 13400,
+   "deliver": 13401,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 35377,
+     "pay": 78389,
+     "found": 57518,
+     "seen": 57519,
+     "unseen": 57542
+    },
+    {
+     "npc": 3064,
+     "deliver": 35387,
+     "pay": 78554,
+     "found": 57592,
+     "seen": 57593,
+     "unseen": 57594
+    }
+   ],
+   "_who": "On recherche Glandaf l'Aigri"
+  },
+  {
+   "quest": 1928,
+   "monster": 5083,
+   "subareas": [
+    955
+   ],
+   "catch": 13402,
+   "deliver": 13403,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 35378,
+     "pay": 78393,
+     "found": 57520,
+     "seen": 57521,
+     "unseen": 57543
+    },
+    {
+     "npc": 3064,
+     "deliver": 35388,
+     "pay": 78560,
+     "found": 57595,
+     "seen": 57596,
+     "unseen": 57597
+    }
+   ],
+   "_who": "On recherche Crasper"
+  },
+  {
+   "quest": 1929,
+   "monster": 5084,
+   "subareas": [
+    495
+   ],
+   "catch": 13404,
+   "deliver": 13405,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 35379,
+     "pay": 78397,
+     "found": 57522,
+     "seen": 57523,
+     "unseen": 57544
+    },
+    {
+     "npc": 3064,
+     "deliver": 35389,
+     "pay": 78566,
+     "found": 57598,
+     "seen": 57599,
+     "unseen": 57600
+    }
+   ],
+   "_who": "On recherche Carter le Pillard"
+  },
+  {
+   "quest": 1930,
+   "monster": 5086,
+   "subareas": [
+    813
+   ],
+   "catch": 13406,
+   "deliver": 13407,
+   "map": 0,
+   "jailers": [
+    {
+     "npc": 3063,
+     "deliver": 35380,
+     "pay": 78401,
+     "found": 57524,
+     "seen": 57525,
+     "unseen": 57545
+    },
+    {
+     "npc": 3064,
+     "deliver": 35390,
+     "pay": 78572,
+     "found": 57601,
+     "seen": 57602,
+     "unseen": 57603
+    }
+   ],
+   "_who": "On recherche le Sans Visage"
+  },
+  {
+   "quest": 2524,
+   "monster": 8063,
+   "subareas": [
+    1040
+   ],
+   "catch": 19336,
+   "deliver": 19337,
+   "map": 130023937,
+   "jailers": [
+    {
+     "npc": 2358,
+     "deliver": 79086,
+     "pay": 79092,
+     "found": 57867,
+     "seen": 57868,
+     "unseen": 57869
+    }
+   ],
+   "_who": "On recherche Ganos"
+  }
+ ]
+}

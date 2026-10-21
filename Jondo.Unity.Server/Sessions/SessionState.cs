@@ -237,6 +237,12 @@ namespace Jondo.Unity.Server
         public bool DocumentOpen { get; set; }
 
         /// <summary>
+        /// The criminal whose report a jailer was just paid for, so his «Listen carefully» -- one
+        /// reply for all of them -- says whether that one has been seen.
+        /// </summary>
+        public int WantedAskedAbout { get; set; }
+
+        /// <summary>
         /// Which map the haven bag was entered from, to go back there with the same key.
         /// </summary>
         /// <remarks>

@@ -23,6 +23,14 @@ namespace Jondo.Unity.Server.Managers
     {
         public const string File = "world/readables.json";
 
+        /// <summary>
+        /// The skill a readable is declared and used with, «Leer». Measured in the eight readings of
+        /// the captures -- the tavern's job offer, the three wanted posters of Srambad, the guilds'
+        /// scroll, Vulkania's notice board and charter, the temple's three books --: the iwn that
+        /// answers each iwo says 184, every one.
+        /// </summary>
+        public const int Skill = 184;
+
         /// <summary>A reading: the document and, if it has one, its accept question.</summary>
         public sealed class Readable
         {
