@@ -95,6 +95,50 @@ namespace Jondo.Unity.Tests.World
             Assert.Empty(HouseProtocol.BuildAccountHouses(Array.Empty<HouseProtocol.Owned>()));
         }
 
+        /// <summary>
+        /// The guild's houses as the world entry of «desde eleccion servidor...» lists them (jjs):
+        /// in the oneof's f5, the guild's rights after the plaque -- harmoo's 505 -- and the plaque
+        /// without the guild, though the house is shared with it.
+        /// </summary>
+        [Fact]
+        public void The_guild_s_houses_are_the_capture()
+        {
+            var harmoo = new HouseProtocol.Owned
+            {
+                HouseId = 519601, Model = 424, StreetMapId = 219415040, WorldX = -25, WorldY = 34, SubAreaId = 977,
+                GuildRights = 505,
+                Plaque = new HouseProtocol.Plaque
+                {
+                    Instance = 16, OwnerName = "harmoo", OwnerTag = "4742", Locked = true, Rooms = 3, GuildBlock = new byte[] { 0x08, 0x01 },
+                },
+            };
+            Assert.Equal(Hex("124510b1db1f20a8032a3c1220200128013003420e0a066861726d6f6f120434373432480150025a02d302601018f9032a15088084d06810e7ffffffffffffffff0120d1072822"),
+                         HouseProtocol.BuildGuildHouses(new[] { harmoo }));
+        }
+
+        /// <summary>«Ir» takes one to his own houses, and to his guild's when they share the teleport.</summary>
+        [Fact]
+        public void Going_to_a_house_is_for_its_owner_and_its_guild_with_the_teleport()
+        {
+            var own = new HouseStore.House { MapId = 1, ElementId = 2, Instance = 1, AccountId = 10 };
+            Assert.True(HouseHandler.MayTeleportTo(own, 10, 0));
+            Assert.False(HouseHandler.MayTeleportTo(own, 11, 0));
+
+            var shared = new HouseStore.House
+            {
+                MapId = 1, ElementId = 2, Instance = 1, AccountId = 10, GuildId = 5,
+                GuildRights = HouseStore.GuildRights.Share | HouseStore.GuildRights.Teleport,
+            };
+            Assert.True(HouseHandler.MayTeleportTo(shared, 11, 5));
+            Assert.False(HouseHandler.MayTeleportTo(shared, 11, 6));
+            var sharedWithoutTeleport = new HouseStore.House
+            {
+                MapId = 1, ElementId = 2, Instance = 1, AccountId = 10, GuildId = 5, GuildRights = HouseStore.GuildRights.Share,
+            };
+            Assert.False(HouseHandler.MayTeleportTo(sharedWithoutTeleport, 11, 5));
+            Assert.False(HouseHandler.MayTeleportTo(new HouseStore.House { MapId = 1, ElementId = 2, Instance = 1 }, 0, 0));
+        }
+
         // ─── The plaque on the map ──────────────────────────────────────────────
 
         [Fact]

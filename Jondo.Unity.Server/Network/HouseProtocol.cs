@@ -78,10 +78,10 @@ namespace Jondo.Unity.Server.Network
         /// abandoned. It travels on the street too, because the client drops the buyer's khr of a
         /// house its map never declared -- the window did not open until it did.
         /// </remarks>
-        public static Pb Build(Plaque plaque, bool full)
+        public static Pb Build(Plaque plaque, bool full, bool withGuild = true)
         {
             var lnx = Pb.New();
-            if (plaque.GuildBlock != null) lnx.Bytes(3, plaque.GuildBlock);
+            if (withGuild && plaque.GuildBlock != null) lnx.Bytes(3, plaque.GuildBlock);
             if (plaque.HasOwner) lnx.Var(4, 1);
             if (plaque.Locked) lnx.Var(5, 1);
             if (full) lnx.VarIfNotZero(6, plaque.Rooms);
@@ -188,6 +188,9 @@ namespace Jondo.Unity.Server.Network
             public int WorldY { get; init; }
             public int SubAreaId { get; init; }
             public Plaque Plaque { get; init; } = new Plaque();
+
+            /// <summary>What the guild may do there, when it is shared: the guild's list carries it.</summary>
+            public int GuildRights { get; init; }
         }
 
         /// <summary>
@@ -203,29 +206,50 @@ namespace Jondo.Unity.Server.Network
             return jaa.Build();
         }
 
-        /// <summary>One house of a list (lpx): the account's (jaa) and the guild's (jjs, jjp) alike.</summary>
+        /// <summary>Where a house of a list stands (lgl): { f1: street map, f2: x, f4: subarea, f5: y }.</summary>
+        private static Pb Where(Owned house)
+            => Pb.New()
+                .Var(1, house.StreetMapId)
+                .VarIfNotZero(2, house.WorldX)
+                .VarIfNotZero(4, house.SubAreaId)
+                .VarIfNotZero(5, house.WorldY);
+
+        /// <summary>
+        /// One of the account's houses (lpx, its oneof's f6): { f1: where, f2: full plaque }. A list's
+        /// plaque never carries the guild, not even of a house shared with one (the captured jaa).
+        /// </summary>
         private static Pb Lpx(Owned house)
             => Pb.New()
                 .Var(2, house.HouseId)
                 .Var(4, house.Model)
                 .Msg(6, Pb.New()
-                    .Msg(1, Pb.New()
-                        .Var(1, house.StreetMapId)
-                        .VarIfNotZero(2, house.WorldX)
-                        .VarIfNotZero(4, house.SubAreaId)
-                        .VarIfNotZero(5, house.WorldY))
-                    .Msg(2, Build(house.Plaque, true)));
+                    .Msg(1, Where(house))
+                    .Msg(2, Build(house.Plaque, true, withGuild: false)));
+
+        /// <summary>
+        /// One of the guild's houses (lpx, its oneof's f5): { f2: full plaque, f3: the guild's rights,
+        /// f5: where } -- the only case the client's GuildHouses reads (lpx.cuzx), the rights enabling
+        /// its «Ir» (bit 128). The capture's two: rights 505 and 217.
+        /// </summary>
+        private static Pb GuildLpx(Owned house)
+            => Pb.New()
+                .Var(2, house.HouseId)
+                .Var(4, house.Model)
+                .Msg(5, Pb.New()
+                    .Msg(2, Build(house.Plaque, true, withGuild: false))
+                    .VarIfNotZero(3, house.GuildRights)
+                    .Msg(5, Where(house)));
 
         /// <summary>The guild's houses (jjs): { f2: lpx each }, the client's fft fills the «Casas» tab from it.</summary>
         public static byte[] BuildGuildHouses(IEnumerable<Owned> houses)
         {
             var jjs = Pb.New();
-            foreach (var house in houses) jjs.Msg(2, Lpx(house));
+            foreach (var house in houses) jjs.Msg(2, GuildLpx(house));
             return jjs.Build();
         }
 
         /// <summary>One of the guild's houses, shared or changed (jjp): { f1: lpx }.</summary>
-        public static byte[] BuildGuildHouse(Owned house) => Pb.New().Msg(1, Lpx(house)).Build();
+        public static byte[] BuildGuildHouse(Owned house) => Pb.New().Msg(1, GuildLpx(house)).Build();
 
         /// <summary>
         /// A house that is not the guild's any more (jjt): { f3: instance, f4: house } -- the same jjt

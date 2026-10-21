@@ -1244,6 +1244,11 @@ namespace Jondo.Unity.Server.Network
                     // A house's plaque, asked for by the sale window.
                     await HouseHandler.InfoAsync(stream, payload);
                 }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jab)))
+                {
+                    // «Ir» from a list of houses: one's own, or the guild's.
+                    await HouseHandler.GoToHouseAsync(stream, payload);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Jan)))
                 {
                     // The house sale window's answer: on sale at a price, or off sale.

@@ -965,12 +965,19 @@ public static class Op
 
     /// <summary>
     /// Server to client: the guild's houses, { f2: lpx each } -- the guild window's «Casas» tab (the
-    /// client's fft). Empty first thing when a guild is founded, in the creation capture.
+    /// client's fft). Empty first thing when a guild is founded, in the creation capture; two at
+    /// the world entry of «desde eleccion servidor...», each with its rights.
     /// </summary>
     public const string Jjs = "jjs";
 
     /// <summary>Server to client: one of the guild's houses, shared or changed, { f1: lpx } (fft).</summary>
     public const string Jjp = "jjp";
+
+    /// <summary>
+    /// Client to server: «Ir» from a list of houses, { f1: house, f2: instance } -- the house window's
+    /// list of one's own (HouseUI) and the guild's «Casas» tab (GuildHouses.OnJoin).
+    /// </summary>
+    public const string Jab = "jab";
 
     /// <summary>Server to client: the estate agency's houses on sale, { f1: izw each, f2: page, f3: pages } (EstateAgencyHandler).</summary>
     public const string Izy = "izy";

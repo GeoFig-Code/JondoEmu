@@ -153,6 +153,47 @@ namespace Jondo.Unity.Server.Handlers
             }
         }
 
+        /// <summary>
+        /// «Ir» from a list of houses (jab: f1 the house, f2 its copy): the house window's list of
+        /// one's own and the guild's «Casas» tab, which enables it for one's own and for the houses
+        /// whose rights let the guild teleport (bit 128). Inside, as the home potion takes one.
+        /// </summary>
+        public static async Task GoToHouseAsync(NetworkStream? stream, byte[] frame)
+        {
+            byte[] jab = ConnectionProtocol.ReadPayload(frame, Op.Jab);
+            if (jab == null) return;
+            int houseId = 0, instance = 0;
+            foreach (var field in ProtoMessage.Parse(jab).Fields)
+            {
+                if (field.WireType != 0) continue;
+                if (field.FieldNumber == 1) houseId = (int)field.VarIntValue;
+                if (field.FieldNumber == 2) instance = (int)field.VarIntValue;
+            }
+            if (instance == 0) instance = Houses.FirstInstance;
+
+            if (!Houses.TryGetByHouseId(houseId, out var door) || !door.HasCopy(instance)
+                || door.InteriorMapId == 0 || MapManager.GetMapInfo(door.InteriorMapId) == null)
+            {
+                Console.WriteLine($"[Houses] No house {houseId}, copy {instance}, to go to.");
+                return;
+            }
+            var house = HouseStore.Of(door.MapId, door.ElementId, instance);
+            if (!MayTeleportTo(house, SessionContext.Current.AccountId, MyGuildId()))
+            {
+                Console.WriteLine($"[Houses] {SessionContext.State.CharacterName} may not go to house {houseId}, copy {instance}.");
+                return;
+            }
+            if (await Managers.Jail.KeepsInAsync(stream)) return;
+            if (stream != null && await ConquestHandler.HoldsInAsync(stream, ConquestHandler.NoTeleportInAWar)) return;
+            await GoHomeAsync(stream, door, instance);
+        }
+
+        /// <summary>Whether one may go to a house from a list: one's own, or one's guild's that shares the teleport.</summary>
+        public static bool MayTeleportTo(HouseStore.House house, long accountId, long guildId)
+            => house != null && house.Owned
+               && (house.AccountId == accountId
+                   || InTheGuild(house, guildId) && (house.GuildRights & HouseStore.GuildRights.Teleport) != 0);
+
         /// <summary>The client has clicked the street door, to go into this copy of the building.</summary>
         public static async Task EnterAsync(NetworkStream? stream, int elementId, int skillId, int instance)
         {
@@ -603,6 +644,7 @@ namespace Jondo.Unity.Server.Handlers
                 WorldY = street?.PosY ?? 0,
                 SubAreaId = street?.SubAreaId ?? 0,
                 Plaque = PlaqueOf(house, door),
+                GuildRights = house.SharedWithGuild ? house.GuildRights : 0,
             };
         }
 
