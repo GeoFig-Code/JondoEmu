@@ -27,7 +27,7 @@ EFFECT  SPELLS  RESOLVED BY     CLASSES  WHAT IT DOES
 1080    39      characteristic  17       -#1..-#2 MP
 128     39      characteristic  16       #1-#2 MP
 293     39      engine          14       #1: +#3 basic damage on that spell
-3792    39      engine          7        script marker, nothing to apply
+3792    39      engine          7        script marker; Forgelance sends a visual jwe 3792 (see forgelance.md)
 1109    38      engine          12       heals: #1-#2% max HP
 1020    35      engine          11       shield worth #1-#2% of the caster level
 3793    34      engine          12       script marker, nothing to apply

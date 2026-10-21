@@ -140,6 +140,9 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public int CeldaDelLanzamiento { get; set; } = -1;
 
+        /// <summary>A Forgelance child cast, including a cast at an empty cell, announced once before its rows.</summary>
+        public bool ForgelanceCast { get; init; }
+
         /// <summary>
         /// A portal to lay on this cell (1181), with the placing row in <see cref="Efecto"/>: the
         /// fight lays it, since what it does to the network -- which portal goes, which turns on
@@ -167,7 +170,7 @@ namespace Jondo.Unity.Server.Managers
         public int Follows { get; init; }
 
         /// <summary>
-        /// The 3793 script marker going off now: it travels as an action (jwe 3793) with the
+        /// A script marker going off now: 3793, or 3792 for a Forgelance, travels as an action with the
         /// spell, its grade, its value and the cell of <see cref="Sobre"/>, and leaves no row.
         /// </summary>
         public bool Marcador { get; init; }
@@ -1187,7 +1190,7 @@ namespace Jondo.Unity.Server.Managers
         /// </remarks>
         internal const int MarcadorDeGuion = 3793;
 
-        /// <summary>3792: 3793's immediate sibling. Nothing to apply either.</summary>
+        /// <summary>3792: 3793's immediate sibling. No characteristic or damage to apply.</summary>
         /// <remarks>
         /// 165 rows in 48 spells, and they are the same animal. Measured over the 164 rows that have a spell
         /// template, without a single exception: the <c>value</c> is the identifier of an entry of THE SPELL'S
@@ -1198,6 +1201,8 @@ namespace Jondo.Unity.Server.Managers
         /// same as 3793, and the only difference between the two is that 3793 can go with a trigger and this
         /// one cannot.
         ///
+        /// The Forgelance spell captures additionally require a jwe 3792 visual action; that class-scoped
+        /// path leaves no buff. Other classes retain their existing handling.
         /// It is declared here, and not simply left to fall into the generic road, because between the two
         /// they touch 39 class spells: without saying so, those 39 are counted forever as «not implemented» and
         /// somebody looks at them again every time.
@@ -2158,7 +2163,8 @@ namespace Jondo.Unity.Server.Managers
                                                   IReadOnlyList<SpellEffect> efectosSorteados = null,
                                                   int rondaDelEnganche = -1,
                                                   bool armar = true, bool soloAlObjetivo = false,
-                                                  bool delayHoldsBackOnly = false)
+                                                  bool delayHoldsBackOnly = false,
+                                                  bool orderedForgelance = false)
         {
             if (hondo > HondoMaximo) return new List<Outcome>();
             if (!armar) combate.SinArmar++;
@@ -2177,7 +2183,8 @@ namespace Jondo.Unity.Server.Managers
                                   yaSorteado: efectosSorteados != null,
                                   rondaDelEnganche: rondaDelEnganche,
                                   soloAlObjetivo: soloAlObjetivo,
-                                  delayHoldsBackOnly: delayHoldsBackOnly);
+                                  delayHoldsBackOnly: delayHoldsBackOnly,
+                                  orderedForgelance: orderedForgelance);
             }
             finally
             {
@@ -2207,11 +2214,21 @@ namespace Jondo.Unity.Server.Managers
             Fighter animationCaster = null,
             HashSet<long> bombasYaEstalladas = null,
             bool yaSorteado = false, int rondaDelEnganche = -1, bool soloAlObjetivo = false,
-            bool delayHoldsBackOnly = false)
+            bool delayHoldsBackOnly = false, bool orderedForgelance = false)
         {
             var fuera = new List<Outcome>();
             bombasYaEstalladas ??= new HashSet<long>();
             if (depth > HondoMaximo) return fuera;
+
+            // Forgelance captures announce the child at its aimed cell, even if that cell is empty.
+            // A per-victim damage announcement loses that cell and incorrectly adds the manual-cast f8.
+            if (depth > 0 && ForgelanceCombat.IsActor(combat, caster))
+                fuera.Add(new Outcome
+                {
+                    ForgelanceCast = true, Caster = caster, Sobre = target,
+                    HechizoOrigen = spell, NivelOrigen = grade, CeldaDelLanzamiento = aimedCell,
+                    Efecto = new SpellEffect { Triggers = AlLanzar },
+                });
 
             // The telefrags this spell makes are its own: "un hechizo solo puede generar y
             // activar un único telefrag por lanzamiento", and a child spell's T reads the child's.
@@ -2476,9 +2493,10 @@ namespace Jondo.Unity.Server.Managers
                     continue;
                 }
 
-                // Root damage is sent by HurtAsync. Damage inside a hidden chained spell must be
-                // materialized here or Aplicar will deliberately discard it as an ordinary row.
-                if (depth > 0 && EsDeDano(efecto.EffectId))
+                // Root damage normally goes through HurtAsync. The Forgelance opts into one ordered
+                // pipeline so its script commands precede the blow; other classes keep the existing path.
+                if ((depth > 0 || (orderedForgelance && ForgelanceCombat.IsActor(combat, caster)))
+                    && EsDeDano(efecto.EffectId))
                 {
                     int element = efecto.Element >= 0
                         ? efecto.Element
@@ -2753,6 +2771,14 @@ namespace Jondo.Unity.Server.Managers
                     {
                         if (quien != null && quien.IsAlive) candidatos.Add(quien);
                     }
+
+                    // Effondrement's point sub-cast is still announced on an empty aimed cell
+                    // (packet 64). Do not turn a target/template requirement into an empty-cell cast.
+                    if (candidatos.Count == 0 && efecto.EffectId == 2960 && aimedCell >= 0
+                        && ForgelanceCombat.IsActor(combat, caster)
+                        && CasterQualifies(caster, efecto.TargetMask, estadosAlEmpezar)
+                        && efecto.TargetMask.Split(',').All(t => t is "a" or "A" || t.StartsWith("*")))
+                        candidatos.Add(caster);
 
                     // The cap. With value 0 or 999 there is no cap -- that is how 792, 1160 and 2794 go,
                     // which reach up to eleven children in the captures --; with a small number there is,
@@ -3764,7 +3790,8 @@ namespace Jondo.Unity.Server.Managers
                 };
             }
 
-            if (efecto.EffectId == MarcadorDeGuion)
+            if (efecto.EffectId == MarcadorDeGuion
+                || (efecto.EffectId == MarcadorDeGuionInmediato && ForgelanceCombat.IsActor(combate, quienLanza)))
             {
                 // Right away it is an action, not a row: 202 jwe 3793 in the class captures and
                 // not one jxm 3793 with trigger "I". With a delay it waits like the rest.
