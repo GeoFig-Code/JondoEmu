@@ -300,8 +300,10 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Automatic dungeon search: wait for the dungeons you choose, or any, alone or as a party; the ready
   check; then one party, the key spent and everybody in the first room (fewer than four players in the
   server settings for small servers)
-- ❌ The party invitation's *Details* button; the votes to give up or to put someone out inside a
-  dungeon found by the search
+- ✅ Inside a dungeon found by the search: unanimous votes to give up together (everybody back where
+  they were, no penalty) or to put someone out; an hour without searching for whoever leaves a full
+  group or is put out of one
+- ❌ The party invitation's *Details* button
 
 ### ⚜️ Guilds and raids
 

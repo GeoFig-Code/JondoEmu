@@ -985,6 +985,10 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.MatchmakingHandler.AcceptAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kij)))
                     await Handlers.MatchmakingHandler.RefuseAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kjs)))
+                    await Handlers.MatchmakingHandler.SurrenderAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Ikn)))
+                    await Handlers.MatchmakingHandler.KickNoAsync(stream, payload);
                 // The party search's board and announcements (LobbyHandler).
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jmu)))
                     await Handlers.LobbyHandler.BoardAsync(stream, payload);

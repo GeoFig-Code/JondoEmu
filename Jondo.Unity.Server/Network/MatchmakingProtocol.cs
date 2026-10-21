@@ -62,6 +62,13 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildSearchRefused(int code) => Pb.New().Msg(1, Pb.New().Var(2, code)).Build();
 
         /// <summary>
+        /// The search refused to somebody barred from it (kjb): f3 { f2 the seconds left } -- the
+        /// client's errorJoinBanned, «no puedes participar en la búsqueda automática durante {0}
+        /// porque has abandonado tu grupo o tu grupo te ha expulsado» (fgr.bepu's third case).
+        /// </summary>
+        public static byte[] BuildSearchBanned(long seconds) => Pb.New().Msg(3, Pb.New().Var(2, Math.Max(1, seconds))).Build();
+
+        /// <summary>
         /// Searching (kkk): f1 { f3 the dungeons }, f4 0 -- the capture's, right after the search
         /// is taken.
         /// </summary>
@@ -115,6 +122,52 @@ namespace Jondo.Unity.Server.Network
                 kis.Msg(3, Pb.New().Var(5, dungeon));
             return kis.Build();
         }
+
+        // ─── The group's votes ──────────────────────────────────────────────
+        //
+        // Read off the client: fgk sends -- the give-up popup kjs { f1 true } (fgk.beov), the kick
+        // popup the party's own ili through the ddw event (ffd.bdyc) --, fgr reads -- kig, kkq and
+        // kjr for giving up, ikw, ike and iku for putting out, kjo for leaving; the ballots are
+        // kjs { f1 yes } (fgr.beql) and ili (yes) or ikn {} (no) (fgr+fgp.bepj, bepi). No capture
+        // has any of it.
+
+        /// <summary>A ballot on giving up (kjs): f1 yes.</summary>
+        public static bool ReadSurrenderBallot(byte[] kjs)
+            => ProtoMessage.Parse(kjs ?? Array.Empty<byte>()).Fields.Any(f => f.FieldNumber == 1 && f.WireType == 0 && f.VarIntValue != 0);
+
+        /// <summary>
+        /// The give-up vote (kig): f1 the ballots so far, f2 the seconds left. The client counts
+        /// them against the party's size and offers its two buttons to whoever has not voted.
+        /// </summary>
+        public static byte[] BuildSurrenderVote(IEnumerable<bool> ballots, long secondsLeft)
+            => Pb.New().Packed(1, ballots.Select(b => b ? 1L : 0L)).Var(2, Math.Max(0, secondsLeft)).Build();
+
+        /// <summary>The give-up vote over (kkq): f2 what it came to.</summary>
+        public static byte[] BuildSurrenderResult(Matchmaking.Outcome outcome)
+            => Pb.New().VarIfNotZero(2, (int)outcome).Build();
+
+        /// <summary>No give-up vote yet (kjr): f2 the seconds before another may start.</summary>
+        public static byte[] BuildSurrenderCooldown(long seconds) => Pb.New().Var(2, Math.Max(1, seconds)).Build();
+
+        /// <summary>
+        /// The vote to put somebody out (ikw): f1 the ballots so far, f2 whom, f3 the MILLISECONDS
+        /// left -- the client divides them by a thousand (qx.pnh) where kig's seconds go as they are.
+        /// </summary>
+        public static byte[] BuildKickVote(IEnumerable<bool> ballots, long target, long millisecondsLeft)
+            => Pb.New().Packed(1, ballots.Select(b => b ? 1L : 0L)).Var(2, target).Var(3, Math.Max(0, millisecondsLeft)).Build();
+
+        /// <summary>The vote to put somebody out over (ike): f1 whom, f2 what it came to.</summary>
+        public static byte[] BuildKickResult(long target, Matchmaking.Outcome outcome)
+            => Pb.New().Var(1, target).VarIfNotZero(2, (int)outcome).Build();
+
+        /// <summary>No vote to put somebody out yet (iku): f1 the seconds before another may start.</summary>
+        public static byte[] BuildKickCooldown(long seconds) => Pb.New().Var(1, Math.Max(1, seconds)).Build();
+
+        /// <summary>
+        /// Out of a full group by one's own will (kjo): f2 the seconds barred from the search --
+        /// «no podrás usar la búsqueda de grupo durante {0} minutos».
+        /// </summary>
+        public static byte[] BuildLeaveCooldown(long seconds) => Pb.New().Var(2, Math.Max(1, seconds)).Build();
 
         /// <summary>A repeated int32 in a message's field, packed or not.</summary>
         private static List<int> Ints(byte[] message, int number)

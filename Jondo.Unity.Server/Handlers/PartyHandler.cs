@@ -205,12 +205,15 @@ namespace Jondo.Unity.Server.Handlers
             long meId = SessionContext.State.CharacterId;
             if (party == null) return;
 
+            // Leaving a full group of the dungeon search by one's own will costs the search an hour.
+            bool full = MatchmakingHandler.IsFull(party);
             var salida = Parties.Leave(party, meId);
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Ils, ConnectionProtocol.BuildPartyLeft(partyId)));
 
             await AnnounceGoneAsync(party, partyId, salida);
+            await MatchmakingHandler.LeftAsync(party, meId, salida.Dissolved, penalised: full);
 
             Console.WriteLine($"[Party] {SessionContext.State.CharacterName} leaves party " +
                               $"{partyId}{(salida.Dissolved ? " and it breaks up" : "")}.");
@@ -244,6 +247,14 @@ namespace Jondo.Unity.Server.Handlers
             var party = Parties.Get(partyId);
             if (party == null || quien == 0) return;
 
+            // In a group the dungeon search made, putting somebody out is the group's vote: this
+            // ili is a yes to it -- the one that starts it, or a ballot.
+            if (Matchmaking.GroupOf(partyId) != null)
+            {
+                await MatchmakingHandler.KickBallotAsync(stream, party, quien);
+                return;
+            }
+
             long meId = SessionContext.State.CharacterId;
             string meName = SessionContext.State.CharacterName;
 
@@ -264,11 +275,21 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
-            if (!Parties.MembersOf(party).Contains(quien)) return;
+            if (!await PutOutAsync(party, quien)) return;
+            Console.WriteLine($"[Party] {meName} kicks {quien} out of party {partyId}.");
+        }
 
-            var salida = Parties.Leave(party, quien);
+        /// <summary>
+        /// Somebody out of the party, as the leader's kick or the dungeon search's vote does it: the
+        /// ils to him and the party, or its end, to the others. False when he was not in it.
+        /// </summary>
+        internal static async Task<bool> PutOutAsync(Managers.Parties.Party party, long who)
+        {
+            if (!Parties.MembersOf(party).Contains(who)) return false;
+            int partyId = party.Id;
+            var salida = Parties.Leave(party, who);
 
-            var echado = SessionRegistry.FindByCharacter(quien);
+            var echado = SessionRegistry.FindByCharacter(who);
             if (echado != null)
             {
                 await echado.SendAsync(ConnectionProtocol.Push(Op.Ils,
@@ -276,10 +297,23 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             await AnnounceGoneAsync(party, partyId, salida);
+            await MatchmakingHandler.LeftAsync(party, who, salida.Dissolved, penalised: false);
+            if (salida.Dissolved) Console.WriteLine($"[Party] Party {partyId} breaks up.");
+            return true;
+        }
 
-            Console.WriteLine($"[Party] {meName} kicks " +
-                              $"{echado?.State.CharacterName ?? quien.ToString()} out of party " +
-                              $"{partyId}{(salida.Dissolved ? ", which breaks up" : "")}.");
+        /// <summary>The whole party broken up at once (imy to everybody): the dungeon search's group that gave up.</summary>
+        internal static async Task BreakUpAsync(Managers.Parties.Party party)
+        {
+            var members = Parties.MembersOf(party).ToList();
+            byte[] dissolved = ConnectionProtocol.Push(Op.Imy, ConnectionProtocol.BuildPartyDissolved(party.Id));
+            Parties.Dissolve(party);
+            foreach (long member in members)
+            {
+                var session = SessionRegistry.FindByCharacter(member);
+                if (session != null) await session.SendAsync(dissolved);
+            }
+            Console.WriteLine($"[Party] Party {party.Id} breaks up.");
         }
 
         /// <summary>
@@ -384,7 +418,9 @@ namespace Jondo.Unity.Server.Handlers
             if (party == null) return;
 
             int partyId = party.Id;
-            await AnnounceGoneAsync(party, partyId, Parties.Leave(party, characterId));
+            var salida = Parties.Leave(party, characterId);
+            await AnnounceGoneAsync(party, partyId, salida);
+            await MatchmakingHandler.LeftAsync(party, characterId, salida.Dissolved, penalised: false);
         }
 
         // ─── Pieces ─────────────────────────────────────────────────────────────

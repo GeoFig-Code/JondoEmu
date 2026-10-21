@@ -2201,6 +2201,33 @@ public static class Op
     /// <summary>S→C: the group made, f1 { f1 the dungeon }, or not, f2 {}.</summary>
     public const string Kjl = "kjl";
 
+    /// <summary>C→S: a ballot on giving up the dungeon, f1 yes -- the give-up popup's, or the vote's buttons.</summary>
+    public const string Kjs = "kjs";
+
+    /// <summary>S→C: the give-up vote: f1 the ballots, f2 the seconds left.</summary>
+    public const string Kig = "kig";
+
+    /// <summary>S→C: the give-up vote over: f2 0 favourable, 1 not, 2 expired.</summary>
+    public const string Kkq = "kkq";
+
+    /// <summary>S→C: no give-up vote yet: f2 the seconds before another.</summary>
+    public const string Kjr = "kjr";
+
+    /// <summary>S→C: the vote to put somebody out: f1 the ballots, f2 whom, f3 the milliseconds left.</summary>
+    public const string Ikw = "ikw";
+
+    /// <summary>C→S: no to putting somebody out (the vote's «No expulsar»); yes is the party's ili.</summary>
+    public const string Ikn = "ikn";
+
+    /// <summary>S→C: the vote to put somebody out over: f1 whom, f2 0 favourable, 1 not, 2 expired.</summary>
+    public const string Ike = "ike";
+
+    /// <summary>S→C: no vote to put somebody out yet: f1 the seconds before another.</summary>
+    public const string Iku = "iku";
+
+    /// <summary>S→C: out of a full search group by one's own will: f2 the seconds barred from the search.</summary>
+    public const string Kjo = "kjo";
+
     /// <summary>Old map load request (3.6.4.3). It appears in no capture.</summary>
     public const string Kkr = "kkr";
 
