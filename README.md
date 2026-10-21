@@ -530,6 +530,8 @@ An alliance is made of characters, not guilds.
   saints' hunts, the Anutrof box draws the map — three or four stages, flags, digs, four tries —
   and the Treasure is fought at the end, hitting the chest on legs among its four Vigicofres; its
   chest closes the quest, one hunt a day from 7:00
+- ✅ Legendary hunts: put a criminal's map together from its fragments at the Pupitre, start it at
+  the planning table and fight the criminal at its end; a defeat gives the map back
 
 Full workings in **`docs/quests.md`**.
 
