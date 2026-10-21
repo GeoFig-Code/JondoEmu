@@ -29,6 +29,9 @@
          either way. Nothing here constructs a control. -->
     <ProjectReference Include="..\Jondo.Unity.Studio\Jondo.Unity.Studio.csproj" />
     <ProjectReference Include="..\Jondo.Unity.Launcher\Jondo.Unity.Launcher.csproj" />
+    <!-- The Windows Forms theme, checked against the shared palette. The server only brings it
+         in on Windows, so it is referenced here directly. -->
+    <ProjectReference Include="..\Jondo.Unity.Contract.WinForms\Jondo.Unity.Contract.WinForms.csproj" />
   </ItemGroup>
 
 </Project>
