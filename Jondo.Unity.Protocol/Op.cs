@@ -973,6 +973,21 @@ public static class Op
     /// <summary>Server to client: one of the guild's houses, shared or changed, { f1: lpx } (fft).</summary>
     public const string Jjp = "jjp";
 
+    /// <summary>C→S: «Elegir este recibidor para mi gremio», empty (MapInfoUI.SelectGuildHall).</summary>
+    public const string Jjz = "jjz";
+
+    /// <summary>C→S: a look for the guild's hall, { f1 the theme } (MapInfoUI.SelectTheme).</summary>
+    public const string Jjw = "jjw";
+
+    /// <summary>S→C: the guild's hall changed, { f2 the hall } -- fft.beht's «El recibidor de tu gremio ahora es el {0}».</summary>
+    public const string Jjv = "jjv";
+
+    /// <summary>
+    /// S→C: the guild hall's look, { f1 the theme } (fft.behr → MapInfoUI.OnGuildHallRefreshTheme).
+    /// The map load's handler also takes it off the client's stream with kkr and igx.
+    /// </summary>
+    public const string Jqf = "jqf";
+
     /// <summary>
     /// Client to server: «Ir» from a list of houses, { f1: house, f2: instance } -- the house window's
     /// list of one's own (HouseUI) and the guild's «Casas» tab (GuildHouses.OnJoin).
@@ -1742,9 +1757,6 @@ public static class Op
 
     /// <summary>Unidentified. 1 use in the emulator.</summary>
     public const string Jqb = "jqb";
-
-    /// <summary>Unidentified. 2 uses in the emulator.</summary>
-    public const string Jqf = "jqf";
 
     /// <summary>The map it wants to go to; the arrival cell and orientation are computed from the exit side (13 of a side cell, 532 vertically), measured in the captures.</summary>
     public const string Jqk = "jqk";

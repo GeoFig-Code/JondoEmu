@@ -1,0 +1,291 @@
+{
+ "version": "3.6.10.11",
+ "themes": [
+  {
+   "id": 1,
+   "name": "Defecto",
+   "order": 0
+  },
+  {
+   "id": 2,
+   "name": "Sencillo",
+   "order": 1
+  },
+  {
+   "id": 3,
+   "name": "Elegante",
+   "order": 2
+  },
+  {
+   "id": 4,
+   "name": "Prestigioso",
+   "order": 3
+  },
+  {
+   "id": 5,
+   "name": "Excepcional",
+   "order": 4
+  }
+ ],
+ "halls": [
+  {
+   "id": 1,
+   "name": "Recibidor de gremio sufokeño",
+   "subareaId": 1117,
+   "streetMapId": 90708738,
+   "functionRoom": 91889155,
+   "entrance": {
+    "mapId": 91889155,
+    "cellId": 319
+   },
+   "rooms": [
+    {
+     "mapId": 91888133,
+     "name": "Merchants' Room"
+    },
+    {
+     "mapId": 91889153,
+     "name": ""
+    },
+    {
+     "mapId": 91889155,
+     "name": "Function Room"
+    },
+    {
+     "mapId": 91889157,
+     "name": "Activity Room"
+    },
+    {
+     "mapId": 91889409,
+     "name": ""
+    },
+    {
+     "mapId": 91891203,
+     "name": "Activity Room"
+    },
+    {
+     "mapId": 91891457,
+     "name": ""
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "name": "Recibidor de gremio bontariano",
+   "subareaId": 1112,
+   "streetMapId": 212731652,
+   "functionRoom": 217055492,
+   "entrance": {
+    "mapId": 217055492,
+    "cellId": 326
+   },
+   "rooms": [
+    {
+     "mapId": 217055492,
+     "name": "Function Room"
+    },
+    {
+     "mapId": 217055496,
+     "name": ""
+    },
+    {
+     "mapId": 217056516,
+     "name": "Activity Room"
+    },
+    {
+     "mapId": 217056520,
+     "name": ""
+    },
+    {
+     "mapId": 217057540,
+     "name": "Merchants' Room"
+    },
+    {
+     "mapId": 217058564,
+     "name": ""
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "name": "Recibidor de gremio brakmariano",
+   "subareaId": 1113,
+   "streetMapId": 212992516,
+   "functionRoom": 214696196,
+   "entrance": {
+    "mapId": 214696196,
+    "cellId": 380
+   },
+   "rooms": [
+    {
+     "mapId": 214696196,
+     "name": "Function Room"
+    },
+    {
+     "mapId": 214696200,
+     "name": ""
+    },
+    {
+     "mapId": 214697220,
+     "name": "Activity Room"
+    },
+    {
+     "mapId": 214697224,
+     "name": ""
+    },
+    {
+     "mapId": 214698244,
+     "name": "Merchants' Room"
+    },
+    {
+     "mapId": 214699268,
+     "name": ""
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "name": "Recibidor de gremio pandaleño",
+   "subareaId": 1114,
+   "streetMapId": 204997891,
+   "functionRoom": 207627266,
+   "entrance": {
+    "mapId": 207627266,
+    "cellId": 479
+   },
+   "rooms": [
+    {
+     "mapId": 207625218,
+     "name": "Merchants' Room"
+    },
+    {
+     "mapId": 207626242,
+     "name": "Activity Room"
+    },
+    {
+     "mapId": 207627266,
+     "name": "Function Room"
+    },
+    {
+     "mapId": 207627523,
+     "name": ""
+    },
+    {
+     "mapId": 207628290,
+     "name": ""
+    },
+    {
+     "mapId": 207628547,
+     "name": ""
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "name": "Recibidor de gremio frigosteño",
+   "subareaId": 1115,
+   "streetMapId": 54171938,
+   "functionRoom": 54526212,
+   "entrance": {
+    "mapId": 54526212,
+    "cellId": 428
+   },
+   "rooms": [
+    {
+     "mapId": 54526212,
+     "name": "Function Room"
+    },
+    {
+     "mapId": 54526216,
+     "name": ""
+    },
+    {
+     "mapId": 54527236,
+     "name": "Activity Room"
+    },
+    {
+     "mapId": 54527240,
+     "name": ""
+    },
+    {
+     "mapId": 54528260,
+     "name": "Merchants' Room"
+    },
+    {
+     "mapId": 54529284,
+     "name": ""
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "name": "Recibidor de gremio amakneano",
+   "subareaId": 1116,
+   "streetMapId": 88212760,
+   "functionRoom": 99093249,
+   "entrance": {
+    "mapId": 99093249,
+    "cellId": 410
+   },
+   "rooms": [
+    {
+     "mapId": 99091201,
+     "name": ""
+    },
+    {
+     "mapId": 99091206,
+     "name": ""
+    },
+    {
+     "mapId": 99092225,
+     "name": "Activity Room"
+    },
+    {
+     "mapId": 99093249,
+     "name": "Function Room"
+    },
+    {
+     "mapId": 99093254,
+     "name": ""
+    },
+    {
+     "mapId": 99094273,
+     "name": "Merchants' Room"
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "name": "Recibidor de gremio astrubiense",
+   "subareaId": 1118,
+   "streetMapId": 188743687,
+   "functionRoom": 83889162,
+   "entrance": {
+    "mapId": 83889162,
+    "cellId": 207
+   },
+   "rooms": [
+    {
+     "mapId": 83888138,
+     "name": "Merchants' Room"
+    },
+    {
+     "mapId": 83888140,
+     "name": ""
+    },
+    {
+     "mapId": 83889162,
+     "name": "Function Room"
+    },
+    {
+     "mapId": 83889164,
+     "name": ""
+    },
+    {
+     "mapId": 83890186,
+     "name": "Activity Room"
+    }
+   ]
+  }
+ ]
+}

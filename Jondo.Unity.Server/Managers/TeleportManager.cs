@@ -381,6 +381,7 @@ namespace Jondo.Unity.Server.Managers
 
             AplicarLosNuestros(byElement, byMap, byCell);
             AddRaidPassages(byElement, byMap, byCell);
+            AddGuildHallDoors(byElement, byMap, byCell);
             AddFloorPassages(byCell);
 
             _byElement = byElement;
@@ -498,6 +499,31 @@ namespace Jondo.Unity.Server.Managers
                 added++;
             }
             if (added > 0) Console.WriteLine($"[Teleports] {added} guild raid lift(s) and passage(s) between floors.");
+        }
+
+        /// <summary>
+        /// The guild halls' doors (GuildHalls.Doors): the street's into the Function Room and the
+        /// rooms' between them, declared with the skill 184 the capture's jss gives them. A route
+        /// the data already has wins.
+        /// </summary>
+        private static void AddGuildHallDoors(Dictionary<(long, int), InteractiveTeleport> byElement,
+                                              Dictionary<long, List<InteractiveTeleport>> byMap,
+                                              Dictionary<(long, int), InteractiveTeleport> byCell)
+        {
+            int added = 0;
+            foreach (var route in GuildHalls.Doors())
+            {
+                if (byElement.ContainsKey((route.SourceMapId, route.ElementId))) continue;
+                if (MapManager.GetMapInfo(route.DestinationMapId) == null) continue;
+                if (Interactives.ByElementId(route.SourceMapId, route.ElementId).Id == 0) continue;
+                byElement[(route.SourceMapId, route.ElementId)] = route;
+                if (!byMap.TryGetValue(route.SourceMapId, out var list))
+                    byMap.Add(route.SourceMapId, list = new List<InteractiveTeleport>());
+                list.Add(route);
+                byCell.TryAdd((route.SourceMapId, route.SourceCellId), route);
+                added++;
+            }
+            if (added > 0) Console.WriteLine($"[Teleports] {added} guild hall door(s).");
         }
 
         /// <summary>

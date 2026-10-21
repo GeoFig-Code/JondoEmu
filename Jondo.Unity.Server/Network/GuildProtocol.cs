@@ -161,6 +161,25 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         public static byte[] BuildMessageOfTheDay(GuildStore.Notice notice) => Pb.New().Msg(2, Notice(notice)).Build();
 
+        /// <summary>The guild's hall changed (jjv): { f2 the hall }, as the capture of choosing Amakna's.</summary>
+        public static byte[] BuildHallChanged(int hallId) => Pb.New().Var(2, hallId).Build();
+
+        /// <summary>The guild hall's look (jqf): { f1 the theme }.</summary>
+        public static byte[] BuildHallTheme(int theme) => Pb.New().Var(1, theme).Build();
+
+        /// <summary>
+        /// A hall room's jss f4 (jry): the guild's own hall, f1 { f1 { f1 its look, f2 the looks it may
+        /// take } }, which fft's map frame raises as PlayerGuildHallEntered; or anybody else's, f3 { f1
+        /// whether he may choose it }. Measured: "0a070a050801120101" once Amakna's was chosen at
+        /// level 1, "1a020801" before, by the leader.
+        /// </summary>
+        public static byte[] BuildHallVisit(bool own, int theme, IEnumerable<int> themes, bool mayChoose)
+        {
+            if (own)
+                return Pb.New().Msg(1, Pb.New().Msg(1, Pb.New().Var(1, theme).Packed(2, themes.Select(t => (long)t)))).Build();
+            return Pb.New().Msg(3, Pb.New().VarIfNotZero(1, mayChoose ? 1 : 0)).Build();
+        }
+
         /// <summary>A member's connection (jhd): { f1 the character, f2 on line }.</summary>
         public static byte[] BuildMemberConnection(long characterId, bool online)
             => Pb.New().Var(1, characterId).VarIfNotZero(2, online ? 1 : 0).Build();

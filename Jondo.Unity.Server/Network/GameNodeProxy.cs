@@ -528,6 +528,8 @@ namespace Jondo.Unity.Server.Network
                         await Handlers.TravelersTowerHandler.OnMapLoadedAsync(stream, GameState.MapId);
                         // And on Osavora's maps, the look of the season.
                         await Handlers.OsavoraSeasonHandler.OnMapLoadedAsync(stream, GameState.MapId);
+                        // And in a guild hall, its banners: the guild's own, or the neutral ones.
+                        await Handlers.GuildHallHandler.OnMapLoadedAsync(stream, GameState.CharacterId, GameState.MapId);
 
                         // And what depends on having arrived here: the objectives met
                         // by stepping on a map or a zone.
@@ -1025,6 +1027,10 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.GuildHandler.MissionPreferencesAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jet)))
                     await Handlers.GuildHandler.ChooseTierAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jjz)))
+                    await Handlers.GuildHallHandler.ChooseHallAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jjw)))
+                    await Handlers.GuildHallHandler.ChooseThemeAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jha)))
                     await Handlers.GuildHandler.WarnConnectionsAsync(true);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jhf)))

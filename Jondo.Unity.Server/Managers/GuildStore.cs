@@ -218,6 +218,12 @@ namespace Jondo.Unity.Server.Managers
                     CharacterId INTEGER PRIMARY KEY,
                     Pending INTEGER NOT NULL DEFAULT 0
                 );
+                CREATE TABLE IF NOT EXISTS GuildHallChoices (
+                    GuildId INTEGER PRIMARY KEY,
+                    HallId INTEGER NOT NULL,
+                    Theme INTEGER NOT NULL,
+                    ChangedMs INTEGER NOT NULL DEFAULT 0
+                );
                 CREATE TABLE IF NOT EXISTS GuildContributions (
                     CharacterId INTEGER NOT NULL,
                     Week TEXT NOT NULL,

@@ -37,6 +37,9 @@ namespace Jondo.Unity.Server.Handlers
         public const int HouseEffect = 830;
         public const int ChoiceEffect = 3008;
 
+        /// <summary>«Pócima de recibidor de gremio» (32472): into one's guild's hall.</summary>
+        public const int GuildHallEffect = 4054;
+
         /// <summary>Effect 830's value for one's own house; 1 is the guild's.</summary>
         public const int OwnHouse = 5;
 
@@ -53,7 +56,7 @@ namespace Jondo.Unity.Server.Handlers
         internal static DatabaseManager.ItemEffectData TravelOf(IReadOnlyList<DatabaseManager.ItemEffectData> effects)
         {
             var travel = effects.FirstOrDefault(e => e.EffectId is RecallEffect or MapReferenceEffect
-                or OtherMapReferenceEffect or ChoiceEffect || (e.EffectId == HouseEffect && e.Value == OwnHouse));
+                or OtherMapReferenceEffect or ChoiceEffect or GuildHallEffect || (e.EffectId == HouseEffect && e.Value == OwnHouse));
             if (travel == null) return null;
             return effects.All(e => ReferenceEquals(e, travel) || Markers.Contains(e.EffectId)) ? travel : null;
         }
@@ -92,8 +95,37 @@ namespace Jondo.Unity.Server.Handlers
                 case ChoiceEffect:
                     await ProposeAsync(stream, item, travel.Value);
                     break;
+                case GuildHallEffect:
+                    await GuildHallAsync(stream, item);
+                    break;
             }
             return true;
+        }
+
+        /// <summary>
+        /// The guild hall potion: into one's guild's hall, its Function Room by the street door's
+        /// way in, as the home potion goes home -- the use (hpp, hpq), then the potion spent once
+        /// there. Without a guild hall it is refused.
+        /// </summary>
+        private static async Task GuildHallAsync(NetworkStream stream, Equipment.Item item)
+        {
+            var me = SessionContext.State;
+            var guild = GuildStore.GuildOf(me.CharacterId);
+            var choice = guild == null ? null : GuildHalls.ChoiceOf(guild.Id);
+            if (choice == null || GuildHalls.ById(choice.HallId) == null)
+            {
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, InfoMessages.RequirementsNotMet)));
+                Console.WriteLine($"[Travel] {me.CharacterName} has no guild hall to go to.");
+                return;
+            }
+            if (await ConquestHandler.HoldsInAsync(stream, ConquestHandler.NoTeleportInAWar)) return;
+
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Hpp,
+                TravelProtocol.BuildDelayedUse(item.Template, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), me.CharacterId)));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Hpq, TravelProtocol.BuildDelayFinished(me.CharacterId)));
+            if (await GuildHallHandler.GoToOwnHallAsync(stream))
+                await ItemUseHandler.SpendOneAsync(stream, item.Uid);
         }
 
         /// <summary>

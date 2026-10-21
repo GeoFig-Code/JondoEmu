@@ -854,6 +854,10 @@ namespace Jondo.Unity.Server.Network
         {
             var jss = Pb.New().Var(2, mapId);
 
+            // A guild hall's room: whose hall it is to this visitor (f4), right behind the map.
+            if (Managers.GuildHalls.Visit(mapId, character.Id) is { } visit)
+                jss.Bytes(4, GuildProtocol.BuildHallVisit(visit.Own, visit.Theme, visit.Themes, visit.MayChoose));
+
             jss.Msg(5, PlayerActor(character, cell, facing, accountId));
 
             // Other connected players already standing on this map. Each client keeps its own
