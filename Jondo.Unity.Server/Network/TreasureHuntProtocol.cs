@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Jondo.Unity.Server.Managers;
 
@@ -19,6 +20,8 @@ namespace Jondo.Unity.Server.Network
     ///   hhh  a flag taken away    (client)  f1 step, f2 type
     ///   hgj  a dig                (client)  f1 type
     ///   hgn  giving up            (client)  f1 type
+    ///   hhg  the planning table's hunts     f1 their ids (LegendaryHuntsUi.Open)
+    ///   hhn  a legendary hunt     (client)  f2 its id (epx, on the window's «start»)
     /// </code>
     /// The capture's hunt: «08021005» (hhk) and «20053004389386802a4005480252070a0508f2061002» (hhf: no
     /// stage yet, five stages, four tries, [2,4], five steps, legendary, a POI step: 882 to the south).
@@ -68,5 +71,11 @@ namespace Jondo.Unity.Server.Network
 
         /// <summary>A dig (hgj) or a give-up (hgn): the type.</summary>
         public static int ReadType(byte[] body) => (int)Field(body, 1);
+
+        /// <summary>The legendary hunts a planning table offers (hhg).</summary>
+        public static byte[] BuildLegendaryHunts(IEnumerable<int> ids) => Pb.New().Packed(1, ids.Select(id => (long)id)).Build();
+
+        /// <summary>The legendary hunt asked for (hhn): its id.</summary>
+        public static int ReadLegendaryAsked(byte[] hhn) => (int)Field(hhn, 2);
     }
 }

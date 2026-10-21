@@ -218,6 +218,9 @@ namespace Jondo.Unity.Server.Handlers
                 case InteractiveActionKind.TreasureBox:
                     await TreasureHuntHandler.UseBoxAsync(stream, interactive, action);
                     break;
+                case InteractiveActionKind.PlanningTable:
+                    await TreasureHuntHandler.OpenPlanningTableAsync(stream, interactive, action);
+                    break;
                 default:
                     throw new InvalidOperationException($"Unhandled interactive action: {action.Kind}.");
             }

@@ -32,6 +32,9 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
+        /// <summary>Every legendary hunt the client has.</summary>
+        public static IEnumerable<Definition> All => Loaded.Values;
+
         /// <summary>The legendary hunt with that id, or null when the client does not have it.</summary>
         public static Definition? Of(int id) => Loaded.TryGetValue(id, out var found) ? found : null;
 

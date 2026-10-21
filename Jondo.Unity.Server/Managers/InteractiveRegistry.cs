@@ -111,6 +111,9 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>The Malle aux trésors' Anutrof box: launches the treasure hunt of Dhain's quest (TreasureHuntHandler).</summary>
         TreasureBox,
+
+        /// <summary>The Malle aux trésors' planning table: the legendary hunts' window (TreasureHuntHandler).</summary>
+        PlanningTable,
     }
 
     /// <summary>A skill offered by an interactive element.</summary>
@@ -741,6 +744,14 @@ namespace Jondo.Unity.Server.Managers
                     declared.AddNamed(InteractiveActionKind.TreasureBox, TreasureQuests.UseSkill, kind.SkillName,
                                       TravelersTower.InstanceOf(box.Id, index++));
             }
+
+            // And the room's Pupitre, a workshop of the maps' recipes, and its planning table.
+            if (Find(TreasureQuests.Room, TreasureQuests.Desk) is { } desk)
+                Declared(TreasureQuests.Room, desk, TreasureQuests.DeskType)
+                    .Add(InteractiveActionKind.Workshop, TreasureQuests.MakeMapSkill);
+            if (Find(TreasureQuests.Room, TreasureQuests.PlanningTable) is { } table)
+                Declared(TreasureQuests.Room, table, TreasureQuests.PlanningTableType)
+                    .Add(InteractiveActionKind.PlanningTable, TreasureQuests.LegendarySkill);
 
             foreach (var dimension in TravelersTower.Dimensions)
             {

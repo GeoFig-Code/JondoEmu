@@ -203,6 +203,69 @@ namespace Jondo.Unity.Server.Handlers
             await SendHuntAsync(stream, hunt);
         }
 
+        // ─── The Malle aux trésors' legendary hunts ─────────────────────────
+
+        /// <summary>
+        /// The hunts a planning table offers: every legendary hunt but the divine dimensions' --
+        /// those are located in the travellers' tower. The window shows those whose map the player
+        /// carries, or all of them with «show all».
+        /// </summary>
+        public static IReadOnlyList<int> PlanningTableHunts()
+            => LegendaryHunts.All.Where(h => TravelersTower.LegendaryOf(h.Id) == null).Select(h => h.Id).OrderBy(id => id).ToList();
+
+        /// <summary>
+        /// What a planning table answers a legendary hunt asked for: «une seule à la fois», and its
+        /// map in the bag, which the hunt takes -- «en cas de défaite … vous récupérez la carte».
+        /// </summary>
+        public static int LegendaryAnswer(LegendaryHunts.Definition? legendary, bool alreadyHunting, int maps)
+        {
+            if (legendary == null || TravelersTower.LegendaryOf(legendary.Id) != null) return TreasureHunts.NoQuestFound;
+            if (alreadyHunting) return TreasureHunts.AlreadyHaveQuest;
+            if (maps < 1) return TreasureHunts.NotAvailable;
+            return TreasureHunts.RequestOk;
+        }
+
+        /// <summary>The planning table used: its window, with the hunts it offers (hhg).</summary>
+        public static async Task OpenPlanningTableAsync(NetworkStream stream, RegisteredInteractive interactive, InteractiveAction action)
+        {
+            var state = SessionContext.State;
+            await SessionRegistry.BroadcastToMapAsync(state.MapId, ConnectionProtocol.Push(Op.Iwn,
+                ConnectionProtocol.BuildElementInUse(interactive.Element.Id, action.SkillId, state.CharacterId)));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Hhg, TreasureHuntProtocol.BuildLegendaryHunts(PlanningTableHunts())));
+        }
+
+        /// <summary>A legendary hunt asked for (hhn): its map spent, and the hunt under way.</summary>
+        public static async Task LegendaryAskedAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] body = ConnectionProtocol.ReadPayload(frame, Op.Hhn);
+            if (body == null) return;
+            var state = SessionContext.State;
+            var legendary = LegendaryHunts.Of(TreasureHuntProtocol.ReadLegendaryAsked(body));
+            int answer = LegendaryAnswer(legendary, TreasureHunts.Get(state.CharacterId, TreasureHunts.Legendary) != null,
+                                         legendary == null ? 0 : Equipment.HowMany(legendary.MapItem));
+
+            TreasureHunts.Hunt? hunt = null;
+            if (answer == TreasureHunts.RequestOk && await Equipment.TakeAsync(stream, legendary!.MapItem, 1))
+            {
+                hunt = TreasureHunts.Begin(TreasureHunts.World, state.CharacterId, TreasureHunts.Legendary,
+                                           legendary.Id, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), _dice);
+                if (hunt == null)
+                {
+                    await Equipment.GiveAsync(stream, legendary.MapItem, 1);
+                    answer = TreasureHunts.NoQuestFound;
+                }
+            }
+            else if (answer == TreasureHunts.RequestOk) answer = TreasureHunts.NotAvailable;
+
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Hhk,
+                TreasureHuntProtocol.BuildRequestAnswer(TreasureHunts.Legendary, answer)));
+            if (hunt == null) return;
+
+            TreasureHunts.Save(hunt);
+            Console.WriteLine($"[Hunts] {state.CharacterName} sets out on legendary hunt {hunt.Legendary} from {hunt.StartMap}.");
+            await SendHuntAsync(stream, hunt);
+        }
+
         /// <summary>A flag put on a step (hhv), on the map one stands on.</summary>
         public static async Task FlagAsync(NetworkStream stream, byte[] frame)
         {
@@ -397,8 +460,22 @@ namespace Jondo.Unity.Server.Handlers
             {
                 if (monster.EsInvocado || monster.MonsterId <= 0) continue;
                 var legendary = LegendaryHunts.EndingWith(monster.MonsterId);
-                var dimension = legendary == null ? null : TravelersTower.LegendaryOf(legendary.Id);
-                if (dimension == null) continue;
+                if (legendary == null) continue;
+                var dimension = TravelersTower.LegendaryOf(legendary.Id);
+
+                // A wanted criminal's: «seul le lanceur reçoit le coffre», and «en cas de défaite, la
+                // chasse est perdue, mais la carte est récupérée» (DPLN).
+                if (dimension == null)
+                {
+                    var mine = TreasureHunts.Get(who, TreasureHunts.Legendary);
+                    if (mine == null || mine.Legendary != legendary.Id || !mine.ReadyToFight) continue;
+                    TreasureHunts.End(who, TreasureHunts.Legendary);
+                    await Equipment.GiveAsync(stream, won ? legendary.Chest : legendary.MapItem, 1);
+                    Console.WriteLine($"[Hunts] {SessionContext.State.CharacterName} has " + (won ? "beaten" : "lost to") +
+                                      $" criminal {legendary.Monster} of legendary hunt {legendary.Id}.");
+                    await SendFinishedAsync(stream, TreasureHunts.Legendary);
+                    return;
+                }
 
                 if (!won)
                 {

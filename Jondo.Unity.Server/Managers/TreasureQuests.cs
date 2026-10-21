@@ -49,6 +49,17 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The Anutrof box: its element and type, and its skill, «Utilizar» under the names above.</summary>
         public const int Box = 484993, BoxType = 233, UseSkill = 184;
 
+        /// <summary>
+        /// The Pupitre, where a legendary hunt's map is put together from its fragments: «Fabricar un
+        /// mapa», skill 275, whose recipes are the maps' (8 fragments for Gein's), job 1 -- «aucun
+        /// métier ni prérequis», DPLN. INFERRED: it is 485497, the desk with the magnifier and the
+        /// scrolls; the other, with the compass and a map, is the planning table.
+        /// </summary>
+        public const int Desk = 485497, DeskType = 236, MakeMapSkill = 275;
+
+        /// <summary>The Mesa de planificación: «Buscar un tesoro legendario», skill 277 (hhg, then hhn).</summary>
+        public const int PlanningTable = 485495, PlanningTableType = 237, LegendarySkill = 277;
+
         /// <summary>«3 ou 4 étapes pour une chasse normale»; five steps a stage.</summary>
         public const int FewestStages = 3, MostStages = 4, StepsPerStage = 5;
 

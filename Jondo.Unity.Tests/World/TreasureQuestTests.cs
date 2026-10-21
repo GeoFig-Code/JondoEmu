@@ -163,5 +163,48 @@ namespace Jondo.Unity.Tests.World
             Assert.All(box.Actions, a => Assert.Equal((InteractiveActionKind.TreasureBox, 184), (a.Kind, a.SkillId)));
             Assert.Equal(new[] { 362, 363, 364, 365, 366, 367 }, box.Actions.Select(a => a.SkillNameId));
         }
+
+        /// <summary>The Pupitre makes maps (275), the planning table opens the legendary hunts (277).</summary>
+        [Fact]
+        public void The_room_has_its_desk_and_planning_table()
+        {
+            Interactives.Initialize();
+            if (Interactives.ElementsOf(TreasureQuests.Room).Count == 0) return;   // no world data
+            InteractiveRegistry.Initialize();
+            var room = InteractiveRegistry.OnMap(TreasureQuests.Room).ToList();
+            var desk = Assert.Single(room, i => i.Element.Id == TreasureQuests.Desk);
+            Assert.Equal((InteractiveActionKind.Workshop, 275), (desk.Actions.Single().Kind, desk.Actions.Single().SkillId));
+            var table = Assert.Single(room, i => i.Element.Id == TreasureQuests.PlanningTable);
+            Assert.Equal((InteractiveActionKind.PlanningTable, 277), (table.Actions.Single().Kind, table.Actions.Single().SkillId));
+        }
+
+        /// <summary>The planning table offers the wanted criminals' hunts -- Gein's is 5 --, not the fissures'.</summary>
+        [Fact]
+        public void The_planning_table_offers_the_wanted_hunts()
+        {
+            var offered = TreasureHuntHandler.PlanningTableHunts();
+            if (offered.Count == 0) return;   // no client data
+            Assert.Contains(5, offered);
+            Assert.All(TravelersTower.Dimensions, d => Assert.DoesNotContain(d.Legendary, offered));
+        }
+
+        /// <summary>One legendary hunt at a time, and its map in the bag.</summary>
+        [Fact]
+        public void A_legendary_hunt_needs_its_map()
+        {
+            var gein = LegendaryHunts.Of(5);
+            if (gein == null) return;   // no client data
+            Assert.Equal(TreasureHunts.RequestOk, TreasureHuntHandler.LegendaryAnswer(gein, false, 1));
+            Assert.Equal(TreasureHunts.NotAvailable, TreasureHuntHandler.LegendaryAnswer(gein, false, 0));
+            Assert.Equal(TreasureHunts.AlreadyHaveQuest, TreasureHuntHandler.LegendaryAnswer(gein, true, 1));
+            Assert.Equal(TreasureHunts.NoQuestFound, TreasureHuntHandler.LegendaryAnswer(null, false, 1));
+            var fissure = LegendaryHunts.Of(TravelersTower.Dimensions[0].Legendary);
+            if (fissure != null) Assert.Equal(TreasureHunts.NoQuestFound, TreasureHuntHandler.LegendaryAnswer(fissure, false, 1));
+        }
+
+        /// <summary>The planning table's message: the ids, packed in f1.</summary>
+        [Fact]
+        public void The_planning_tables_hunts_travel_packed()
+            => Assert.Equal("0a03050810", Convert.ToHexString(TreasureHuntProtocol.BuildLegendaryHunts(new[] { 5, 8, 16 })).ToLowerInvariant());
     }
 }

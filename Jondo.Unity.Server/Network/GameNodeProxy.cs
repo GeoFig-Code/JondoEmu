@@ -972,6 +972,8 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.TreasureHuntHandler.DigAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hgn)))
                     await Handlers.TreasureHuntHandler.GiveUpAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hhn)))
+                    await Handlers.TreasureHuntHandler.LegendaryAskedAsync(stream, payload);
                 // The automatic dungeon search (MatchmakingHandler).
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kjx)))
                     await Handlers.MatchmakingHandler.StateAsync(stream, payload);

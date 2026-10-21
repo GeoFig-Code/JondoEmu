@@ -50,6 +50,12 @@ public static class Op
     /// <summary>A treasure hunt over: f2 type.</summary>
     public const string Hgm = "hgm";
 
+    /// <summary>The legendary hunts a planning table offers: f1 their ids. Opens LegendaryHuntsUi.</summary>
+    public const string Hhg = "hhg";
+
+    /// <summary>A legendary hunt asked for at the planning table (client): f2 its id.</summary>
+    public const string Hhn = "hhn";
+
     /// <summary>A divine dimension's world portal crossed with «Usar» (client): f3 the portal.</summary>
     public const string Hhu = "hhu";
 
