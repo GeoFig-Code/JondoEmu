@@ -1,0 +1,125 @@
+{
+ "version": "3.6.10.11",
+ "rewards": [
+  {
+   "level": 1,
+   "picto": "guildAccess",
+   "nameId": 1161196,
+   "descriptionId": 1161197
+  },
+  {
+   "level": 2,
+   "picto": "guildShop",
+   "nameId": 1161204,
+   "descriptionId": 1161205
+  },
+  {
+   "level": 3,
+   "picto": "guildBank",
+   "nameId": 1161206,
+   "descriptionId": 1161207
+  },
+  {
+   "level": 4,
+   "picto": "guildDevanture",
+   "nameId": 1161208,
+   "descriptionId": 1161209
+  },
+  {
+   "level": 5,
+   "picto": "guildPod",
+   "nameId": 1161210,
+   "descriptionId": 1161211
+  },
+  {
+   "level": 6,
+   "picto": "guildHall",
+   "nameId": 1161212,
+   "descriptionId": 1161213
+  },
+  {
+   "level": 7,
+   "picto": "guildBank",
+   "nameId": 1161218,
+   "descriptionId": 1161219
+  },
+  {
+   "level": 8,
+   "picto": "guildDevanture",
+   "nameId": 1161220,
+   "descriptionId": 1161221
+  },
+  {
+   "level": 9,
+   "picto": "guildBonus",
+   "nameId": 1161222,
+   "descriptionId": 1161223
+  },
+  {
+   "level": 10,
+   "picto": "guildHall",
+   "nameId": 1161224,
+   "descriptionId": 1161225
+  },
+  {
+   "level": 11,
+   "picto": "guildBank",
+   "nameId": 1161226,
+   "descriptionId": 1161227
+  },
+  {
+   "level": 12,
+   "picto": "guildPod",
+   "nameId": 1161228,
+   "descriptionId": 1161229
+  },
+  {
+   "level": 13,
+   "picto": "guildBonus",
+   "nameId": 1161230,
+   "descriptionId": 1161231
+  },
+  {
+   "level": 14,
+   "picto": "guildDevanture",
+   "nameId": 1161232,
+   "descriptionId": 1161233
+  },
+  {
+   "level": 15,
+   "picto": "guildCosmetic",
+   "nameId": 1161234,
+   "descriptionId": 1161235
+  },
+  {
+   "level": 16,
+   "picto": "guildHall",
+   "nameId": 1161236,
+   "descriptionId": 1161237
+  },
+  {
+   "level": 17,
+   "picto": "guildTraining",
+   "nameId": 1161238,
+   "descriptionId": 1161239
+  },
+  {
+   "level": 18,
+   "picto": "guildDevanture",
+   "nameId": 1161240,
+   "descriptionId": 1161241
+  },
+  {
+   "level": 19,
+   "picto": "guildPod",
+   "nameId": 1161242,
+   "descriptionId": 1161243
+  },
+  {
+   "level": 20,
+   "picto": "guildHall",
+   "nameId": 1161246,
+   "descriptionId": 1161247
+  }
+ ]
+}

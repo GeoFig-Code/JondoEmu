@@ -17,10 +17,9 @@ namespace Jondo.Unity.Server.Managers
     /// </para>
     /// <para>
     /// It is the GUILD's: every member opens the same one, whichever bank it is. Its content is
-    /// kept per guild and per tab in <see cref="StorageStacks"/>. A guild has one tab: that is what
-    /// the ivl of every guild founded in the captures says ("Gremio/muchas acciones en mi gremio
-    /// como lider", frame 10); the second and third come from the guild hall's evolutions, which
-    /// Jondo does not have.
+    /// kept per guild and per tab in <see cref="StorageStacks"/>. A new guild has one tab: that is
+    /// what the ivl of every guild founded in the captures says ("Gremio/muchas acciones en mi
+    /// gremio como lider", frame 10); the others come with the guild's level (<see cref="TabsOf"/>).
     /// </para>
     /// <para>
     /// The rights are the ranks' own (<see cref="GuildStore.Rank.Rights"/>), three per tab, and
@@ -93,8 +92,47 @@ namespace Jondo.Unity.Server.Managers
             new Tab { Index = 4, ConsultRight = 35, DepositRight = 36, WithdrawRight = 37, NameKey = "guild.chest.tab.3.name", ItemTypes = AllTypes },
         };
 
-        /// <summary>How many tabs a guild has: one, the founding one.</summary>
-        public static int TabsOf(long guildId) => 1;
+        /// <summary>
+        /// How many tabs a guild has: the founding one, and one more for each «Pestaña de cofre» its
+        /// level has reached -- the client's GuildLevelRewardData, picto "guildBank", at levels 3, 7
+        /// and 11 (datos/guild_level_rewards_*.json, tools/extract_guild_level_rewards.py).
+        /// </summary>
+        public static int TabsOf(long guildId)
+        {
+            int level;
+            try { level = GuildStore.ById(guildId)?.Level ?? 1; }
+            catch { level = 1; }
+            return TabsAtLevel(level);
+        }
+
+        /// <summary>The tabs a guild of this level has, four at most.</summary>
+        public static int TabsAtLevel(int level)
+            => Math.Min(Tabs.Count, 1 + TabLevels.Count(at => at <= level));
+
+        /// <summary>The levels a chest tab comes at, from the client's guild level rewards.</summary>
+        private static IReadOnlyList<int> TabLevels => _tabLevels ??= ReadTabLevels();
+        private static IReadOnlyList<int>? _tabLevels;
+
+        private static IReadOnlyList<int> ReadTabLevels()
+        {
+            string path = Jondo.Unity.Launcher.Paths.Resolve("guild_level_rewards_3.6.10.11.json");
+            var levels = new List<int>();
+            try
+            {
+                if (!System.IO.File.Exists(path)) return levels;
+                using var doc = System.Text.Json.JsonDocument.Parse(System.IO.File.ReadAllText(path));
+                foreach (var reward in doc.RootElement.GetProperty("rewards").EnumerateArray())
+                {
+                    if (reward.GetProperty("picto").GetString() == "guildBank")
+                        levels.Add(reward.GetProperty("level").GetInt32());
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Guild chest] Could not read the guild level rewards: {ex.Message}");
+            }
+            return levels;
+        }
 
         /// <summary>The tabs of this guild, in order.</summary>
         public static IReadOnlyList<Tab> TabsOfGuild(long guildId) => Tabs.Take(TabsOf(guildId)).ToList();
