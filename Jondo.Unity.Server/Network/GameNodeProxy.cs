@@ -1019,6 +1019,8 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.LobbyHandler.FreeAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jga)))
                     await Handlers.GuildHandler.WeeklyRewardsAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jfy)))
+                    await Handlers.GuildHandler.CollectWeeklyRewardsAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jgr)))
                     await Handlers.GuildHandler.MissionPreferencesAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jet)))

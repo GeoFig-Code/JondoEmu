@@ -1174,11 +1174,17 @@ public static class Op
     /// <summary>S→C: answer to the jeu.</summary>
     public const string Jei = "jei";
 
-    /// <summary>C→S: the member's weekly rewards. Answered with <see cref="Jfz"/>: f1 { f1 his tokens of the week }.</summary>
+    /// <summary>
+    /// C→S: the member's weekly rewards. Answered with <see cref="Jfz"/>: f1 { f1 his guild
+    /// acknowledgments waiting } -- "0a00" in the capture, though he had just earned tokens.
+    /// </summary>
     public const string Jga = "jga";
 
-    /// <summary>S→C: answer to the jga.</summary>
+    /// <summary>S→C: answer to the jga and the jfy.</summary>
     public const string Jfz = "jfz";
+
+    /// <summary>C→S: «Recuperar» in the weekly rewards window (GuildWeeklyActivityRewardsUi), empty. Answered with <see cref="Jfz"/>.</summary>
+    public const string Jfy = "jfy";
 
     /// <summary>C→S: when the week starts again, asked at world entry and from the guild window.</summary>
     public const string Jew = "jew";

@@ -53,7 +53,7 @@ namespace Jondo.Unity.Tests.World
 
         /// <summary>
         /// The window's two answers that went empty: the preferences back as the client reads them
-        /// (jgq f3 { f1 jgs }), and the member's tokens of the week as the rewards' first tile
+        /// (jgq f3 { f1 jgs }), and the member's acknowledgments waiting as the rewards' first tile
         /// (jfz f1 { f1 }).
         /// </summary>
         [Fact]

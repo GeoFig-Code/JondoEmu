@@ -371,16 +371,37 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// A member's weekly rewards (jga → jfz): his tokens of the week, which the client's
-        /// GuildWeeklyActivityRewardsUi draws as its first tile and warns about at the cap. The
-        /// missions give no other reward here, so no other tile follows.
+        /// A member's weekly rewards (jga → jfz): his guild acknowledgments waiting, which the
+        /// client's GuildWeeklyActivityRewardsUi draws as its first tile and warns about at 100. The
+        /// capture asked it with tokens just earned and got "0a00": the tokens go to the bag at once.
         /// </summary>
         public static async Task WeeklyRewardsAsync(NetworkStream stream, byte[] frame)
         {
             long who = SessionContext.State.CharacterId;
-            int tokens = who == 0 ? 0 : GuildActivity.TokensOf(who, DateTimeOffset.UtcNow);
-            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jfz, GuildProtocol.BuildWeeklyRewards(tokens),
+            int waiting = who == 0 ? 0 : GuildActivity.AcknowledgmentsOf(who);
+            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jfz, GuildProtocol.BuildWeeklyRewards(waiting),
                                                                ConnectionProtocol.RequestId(frame)));
+        }
+
+        /// <summary>
+        /// «Recuperar» in the weekly rewards window (jfy): the acknowledgments waiting go to the bag
+        /// as their item, with the «Has conseguido» line, and the window is told it is empty (jfz).
+        /// </summary>
+        public static async Task CollectWeeklyRewardsAsync(NetworkStream stream, byte[] frame)
+        {
+            long who = SessionContext.State.CharacterId;
+            int waiting = who == 0 ? 0 : GuildActivity.AcknowledgmentsOf(who);
+            if (waiting > 0 && await WorkshopHandler.GiveAsync(stream, GuildActivity.AcknowledgmentItem, waiting))
+            {
+                GuildActivity.TakeAcknowledgments(who, waiting);
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildSystemMessage(
+                    InfoMessages.ItemGained, waiting.ToString(), GuildActivity.AcknowledgmentItem.ToString())));
+                await ItemUseHandler.WeighAsync(stream);
+                Console.WriteLine($"[Guild] {SessionContext.State.CharacterName} collects {waiting} guild acknowledgments.");
+            }
+            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jfz,
+                GuildProtocol.BuildWeeklyRewards(who == 0 ? 0 : GuildActivity.AcknowledgmentsOf(who)),
+                ConnectionProtocol.RequestId(frame)));
         }
 
         /// <summary>When the week starts again (jew → jez), on root 3 with the request's id.</summary>

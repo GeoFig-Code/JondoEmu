@@ -104,6 +104,34 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(0, GuildActivity.TokensOf(7001, NextWeek));
         }
 
+        /// <summary>
+        /// A milestone's acknowledgments wait for whoever took part in the week, up to 100; the
+        /// window (jga → jfz) shows them, and collecting takes them out.
+        /// </summary>
+        [Fact]
+        public async System.Threading.Tasks.Task Milestones_leave_acknowledgments_to_collect()
+        {
+            var guild = GuildStore.Create(7003, "Jondo", 165, 8, 16744448, 9476018);
+            GuildStore.Join(7002, guild.Id);
+            GuildActivity.Choose(guild.Id, 1, Array.Empty<byte>(), ThisWeek);
+
+            GuildActivity.Credit(guild, 7003, 10, 5000, ThisWeek);          // the first milestone: 10
+            Assert.Equal(10, GuildActivity.AcknowledgmentsOf(7003));
+            Assert.Equal(0, GuildActivity.AcknowledgmentsOf(7002));          // no tokens this week, no part
+
+            GuildActivity.Acknowledge(7003, 500);
+            Assert.Equal(GuildActivity.AcknowledgmentCap, GuildActivity.AcknowledgmentsOf(7003));
+            GuildActivity.TakeAcknowledgments(7003, 30);
+            Assert.Equal(70, GuildActivity.AcknowledgmentsOf(7003));
+
+            await using var wire = await global::Jondo.Unity.Tests.Combat.PortalTests.Wire.Open(7003);
+            using (SessionContext.Push(wire.Session))
+                await Jondo.Unity.Server.Handlers.GuildHandler.WeeklyRewardsAsync(wire.Session.Stream!,
+                    ConnectionProtocol.Push(Jondo.Unity.Protocol.Op.Jga, Array.Empty<byte>()));
+            var frames = await wire.Drain();
+            Assert.Equal("0a020846", Hex(frames.Single(f => f.Op == "jfz").Payload));
+        }
+
         /// <summary>A guild with no tier gathers no points, though its member gets his tokens.</summary>
         [Fact]
         public void Without_a_tier_there_are_no_points()

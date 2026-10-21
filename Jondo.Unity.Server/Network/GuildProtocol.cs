@@ -106,12 +106,13 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildMissionConfigurationRefused() => BuildEmptyTab(1);
 
         /// <summary>
-        /// A member's weekly rewards (jfz): f1 { f1 his tokens of the week, f2 { f1 item, f2
-        /// quantity } each other reward } -- ix.nnb's reading.
+        /// A member's weekly rewards (jfz): f1 { f1 his guild acknowledgments waiting, f2 { f1 item,
+        /// f2 quantity } each other reward } -- ix.nnb's reading, the first tile being the krj's
+        /// acknowledgment item with its 100 warning.
         /// </summary>
-        public static byte[] BuildWeeklyRewards(int tokens, IEnumerable<(int Item, int Quantity)> others = null)
+        public static byte[] BuildWeeklyRewards(int acknowledgments, IEnumerable<(int Item, int Quantity)> others = null)
         {
-            var jgb = Pb.New().VarIfNotZero(1, tokens);
+            var jgb = Pb.New().VarIfNotZero(1, acknowledgments);
             foreach (var (item, quantity) in others ?? Array.Empty<(int, int)>())
                 jgb.Msg(2, Pb.New().Var(1, item).Var(2, quantity));
             return Pb.New().Msg(1, jgb).Build();

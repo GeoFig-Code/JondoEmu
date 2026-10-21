@@ -84,6 +84,15 @@ namespace Jondo.Unity.Server.Managers
         public const int HigherTokenCap = 300;
         public const int HigherCapLevel = 13;
 
+        /// <summary>
+        /// A member's guild acknowledgments waiting in the weekly rewards window stop here: the world
+        /// entry's krj (f2 f1 f6) and «Has alcanzado el límite de 100 reconocimientos de gremio».
+        /// </summary>
+        public const int AcknowledgmentCap = 100;
+
+        /// <summary>An acknowledgment is an item: the krj's f2 f1 f5, the token (32441) being its f1.</summary>
+        public const int AcknowledgmentItem = 32442;
+
         /// <summary>What a contribution gives besides its guild kamas.</summary>
         public const int ContributionTokens = 10;
         public const int ContributionActivityPoints = 100;
@@ -167,6 +176,43 @@ namespace Jondo.Unity.Server.Managers
             return week;
         }
 
+        /// <summary>A member's guild acknowledgments waiting to be collected.</summary>
+        public static int AcknowledgmentsOf(long characterId)
+        {
+            using var connection = GuildStore.Open();
+            var query = connection.CreateCommand();
+            query.CommandText = "SELECT Pending FROM GuildAcknowledgments WHERE CharacterId = $c;";
+            query.Parameters.AddWithValue("$c", characterId);
+            var value = query.ExecuteScalar();
+            return value == null || value is DBNull ? 0 : Convert.ToInt32(value);
+        }
+
+        /// <summary>Adds to a member's waiting acknowledgments, up to the cap.</summary>
+        public static void Acknowledge(long characterId, int acknowledgments)
+        {
+            if (acknowledgments <= 0) return;
+            using var connection = GuildStore.Open();
+            var add = connection.CreateCommand();
+            add.CommandText = @"
+                INSERT INTO GuildAcknowledgments (CharacterId, Pending) VALUES ($c, MIN($n, $cap))
+                ON CONFLICT (CharacterId) DO UPDATE SET Pending = MIN(Pending + $n, $cap);";
+            add.Parameters.AddWithValue("$c", characterId);
+            add.Parameters.AddWithValue("$n", acknowledgments);
+            add.Parameters.AddWithValue("$cap", AcknowledgmentCap);
+            add.ExecuteNonQuery();
+        }
+
+        /// <summary>Takes collected acknowledgments out of the window.</summary>
+        public static void TakeAcknowledgments(long characterId, int acknowledgments)
+        {
+            using var connection = GuildStore.Open();
+            var take = connection.CreateCommand();
+            take.CommandText = "UPDATE GuildAcknowledgments SET Pending = MAX(0, Pending - $n) WHERE CharacterId = $c;";
+            take.Parameters.AddWithValue("$c", characterId);
+            take.Parameters.AddWithValue("$n", acknowledgments);
+            take.ExecuteNonQuery();
+        }
+
         /// <summary>A member's tokens of the week.</summary>
         public static int TokensOf(long characterId, DateTimeOffset when)
         {
@@ -223,6 +269,13 @@ namespace Jondo.Unity.Server.Managers
             foreach (var milestone in reached.OrderBy(m => m.ActivityPoints))
                 GuildStore.Log(guild.Id, Network.GuildLogProtocol.WeeklyStep,
                     Network.GuildLogProtocol.WeeklyStepLine(steps.IndexOf(milestone) + 1, tier.Id));
+            // Each milestone's acknowledgments, to whoever took part in the week -- earned tokens in
+            // it --, waiting in his weekly rewards window up to the cap. Who gets them is inferred.
+            int acknowledgments = reached.Sum(m => m.AcknowledgmentPoints);
+            if (acknowledgments > 0)
+                foreach (var member in GuildStore.Members(guild.Id))
+                    if (TokensOf(member.CharacterId, when) > 0) Acknowledge(member.CharacterId, acknowledgments);
+
             int level = experience > 0 ? GuildStore.AddGuildExperience(guild.Id, experience) : guild.Level;
             if (experience > 0)
                 Program.LogDebug($"[Guild] «{guild.Name}» reaches a milestone of tier {tier.Level}: +{experience} experience, level {level}.");
