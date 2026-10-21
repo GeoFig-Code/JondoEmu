@@ -266,8 +266,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
 ### 🏦 Banks and marketplaces
 
 - ✅ The bank: the account's items and kamas, shared by all its characters, in all ten banks of the world
-- ✅ The guild chest, in the 24 banks that have one, with the ranks' rights per tab
-- ❌ The bank's level condition; the guild chest's extra tabs, kamas and history
+- ✅ The guild chest, in the 24 banks that have one, with the ranks' rights per tab and a new tab at
+  guild levels 3, 7 and 11
+- ❌ The bank's level condition; the guild chest's kamas and history
 - ✅ The seven marketplaces — resources, equipment, consumables, runes, creatures, souls and
   cosmetics — across **40 counters**, the breeders' village's four among them: browse, buy lots of 1, 10, 100 or 1000, sell for the 2 % tax,
   take a lot back, change its price, the sales history
