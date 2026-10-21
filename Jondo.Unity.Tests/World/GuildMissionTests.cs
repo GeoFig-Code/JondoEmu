@@ -52,6 +52,27 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
+        /// The window's two answers that went empty: the preferences back as the client reads them
+        /// (jgq f3 { f1 jgs }), and the member's tokens of the week as the rewards' first tile
+        /// (jfz f1 { f1 }).
+        /// </summary>
+        [Fact]
+        public void The_preferences_and_the_weekly_rewards_go_back_as_the_client_reads_them()
+        {
+            byte[] jgs = Pb.New().Bytes(1, new byte[] { 1, 2 }).Bytes(2, new byte[] { 4 }).Build();
+            var jgq = ProtoMessage.Parse(GuildProtocol.BuildMissionPreferences(jgs)).Fields.Single();
+            Assert.Equal(3, jgq.FieldNumber);
+            var inner = ProtoMessage.Parse(jgq.BytesValue).Fields.Single();
+            Assert.Equal(1, inner.FieldNumber);
+            Assert.Equal(jgs, inner.BytesValue);
+
+            Assert.Equal("0a03" + "08f001", Convert.ToHexString(GuildProtocol.BuildWeeklyRewards(240)).ToLowerInvariant());
+            Assert.Equal("0a00", Convert.ToHexString(GuildProtocol.BuildWeeklyRewards(0)).ToLowerInvariant());
+            Assert.Equal("0a0a" + "080a" + "1206" + "08b9fd01" + "1001",
+                         Convert.ToHexString(GuildProtocol.BuildWeeklyRewards(10, new[] { (32441, 1) })).ToLowerInvariant());
+        }
+
+        /// <summary>
         /// The preferences: f1 the super categories, f2 the ranks; twelve drawn among them, none
         /// twice and none of the events'. None chosen is all.
         /// </summary>

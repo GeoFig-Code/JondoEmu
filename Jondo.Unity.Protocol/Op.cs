@@ -1161,7 +1161,7 @@ public static class Op
     /// <summary>S→C: answer to the jeu.</summary>
     public const string Jei = "jei";
 
-    /// <summary>C→S: the perks tab. Answered with <see cref="Jfz"/>, "0a00" for none.</summary>
+    /// <summary>C→S: the member's weekly rewards. Answered with <see cref="Jfz"/>: f1 { f1 his tokens of the week }.</summary>
     public const string Jga = "jga";
 
     /// <summary>S→C: answer to the jga.</summary>
@@ -1176,7 +1176,7 @@ public static class Op
     /// </summary>
     public const string Jez = "jez";
 
-    /// <summary>C→S: asked with the jew from the guild window. Answered with <see cref="Jgq"/>, "0a00" for none.</summary>
+    /// <summary>C→S: the missions' ranks and categories. Answered with <see cref="Jgq"/>: f3 { f1 the jgs preferences }.</summary>
     public const string Jgr = "jgr";
 
     /// <summary>S→C: answer to the jgr.</summary>

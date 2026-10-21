@@ -265,6 +265,37 @@ namespace Jondo.Unity.Server.Handlers
             => await WriteAsync(stream, ConnectionProtocol.Answer(answer, GuildProtocol.BuildEmptyTab(field),
                                                                   ConnectionProtocol.RequestId(frame)));
 
+        /// <summary>
+        /// The missions' ranks and categories (jgr → jgq): the preferences the tier's choice carried
+        /// (jet f4), the waiting ones when a change waits for next week -- what the client's
+        /// GuildMissionRanksAndCategoriesOption shows. Outside a guild, the empty answer.
+        /// </summary>
+        public static async Task MissionPreferencesAsync(NetworkStream stream, byte[] frame)
+        {
+            long who = SessionContext.State.CharacterId;
+            var guild = who == 0 ? null : GuildStore.GuildOf(who);
+            byte[] answer = GuildProtocol.BuildEmptyTab(1);
+            if (guild != null)
+            {
+                var week = GuildActivity.Of(guild.Id, DateTimeOffset.UtcNow);
+                answer = GuildProtocol.BuildMissionPreferences(week.NextPreferences ?? week.Preferences);
+            }
+            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jgq, answer, ConnectionProtocol.RequestId(frame)));
+        }
+
+        /// <summary>
+        /// A member's weekly rewards (jga → jfz): his tokens of the week, which the client's
+        /// GuildWeeklyActivityRewardsUi draws as its first tile and warns about at the cap. The
+        /// missions give no other reward here, so no other tile follows.
+        /// </summary>
+        public static async Task WeeklyRewardsAsync(NetworkStream stream, byte[] frame)
+        {
+            long who = SessionContext.State.CharacterId;
+            int tokens = who == 0 ? 0 : GuildActivity.TokensOf(who, DateTimeOffset.UtcNow);
+            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jfz, GuildProtocol.BuildWeeklyRewards(tokens),
+                                                               ConnectionProtocol.RequestId(frame)));
+        }
+
         /// <summary>When the week starts again (jew → jez), on root 3 with the request's id.</summary>
         public static async Task WeeklyResetAsync(NetworkStream stream, byte[] frame)
             => await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jez, GuildProtocol.BuildWeeklyReset(DateTime.UtcNow),

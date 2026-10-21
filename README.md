@@ -323,6 +323,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Dungeon, expedition, monster-family and Infinite Dreams missions count as you play, once per member,
   with the «¡Encargo terminado!» notice, *gremichas* and activity points
 - ✅ Rerolling a mission with guild kamas, and marking missions as interesting for the rest of the guild
+- ✅ Your weekly rewards window, and the missions' ranks and categories option showing what the guild chose
 - ✅ The *Casas* tab: the houses the members share with the guild
 - ❌ Anomaly and dream-trial missions
 

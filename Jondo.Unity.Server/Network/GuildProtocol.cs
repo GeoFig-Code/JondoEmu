@@ -89,6 +89,25 @@ namespace Jondo.Unity.Server.Network
             => field == 0 ? Array.Empty<byte>() : Pb.New().Bytes(field, Array.Empty<byte>()).Build();
 
         /// <summary>
+        /// The missions' ranks and categories (jgq): f3 { f1 the preferences, jgs { f1 the super
+        /// categories, f2 the ranks } } -- the oneof's third case, the one fft.beie reads.
+        /// </summary>
+        public static byte[] BuildMissionPreferences(byte[] jgs)
+            => Pb.New().Msg(3, Pb.New().Bytes(1, jgs ?? Array.Empty<byte>())).Build();
+
+        /// <summary>
+        /// A member's weekly rewards (jfz): f1 { f1 his tokens of the week, f2 { f1 item, f2
+        /// quantity } each other reward } -- ix.nnb's reading.
+        /// </summary>
+        public static byte[] BuildWeeklyRewards(int tokens, IEnumerable<(int Item, int Quantity)> others = null)
+        {
+            var jgb = Pb.New().VarIfNotZero(1, tokens);
+            foreach (var (item, quantity) in others ?? Array.Empty<(int, int)>())
+                jgb.Msg(2, Pb.New().Var(1, item).Var(2, quantity));
+            return Pb.New().Msg(1, jgb).Build();
+        }
+
+        /// <summary>
         /// The guild window's header (jhh): f1 the founding date, f3 the level, f5 the experience
         /// the level starts at, f6 the guild's experience, f7 its guild kamas, f9 the experience
         /// the next level starts at and f10 how many members it has.
