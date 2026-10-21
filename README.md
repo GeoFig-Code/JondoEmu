@@ -523,6 +523,7 @@ An alliance is made of characters, not guilds.
 
 - ✅ Quests handed over by NPCs
 - ✅ Objectives completed by clicking and by beating monsters
+- ✅ Quest items dropped by monsters to whoever is on the quest, and hunters' meat
 - ✅ Step rewards: experience, kamas and emotes
 - 🟡 Start conditions: 935 of the 1,976 are fully understood
 - ✅ Items that validate a quest objective when used (316 of them)
