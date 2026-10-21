@@ -333,20 +333,36 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildDirectory(IReadOnlyList<DirectoryEntry> entries)
         {
             var jiv = Pb.New();
-            foreach (var entry in entries)
-            {
-                jiv.Msg(1, Pb.New()
-                    .Msg(1, Pb.New()
-                        .Msg(1, Pb.New()
-                            .Var(1, entry.LeaderId)
-                            .Msg(6, ProfileBody(entry.Guild, entry.Profile, entry.LeaderName))
-                            .Var(7, entry.Members))
-                        .Msg(3, Emblem(entry.Guild)))
-                    .Var(2, entry.Guild.Id)
-                    .Str(3, entry.Guild.Name)
-                    .Var(4, entry.Guild.Level));
-            }
+            foreach (var entry in entries) jiv.Msg(1, DirectoryGuild(entry));
             return jiv.Build();
+        }
+
+        /// <summary>A guild as the directory lists it (les): the leader, the sheet, how many they are, the emblem.</summary>
+        private static Pb DirectoryGuild(DirectoryEntry entry)
+            => Pb.New()
+                .Msg(1, Pb.New()
+                    .Msg(1, Pb.New()
+                        .Var(1, entry.LeaderId)
+                        .Msg(6, ProfileBody(entry.Guild, entry.Profile, entry.LeaderName))
+                        .Var(7, entry.Members))
+                    .Msg(3, Emblem(entry.Guild)))
+                .Var(2, entry.Guild.Id)
+                .Str(3, entry.Guild.Name)
+                .Var(4, entry.Guild.Level);
+
+        /// <summary>
+        /// A guild's card (jie): f1 its members, each as the jgu lists them, f2 its founding in
+        /// seconds, f3 the guild as the directory lists it. Read off fft.behh: the card's leader is
+        /// the directory's f1 looked up among the members, its member count the directory's f7, and
+        /// its creation date the f2.
+        /// </summary>
+        public static byte[] BuildGuildCard(DirectoryEntry entry, IEnumerable<MemberRow> members, long foundedSeconds)
+        {
+            var jie = Pb.New();
+            foreach (var r in members)
+                jie.Msg(1, MemberEntry(r.Member, r.Name, r.Level, r.AccountId, r.Breed, r.AchievementPoints,
+                                       r.Contributed, r.Online));
+            return jie.VarIfNotZero(2, foundedSeconds).Msg(3, DirectoryGuild(entry)).Build();
         }
 
         /// <summary>

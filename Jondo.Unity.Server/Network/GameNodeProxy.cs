@@ -1021,6 +1021,8 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.GuildHandler.MissionPreferencesAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jet)))
                     await Handlers.GuildHandler.ChooseTierAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jhp)))
+                    await Handlers.GuildHandler.ShowGuildAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jey)))
                     await Handlers.GuildHandler.SaveTierAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jgg)))

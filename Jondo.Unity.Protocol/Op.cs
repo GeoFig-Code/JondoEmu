@@ -1466,6 +1466,18 @@ public static class Op
     /// <summary>S→C: the guild's public sheet in the window (description, leader, recruitment).</summary>
     public const string Jci = "jci";
 
+    /// <summary>
+    /// C→S: a guild's card, { f1 the guild } -- its name clicked in a chat link (HyperlinkShowGuild)
+    /// or in the friends list. Answered with <see cref="Jie"/>.
+    /// </summary>
+    public const string Jhp = "jhp";
+
+    /// <summary>
+    /// S→C: a guild's card, { f1 its members (lpg, as the jgu's), f2 its founding in seconds, f3 the
+    /// guild as the directory lists it } -- fft.behh makes it and GuildCardUI opens.
+    /// </summary>
+    public const string Jie = "jie";
+
     /// <summary>S→C: the number of pending requests. f1 the state.</summary>
     public const string Jij = "jij";
 

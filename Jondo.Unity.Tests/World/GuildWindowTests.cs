@@ -350,6 +350,37 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(new[] { Op.Ivl, Op.Jhh, Op.Jla }, ops);
         }
 
+        /// <summary>
+        /// A guild's name clicked (jhp) opens its card (jie): the guild as the directory lists it
+        /// in f3 and its founding, in seconds, in f2.
+        /// </summary>
+        [Fact]
+        public async Task A_guild_s_card_is_the_directory_s_guild_and_its_founding()
+        {
+            var guild = GuildStore.Create(7003, "Jondo", 165, 8, 16744448, 9476018);
+            await using var wire = await global::Jondo.Unity.Tests.Combat.PortalTests.Wire.Open(7004);
+            using (SessionContext.Push(wire.Session))
+            {
+                await GuildHandler.ShowGuildAsync(wire.Session.Stream!,
+                    ConnectionProtocol.Push(Op.Jhp, Pb.New().Var(1, guild.Id).Build()));
+                await GuildHandler.ShowGuildAsync(wire.Session.Stream!,
+                    ConnectionProtocol.Push(Op.Jhp, Pb.New().Var(1, guild.Id + 1000).Build()));
+            }
+
+            var frames = await wire.Drain();
+            Assert.Equal(new[] { Op.Jie }, frames.Select(f => f.Op));
+            var jie = ProtoMessage.Parse(frames[0].Payload);
+            long founded = jie.Fields.Single(f => f.FieldNumber == 2).VarIntValue;
+            Assert.InRange(founded, DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeSeconds(), DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 1);
+            var les = ProtoMessage.Parse(jie.Fields.Single(f => f.FieldNumber == 3).BytesValue);
+            Assert.Equal(guild.Id, les.Fields.Single(f => f.FieldNumber == 2).VarIntValue);
+            Assert.Equal("Jondo", System.Text.Encoding.UTF8.GetString(les.Fields.Single(f => f.FieldNumber == 3).BytesValue));
+            var leo = ProtoMessage.Parse(ProtoMessage.Parse(les.Fields.Single(f => f.FieldNumber == 1).BytesValue)
+                                             .Fields.Single(f => f.FieldNumber == 1).BytesValue);
+            Assert.Equal(7003, leo.Fields.Single(f => f.FieldNumber == 1).VarIntValue);   // the leader
+            Assert.Equal(1, leo.Fields.Single(f => f.FieldNumber == 7).VarIntValue);      // one member
+        }
+
         /// <summary>The guild coins come from the contributions: ten for each one, in total.</summary>
         [Fact]
         public void Contributions_become_gremichas()

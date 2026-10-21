@@ -251,6 +251,10 @@ namespace Jondo.Unity.Server.Handlers
         /// each jgu as the whole list (<see cref="GuildProtocol.BuildMembers"/>).
         /// </summary>
         public static byte[] MembersFrame(List<GuildStore.Member> members)
+            => ConnectionProtocol.Push(Op.Jgu, GuildProtocol.BuildMembers(MemberRows(members)));
+
+        /// <summary>The members as their lists carry them: name, level, breed, points, whether on line.</summary>
+        private static List<GuildProtocol.MemberRow> MemberRows(List<GuildStore.Member> members)
         {
             var rows = new List<GuildProtocol.MemberRow>();
             foreach (var member in members)
@@ -262,7 +266,45 @@ namespace Jondo.Unity.Server.Handlers
                                                      GuildStore.ContributedBy(member.CharacterId),
                                                      SessionRegistry.FindByCharacter(member.CharacterId) != null));
             }
-            return ConnectionProtocol.Push(Op.Jgu, GuildProtocol.BuildMembers(rows));
+            return rows;
+        }
+
+        /// <summary>
+        /// A guild's card (jhp: f1 the guild), asked from a chat link or the friends list: its
+        /// members, its founding and the guild as the directory lists it (jie), which opens it.
+        /// </summary>
+        public static async Task ShowGuildAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jhp = ConnectionProtocol.ReadPayload(frame, Op.Jhp);
+            if (jhp == null) return;
+            long id = 0;
+            foreach (var field in ProtoMessage.Parse(jhp).Fields)
+                if (field.FieldNumber == 1 && field.WireType == 0) id = field.VarIntValue;
+            var guild = id == 0 ? null : GuildStore.ById(id);
+            if (guild == null) return;
+
+            var members = GuildStore.Members(guild.Id);
+            long founded = DateTimeOffset.TryParse(guild.FoundedUtc, System.Globalization.CultureInfo.InvariantCulture,
+                                                   System.Globalization.DateTimeStyles.AssumeUniversal, out var when)
+                ? when.ToUnixTimeSeconds() : 0;
+            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jie,
+                GuildProtocol.BuildGuildCard(DirectoryEntryOf(guild, members.Count), MemberRows(members), founded),
+                ConnectionProtocol.RequestId(frame)));
+        }
+
+        /// <summary>A guild as the directory lists it: its sheet, its leader and how many they are.</summary>
+        private static GuildProtocol.DirectoryEntry DirectoryEntryOf(GuildStore.Guild guild, int members)
+        {
+            var leader = GuildStore.LeaderOf(guild.Id);
+            var leaderCharacter = leader == null ? null : DatabaseManager.GetCharacterById(leader.CharacterId);
+            return new GuildProtocol.DirectoryEntry
+            {
+                Guild = guild,
+                Profile = GuildStore.ProfileOf(guild.Id),
+                LeaderId = leader?.CharacterId ?? 0,
+                LeaderName = leaderCharacter?.Name ?? "",
+                Members = members,
+            };
         }
 
         /// <summary>The guild window opening (jlk): the chest's tabs (ivl).</summary>
@@ -1062,18 +1104,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             var entries = new List<GuildProtocol.DirectoryEntry>();
             foreach (var guild in GuildStore.AllGuilds())
-            {
-                var leader = GuildStore.LeaderOf(guild.Id);
-                var leaderCharacter = leader == null ? null : DatabaseManager.GetCharacterById(leader.CharacterId);
-                entries.Add(new GuildProtocol.DirectoryEntry
-                {
-                    Guild = guild,
-                    Profile = GuildStore.ProfileOf(guild.Id),
-                    LeaderId = leader?.CharacterId ?? 0,
-                    LeaderName = leaderCharacter?.Name ?? "",
-                    Members = GuildStore.Members(guild.Id).Count,
-                });
-            }
+                entries.Add(DirectoryEntryOf(guild, GuildStore.Members(guild.Id).Count));
 
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jiv, GuildProtocol.BuildDirectory(entries)));
         }
