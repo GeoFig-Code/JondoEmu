@@ -144,6 +144,62 @@ namespace Jondo.Unity.Tests.World
         }
 
         /// <summary>
+        /// Once the guild has a tier, the tier window saves next week's with a jey and is answered
+        /// with the week (jex), its f5 the tier waiting; the journal says it.
+        /// </summary>
+        [Fact]
+        public async System.Threading.Tasks.Task The_leader_saves_next_week_s_tier()
+        {
+            var guild = GuildStore.Create(7003, "Jondo", 165, 8, 16744448, 9476018);
+            GuildActivity.Choose(guild.Id, 1, Array.Empty<byte>(), DateTimeOffset.UtcNow);
+            await using var wire = await global::Jondo.Unity.Tests.Combat.PortalTests.Wire.Open(7003);
+            using (SessionContext.Push(wire.Session))
+                await Jondo.Unity.Server.Handlers.GuildHandler.SaveTierAsync(wire.Session.Stream!,
+                    ConnectionProtocol.Push(Jondo.Unity.Protocol.Op.Jey, new byte[] { 0x08, 0x02 }));
+
+            var frames = await wire.Drain();
+            Assert.Equal(new[] { "jex" }, frames.Select(f => f.Op));
+            Assert.Equal("0a07080118fa012802", Hex(frames[0].Payload));   // { f1 1, f3 250, f5 2 }
+            Assert.Equal(2, GuildActivity.Of(guild.Id, DateTimeOffset.UtcNow).PendingActivityId);
+            Assert.Contains(GuildStore.LogOf(guild.Id), e => e.Field == GuildLogProtocol.NextWeekly);
+        }
+
+        /// <summary>
+        /// The missions' ranks and categories saved with a jgg are answered with them (jgl f2), held
+        /// for next week and given back by the jgr; without a tier they are refused (jgl f1).
+        /// </summary>
+        [Fact]
+        public async System.Threading.Tasks.Task The_leader_saves_the_missions_ranks_and_categories()
+        {
+            var guild = GuildStore.Create(7003, "Jondo", 165, 8, 16744448, 9476018);
+            byte[] jgs = { 0x0a, 0x01, 0x03, 0x12, 0x01, 0x02 };                // categories [3], ranks [2]
+            byte[] jgg = new byte[] { 0x0a, (byte)jgs.Length }.Concat(jgs).ToArray();
+            await using var wire = await global::Jondo.Unity.Tests.Combat.PortalTests.Wire.Open(7003);
+            using (SessionContext.Push(wire.Session))
+            {
+                await Jondo.Unity.Server.Handlers.GuildHandler.SaveMissionPreferencesAsync(wire.Session.Stream!,
+                    ConnectionProtocol.Push(Jondo.Unity.Protocol.Op.Jgg, jgg));
+                GuildActivity.Choose(guild.Id, 1, Array.Empty<byte>(), DateTimeOffset.UtcNow);
+                await Jondo.Unity.Server.Handlers.GuildHandler.SaveMissionPreferencesAsync(wire.Session.Stream!,
+                    ConnectionProtocol.Push(Jondo.Unity.Protocol.Op.Jgg, jgg));
+                await Jondo.Unity.Server.Handlers.GuildHandler.MissionPreferencesAsync(wire.Session.Stream!,
+                    ConnectionProtocol.Push(Jondo.Unity.Protocol.Op.Jgr, Array.Empty<byte>()));
+            }
+
+            var frames = await wire.Drain();
+            Assert.Equal(new[] { "jgl", "jgl", "jgq" }, frames.Select(f => f.Op));
+            Assert.Equal("0a00", Hex(frames[0].Payload));
+            Assert.Equal("1208" + "0a06" + Hex(jgs), Hex(frames[1].Payload));
+            Assert.Equal("1a08" + "0a06" + Hex(jgs), Hex(frames[2].Payload));
+            var week = GuildActivity.Of(guild.Id, DateTimeOffset.UtcNow);
+            Assert.Empty(week.Preferences);
+            Assert.Equal(jgs, week.NextPreferences);
+            Assert.Equal(1, week.ActivityId);
+            Assert.Equal(0, week.PendingActivityId);
+            Assert.Contains(GuildStore.LogOf(guild.Id), e => e.Field == GuildLogProtocol.MissionConfiguration);
+        }
+
+        /// <summary>
         /// The week as the jfp's jff says it, and as the jet's jdb says it, byte for byte against
         /// the captures: after one contribution, and right after choosing tier 1 (missions apart).
         /// </summary>

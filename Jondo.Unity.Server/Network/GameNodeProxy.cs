@@ -1021,6 +1021,10 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.GuildHandler.MissionPreferencesAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jet)))
                     await Handlers.GuildHandler.ChooseTierAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jey)))
+                    await Handlers.GuildHandler.SaveTierAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jgg)))
+                    await Handlers.GuildHandler.SaveMissionPreferencesAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jfw)))
                     await Handlers.GuildHandler.EmptyTabAsync(stream, payload, Op.Jfr, 0);
                 // The Raids tab and the raids' own requests (see GuildRaidHandler).

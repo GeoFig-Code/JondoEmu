@@ -96,6 +96,16 @@ namespace Jondo.Unity.Server.Network
             => Pb.New().Msg(3, Pb.New().Bytes(1, jgs ?? Array.Empty<byte>())).Build();
 
         /// <summary>
+        /// The missions' ranks and categories saved (jgl): f2 { f1 the preferences } -- fft.beif keeps
+        /// them for the window, which redraws on its bux.
+        /// </summary>
+        public static byte[] BuildMissionConfigurationSaved(byte[] jgs)
+            => Pb.New().Msg(2, Pb.New().Bytes(1, jgs ?? Array.Empty<byte>())).Build();
+
+        /// <summary>The same, refused (jgl f1 {}): the window only redraws what it had.</summary>
+        public static byte[] BuildMissionConfigurationRefused() => BuildEmptyTab(1);
+
+        /// <summary>
         /// A member's weekly rewards (jfz): f1 { f1 his tokens of the week, f2 { f1 item, f2
         /// quantity } each other reward } -- ix.nnb's reading.
         /// </summary>

@@ -252,13 +252,14 @@ namespace Jondo.Unity.Server.Handlers
         /// The guild's week (jex) to every member connected: the same points, and each his own tokens
         /// against his cap -- the bar of the missions tab.
         /// </summary>
-        public static async Task TellTheWeekAsync(GuildStore.Guild guild, DateTimeOffset now)
+        public static async Task TellTheWeekAsync(GuildStore.Guild guild, DateTimeOffset now, long except = 0)
         {
             var week = GuildActivity.Of(guild.Id, now);
             if (!week.HasActivity) return;
             int cap = GuildActivity.TokenCapOf(GuildStore.ById(guild.Id) ?? guild);
             foreach (var member in GuildStore.Members(guild.Id))
             {
+                if (member.CharacterId == except) continue;
                 var session = SessionRegistry.FindByCharacter(member.CharacterId);
                 if (session == null) continue;
                 await session.SendAsync(ConnectionProtocol.Push(Op.Jex,

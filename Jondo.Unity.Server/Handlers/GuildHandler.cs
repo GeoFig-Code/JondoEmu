@@ -441,14 +441,7 @@ namespace Jondo.Unity.Server.Handlers
             {
                 Console.WriteLine($"[Guild] «{guild.Name}» chooses activity tier {tier}" +
                                   (week.PendingActivityId != 0 ? " for next week." : "."));
-                string name = SessionContext.State.CharacterName;
-                if (week.PendingActivityId != 0 && week.PendingActivityId != was.PendingActivityId)
-                    GuildStore.Log(guild.Id, GuildLogProtocol.NextWeekly,
-                        GuildLogProtocol.NextWeeklyLine(who, name, week.PendingActivityId), who, name);
-                byte[] before = was.NextPreferences ?? was.Preferences ?? Array.Empty<byte>();
-                if (was.HasActivity && !before.AsSpan().SequenceEqual(preferences))
-                    GuildStore.Log(guild.Id, GuildLogProtocol.MissionConfiguration,
-                        GuildLogProtocol.MissionConfigurationLine(who, name), who, name);
+                LogWeekChoice(guild, was, week, preferences);
             }
             week ??= GuildActivity.Of(guild.Id, now);
             if (!week.HasActivity) return;
@@ -457,6 +450,95 @@ namespace Jondo.Unity.Server.Handlers
                 GuildProtocol.BuildTierChosen(week, GuildActivity.TokenCapOf(guild), GuildActivity.TokensOf(who, now),
                                               GuildMissions.Of(guild.Id, now), GuildMissions.StandingsOf(guild.Id, who, now),
                                               GuildMissionWatcher.SubscribersOf(guild.Id, now)),
+                ConnectionProtocol.RequestId(frame)));
+        }
+
+        /// <summary>
+        /// A week's choice in the journal: next week's tier when it changed, the missions'
+        /// configuration when it did (a guild's first choice is neither).
+        /// </summary>
+        private static void LogWeekChoice(GuildStore.Guild guild, GuildActivity.Week was, GuildActivity.Week week, byte[] preferences)
+        {
+            long who = SessionContext.State.CharacterId;
+            string name = SessionContext.State.CharacterName;
+            if (week.PendingActivityId != 0 && week.PendingActivityId != was.PendingActivityId)
+                GuildStore.Log(guild.Id, GuildLogProtocol.NextWeekly,
+                    GuildLogProtocol.NextWeeklyLine(who, name, week.PendingActivityId), who, name);
+            byte[] before = was.NextPreferences ?? was.Preferences ?? Array.Empty<byte>();
+            if (was.HasActivity && !before.AsSpan().SequenceEqual(preferences ?? Array.Empty<byte>()))
+                GuildStore.Log(guild.Id, GuildLogProtocol.MissionConfiguration,
+                    GuildLogProtocol.MissionConfigurationLine(who, name), who, name);
+        }
+
+        /// <summary>
+        /// Next week's tier saved (jey: f1 the tier). GuildMissionTierOption.OnSaveTier sends it only
+        /// once the guild has a tier, its save button asking for right 40; before that the tier goes
+        /// in a jet with the preferences. Kept with the preferences as they stand and answered with
+        /// the week (jex), whose f5 the window shows as next week's tier; the other members on line
+        /// are told the week too.
+        /// </summary>
+        public static async Task SaveTierAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jey = ConnectionProtocol.ReadPayload(frame, Op.Jey);
+            long who = SessionContext.State.CharacterId;
+            var guild = jey == null || who == 0 ? null : GuildStore.GuildOf(who);
+            if (guild == null) return;
+
+            int tier = 0;
+            foreach (var field in ProtoMessage.Parse(jey).Fields)
+                if (field.FieldNumber == 1 && field.WireType == 0) tier = (int)field.VarIntValue;
+
+            var now = DateTimeOffset.UtcNow;
+            var was = GuildActivity.Of(guild.Id, now);
+            if (!was.HasActivity) return;
+            byte[] preferences = was.NextPreferences ?? was.Preferences;
+            var week = GuildStore.HasRight(who, GuildActivity.ManageActivityRight)
+                ? GuildActivity.Choose(guild.Id, tier, preferences, now)
+                : null;
+            if (week != null)
+            {
+                Console.WriteLine($"[Guild] «{guild.Name}» saves activity tier {tier} for next week.");
+                LogWeekChoice(guild, was, week, preferences);
+            }
+
+            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jex,
+                GuildProtocol.BuildWeekChanged(week ?? was, GuildActivity.TokenCapOf(guild), GuildActivity.TokensOf(who, now)),
+                ConnectionProtocol.RequestId(frame)));
+            if (week != null && week.PendingActivityId != was.PendingActivityId)
+                await GuildMissionWatcher.TellTheWeekAsync(guild, now, except: who);
+        }
+
+        /// <summary>
+        /// The missions' ranks and categories saved (jgg: f1 jgs). GuildMissionRanksAndCategoriesOption.OnSave
+        /// sends it only once the guild has a tier, its save button asking for right 39; they apply
+        /// from next week, as the tier does, the tier left as it stands. Answered with jgl: f2 { the
+        /// preferences as saved }, or f1 {} when they were not.
+        /// </summary>
+        public static async Task SaveMissionPreferencesAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jgg = ConnectionProtocol.ReadPayload(frame, Op.Jgg);
+            long who = SessionContext.State.CharacterId;
+            var guild = jgg == null || who == 0 ? null : GuildStore.GuildOf(who);
+            if (guild == null) return;
+
+            byte[] preferences = Array.Empty<byte>();
+            foreach (var field in ProtoMessage.Parse(jgg).Fields)
+                if (field.FieldNumber == 1 && field.WireType == 2) preferences = field.BytesValue ?? Array.Empty<byte>();
+
+            var now = DateTimeOffset.UtcNow;
+            var was = GuildActivity.Of(guild.Id, now);
+            var week = was.HasActivity && GuildStore.HasRight(who, GuildMissions.ManageMissionsRight)
+                ? GuildActivity.Choose(guild.Id, was.PendingActivityId != 0 ? was.PendingActivityId : was.ActivityId, preferences, now)
+                : null;
+            if (week != null)
+            {
+                Console.WriteLine($"[Guild] «{guild.Name}» saves its missions' ranks and categories for next week.");
+                LogWeekChoice(guild, was, week, preferences);
+            }
+
+            await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jgl,
+                week == null ? GuildProtocol.BuildMissionConfigurationRefused()
+                             : GuildProtocol.BuildMissionConfigurationSaved(week.NextPreferences ?? week.Preferences),
                 ConnectionProtocol.RequestId(frame)));
         }
 

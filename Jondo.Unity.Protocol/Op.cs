@@ -1188,6 +1188,21 @@ public static class Op
     /// <summary>S→C: answer to the jgr.</summary>
     public const string Jgq = "jgq";
 
+    /// <summary>
+    /// C→S: the missions' ranks and categories saved, { f1 jgs { f1 categories, f2 ranks } }
+    /// (GuildMissionRanksAndCategoriesOption.OnSave, once the guild has a tier). Answered with <see cref="Jgl"/>.
+    /// </summary>
+    public const string Jgg = "jgg";
+
+    /// <summary>S→C: answer to the jgg, f2 { f1 the preferences as saved } or f1 {} when refused (fft.beif).</summary>
+    public const string Jgl = "jgl";
+
+    /// <summary>
+    /// C→S: next week's tier saved, { f1 the tier } (GuildMissionTierOption.OnSaveTier, once the
+    /// guild has a tier). Answered with <see cref="Jex"/>.
+    /// </summary>
+    public const string Jey = "jey";
+
     /// <summary>C→S: a guild tab's paged list ("08012200": f1 page 1). Answered with <see cref="Jdb"/>.</summary>
     public const string Jet = "jet";
 
