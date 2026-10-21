@@ -186,10 +186,11 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// The automatic search's way in: the key spent as at the door, then straight into the
-        /// first room -- the capture's iun and jru, room 1 of dungeon 141. False when the key is
-        /// gone by now.
+        /// first room -- the capture's iun and jru, room 1 of dungeon 141 --, or into
+        /// <paramref name="room"/>, where the group one comes to complete is. False when the key
+        /// is gone by now.
         /// </summary>
-        internal static async Task<bool> EnterByMatchAsync(NetworkStream stream, DungeonManager.Dungeon dungeon)
+        internal static async Task<bool> EnterByMatchAsync(NetworkStream stream, DungeonManager.Dungeon dungeon, long room = 0)
         {
             var state = SessionContext.State;
             bool freeEntryLeft = dungeon.OnKeyring && DungeonKeyring.FreeEntryLeft(state.CharacterId, dungeon.Id, DateTime.Now);
@@ -207,8 +208,10 @@ namespace Jondo.Unity.Server.Handlers
             }
             if (method == EntryMethod.Keyring) DungeonKeyring.SpendFreeEntry(state.CharacterId, dungeon.Id, DateTime.Now);
 
-            Console.WriteLine($"[Dungeon] {state.CharacterName} enters {dungeon.Name} by the search, room 1 of {dungeon.Rooms.Count}.");
-            return await TeleportHandler.ToMapAsync(stream, dungeon.FirstRoom) >= 0;
+            long to = room != 0 && dungeon.Rooms.Contains(room) ? room : dungeon.FirstRoom;
+            Console.WriteLine($"[Dungeon] {state.CharacterName} enters {dungeon.Name} by the search, " +
+                              $"room {dungeon.Rooms.IndexOf(to) + 1} of {dungeon.Rooms.Count}.");
+            return await TeleportHandler.ToMapAsync(stream, to) >= 0;
         }
 
         /// <summary>

@@ -18,9 +18,7 @@ namespace Jondo.Unity.Server.Handlers
     ///
     ///   invite     C→S ime { name }          →  S→C ing (the party, you alone) + imf
     ///   invited                                 S→C ijz { me, who, slots, party, name }
-    ///   details    C→S imd { party }         →  S→C ilb   (NOT implemented: the little window's
-    ///                                                      «Detalles» button does not answer
-    ///                                                      anything yet)
+    ///   details    C→S imd { party }         →  S→C ilb   see <see cref="DetailsAsync"/>
     ///   accept     C→S ijx { party }         →  S→C ing (the whole party)
     ///                                           and to the inviter: ink
     ///   follow     C→S imh / imo             →  see <see cref="PartyFollowHandler"/>
@@ -191,6 +189,46 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             Console.WriteLine($"[Party] {SessionContext.State.CharacterName} turns down party {partyId}.");
+        }
+
+        // ─── The invitation's details ───────────────────────────────────────────
+
+        /// <summary>
+        /// The invitation's «Detalles» button: imd { f2: party } → ilb, measured in «recibir
+        /// invitacion de grupo y aceptar» (frames 54-55, the ilb a push, not an answer):
+        ///
+        ///   f1: 1 (the party's kind, the ing's f5)    f3: each member, as in the ing
+        ///   f4: who invites    f5: the party    f6: each invited player, as in the imf
+        ///   f7: the leader     f9: the inviter's name
+        ///
+        /// For its members and whoever has an invitation open to it; nobody else is told.
+        /// </summary>
+        public static async Task DetailsAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? imd = ConnectionProtocol.ReadPayload(payload, Op.Imd);
+            if (imd == null) return;
+            var party = Parties.Get((int)VarField(imd, 2));
+            long meId = SessionContext.State.CharacterId;
+            if (party == null) return;
+
+            long host;
+            List<(long Guest, long Host)> guests;
+            lock (party.Gate)
+            {
+                if (!party.Members.Contains(meId) && !party.Pending.ContainsKey(meId)) return;
+                host = party.Pending.TryGetValue(meId, out long invitedBy) ? invitedBy : party.LeaderId;
+                guests = party.Pending.Select(p => (p.Key, p.Value)).ToList();
+            }
+
+            var ilb = Pb.New().Var(1, 1);
+            foreach (long member in Parties.MembersOf(party)) ilb.Msg(3, BuildMember(member));
+            ilb.Var(4, host).Var(5, party.Id);
+            foreach (var (guest, invitedBy) in guests)
+                if (BuildGuest(guest, invitedBy) is { } sheet) ilb.Msg(6, sheet);
+            ilb.Var(7, party.LeaderId)
+               .StrIfNotEmpty(9, DatabaseManager.GetCharacterById(host)?.Name ?? "");
+
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ilb, ilb.Build()));
         }
 
         // ─── Leaving ────────────────────────────────────────────────────────────
@@ -537,19 +575,22 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static byte[] BuildPending(long guestId, long hostId, int partyId)
         {
-            var character = DatabaseManager.GetCharacterById(guestId);
-            if (character == null) return Pb.New().Var(2, partyId).Build();
+            var guest = BuildGuest(guestId, hostId);
+            return guest == null ? Pb.New().Var(2, partyId).Build() : Pb.New().Var(2, partyId).Msg(3, guest).Build();
+        }
 
+        /// <summary>An invited player, the same in the imf's f3 and the ilb's f6.</summary>
+        private static Pb? BuildGuest(long guestId, long hostId)
+        {
+            var character = DatabaseManager.GetCharacterById(guestId);
+            if (character == null) return null;
             return Pb.New()
-                .Var(2, partyId)
-                .Msg(3, Pb.New()
-                    .Bytes(1, BreedLookTable.BuildLook(character))
-                    .Str(2, character.Name)
-                    .Var(3, guestId)
-                    .Var(5, hostId)
-                    .Msg(6, Pb.New().Var(1, 1))
-                    .VarIfNotZero(8, character.Breed))
-                .Build();
+                .Bytes(1, BreedLookTable.BuildLook(character))
+                .Str(2, character.Name)
+                .Var(3, guestId)
+                .Var(5, hostId)
+                .Msg(6, Pb.New().Var(1, 1))
+                .VarIfNotZero(8, character.Breed);
         }
 
         /// <summary>Starting prospecting, before chance and equipment.</summary>

@@ -316,7 +316,7 @@ namespace Jondo.Protocol
                 case Op.Itp: return ("World Loading", "Interfaces", "ShortcutBarContentMessage (Keyboard shortcuts and UI bars)");
                 case "izn": return ("World Loading", "Interfaces", "ChatChannelsListMessage (Initialization of the local chat channels)");
                 case Op.Krh: return ("World Loading", "Sync", "ClientReadyForPackets (Ack that the client is ready)");
-                case Op.Imd: return ("World Loading", "Inventory", "InventoryWeightMessage (Basic initialization of the inventory weight)");
+                case Op.Imd: return ("Social", "Party", "The details of a party one is invited to (answered with ilb)");
                 case Op.Ktw: return ("World Loading", "Character", "CharacterSelectedSuccessMessage (Character spawn on the pedestal)");
                 case "mek": return ("World Loading", "Interfaces", "SpellListMessage (The character's spell book)");
                 case Op.Lry: return ("World Loading", "Interfaces", "QuestListMessage (Active quest list and journal)");

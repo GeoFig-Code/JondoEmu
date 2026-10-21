@@ -27,7 +27,9 @@ namespace Jondo.Unity.Server.Handlers
     /// or being put out of it (kjb's ban). Read off the client, not captured.
     /// </para>
     /// <para>
-    /// Not done: completing a party already inside (the search's third kind).
+    /// A group short of players asks to be completed (kke f3 {}, the client's TogglePartyCompleting):
+    /// its leader searches its own dungeon for the places left, only the newcomers are asked, and
+    /// they come to the room the group is in.
     /// </para>
     /// </remarks>
     public static class MatchmakingHandler
@@ -120,7 +122,7 @@ namespace Jondo.Unity.Server.Handlers
                 await RefuseAsync(MatchmakingProtocol.JoinCode.NotLeader);
                 return;
             }
-            if (kind == MatchmakingProtocol.Kind.Completing || kind == MatchmakingProtocol.Kind.None)
+            if (kind == MatchmakingProtocol.Kind.None)
             {
                 await RefuseAsync(MatchmakingProtocol.JoinCode.InvalidRequest);
                 return;
@@ -133,6 +135,35 @@ namespace Jondo.Unity.Server.Handlers
             {
                 await WriteAsync(stream, ConnectionProtocol.Answer(Op.Kjb,
                     MatchmakingProtocol.BuildSearchBanned((long)Math.Ceiling(banned.TotalSeconds)), requestId));
+                return;
+            }
+
+            // Completing: only a search group short of players, through its leader, for its own dungeon.
+            if (kind == MatchmakingProtocol.Kind.Completing)
+            {
+                var group = party == null ? null : Matchmaking.GroupOf(party.Id);
+                if (group == null || DungeonManager.Get(group.DungeonId) == null)
+                {
+                    await RefuseAsync(MatchmakingProtocol.JoinCode.InvalidRequest);
+                    return;
+                }
+                if (members.Count >= Math.Min(group.Size, Matchmaking.GroupSize))
+                {
+                    await RefuseAsync(MatchmakingProtocol.JoinCode.NoDungeonLeft);
+                    return;
+                }
+                var completing = new List<int> { group.DungeonId };
+                Matchmaking.Join(new Matchmaking.Seeker
+                {
+                    LeaderId = who, Members = members, Dungeons = completing, CompletingParty = party!.Id,
+                });
+                Console.WriteLine($"[Matchmaking] {SessionContext.State.CharacterName}'s group of {members.Count} " +
+                                  $"asks to be completed in dungeon {group.DungeonId}.");
+                byte[] completingNotice = ConnectionProtocol.Push(Op.Kkk, MatchmakingProtocol.BuildSearching(completing));
+                foreach (long member in members) await TellAsync(member, completingNotice);
+                await WriteAsync(stream, ConnectionProtocol.Answer(Op.Kjb, MatchmakingProtocol.BuildSearchTaken(), requestId));
+                EnsureTicking();
+                await TryMatchAsync(DateTime.UtcNow);
                 return;
             }
 
@@ -211,7 +242,7 @@ namespace Jondo.Unity.Server.Handlers
 
         private static async Task TellReadyCheckAsync(Matchmaking.Match match, DateTime now)
         {
-            foreach (long member in Matchmaking.Read(() => match.Members.ToList()))
+            foreach (long member in Matchmaking.Read(() => match.Members.Where(m => !match.AlreadyIn(m)).ToList()))
                 await TellAsync(member, ReadyCheckFor(match, member, now));
         }
 
@@ -325,15 +356,25 @@ namespace Jondo.Unity.Server.Handlers
             {
                 var dungeon = DungeonManager.Get(match.DungeonId);
                 var members = match.Members.ToList();
+                var completing = match.Completing;
                 var cameFrom = new Dictionary<long, (long MapId, int CellId)>();
-                foreach (long member in members)
+                foreach (long member in members.Where(m => !match.AlreadyIn(m)))
                     if (SessionRegistry.FindByCharacter(member) is { } where)
                         cameFrom[member] = (where.State.MapId, where.State.CellId);
+
+                // A group completed: the newcomers into its party, and to the room its leader is in.
+                long room = 0;
+                if (completing != null)
+                {
+                    long leaderMap = SessionRegistry.FindByCharacter(completing.LeaderId)?.State.MapId ?? 0;
+                    if (dungeon != null && dungeon.Rooms.Contains(leaderMap)) room = leaderMap;
+                }
                 var party = await PartyHandler.FormAsync(members);
-                Matchmaking.Made(party.Id, match.DungeonId, cameFrom);
+                if (completing != null) Matchmaking.Joined(party.Id, cameFrom);
+                else Matchmaking.Made(party.Id, match.DungeonId, cameFrom);
                 Console.WriteLine($"[Matchmaking] Dungeon {dungeon?.Name ?? match.DungeonId.ToString()} for " +
-                                  string.Join(", ", members) + ".");
-                foreach (long member in members)
+                                  string.Join(", ", members) + (completing != null ? $", completing party {party.Id}" : "") + ".");
+                foreach (long member in members.Where(m => !match.AlreadyIn(m)))
                 {
                     var session = SessionRegistry.FindByCharacter(member);
                     if (session == null || session.Stream == null) continue;
@@ -347,7 +388,7 @@ namespace Jondo.Unity.Server.Handlers
                         using (SessionContext.Push(session))
                         {
                             await WriteAsync(session.Stream, ConnectionProtocol.Push(Op.Kjl, MatchmakingProtocol.BuildMatched(match.DungeonId)));
-                            if (dungeon != null) await DungeonHandler.EnterByMatchAsync(session.Stream, dungeon);
+                            if (dungeon != null) await DungeonHandler.EnterByMatchAsync(session.Stream, dungeon, room);
                         }
                     }
                     finally

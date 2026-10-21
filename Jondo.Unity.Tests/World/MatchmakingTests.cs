@@ -141,6 +141,36 @@ namespace Jondo.Unity.Tests.World
             Assert.Null(Matchmaking.MatchOf(3));
         }
 
+        /// <summary>
+        /// A group short of players is completed by those who wait for its dungeon: it said yes
+        /// when it asked, so only the newcomers are asked; two such groups are not put together.
+        /// </summary>
+        [Fact]
+        public void A_group_short_of_players_is_completed()
+        {
+            var t = new DateTime(2026, 10, 22, 21, 0, 0, DateTimeKind.Utc);
+            Matchmaking.Join(new Matchmaking.Seeker
+            {
+                LeaderId = 1, Members = new List<long> { 1, 2 }, Dungeons = new List<int> { 9 }, Since = t, CompletingParty = 70,
+            });
+            Matchmaking.Join(new Matchmaking.Seeker
+            {
+                LeaderId = 3, Members = new List<long> { 3 }, Dungeons = new List<int> { 9 }, Since = t.AddSeconds(1), CompletingParty = 71,
+            });
+            Matchmaking.Join(Seeker(t.AddSeconds(2), new[] { 9 }, 4));
+            Assert.Null(Matchmaking.TryMatch(4, t));
+            Matchmaking.Join(Seeker(t.AddSeconds(3), new[] { 9, 5 }, 5));
+
+            var match = Matchmaking.TryMatch(4, t);
+            Assert.Equal(new long[] { 1, 2, 4, 5 }, match.Members);
+            Assert.Equal(70, match.Completing.CompletingParty);
+            Assert.True(match.AlreadyIn(2));
+            Assert.False(match.AlreadyIn(4));
+            Assert.False(Matchmaking.Accept(4).AllAccepted);
+            Assert.True(Matchmaking.Accept(5).AllAccepted);
+            Assert.NotNull(Matchmaking.SeekerOf(3));   // the other group still waits
+        }
+
         /// <summary>The group's size: the game's four, or fewer from the server's settings.</summary>
         [Fact]
         public void The_group_size_follows_the_settings()

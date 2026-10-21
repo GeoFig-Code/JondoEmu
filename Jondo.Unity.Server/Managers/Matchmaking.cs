@@ -53,6 +53,12 @@ namespace Jondo.Unity.Server.Managers
             public List<long> Members { get; init; } = new();
             public List<int> Dungeons { get; init; } = new();
             public DateTime Since { get; init; } = DateTime.UtcNow;
+
+            /// <summary>
+            /// The party of a search group that asks to be completed (kke f3), already in its
+            /// dungeon; zero for an ordinary search. Its players are not asked again.
+            /// </summary>
+            public int CompletingParty { get; init; }
         }
 
         /// <summary>A group offered a dungeon, waiting for everybody's yes.</summary>
@@ -66,6 +72,12 @@ namespace Jondo.Unity.Server.Managers
 
             public IEnumerable<long> Members => Seekers.SelectMany(s => s.Members);
             public bool AllAccepted => Members.All(Accepted.Contains);
+
+            /// <summary>The group being completed, if this offer completes one.</summary>
+            public Seeker? Completing => Seekers.FirstOrDefault(s => s.CompletingParty != 0);
+
+            /// <summary>Whether a player is already in the group this offer completes: he is neither asked nor moved.</summary>
+            public bool AlreadyIn(long characterId) => Completing?.Members.Contains(characterId) == true;
         }
 
         private static readonly List<Seeker> _queue = new();
@@ -151,6 +163,8 @@ namespace Jondo.Unity.Server.Managers
                         foreach (var seeker in _queue.Where(s => s.Dungeons.Contains(dungeon)).OrderBy(s => s.Since))
                         {
                             if (count + seeker.Members.Count > size) continue;
+                            // Two groups being completed are not put together.
+                            if (seeker.CompletingParty != 0 && group.Any(s => s.CompletingParty != 0)) continue;
                             group.Add(seeker);
                             count += seeker.Members.Count;
                             if (count == size) break;
@@ -165,6 +179,8 @@ namespace Jondo.Unity.Server.Managers
                             Seekers = group,
                             Deadline = now.AddSeconds(ConfirmSeconds),
                         };
+                        // The group being completed said yes when it asked.
+                        foreach (long member in match.Completing?.Members ?? new List<long>()) match.Accepted.Add(member);
                         _matches[match.Id] = match;
                         return match;
                     }
@@ -279,6 +295,16 @@ namespace Jondo.Unity.Server.Managers
             };
             lock (_lock) _groups[partyId] = group;
             return group;
+        }
+
+        /// <summary>Players who came to complete a group: where they were, for when they go back.</summary>
+        public static void Joined(int partyId, IReadOnlyDictionary<long, (long MapId, int CellId)> cameFrom)
+        {
+            lock (_lock)
+            {
+                if (!_groups.TryGetValue(partyId, out var group)) return;
+                foreach (var (member, from) in cameFrom) group.CameFrom[member] = from;
+            }
         }
 
         /// <summary>The search's group a party is, or null for a party made by hand.</summary>

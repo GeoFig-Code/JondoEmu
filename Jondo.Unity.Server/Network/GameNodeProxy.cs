@@ -752,6 +752,11 @@ namespace Jondo.Unity.Server.Network
                 {
                     await Handlers.PartyHandler.KickAsync(stream, payload);
                 }
+                else if (payloadStr.Contains(Op.Uri(Op.Imd)))
+                {
+                    // The invitation's «Detalles».
+                    await Handlers.PartyHandler.DetailsAsync(stream, payload);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Ima)))
                 {
                     await Handlers.PartyHandler.PromoteAsync(stream, payload);

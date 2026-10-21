@@ -303,7 +303,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Inside a dungeon found by the search: unanimous votes to give up together (everybody back where
   they were, no penalty) or to put someone out; an hour without searching for whoever leaves a full
   group or is put out of one
-- ❌ The party invitation's *Details* button
+- ✅ A group of the search short of players can ask to be completed: the newcomers join it in its room
+- ✅ The party invitation's *Details* button
 
 ### ⚜️ Guilds and raids
 
