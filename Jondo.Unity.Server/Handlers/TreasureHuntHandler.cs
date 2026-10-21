@@ -25,10 +25,12 @@ namespace Jondo.Unity.Server.Handlers
     /// <para>
     /// INFERRED, nothing captured: the flags' and digs' answers by the client's own texts for each
     /// code, the hunt sent again after each, its end (hgm) when lost, given up or won. The fight at
-    /// the end is the hunt's fissure («Fisura de X», the legendary row's monster) and three
-    /// monsters of the dimension's first zone at the hunt's level -- DofusPourLesNoobs speaks of
-    /// «les monstres qui se cachent à la fin». Whoever wins it gets the dimension's portal for good,
-    /// those who joined included, as the guide says; the hunter, the hunt's chest.
+    /// the end is the hunt's fissure («Fisura de X», the legendary row's monster) and four
+    /// monsters of the dimension's first zone at the hunt's level: «combat contre une fissure qui
+    /// invoque 4 monstres» (DofusPourLesNoobs, Les chasses aux trésors) -- the client's fissure
+    /// has no spell to summon them with, so they are there from the start. Whoever wins it gets
+    /// the dimension's portal for good, those who joined included, as the guide says; the hunter,
+    /// the hunt's chest. Lost, the hunt is lost: «En chasse légendaire, la chasse est perdue».
     /// </para>
     /// </remarks>
     public static class TreasureHuntHandler
@@ -37,7 +39,7 @@ namespace Jondo.Unity.Server.Handlers
         public const int GiveUpTooSoon = 436;
 
         /// <summary>How many of the dimension's monsters come out with the fissure.</summary>
-        public const int FissureCompany = 3;
+        public const int FissureCompany = 4;
 
         private static readonly Random _dice = new();
 
@@ -238,11 +240,10 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// A fight over, for one who fought it: a fissure beaten gives its dimension's portal, and
-        /// ends the hunt of whoever was after it, with its chest.
+        /// ends the hunt of whoever was after it, with its chest; lost, his hunt is lost.
         /// </summary>
         public static async Task FightEndedAsync(NetworkStream stream, FightInstance fight, bool won)
         {
-            if (!won) return;
             long who = SessionContext.State.CharacterId;
             foreach (var monster in fight.Rojo)
             {
@@ -250,6 +251,18 @@ namespace Jondo.Unity.Server.Handlers
                 var legendary = LegendaryHunts.EndingWith(monster.MonsterId);
                 var dimension = legendary == null ? null : TravelersTower.LegendaryOf(legendary.Id);
                 if (dimension == null) continue;
+
+                if (!won)
+                {
+                    var lost = TreasureHunts.Get(who, TreasureHunts.Legendary);
+                    if (lost != null && lost.Legendary == legendary!.Id && lost.ReadyToFight)
+                    {
+                        TreasureHunts.End(who, TreasureHunts.Legendary);
+                        Console.WriteLine($"[Hunts] {SessionContext.State.CharacterName} has lost to {dimension.Name}'s fissure: the hunt is lost.");
+                        await SendFinishedAsync(stream, TreasureHunts.Legendary);
+                    }
+                    return;
+                }
 
                 if (!Alterations.Has(who, dimension.Alteration))
                 {

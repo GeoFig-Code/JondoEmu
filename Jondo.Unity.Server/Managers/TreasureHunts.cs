@@ -67,8 +67,11 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The capture's hunt: five stages of five steps, four tries.</summary>
         public const int Checkpoints = 5, StepsPerCheckpoint = 5, Tries = 4;
 
-        /// <summary>How far a step goes. INFERRED: the client says nothing, a POI step's ten maps at most.</summary>
-        public const int FewestMaps = 1, MostMaps = 6;
+        /// <summary>
+        /// How far a step goes: «chaque indice se trouve dans un rayon de 1 à 10 maps du point de
+        /// départ ou du dernier indice trouvé» (DofusPourLesNoobs, Les chasses aux trésors).
+        /// </summary>
+        public const int FewestMaps = 1, MostMaps = 10;
 
         /// <summary>
         /// How long a hunt cannot be given up. Measured: 9 and 18 seconds after the start, the real
