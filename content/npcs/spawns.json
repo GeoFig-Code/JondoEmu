@@ -43,9 +43,19 @@
     "Pepito (7030), at the Temple of Alliances (115083777): the client's help sends you to him there",
     "(Translations 1149314, '{{map,13,35,1::Pepito}}', the map Hal Ylanza stands on) to trade nuggets",
     "for pacifying crystals. INFERRED: no capture shows him; cell 329, walkable and free, two rows in",
-    "front of Hal Ylanza's 301, facing 1 as he does."
+    "front of Hal Ylanza's 301, facing 1 as he does.",
+    "",
+    "Cano Dhain (2345), who hands out the treasure hunts' quests on map 128452097 (the quests' own",
+    "givers say so), on cell 305 facing 3: beside the Anutrof box (element 484993, cell 290) his",
+    "lines send one to, at the right-hand corner of the room's counter. No capture shows the room."
   ],
   "spawns": [
+    {
+      "map": 128452097,
+      "npc": 2345,
+      "cell": 305,
+      "orientation": 3
+    },
     {
       "map": 115083777,
       "npc": 7030,

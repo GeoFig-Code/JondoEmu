@@ -208,6 +208,9 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // Dhain's treasure quests done on an earlier day come back before his replies are chosen.
+            TreasureHuntHandler.BeforeTalkingTo(npc.NpcId);
+
             var template = Npcs.TemplateOf(npc.NpcId);
             var escrito = NpcDialogues.For(npc.NpcId, mapId);
             var primera = escrito?.First();

@@ -103,6 +103,13 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>The legendary hunt's id in the client's data, 0 for the others.</summary>
             public int Legendary { get; init; }
 
+            /// <summary>The quest the hunt was launched for (a treasure chest's), 0 for none.</summary>
+            public int Quest { get; init; }
+
+            /// <summary>How many stages it has (hhf f4) and how many steps each (f8).</summary>
+            public int Stages { get; init; } = Checkpoints;
+            public int StepsPerStage { get; init; } = StepsPerCheckpoint;
+
             public int Checkpoint { get; set; }
             public int Retries { get; set; } = Tries;
             public long StartMap { get; set; }
@@ -117,7 +124,7 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>The steps the client is shown: the flagged ones and the next.</summary>
             public int Known => Math.Min(Steps.Count, Flags.Count + 1);
 
-            public bool LastCheckpoint => Checkpoint + 1 >= Checkpoints;
+            public bool LastCheckpoint => Checkpoint + 1 >= Stages;
 
             /// <summary>Whether the last stage's flags are all judged right: the fight is to be had.</summary>
             public bool ReadyToFight => LastCheckpoint && Flags.Count == Steps.Count &&
@@ -219,7 +226,7 @@ namespace Jondo.Unity.Server.Managers
         /// A stage's steps from a map: each so many squares one way, never straight back the way
         /// the last came, never twice on the same map nor on the start. Null when none fits.
         /// </summary>
-        public static List<Step>? Route(Grid grid, long from, Random dice)
+        public static List<Step>? Route(Grid grid, long from, Random dice, int length = StepsPerCheckpoint)
         {
             var start = grid.PositionOf(from);
             if (start == null) return null;
@@ -230,7 +237,7 @@ namespace Jondo.Unity.Server.Managers
                 var used = new HashSet<long> { from };
                 var (x, y) = start.Value;
                 int previous = -1;
-                while (steps.Count < StepsPerCheckpoint)
+                while (steps.Count < length)
                 {
                     Step? found = null;
                     for (int tries = 0; tries < 40 && found == null; tries++)
@@ -249,26 +256,39 @@ namespace Jondo.Unity.Server.Managers
                     (x, y) = grid.PositionOf(found.Target)!.Value;
                     previous = found.Direction;
                 }
-                if (steps.Count == StepsPerCheckpoint) return steps;
+                if (steps.Count == length) return steps;
             }
             return null;
         }
 
-        /// <summary>A new hunt: its start drawn among the maps a whole stage can be laid from.</summary>
-        public static Hunt? Begin(Grid grid, long characterId, int type, int legendary, long nowMs, Random dice)
+        /// <summary>
+        /// A new hunt: its start drawn among the maps a whole stage can be laid from -- and, when
+        /// <paramref name="startsOn"/> says so, among those it accepts.
+        /// </summary>
+        public static Hunt? Begin(Grid grid, long characterId, int type, int legendary, long nowMs, Random dice,
+                                  int stages = Checkpoints, int stepsPerStage = StepsPerCheckpoint, int quest = 0,
+                                  Func<long, bool>? startsOn = null)
         {
             var maps = grid.Maps.ToList();
+            if (startsOn != null)
+            {
+                var fitting = maps.Where(startsOn).ToList();
+                if (fitting.Count > 0) maps = fitting;
+            }
             if (maps.Count == 0) return null;
             for (int attempt = 0; attempt < 100; attempt++)
             {
                 long start = maps[dice.Next(maps.Count)];
-                var steps = Route(grid, start, dice);
+                var steps = Route(grid, start, dice, stepsPerStage);
                 if (steps == null) continue;
                 return new Hunt
                 {
                     CharacterId = characterId,
                     Type = type,
                     Legendary = legendary,
+                    Quest = quest,
+                    Stages = stages,
+                    StepsPerStage = stepsPerStage,
                     StartMap = start,
                     Steps = steps,
                     StartedMs = nowMs,
@@ -347,7 +367,7 @@ namespace Jondo.Unity.Server.Managers
             }
             if (hunt.LastCheckpoint) return (DigFinished, 0);
 
-            var steps = Route(grid, hunt.Steps[^1].Target, dice);
+            var steps = Route(grid, hunt.Steps[^1].Target, dice, hunt.StepsPerStage);
             if (steps == null) return (DigImpossible, 0);
             hunt.Checkpoint++;
             hunt.StartMap = hunt.Steps[^1].Target;
@@ -431,8 +451,8 @@ namespace Jondo.Unity.Server.Managers
                 EnsureTable();
                 using var connection = Open();
                 using var command = connection.CreateCommand();
-                command.CommandText = "SELECT QuestType, Legendary, Checkpoint, Retries, StartMap, Steps, Flags, Unchanged, StartedMs " +
-                                      "FROM CharacterTreasureHunts WHERE CharacterId = $c;";
+                command.CommandText = "SELECT QuestType, Legendary, Checkpoint, Retries, StartMap, Steps, Flags, Unchanged, StartedMs, " +
+                                      "Quest, Stages, StepsPerStage FROM CharacterTreasureHunts WHERE CharacterId = $c;";
                 command.Parameters.AddWithValue("$c", characterId);
                 using var reader = command.ExecuteReader();
                 while (reader.Read())
@@ -449,6 +469,9 @@ namespace Jondo.Unity.Server.Managers
                         Flags = ReadFlags(reader.GetString(6)),
                         Unchanged = reader.GetInt32(7) != 0,
                         StartedMs = reader.GetInt64(8),
+                        Quest = reader.GetInt32(9),
+                        Stages = reader.GetInt32(10),
+                        StepsPerStage = reader.GetInt32(11),
                     };
                     hunts[hunt.Type] = hunt;
                 }
@@ -469,10 +492,12 @@ namespace Jondo.Unity.Server.Managers
                 using var command = connection.CreateCommand();
                 command.CommandText =
                     "INSERT INTO CharacterTreasureHunts (CharacterId, QuestType, Legendary, Checkpoint, Retries, StartMap, " +
-                    "Steps, Flags, Unchanged, StartedMs) VALUES ($c, $t, $l, $k, $r, $s, $st, $f, $u, $m) " +
+                    "Steps, Flags, Unchanged, StartedMs, Quest, Stages, StepsPerStage) " +
+                    "VALUES ($c, $t, $l, $k, $r, $s, $st, $f, $u, $m, $q, $g, $p) " +
                     "ON CONFLICT(CharacterId, QuestType) DO UPDATE SET Legendary = excluded.Legendary, " +
                     "Checkpoint = excluded.Checkpoint, Retries = excluded.Retries, StartMap = excluded.StartMap, " +
-                    "Steps = excluded.Steps, Flags = excluded.Flags, Unchanged = excluded.Unchanged, StartedMs = excluded.StartedMs;";
+                    "Steps = excluded.Steps, Flags = excluded.Flags, Unchanged = excluded.Unchanged, StartedMs = excluded.StartedMs, " +
+                    "Quest = excluded.Quest, Stages = excluded.Stages, StepsPerStage = excluded.StepsPerStage;";
                 command.Parameters.AddWithValue("$c", hunt.CharacterId);
                 command.Parameters.AddWithValue("$t", hunt.Type);
                 command.Parameters.AddWithValue("$l", hunt.Legendary);
@@ -483,6 +508,9 @@ namespace Jondo.Unity.Server.Managers
                 command.Parameters.AddWithValue("$f", WriteFlags(hunt.Flags));
                 command.Parameters.AddWithValue("$u", hunt.Unchanged ? 1 : 0);
                 command.Parameters.AddWithValue("$m", hunt.StartedMs);
+                command.Parameters.AddWithValue("$q", hunt.Quest);
+                command.Parameters.AddWithValue("$g", hunt.Stages);
+                command.Parameters.AddWithValue("$p", hunt.StepsPerStage);
                 command.ExecuteNonQuery();
             }
             catch (Exception ex)
@@ -531,6 +559,22 @@ namespace Jondo.Unity.Server.Managers
                         StartedMs   INTEGER NOT NULL,
                         PRIMARY KEY (CharacterId, QuestType));";
                 create.ExecuteNonQuery();
+
+                // The columns the classic hunts brought, on a table made before them.
+                var have = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                using (var columns = connection.CreateCommand())
+                {
+                    columns.CommandText = "PRAGMA table_info(CharacterTreasureHunts);";
+                    using var reader = columns.ExecuteReader();
+                    while (reader.Read()) have.Add(reader.GetString(1));
+                }
+                foreach (var (column, fallback) in new[] { ("Quest", 0), ("Stages", Checkpoints), ("StepsPerStage", StepsPerCheckpoint) })
+                {
+                    if (have.Contains(column)) continue;
+                    using var alter = connection.CreateCommand();
+                    alter.CommandText = $"ALTER TABLE CharacterTreasureHunts ADD COLUMN {column} INTEGER NOT NULL DEFAULT {fallback};";
+                    alter.ExecuteNonQuery();
+                }
                 _tableReady = true;
             }
         }

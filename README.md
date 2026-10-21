@@ -520,6 +520,11 @@ An alliance is made of characters, not guilds.
 - ✅ Objectives completed by clicking and by beating monsters
 - ✅ Step rewards: experience, kamas and emotes
 - 🟡 Start conditions: 935 of the 1,976 are fully understood
+- ✅ Items that validate a quest objective when used (316 of them)
+- ✅ Treasure hunts at the Malle aux trésors: Cano Dhain hands out the daily, archaeological and
+  saints' hunts, the Anutrof box draws the map — three or four stages, flags, digs, four tries —
+  and the Treasure is fought at the end, hitting the chest on legs among its four Vigicofres; its
+  chest closes the quest, one hunt a day from 7:00
 
 Full workings in **`docs/quests.md`**.
 

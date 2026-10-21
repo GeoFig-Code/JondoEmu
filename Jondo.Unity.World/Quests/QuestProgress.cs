@@ -155,6 +155,12 @@ namespace Jondo.Unity.World.Quests
 
         public QuestRun? Run(int questId) => _runs.TryGetValue(questId, out var run) ? run : null;
 
+        /// <summary>
+        /// A quest taken out of the log, so that it can be offered anew: the treasure hunts' daily
+        /// quests, which the catalogue's repeat flags do not let come back. True when it was there.
+        /// </summary>
+        public bool Forget(int questId) => _runs.Remove(questId);
+
         /// <summary>The quests under way, for the list the client asks for on login.</summary>
         public IEnumerable<QuestRun> Doing()
         {

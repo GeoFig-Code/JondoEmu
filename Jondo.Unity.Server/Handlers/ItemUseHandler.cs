@@ -77,8 +77,13 @@ namespace Jondo.Unity.Server.Handlers
             // A spell scroll: a special spell learnt.
             if (await SpellItemHandler.TryUseAsync(stream, item)) return;
 
+            // Effect 30 validates a quest's objective: the treasure chests' «Encuentra y abre el
+            // cofre del día» and 315 other items. A box does it on being opened; an item that only
+            // does that does it and stays.
+            var objectives = QuestObjectivesOf(item.Template);
             if (LootBoxes.BoxOf(item.Template) is not { } box)
             {
+                if (objectives.Count > 0 && await TickQuestObjectivesAsync(stream, objectives)) return;
                 Console.WriteLine($"[Items] Using item {item.Template} (uid {uid}) is not handled yet.");
                 return;
             }
@@ -109,8 +114,42 @@ namespace Jondo.Unity.Server.Handlers
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Iun,
                 ConnectionProtocol.BuildPods(0, 1000 + 5L * SessionContext.State.TotalStrength)));
 
+            await TickQuestObjectivesAsync(stream, objectives);
+
             Console.WriteLine($"[Items] {character} opens a {item.Template} (group {box.Group.Id}): " +
                               string.Join(", ", given.ConvertAll(g => $"{g.Quantity} x {g.ItemId}")) + ".");
+        }
+
+        /// <summary>«Valida el objetivo de misión»: the effect an item validates an objective with, the objective its value.</summary>
+        public const int QuestObjectiveEffect = 30;
+
+        /// <summary>The objectives an item's effect 30 validates.</summary>
+        internal static List<int> QuestObjectivesOf(int template)
+        {
+            var found = new List<int>();
+            foreach (var effect in DatabaseManager.GetItemEffectsData(DatabaseManager.GetItemTemplatePossibleEffects(template)))
+                if (effect.EffectId == QuestObjectiveEffect && effect.Value > 0) found.Add((int)effect.Value);
+            return found;
+        }
+
+        /// <summary>
+        /// Each objective ticked for the quest in hand that stands at its step. False when none was.
+        /// </summary>
+        internal static async Task<bool> TickQuestObjectivesAsync(NetworkStream stream, IEnumerable<int> objectives)
+        {
+            var log = Quests.Log;
+            var book = Quests.Book;
+            if (log == null || book == null) return false;
+            bool ticked = false;
+            foreach (int id in objectives)
+            {
+                var objective = book.Objective(id);
+                var step = objective == null ? null : book.Step(objective.StepId);
+                if (step == null || !log.Active(step.QuestId) || log.Run(step.QuestId)?.StepId != step.Id) continue;
+                await Quests.TickAsync(stream, step.QuestId, id);
+                ticked = true;
+            }
+            return ticked;
         }
 
         /// <summary>

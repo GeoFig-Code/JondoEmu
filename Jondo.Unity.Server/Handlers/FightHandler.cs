@@ -4658,6 +4658,13 @@ namespace Jondo.Unity.Server.Handlers
                 return null;
             }
 
+            // The Treasure summons each of its chests once (Managers.TreasureFight).
+            if (Managers.TreasureFight.AlreadyOut(fight, quienInvoca, plantilla))
+            {
+                Program.LogDebug($"[Fight] Chest {plantilla} already stands; the Treasure summons it no more.");
+                return null;
+            }
+
             // Bombs answer to their own cap and to nothing else: they cost no capacity, so the
             // check below would never stop them however many were already out.
             if (EsBomba(plantilla) &&
@@ -5865,6 +5872,45 @@ namespace Jondo.Unity.Server.Handlers
         ///
         /// It is wrapped in its jto/jwi, like any loose sheet.
         /// </summary>
+        /// <summary>
+        /// A blow on a treasure's chest, as Managers.TreasureFight judges it: the chest on legs takes
+        /// a life from the Treasure; another one throws «environ 500 dégâts neutres» back at whoever
+        /// struck and heals the Treasure of one -- the third time, all of his life.
+        /// </summary>
+        private static readonly Random _treasureDice = new();
+
+        private static async Task TreasureBlowAsync(NetworkStream stream, FightInstance fight, Fighter caster, Fighter chest)
+        {
+            var treasure = Managers.TreasureFight.TreasureOf(fight, chest);
+            if (treasure == null || caster == null || !caster.IsAlive) return;
+            switch (Managers.TreasureFight.Judge(fight, caster, chest, _treasureDice))
+            {
+                case Managers.TreasureFight.Outcome.Right:
+                    Program.LogDebug($"[Fight] {caster.Id} finds the chest on legs: the Treasure loses a life.");
+                    await UnaParteDelGolpeAsync(stream, fight, caster, NeutralDamageEffect, 0, treasure, 1);
+                    return;
+                case Managers.TreasureFight.Outcome.Wrong:
+                    Program.LogDebug($"[Fight] {caster.Id} strikes a wrong chest.");
+                    await UnaParteDelGolpeAsync(stream, fight, chest, NeutralDamageEffect, 0, caster,
+                                                Managers.TreasureFight.WrongBlow);
+                    if (treasure.IsAlive && treasure.CurrentHP < treasure.MaxHP)
+                    {
+                        treasure.CurrentHP++;
+                        await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe, Network.FightProtocol.BuildHeal(chest.Id, 1, treasure.Id)));
+                        await RefrescarLaVidaAsync(stream, fight, treasure, chest);
+                    }
+                    return;
+                case Managers.TreasureFight.Outcome.Fatal:
+                    Program.LogDebug($"[Fight] {caster.Id} strikes a wrong chest for the third time.");
+                    await UnaParteDelGolpeAsync(stream, fight, chest, NeutralDamageEffect, 0, caster,
+                                                caster.CurrentHP + caster.MaxHP * 10);
+                    return;
+            }
+        }
+
+        /// <summary>«Daños Neutral», the effect the treasure's blows are shown as.</summary>
+        private const int NeutralDamageEffect = 100;
+
         private static async Task RefrescarLaVidaAsync(NetworkStream stream, FightInstance fight,
                                                        Fighter quien, Fighter porQuien)
         {
@@ -7615,6 +7661,18 @@ namespace Jondo.Unity.Server.Handlers
             // hits -1, -2 and -4 for 102, 91 and 91, on the same scale as the walls of that fight
             // (28 to 86). Explosions and walls scale alike, and walls scale with the Rogue.
             var fuente = StatSourceOf(fight, caster);
+
+            // A treasure hunt's Treasure and its chests take nothing from any blow; a blow on the
+            // chest on legs takes one of the Treasure's lives, one on another hurts whoever struck
+            // (Managers.TreasureFight).
+            if (!fulmina && !fromTurnTrigger && Managers.TreasureFight.Guards(target)
+                && Managers.TreasureFight.TreasureOf(fight, target) != null)
+            {
+                await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                    Network.FightProtocol.BuildDamage(caster.Id, efecto.EffectId, target.Id, 0, elemento)));
+                await TreasureBlowAsync(stream, fight, caster, target);
+                return;
+            }
 
             // INVULNERABLE: a state the client's catalogue flags -- Influencia's 269 is
             // "Invulnerable" and nothing else -- takes the whole blow away, and the blow still

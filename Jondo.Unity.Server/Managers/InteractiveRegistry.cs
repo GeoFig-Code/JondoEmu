@@ -108,6 +108,9 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>A divine dimension's model in the localization room: launches its legendary hunt (TreasureHuntHandler).</summary>
         FissureModel,
+
+        /// <summary>The Malle aux trésors' Anutrof box: launches the treasure hunt of Dhain's quest (TreasureHuntHandler).</summary>
+        TreasureBox,
     }
 
     /// <summary>A skill offered by an interactive element.</summary>
@@ -728,6 +731,15 @@ namespace Jondo.Unity.Server.Managers
                 var declared = Declared(mapId, back, TravelersTower.PortalType);
                 declared.Add(InteractiveActionKind.DimensionExit, TravelersTower.StaySkill, TravelersTower.InstanceOf(back.Id, 0));
                 declared.Add(InteractiveActionKind.DimensionExit, TravelersTower.LeaveSkill, TravelersTower.InstanceOf(back.Id, 1));
+            }
+
+            if (Find(TreasureQuests.Room, TreasureQuests.Box) is { } box)
+            {
+                var declared = Declared(TreasureQuests.Room, box, TreasureQuests.BoxType);
+                int index = 0;
+                foreach (var kind in TreasureQuests.Kinds)
+                    declared.AddNamed(InteractiveActionKind.TreasureBox, TreasureQuests.UseSkill, kind.SkillName,
+                                      TravelersTower.InstanceOf(box.Id, index++));
             }
 
             foreach (var dimension in TravelersTower.Dimensions)

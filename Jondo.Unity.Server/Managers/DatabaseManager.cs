@@ -4568,6 +4568,25 @@ namespace Jondo.Unity.Server
         /// waits for logout is lost on a crash — and losing a quest people have spent an evening on
         /// is worse than losing a few kamas.
         /// </remarks>
+        /// <summary>A quest taken out of a character's log.</summary>
+        public static void DeleteQuestProgress(long characterId, int questId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "DELETE FROM CharacterQuests WHERE CharacterId = $c AND QuestId = $q;";
+                command.Parameters.AddWithValue("$c", characterId);
+                command.Parameters.AddWithValue("$q", questId);
+                command.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] Quest {questId} could not be removed: {ex.Message}");
+            }
+        }
+
         public static void SaveQuestProgress(long characterId, QuestRow quest)
         {
             try

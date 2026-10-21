@@ -33,7 +33,7 @@ namespace Jondo.Unity.Server.Network
         {
             var hhf = Pb.New()
                 .VarIfNotZero(1, hunt.Checkpoint)
-                .VarIfNotZero(4, TreasureHunts.Checkpoints);
+                .VarIfNotZero(4, hunt.Stages);
             foreach (var flag in hunt.Flags)
                 hhf.Msg(5, Pb.New().VarIfNotZero(1, flag.State).VarIfNotZero(2, flag.MapId));
             hhf.VarIfNotZero(6, hunt.Retries)

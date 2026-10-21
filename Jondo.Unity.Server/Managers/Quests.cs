@@ -581,6 +581,9 @@ namespace Jondo.Unity.Server.Managers
             // And the green mark of the one who just gave it is switched off.
             await SendMarksAsync(stream, SessionContext.State.MapId);
 
+            // A treasure quest of Dhain's: the box beside him offers its hunt.
+            await Handlers.TreasureHuntHandler.OnQuestStartedAsync(stream, questId);
+
             Console.WriteLine($"[Quests] Quest {questId} starts, at step {run.StepId}.");
             return true;
         }
@@ -1061,6 +1064,16 @@ namespace Jondo.Unity.Server.Managers
             }
 
             if (levelled) await Achievements.AfterLevelAsync(stream);
+        }
+
+        /// <summary>A finished quest taken out of the character's log, so that it is offered again.</summary>
+        public static void Forget(int questId)
+        {
+            var log = Log;
+            long characterId = SessionContext.State.CharacterId;
+            if (log == null || characterId == 0 || !log.Forget(questId)) return;
+            DatabaseManager.DeleteQuestProgress(characterId, questId);
+            Console.WriteLine($"[Quests] Quest {questId} is offered again.");
         }
 
         private static void Save(int questId, QuestRun run)

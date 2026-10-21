@@ -341,6 +341,9 @@ namespace Jondo.Unity.World.Quests
         public int StepCount => _steps.Count;
         public int ObjectiveCount => _objectives.Count;
 
+        /// <summary>The objective with that id, or null.</summary>
+        public QuestObjective? Objective(int objectiveId) => _objectives.TryGetValue(objectiveId, out var found) ? found : null;
+
         /// <summary>How many steps are handed over by a line of dialogue. The join, counted.</summary>
         public int SpokenSteps { get; private set; }
 

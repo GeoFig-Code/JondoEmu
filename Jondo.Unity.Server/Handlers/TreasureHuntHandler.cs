@@ -63,6 +63,118 @@ namespace Jondo.Unity.Server.Handlers
             return TreasureHunts.RequestOk;
         }
 
+        // ─── The Malle aux trésors' box ─────────────────────────────────────
+
+        /// <summary>
+        /// What the Anutrof box offers a character: «Buscar …» for each of Dhain's quests he has in
+        /// hand; nothing otherwise. Null for any other element.
+        /// </summary>
+        public static IReadOnlyList<InteractiveAction>? VisibleActions(RegisteredInteractive interactive)
+        {
+            if (interactive.MapId != TreasureQuests.Room || interactive.Element.Id != TreasureQuests.Box) return null;
+            var log = Quests.Log;
+            return interactive.Actions
+                .Where(a => TreasureQuests.OfName(a.SkillNameId) is { } kind && log != null && log.Active(kind.Quest))
+                .ToList();
+        }
+
+        /// <summary>The box as its viewer sees it (iwm): f3 { f1 1, f4 each skill, f5, f6 }.</summary>
+        public static byte[] BuildBox(RegisteredInteractive interactive)
+        {
+            var declaration = Pb.New().Var(1, 1);
+            foreach (var action in VisibleActions(interactive) ?? interactive.Actions)
+                declaration.Msg(4, Pb.New().Var(1, action.SkillInstanceId).Var(2, action.SkillId).VarIfNotZero(3, action.SkillNameId));
+            declaration.Var(5, interactive.Element.Id).Var(6, interactive.Type);
+            return Pb.New().Msg(3, declaration).Build();
+        }
+
+        /// <summary>
+        /// Before Dhain speaks: his treasure quests finished on an earlier hunting day are taken out of
+        /// the log, so that he offers them again -- «Une seule chasse classique par jour», from 7:00.
+        /// </summary>
+        public static void BeforeTalkingTo(int npcId)
+        {
+            if (npcId != TreasureQuests.Dhain) return;
+            var log = Quests.Log;
+            long who = SessionContext.State.CharacterId;
+            if (log == null || who == 0) return;
+            string today = TreasureQuests.DayOf(DateTimeOffset.UtcNow);
+            foreach (var kind in TreasureQuests.Kinds)
+            {
+                if (log.Finished(kind.Quest) && TreasureQuests.HuntedOn(who, kind.Quest) != today)
+                    Quests.Forget(kind.Quest);
+            }
+        }
+
+        /// <summary>One of Dhain's quests taken, in his room: the box offers it at once.</summary>
+        public static async Task OnQuestStartedAsync(NetworkStream stream, int questId)
+        {
+            if (stream == null || TreasureQuests.OfQuest(questId) == null) return;
+            if (SessionContext.State.MapId != TreasureQuests.Room) return;
+            var box = InteractiveRegistry.OnMap(TreasureQuests.Room).FirstOrDefault(i => i.Element.Id == TreasureQuests.Box);
+            if (box != null) await WriteAsync(stream, ConnectionProtocol.Push(Op.Iwm, BuildBox(box)));
+        }
+
+        /// <summary>
+        /// The box used: the hunt of the quest its name stands for, when that quest is in hand and no
+        /// other hunt of the kind is under way -- «solo se puede buscar un cofre cada vez».
+        /// </summary>
+        public static async Task UseBoxAsync(NetworkStream stream, RegisteredInteractive interactive, InteractiveAction action)
+        {
+            var state = SessionContext.State;
+            var kind = TreasureQuests.OfName(action.SkillNameId);
+            if (kind == null) return;
+            await SessionRegistry.BroadcastToMapAsync(state.MapId, ConnectionProtocol.Push(Op.Iwn,
+                ConnectionProtocol.BuildElementInUse(interactive.Element.Id, action.SkillId, state.CharacterId)));
+
+            int answer = TreasureHunts.RequestOk;
+            var now = DateTimeOffset.UtcNow;
+            if (Quests.Log?.Active(kind.Quest) != true) answer = TreasureHunts.NoQuestFound;
+            else if (TreasureHunts.Get(state.CharacterId, TreasureHunts.Classic) != null) answer = TreasureHunts.AlreadyHaveQuest;
+            else if (TreasureQuests.HuntedOn(state.CharacterId, kind.Quest) == TreasureQuests.DayOf(now)) answer = TreasureHunts.LimitExceeded;
+
+            TreasureHunts.Hunt? hunt = null;
+            if (answer == TreasureHunts.RequestOk)
+            {
+                int level = state.CharacterLevel;
+                hunt = TreasureHunts.Begin(TreasureHunts.World, state.CharacterId, TreasureHunts.Classic, 0,
+                                           DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), _dice,
+                                           stages: _dice.Next(TreasureQuests.FewestStages, TreasureQuests.MostStages + 1),
+                                           stepsPerStage: TreasureQuests.StepsPerStage, quest: kind.Quest,
+                                           startsOn: map => TreasureQuests.StartsFor(
+                                               Interactives.LevelOfSubArea(MapManager.GetMapInfo(map)?.SubAreaId ?? 0), level));
+                if (hunt == null) answer = TreasureHunts.NoQuestFound;
+            }
+
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Hhk,
+                TreasureHuntProtocol.BuildRequestAnswer(TreasureHunts.Classic, answer)));
+            if (hunt == null) return;
+
+            TreasureHunts.Save(hunt);
+            TreasureQuests.MarkHunted(state.CharacterId, kind.Quest, TreasureQuests.DayOf(now));
+            Console.WriteLine($"[Hunts] {state.CharacterName} draws a map from the Anutrof box ({kind.Name}): " +
+                              $"{hunt.Stages} stages from {hunt.StartMap}.");
+            await SendHuntAsync(stream, hunt);
+        }
+
+        /// <summary>
+        /// The Treasure, at the hunter's grade, on the map he dug on: it summons its chests itself.
+        /// Its ten grades go past the six a composed group is held to, so the grade is set after.
+        /// </summary>
+        private static async Task FightTheTreasureAsync(NetworkStream stream, TreasureHunts.Hunt hunt)
+        {
+            var data = MobSpawnManager.GetMonsterData(TreasureFight.Treasure);
+            if (data == null || data.Grades.Count == 0) return;
+            int grade = TreasureQuests.TreasureGrade(data.Grades.Select(g => g.Level).ToList(), SessionContext.State.CharacterLevel);
+            var group = MobSpawnManager.ComposeOffMap(new[] { (TreasureFight.Treasure, grade) });
+            if (group == null || group.Members.Count == 0) return;
+            group.Members[0].GradeIndex = grade;
+            group.Members[0].Level = data.Grades[grade].Level;
+            long mapId = SessionContext.State.MapId;
+            Console.WriteLine($"[Hunts] {SessionContext.State.CharacterName} digs up the Treasure (grade {grade + 1}) on {mapId}.");
+            await FightHandler.InitiateFightFromMobCollision(stream, group, mapId);
+        }
+
         /// <summary>A model's «Localizar una fisura»: its dimension's legendary hunt.</summary>
         public static async Task LocateFissureAsync(NetworkStream stream, RegisteredInteractive interactive, InteractiveAction action)
         {
@@ -153,7 +265,8 @@ namespace Jondo.Unity.Server.Handlers
                 case TreasureHunts.DigFinished:
                     TreasureHunts.Save(hunt);
                     await SendHuntAsync(stream, hunt);
-                    await FightTheFissureAsync(stream, hunt);
+                    if (hunt.Type == TreasureHunts.Classic) await FightTheTreasureAsync(stream, hunt);
+                    else await FightTheFissureAsync(stream, hunt);
                     return;
             }
         }
@@ -239,12 +352,47 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
+        /// The Treasure fought, for the one whose hunt dug it up: beaten, his chest and the hunt over;
+        /// lost, a try spent -- «Une défaite au combat final fait perdre un essai en chasse normale» --
+        /// and with none left, the hunt lost.
+        /// </summary>
+        private static async Task TreasureFoughtAsync(NetworkStream stream, long who, bool won)
+        {
+            var hunt = TreasureHunts.Get(who, TreasureHunts.Classic);
+            if (hunt == null || !hunt.ReadyToFight) return;
+            if (won)
+            {
+                TreasureHunts.End(who, TreasureHunts.Classic);
+                var kind = TreasureQuests.OfQuest(hunt.Quest);
+                if (kind != null) await Equipment.GiveAsync(stream, kind.Chest, 1);
+                Console.WriteLine($"[Hunts] {SessionContext.State.CharacterName} has beaten the Treasure.");
+                await SendFinishedAsync(stream, TreasureHunts.Classic);
+                return;
+            }
+            hunt.Retries--;
+            if (hunt.Retries <= 0)
+            {
+                TreasureHunts.End(who, TreasureHunts.Classic);
+                Console.WriteLine($"[Hunts] {SessionContext.State.CharacterName} has lost to the Treasure: the hunt is lost.");
+                await SendFinishedAsync(stream, TreasureHunts.Classic);
+                return;
+            }
+            TreasureHunts.Save(hunt);
+            await SendHuntAsync(stream, hunt);
+        }
+
+        /// <summary>
         /// A fight over, for one who fought it: a fissure beaten gives its dimension's portal, and
         /// ends the hunt of whoever was after it, with its chest; lost, his hunt is lost.
         /// </summary>
         public static async Task FightEndedAsync(NetworkStream stream, FightInstance fight, bool won)
         {
             long who = SessionContext.State.CharacterId;
+            if (fight.Rojo.Any(m => m.MonsterId == TreasureFight.Treasure && !m.EsInvocado))
+            {
+                await TreasureFoughtAsync(stream, who, won);
+                return;
+            }
             foreach (var monster in fight.Rojo)
             {
                 if (monster.EsInvocado || monster.MonsterId <= 0) continue;

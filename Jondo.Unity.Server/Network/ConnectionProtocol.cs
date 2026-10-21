@@ -1318,6 +1318,7 @@ namespace Jondo.Unity.Server.Network
             // stranger buys; the dimensional portal's mechanism, the dimensions he has. Every other
             // element offers all of them.
             var visible = Handlers.TravelersTowerHandler.VisibleActions(interactive, Network.SessionContext.State.CharacterId)
+                          ?? Handlers.TreasureHuntHandler.VisibleActions(interactive)
                           ?? Handlers.HouseHandler.VisibleActions(interactive, viewerAccountId);
             foreach (var action in visible)
             {
@@ -1355,7 +1356,7 @@ namespace Jondo.Unity.Server.Network
                     || action.Kind == Managers.InteractiveActionKind.Marketplace
                     || action.Kind is Managers.InteractiveActionKind.TowerRoom or Managers.InteractiveActionKind.TowerCreator
                         or Managers.InteractiveActionKind.TowerPortal or Managers.InteractiveActionKind.DimensionExit
-                        or Managers.InteractiveActionKind.FissureModel)
+                        or Managers.InteractiveActionKind.FissureModel or Managers.InteractiveActionKind.TreasureBox)
                     sinColocacion = true;
             }
             if (interactive.Actions.Count == 0 || sinColocacion) return;
