@@ -22,7 +22,9 @@ namespace Jondo.Unity.Server.Handlers
     /// estate window shows it. The search is jaj { f1: highest price, f2: fewest rooms, f3: skill,
     /// f4: area, f5: fewest chests, f6: order }, a page jam { f1: page }, and the window's X a kla.
     /// The order is the client's EstateSortEnum: price, area or name, up or down. INFERRED: ten to a
-    /// page, and zero or less meaning «any» in the search.
+    /// page, and zero or less meaning «any» in the search. A building of many copies is listed once
+    /// per copy its owner sells and once for its first free copy, as its street shows it: izw names
+    /// no copy, so its rows differ by owner and price.
     /// </remarks>
     public static class EstateAgencyHandler
     {
@@ -40,8 +42,8 @@ namespace Jondo.Unity.Server.Handlers
             public static readonly Filter Any = new(0, 0, 0, 0, 0, Order.PriceUp);
         }
 
-        /// <summary>A house on sale, as the agency lists it.</summary>
-        public sealed record Listing(int HouseId, int Model, string Name, long Price, int Rooms, int Chests,
+        /// <summary>A house on sale, as the agency lists it: one copy of a building.</summary>
+        public sealed record Listing(int HouseId, int Instance, int Model, string Name, long Price, int Rooms, int Chests,
                                      int SubArea, int Area, int X, int Y, long OwnerAccount, bool Locked);
 
         private static Task SendAsync(NetworkStream? stream, string op, byte[] body)
@@ -50,24 +52,33 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>Whether the agency's window is open in this session.</summary>
         public static bool IsOpen => SessionContext.State.EstateFilter != null;
 
-        /// <summary>Every house on sale now: nobody's, or put on sale by its owner.</summary>
+        /// <summary>Every house on sale now: the first free copy of each building, and the copies their owners sell.</summary>
         public static List<Listing> OnSale()
         {
-            var owned = HouseStore.AllOwned();
+            var owned = HouseStore.AllOwned().ToLookup(h => (h.MapId, h.ElementId));
             var listings = new List<Listing>();
             foreach (var door in Houses.AllHouses())
             {
                 if (!door.IsOwnable) continue;
-                owned.TryGetValue((door.MapId, door.ElementId), out var house);
-                house ??= new HouseStore.House { MapId = door.MapId, ElementId = door.ElementId };
-                if (house.Owned && !house.ForSale) continue;
+                var copies = owned[(door.MapId, door.ElementId)].Where(h => door.HasCopy(h.Instance)).ToList();
+                var shown = copies.Where(h => h.ForSale).ToList();
+                for (int instance = Houses.FirstInstance; instance <= door.Copies; instance++)
+                {
+                    if (copies.Any(h => h.Instance == instance)) continue;
+                    shown.Add(new HouseStore.House { MapId = door.MapId, ElementId = door.ElementId, Instance = instance });
+                    break;
+                }
 
                 var street = MapManager.GetMapInfo(door.MapId);
                 int subArea = street?.SubAreaId ?? 0;
-                listings.Add(new Listing(Houses.HouseIdOf(door.MapId, door.ElementId), door.Model, door.Name,
-                    HouseStore.AskingPrice(house, door.Price), door.Rooms, Houses.ChestsIn(door.InteriorMapId).Count,
-                    subArea, Interactives.AreaOfSubArea(subArea), street?.PosX ?? 0, street?.PosY ?? 0,
-                    house.AccountId, house.Owned && house.Locked));
+                int chests = Houses.ChestsIn(door.InteriorMapId).Count;
+                foreach (var house in shown.OrderBy(h => h.Instance))
+                {
+                    listings.Add(new Listing(Houses.HouseIdOf(door.MapId, door.ElementId), house.Instance, door.Model, door.Name,
+                        HouseStore.AskingPrice(house, door.Price), door.Rooms, chests,
+                        subArea, Interactives.AreaOfSubArea(subArea), street?.PosX ?? 0, street?.PosY ?? 0,
+                        house.AccountId, house.Owned && house.Locked));
+                }
             }
             return listings;
         }
@@ -88,7 +99,7 @@ namespace Jondo.Unity.Server.Handlers
                 Order.NameUp => found.OrderBy(h => h.Name, StringComparer.Ordinal).ThenBy(h => h.Price),
                 Order.NameDown => found.OrderByDescending(h => h.Name, StringComparer.Ordinal).ThenBy(h => h.Price),
                 _ => found.OrderBy(h => h.Price),
-            }).ThenBy(h => h.HouseId).ToList();
+            }).ThenBy(h => h.HouseId).ThenBy(h => h.Instance).ToList();
         }
 
         /// <summary>One page of a result, from 1, and how many pages there are -- one, at least.</summary>

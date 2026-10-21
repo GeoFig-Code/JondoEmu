@@ -88,9 +88,10 @@ namespace Jondo.Unity.Server.Handlers
         {
             public DialogKind Kind { get; init; }
 
-            /// <summary>The house: its street door.</summary>
+            /// <summary>The house: its street door, and which copy of the building.</summary>
             public long DoorMapId { get; init; }
             public int DoorElementId { get; init; }
+            public int Instance { get; init; } = Houses.FirstInstance;
 
             /// <summary>The chest, for the chest's keypads.</summary>
             public int ChestElementId { get; init; }
@@ -120,41 +121,46 @@ namespace Jondo.Unity.Server.Handlers
 
         // ─── The door ───────────────────────────────────────────────────────────
 
-        /// <summary>A house door was used: enter, buy, sell or the code, by the skill.</summary>
-        public static async Task UseDoorAsync(NetworkStream? stream, RegisteredInteractive door, InteractiveAction action)
+        /// <summary>
+        /// A house door was used: enter, buy, sell or the code, by the skill, on the copy of the
+        /// building the iwo's f3 names -- the entry of the client's door menu. A building of one copy
+        /// may not name it: its first.
+        /// </summary>
+        public static async Task UseDoorAsync(NetworkStream? stream, RegisteredInteractive door, InteractiveAction action, int instance)
         {
             if (!Contains(VisibleActions(door, SessionContext.Current.AccountId), action))
             {
                 Console.WriteLine($"[Houses] Skill {action.SkillId} of door {door.Element.Id} is not offered to this character.");
                 return;
             }
+            if (instance == 0) instance = Houses.FirstInstance;
 
             switch (action.SkillId)
             {
                 case Houses.EnterSkill:
-                    await EnterAsync(stream, door.Element.Id, action.SkillId);
+                    await EnterAsync(stream, door.Element.Id, action.SkillId, instance);
                     break;
                 case Houses.BuySkill:
-                    await OpenPurchaseAsync(stream, door.Element.Id, action.SkillId);
+                    await OpenPurchaseAsync(stream, door.Element.Id, action.SkillId, instance);
                     break;
                 case Houses.SellSkill:
                 case Houses.PriceSkill:
-                    await OpenSaleAsync(stream, door.Element.Id, action.SkillId);
+                    await OpenSaleAsync(stream, door.Element.Id, action.SkillId, instance);
                     break;
                 case Houses.CodeSkill:
-                    await OpenDoorKeypadAsync(stream, door.Element.Id, action.SkillId);
+                    await OpenDoorKeypadAsync(stream, door.Element.Id, action.SkillId, instance);
                     break;
             }
         }
 
-        /// <summary>The client has clicked the street door.</summary>
-        public static async Task EnterAsync(NetworkStream? stream, int elementId, int skillId)
+        /// <summary>The client has clicked the street door, to go into this copy of the building.</summary>
+        public static async Task EnterAsync(NetworkStream? stream, int elementId, int skillId, int instance)
         {
             if (await Managers.Jail.KeepsInAsync(stream)) return;
             long here = SessionContext.State.MapId;
-            if (!Houses.TryGetDoor(here, elementId, out var door))
+            if (!Houses.TryGetDoor(here, elementId, out var door) || !door.HasCopy(instance))
             {
-                Console.WriteLine($"[Houses] Unknown door: map {here}, element {elementId}.");
+                Console.WriteLine($"[Houses] Unknown door: map {here}, element {elementId}, copy {instance}.");
                 return;
             }
 
@@ -163,38 +169,39 @@ namespace Jondo.Unity.Server.Handlers
 
             // A house that is not one's own asks for its code first (pandala, frame 3884), unless
             // it is shared with one's guild and the guild may come in without it.
-            var house = HouseStore.Of(here, elementId);
+            var house = HouseStore.Of(here, elementId, instance);
             if (EnterAccess(house, SessionContext.Current.AccountId, MyGuildId()) == Access.Keypad)
             {
                 SessionContext.State.HouseDialog = new Dialog
                 {
-                    Kind = DialogKind.EnterCode, DoorMapId = here, DoorElementId = elementId,
+                    Kind = DialogKind.EnterCode, DoorMapId = here, DoorElementId = elementId, Instance = instance,
                 };
                 await SendAsync(stream, Op.Kia, HouseProtocol.BuildCodeKeypad(toGetIn: true));
                 return;
             }
 
-            await GoInsideAsync(stream, door);
+            await GoInsideAsync(stream, door, instance);
         }
 
         /// <summary>Through the door, once it is open: the part of entering after the iwn.</summary>
-        private static Task GoInsideAsync(NetworkStream? stream, Houses.Door door)
-            => GoInsideAsync(stream, door, SessionContext.State.MapId, SessionContext.State.CellId);
+        private static Task GoInsideAsync(NetworkStream? stream, Houses.Door door, int instance)
+            => GoInsideAsync(stream, door, instance, SessionContext.State.MapId, SessionContext.State.CellId);
 
         /// <summary>
         /// Into one's own house from wherever one is, as the home potion takes him: the capture
         /// «utilizar pocima de hogar» goes in with the same jqw as the door. Leaving goes out
         /// through the street door, not back to where the potion was drunk.
         /// </summary>
-        internal static Task GoHomeAsync(NetworkStream? stream, Houses.Door door)
-            => GoInsideAsync(stream, door, door.MapId, door.Cell);
+        internal static Task GoHomeAsync(NetworkStream? stream, Houses.Door door, int instance)
+            => GoInsideAsync(stream, door, instance, door.MapId, door.Cell);
 
-        private static async Task GoInsideAsync(NetworkStream? stream, Houses.Door door, long wayBackMap, int wayBackCell)
+        private static async Task GoInsideAsync(NetworkStream? stream, Houses.Door door, int instance, long wayBackMap, int wayBackCell)
         {
             long mapaQueDeja = SessionContext.State.MapId;
             SessionContext.State.HouseEntryMapId = wayBackMap;
             SessionContext.State.HouseEntryCell = wayBackCell;
             SessionContext.State.HouseEntryElementId = door.ElementId;
+            SessionContext.State.HouseEntryInstance = instance;
             SessionContext.State.MapId = door.InteriorMapId;
 
             // He comes in next to the exit, not on it: that way the first click to leave falls nearby.
@@ -209,7 +216,7 @@ namespace Jondo.Unity.Server.Handlers
             await WriteAsync(stream, ConnectionProtocol.BuildMapClock());
 
             string cual = door.IsKnown
-                ? $"«{door.Name}» ({door.Dwellings} owners in the real game)"
+                ? $"«{door.Name}», copy {instance} of {door.Copies}"
                 : $"door {door.ElementId}";
             Console.WriteLine($"[Houses] Going in through {cual} from map {mapaQueDeja} to the interior " +
                               $"{door.InteriorMapId}, cell {SessionContext.State.CellId}.");
@@ -311,6 +318,7 @@ namespace Jondo.Unity.Server.Handlers
             SessionContext.State.HouseEntryMapId = 0;
             SessionContext.State.HouseEntryCell = 0;
             SessionContext.State.HouseEntryElementId = 0;
+            SessionContext.State.HouseEntryInstance = 0;
             DatabaseManager.SaveCurrentCharacter();
 
             await SessionRegistry.AnunciarMudanzaAsync(SessionContext.Current, here);
@@ -335,7 +343,8 @@ namespace Jondo.Unity.Server.Handlers
         /// once on sale -- (jss f11 of "desde dentro de casa salir a fuera", frame 13, and the iwm of
         /// the sale); a stranger at a house that is not on sale gets 84 alone (pandala, frame 3867).
         /// A stranger at a house on sale, or at one nobody owns, gets 84 and 97 "Comprar": the
-        /// client's skill for it, an inference.
+        /// client's skill for it, an inference. A building of many copies offers what any of them
+        /// offers this viewer; the client's menu puts under each skill the copies it fits.
         ///
         /// The chest, measured: its owner gets 104 open and 105 lock ("entrar en mi casa", frame
         /// 16); anybody else 104 alone (the guild house's chests, "Gremio/pocima hogar a gremio",
@@ -357,9 +366,8 @@ namespace Jondo.Unity.Server.Handlers
                 if (!Houses.TryGetDoor(interactive.MapId, interactive.Element.Id, out var houseDoor) || !houseDoor.IsOwnable)
                     return interactive.Actions;
 
-                var house = HouseStore.Of(interactive.MapId, interactive.Element.Id);
-                bool mine = house.Owned && house.AccountId == viewerAccountId;
-                foreach (int skill in DoorSkillsFor(house, mine))
+                var copies = HouseStore.CopiesOf(interactive.MapId, interactive.Element.Id, houseDoor.Copies);
+                foreach (int skill in DoorSkillsFor(copies, viewerAccountId))
                 {
                     var action = Find(interactive, skill);
                     if (action != null) visible.Add(action);
@@ -367,9 +375,9 @@ namespace Jondo.Unity.Server.Handlers
                 return visible;
             }
 
-            var (doorMap, doorElement) = CurrentHouse();
+            var (doorMap, doorElement, instance) = CurrentHouse();
             if (doorMap == 0) return visible;
-            var owner = HouseStore.Of(doorMap, doorElement);
+            var owner = HouseStore.Of(doorMap, doorElement, instance);
             if (!owner.Owned) return visible;
             foreach (var action in interactive.Actions)
             {
@@ -380,12 +388,23 @@ namespace Jondo.Unity.Server.Handlers
             return visible;
         }
 
-        /// <summary>The door skills for its owner or for anybody else, in the order the jss declares them.</summary>
-        public static int[] DoorSkillsFor(HouseStore.House house, bool mine)
+        /// <summary>
+        /// The door skills a viewer is offered over the copies the street shows, in the order the
+        /// jss declares them: enter; for a copy of his own the code, and sell or change its price;
+        /// buy, for a copy nobody owns or somebody else sells.
+        /// </summary>
+        public static int[] DoorSkillsFor(IReadOnlyCollection<HouseStore.House> copies, long viewerAccountId)
         {
-            if (mine) return new[] { Houses.EnterSkill, Houses.CodeSkill, house.ForSale ? Houses.PriceSkill : Houses.SellSkill };
-            bool buyable = !house.Owned || house.ForSale;
-            return buyable ? new[] { Houses.EnterSkill, Houses.BuySkill } : new[] { Houses.EnterSkill };
+            var skills = new List<int> { Houses.EnterSkill };
+            var mine = copies.Where(h => h.Owned && h.AccountId == viewerAccountId).ToList();
+            if (mine.Count > 0)
+            {
+                skills.Add(Houses.CodeSkill);
+                if (mine.Any(h => !h.ForSale)) skills.Add(Houses.SellSkill);
+                if (mine.Any(h => h.ForSale)) skills.Add(Houses.PriceSkill);
+            }
+            if (copies.Any(h => !h.Owned || (h.ForSale && h.AccountId != viewerAccountId))) skills.Add(Houses.BuySkill);
+            return skills.ToArray();
         }
 
         private static InteractiveAction? Find(RegisteredInteractive interactive, int skill)
@@ -411,28 +430,32 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// The house this character is inside: the door he came in by, or the one the data gives
-        /// for the interior when he reconnected inside. (0, 0) when he is not in a house.
+        /// The house this character is inside: the door he came in by and its copy, or the one the
+        /// data gives for the interior when he reconnected inside. (0, 0, 0) when he is not in a house.
         /// </summary>
-        public static (long MapId, int ElementId) CurrentHouse() => HouseOf(SessionContext.State);
+        public static (long MapId, int ElementId, int Instance) CurrentHouse() => HouseOf(SessionContext.State);
 
         /// <summary>
-        /// The house somebody is inside, by the door he came in through and kept under its map:
-        /// the house of his chests and the copy of the interior he sees. (0, 0) outside a house.
+        /// The house somebody is inside, by the door he came in through, kept under its map, and
+        /// the copy of the building: the house of his chests and the copy of the interior he sees.
+        /// (0, 0, 0) outside a house.
         /// </summary>
-        public static (long MapId, int ElementId) HouseOf(SessionState state)
+        public static (long MapId, int ElementId, int Instance) HouseOf(SessionState state)
         {
             long here = state.MapId;
-            if (!Houses.IsInterior(here)) return (0, 0);
+            if (!Houses.IsInterior(here)) return (0, 0, 0);
 
             long map = state.HouseEntryMapId;
             int element = state.HouseEntryElementId;
             if (map != 0 && element != 0 && Houses.TryGetDoor(map, element, out var door) && door.InteriorMapId == Houses.HallOf(here))
-                return (Houses.CanonicalMapOf(map, element), element);
+            {
+                int instance = door.HasCopy(state.HouseEntryInstance) ? state.HouseEntryInstance : Houses.FirstInstance;
+                return (Houses.CanonicalMapOf(map, element), element, instance);
+            }
 
             return Houses.TryGetWayBack(here, out var wayBack)
-                ? (Houses.CanonicalMapOf(wayBack.MapId, wayBack.ElementId), wayBack.ElementId)
-                : (0, 0);
+                ? (Houses.CanonicalMapOf(wayBack.MapId, wayBack.ElementId), wayBack.ElementId, Houses.FirstInstance)
+                : (0, 0, 0);
         }
 
         /// <summary>
@@ -451,6 +474,7 @@ namespace Jondo.Unity.Server.Handlers
                 state.HouseEntryMapId = door.MapId;
                 state.HouseEntryCell = door.Cell;
                 state.HouseEntryElementId = door.ElementId;
+                state.HouseEntryInstance = owned.Instance;
                 return;
             }
         }
@@ -464,7 +488,7 @@ namespace Jondo.Unity.Server.Handlers
             if (house.Owned) (name, tag) = AccountTagOf(house.AccountId);
             return new HouseProtocol.Plaque
             {
-                Instance = Houses.Instance,
+                Instance = house.Instance,
                 OwnerName = name,
                 OwnerTag = tag,
                 Price = HouseStore.AskingPrice(house, door.Price),
@@ -505,16 +529,17 @@ namespace Jondo.Unity.Server.Handlers
         /// street that can be owned. A house nobody owns is declared too, on sale at its model's
         /// price: without it the client knows no house behind the door and drops the buyer's khr.
         /// No plaque of a free house was ever captured, but the client takes this one: it shows the
-        /// house as abandoned and on sale at that price, and opens the buyer's window.
+        /// house as abandoned and on sale at that price, and opens the buyer's window. A building of
+        /// many copies sends one plaque per copy the street is shown, as the capture's eleven.
         /// </summary>
         public static void AddToMap(Pb jss, long mapId)
         {
             if (Houses.IsInterior(mapId))
             {
-                var (doorMap, doorElement) = CurrentHouse();
+                var (doorMap, doorElement, instance) = CurrentHouse();
                 if (doorMap != 0 && Houses.TryGetDoor(doorMap, doorElement, out var door) && door.IsOwnable)
                 {
-                    var house = HouseStore.Of(doorMap, doorElement);
+                    var house = HouseStore.Of(doorMap, doorElement, instance);
                     var street = MapManager.GetMapInfo(doorMap);
                     if (house.Owned)
                     {
@@ -527,9 +552,9 @@ namespace Jondo.Unity.Server.Handlers
             foreach (var door in Houses.On(mapId))
             {
                 if (!door.IsOwnable) continue;
-                var house = HouseStore.Of(mapId, door.ElementId);
+                var copies = HouseStore.CopiesOf(mapId, door.ElementId, door.Copies);
                 jss.Msg(9, HouseProtocol.BuildOnMap(Houses.HouseIdOf(mapId, door.ElementId), door.Model,
-                    new long[] { door.ElementId }, new[] { PlaqueOf(house, door) }));
+                    new long[] { door.ElementId }, copies.Select(h => PlaqueOf(h, door))));
             }
         }
 
@@ -542,14 +567,12 @@ namespace Jondo.Unity.Server.Handlers
             byte[]? izv = ConnectionProtocol.ReadPayload(payload, Op.Izv);
             if (izv == null) return false;
 
-            int houseId = 0;
-            foreach (var field in ProtoMessage.Parse(izv).Fields)
-            {
-                if (field.FieldNumber == 2 && field.WireType == 0) houseId = (int)field.VarIntValue;
-            }
+            int houseId = (int)VarOf(izv, 2);
+            int instance = (int)VarOf(izv, 1);
             if (!Houses.TryGetByHouseId(houseId, out var door)) return false;
+            if (!door.HasCopy(instance)) instance = Houses.FirstInstance;
 
-            var house = HouseStore.Of(door.MapId, door.ElementId);
+            var house = HouseStore.Of(door.MapId, door.ElementId, instance);
             byte[] answer = ConnectionProtocol.Answer(Op.Izr, HouseProtocol.BuildInfo(PlaqueOf(house, door)),
                                                       ConnectionProtocol.RequestId(payload));
             await WriteAsync(stream, answer);
@@ -605,7 +628,7 @@ namespace Jondo.Unity.Server.Handlers
             if (guild == null) return;
             byte[] frame = house.GuildId == guildId && OwnedOf(house) is { } owned
                 ? ConnectionProtocol.Push(Op.Jjp, HouseProtocol.BuildGuildHouse(owned))
-                : ConnectionProtocol.Push(Op.Jjt, HouseProtocol.BuildGuildHouseGone(Houses.HouseIdOf(door.MapId, door.ElementId), Houses.Instance));
+                : ConnectionProtocol.Push(Op.Jjt, HouseProtocol.BuildGuildHouseGone(Houses.HouseIdOf(door.MapId, door.ElementId), house.Instance));
             await GuildHandler.TellEveryoneAsync(guild, frame);
         }
 
@@ -615,11 +638,11 @@ namespace Jondo.Unity.Server.Handlers
         /// The owner's sale window: khr with the price the house is at, or its model's when it is
         /// not on sale (sale frame 3: 2,500,000, the Casa grande de Bonta's).
         /// </summary>
-        private static async Task OpenSaleAsync(NetworkStream? stream, int elementId, int skillId)
+        private static async Task OpenSaleAsync(NetworkStream? stream, int elementId, int skillId, int instance)
         {
             long map = SessionContext.State.MapId;
-            if (!Houses.TryGetDoor(map, elementId, out var door)) return;
-            var house = HouseStore.Of(map, elementId);
+            if (!Houses.TryGetDoor(map, elementId, out var door) || !door.HasCopy(instance)) return;
+            var house = HouseStore.Of(map, elementId, instance);
             if (!IsOwner(house)) return;
 
             await SendAsync(stream, Op.Iwn, ConnectionProtocol.BuildElementInUse(elementId, skillId, SessionContext.State.CharacterId));
@@ -627,10 +650,10 @@ namespace Jondo.Unity.Server.Handlers
             long price = house.ForSale ? house.Price : door.Price;
             SessionContext.State.HouseDialog = new Dialog
             {
-                Kind = DialogKind.Sale, DoorMapId = map, DoorElementId = elementId, Price = price,
+                Kind = DialogKind.Sale, DoorMapId = map, DoorElementId = elementId, Instance = instance, Price = price,
             };
             await SendAsync(stream, Op.Khr, HouseProtocol.BuildSaleWindow(false, Houses.HouseIdOf(map, elementId),
-                                                                          Houses.Instance, price));
+                                                                          instance, price));
         }
 
         /// <summary>
@@ -659,18 +682,19 @@ namespace Jondo.Unity.Server.Handlers
             if (!Houses.TryGetDoor(dialog.DoorMapId, dialog.DoorElementId, out var door)) return true;
             long account = SessionContext.Current.AccountId;
             long newPrice = onSale && price > 0 ? price : 0;
-            long sharedWith = HouseStore.Of(dialog.DoorMapId, dialog.DoorElementId).GuildId;
-            if (!await HouseStore.SetPriceAsync(dialog.DoorMapId, dialog.DoorElementId, account, newPrice))
+            int instance = dialog.Instance;
+            long sharedWith = HouseStore.Of(dialog.DoorMapId, dialog.DoorElementId, instance).GuildId;
+            if (!await HouseStore.SetPriceAsync(dialog.DoorMapId, dialog.DoorElementId, instance, account, newPrice))
             {
                 await SendAsync(stream, Op.Kld, ConnectionProtocol.BuildDialogClosed(HouseProtocol.SaleClosed));
                 return true;
             }
 
             int houseId = Houses.HouseIdOf(dialog.DoorMapId, dialog.DoorElementId);
-            var house = HouseStore.Of(dialog.DoorMapId, dialog.DoorElementId);
+            var house = HouseStore.Of(dialog.DoorMapId, dialog.DoorElementId, instance);
             var offSale = new HouseStore.House
             {
-                MapId = house.MapId, ElementId = house.ElementId, AccountId = house.AccountId,
+                MapId = house.MapId, ElementId = house.ElementId, Instance = instance, AccountId = house.AccountId,
                 Price = 0, AccessCode = house.AccessCode,
             };
 
@@ -679,38 +703,57 @@ namespace Jondo.Unity.Server.Handlers
             await SendDoorAndPlaqueAsync(stream, door, offSale, account);
             if (house.ForSale)
             {
-                await SendAsync(stream, Op.Jjt, HouseProtocol.BuildPutOnSale(Houses.Instance, houseId));
+                await SendAsync(stream, Op.Jjt, HouseProtocol.BuildPutOnSale(instance, houseId));
                 await SendDoorAndPlaqueAsync(stream, door, house, account);
                 if (sharedWith > 0) await TellTheGuildAsync(sharedWith, house, door);
             }
 
             var (name, tag) = AccountTagOf(account);
             await SendAsync(stream, Op.Jaa, BuildAccountHouses(account));
-            await SendAsync(stream, Op.Izu, HouseProtocol.BuildSellingUpdate(name, tag, houseId, house.ForSale ? house.Price : 0, Houses.Instance));
+            await SendAsync(stream, Op.Izu, HouseProtocol.BuildSellingUpdate(name, tag, houseId, house.ForSale ? house.Price : 0, instance));
             await SendAsync(stream, Op.Izz, HouseProtocol.BuildChanged(houseId, new long[] { door.ElementId }, PlaqueOf(house, door)));
             await SendAsync(stream, Op.Kld, ConnectionProtocol.BuildDialogClosed(HouseProtocol.SaleClosed));
 
             await TellTheStreetAsync(door, house);
             Console.WriteLine(house.ForSale
-                ? $"[Houses] {door.MapId}/{door.ElementId} on sale for {house.Price:N0} kamas."
-                : $"[Houses] {door.MapId}/{door.ElementId} taken off sale.");
+                ? $"[Houses] {door.MapId}/{door.ElementId}/{instance} on sale for {house.Price:N0} kamas."
+                : $"[Houses] {door.MapId}/{door.ElementId}/{instance} taken off sale.");
             return true;
         }
 
-        /// <summary>The door as this owner sees it (iwm) and the house's plaque (izz).</summary>
+        /// <summary>
+        /// The door as this owner sees it (iwm), with this copy as it is to be shown, and the copy's
+        /// plaque (izz).
+        /// </summary>
         private static async Task SendDoorAndPlaqueAsync(NetworkStream? stream, Houses.Door door, HouseStore.House house, long viewer)
         {
-            await SendAsync(stream, Op.Iwm, DoorChanged(door, house, viewer));
+            await SendAsync(stream, Op.Iwm, DoorChanged(door, CopiesWith(door, house), viewer));
             await SendAsync(stream, Op.Izz, HouseProtocol.BuildChanged(Houses.HouseIdOf(door.MapId, door.ElementId),
                 new long[] { door.ElementId }, PlaqueOf(house, door)));
         }
 
-        /// <summary>The door redeclared with the skills this viewer has now (iwm).</summary>
-        public static byte[] DoorChanged(Houses.Door door, HouseStore.House house, long viewerAccountId)
+        /// <summary>The copies the street is shown, with this one as it is about to be shown.</summary>
+        private static List<HouseStore.House> CopiesWith(Houses.Door door, HouseStore.House house)
+        {
+            var copies = HouseStore.CopiesOf(door.MapId, door.ElementId, door.Copies);
+            int at = copies.FindIndex(h => h.Instance == house.Instance);
+            if (at >= 0) copies[at] = house;
+            else
+            {
+                copies.Add(house);
+                copies.Sort((a, b) => a.Instance.CompareTo(b.Instance));
+            }
+            return copies;
+        }
+
+        /// <summary>The door redeclared with the skills this viewer has now (iwm), over the copies the street shows.</summary>
+        public static byte[] DoorChanged(Houses.Door door, long viewerAccountId)
+            => DoorChanged(door, HouseStore.CopiesOf(door.MapId, door.ElementId, door.Copies), viewerAccountId);
+
+        public static byte[] DoorChanged(Houses.Door door, IReadOnlyCollection<HouseStore.House> copies, long viewerAccountId)
         {
             var skills = new List<(int, int)>();
-            bool mine = house.Owned && house.AccountId == viewerAccountId;
-            foreach (int skill in DoorSkillsFor(house, mine)) skills.Add((DoorSkillInstance(door.ElementId, skill), skill));
+            foreach (int skill in DoorSkillsFor(copies, viewerAccountId)) skills.Add((DoorSkillInstance(door.ElementId, skill), skill));
             return HouseProtocol.BuildElementChanged(door.ElementId, Houses.DoorType, skills);
         }
 
@@ -741,12 +784,13 @@ namespace Jondo.Unity.Server.Handlers
         {
             byte[] plaque = ConnectionProtocol.Push(Op.Izz, HouseProtocol.BuildChanged(
                 Houses.HouseIdOf(door.MapId, door.ElementId), new long[] { door.ElementId }, PlaqueOf(house, door)));
+            var copies = CopiesWith(door, house);
             foreach (var session in Houses.MapsOfDoor(door.ElementId).SelectMany(SessionRegistry.OnMap))
             {
                 if (session.Id == SessionContext.Current.Id) continue;
                 try
                 {
-                    await session.SendAsync(ConnectionProtocol.Push(Op.Iwm, DoorChanged(door, house, session.AccountId))).ConfigureAwait(false);
+                    await session.SendAsync(ConnectionProtocol.Push(Op.Iwm, DoorChanged(door, copies, session.AccountId))).ConfigureAwait(false);
                     await session.SendAsync(plaque).ConfigureAwait(false);
                 }
                 catch (Exception ex)
@@ -762,11 +806,11 @@ namespace Jondo.Unity.Server.Handlers
         /// "Comprar" on the door of a house on sale, or of one nobody owns: the sale window, as a
         /// buyer's. INFERENCE: khr with its f1 set (see <see cref="HouseProtocol.BuildSaleWindow"/>).
         /// </summary>
-        private static async Task OpenPurchaseAsync(NetworkStream? stream, int elementId, int skillId)
+        private static async Task OpenPurchaseAsync(NetworkStream? stream, int elementId, int skillId, int instance)
         {
             long map = SessionContext.State.MapId;
-            if (!Houses.TryGetDoor(map, elementId, out var door) || !door.IsOwnable) return;
-            var house = HouseStore.Of(map, elementId);
+            if (!Houses.TryGetDoor(map, elementId, out var door) || !door.IsOwnable || !door.HasCopy(instance)) return;
+            var house = HouseStore.Of(map, elementId, instance);
             long price = HouseStore.AskingPrice(house, door.Price);
             if (price <= 0 || house.AccountId == SessionContext.Current.AccountId) return;
 
@@ -774,10 +818,10 @@ namespace Jondo.Unity.Server.Handlers
 
             SessionContext.State.HouseDialog = new Dialog
             {
-                Kind = DialogKind.Purchase, DoorMapId = map, DoorElementId = elementId, Price = price,
+                Kind = DialogKind.Purchase, DoorMapId = map, DoorElementId = elementId, Instance = instance, Price = price,
             };
             await SendAsync(stream, Op.Khr, HouseProtocol.BuildSaleWindow(true, Houses.HouseIdOf(map, elementId),
-                                                                          Houses.Instance, price));
+                                                                          instance, price));
         }
 
         /// <summary>
@@ -807,7 +851,7 @@ namespace Jondo.Unity.Server.Handlers
 
             var state = SessionContext.State;
             long buyer = SessionContext.Current.AccountId;
-            var (done, why) = await HouseStore.BuyAsync(dialog.DoorMapId, dialog.DoorElementId, door.Price,
+            var (done, why) = await HouseStore.BuyAsync(dialog.DoorMapId, dialog.DoorElementId, dialog.Instance, door.Price,
                                                         buyer, state.CharacterId, state.Kamas, dialog.Price);
             if (done == null)
             {
@@ -823,14 +867,14 @@ namespace Jondo.Unity.Server.Handlers
                     await SendAsync(stream, Op.Lqn, ConnectionProtocol.BuildInfoMessage(type, message.Value));
                 }
                 await SendAsync(stream, Op.Kld, ConnectionProtocol.BuildDialogClosed(HouseProtocol.SaleClosed));
-                Console.WriteLine($"[Houses] {state.CharacterId} could not buy {door.MapId}/{door.ElementId}: {why}.");
+                Console.WriteLine($"[Houses] {state.CharacterId} could not buy {door.MapId}/{door.ElementId}/{dialog.Instance}: {why}.");
                 return true;
             }
 
             state.Kamas = done.BuyerKamas;
             await SendAsync(stream, Op.Ivf, ConnectionProtocol.BuildKamas(done.BuyerKamas));
 
-            var house = HouseStore.Of(door.MapId, door.ElementId);
+            var house = HouseStore.Of(door.MapId, door.ElementId, dialog.Instance);
             await SendDoorAndPlaqueAsync(stream, door, house, buyer);
             await SendAsync(stream, Op.Jaa, BuildAccountHouses(buyer));
             await SendAsync(stream, Op.Kld, ConnectionProtocol.BuildDialogClosed(HouseProtocol.SaleClosed));
@@ -838,7 +882,7 @@ namespace Jondo.Unity.Server.Handlers
             await TellTheStreetAsync(door, house);
             if (done.SellerAccountId > 0) await TellTheSellerAsync(done, state.CharacterName);
 
-            Console.WriteLine($"[Houses] {door.MapId}/{door.ElementId} bought by account {buyer} for {done.Price:N0} kamas.");
+            Console.WriteLine($"[Houses] {door.MapId}/{door.ElementId}/{dialog.Instance} bought by account {buyer} for {done.Price:N0} kamas.");
             return true;
         }
 
@@ -889,14 +933,17 @@ namespace Jondo.Unity.Server.Handlers
         // ─── Codes ──────────────────────────────────────────────────────────────
 
         /// <summary>"Modificar el código" on one's own door: the owner's keypad, kia { f3: 8 }.</summary>
-        private static async Task OpenDoorKeypadAsync(NetworkStream? stream, int elementId, int skillId)
+        private static async Task OpenDoorKeypadAsync(NetworkStream? stream, int elementId, int skillId, int instance)
         {
             long map = SessionContext.State.MapId;
-            var house = HouseStore.Of(map, elementId);
+            var house = HouseStore.Of(map, elementId, instance);
             if (!IsOwner(house)) return;
 
             await SendAsync(stream, Op.Iwn, ConnectionProtocol.BuildElementInUse(elementId, skillId, SessionContext.State.CharacterId));
-            SessionContext.State.HouseDialog = new Dialog { Kind = DialogKind.DoorCode, DoorMapId = map, DoorElementId = elementId };
+            SessionContext.State.HouseDialog = new Dialog
+            {
+                Kind = DialogKind.DoorCode, DoorMapId = map, DoorElementId = elementId, Instance = instance,
+            };
             await SendAsync(stream, Op.Kia, HouseProtocol.BuildCodeKeypad(toGetIn: false));
         }
 
@@ -918,17 +965,17 @@ namespace Jondo.Unity.Server.Handlers
             long account = SessionContext.Current.AccountId;
             if (dialog.Kind == DialogKind.DoorCode)
             {
-                if (await HouseStore.SetAccessCodeAsync(dialog.DoorMapId, dialog.DoorElementId, account, code)
+                if (await HouseStore.SetAccessCodeAsync(dialog.DoorMapId, dialog.DoorElementId, dialog.Instance, account, code)
                     && Houses.TryGetDoor(dialog.DoorMapId, dialog.DoorElementId, out var door))
                 {
-                    var house = HouseStore.Of(dialog.DoorMapId, dialog.DoorElementId);
+                    var house = HouseStore.Of(dialog.DoorMapId, dialog.DoorElementId, dialog.Instance);
                     await SendDoorAndPlaqueAsync(stream, door, house, account);
                     await SendAsync(stream, Op.Khu, HouseProtocol.BuildCodeResult(wrong: false));
                     await TellTheStreetAsync(door, house);
                     Console.WriteLine($"[Houses] {dialog.DoorMapId}/{dialog.DoorElementId}: access code {(code.Length == 0 ? "removed" : "set")}.");
                 }
             }
-            else if (await HouseStore.SetChestCodeAsync(dialog.DoorMapId, dialog.DoorElementId, dialog.ChestElementId, account, code))
+            else if (await HouseStore.SetChestCodeAsync(dialog.DoorMapId, dialog.DoorElementId, dialog.Instance, dialog.ChestElementId, account, code))
             {
                 await SendAsync(stream, Op.Khu, HouseProtocol.BuildCodeResult(wrong: false));
                 Console.WriteLine($"[Houses] Chest {dialog.ChestElementId} of {dialog.DoorMapId}/{dialog.DoorElementId}: " +
@@ -956,8 +1003,8 @@ namespace Jondo.Unity.Server.Handlers
             SessionContext.State.HouseDialog = null;
 
             bool right = dialog.Kind == DialogKind.EnterCode
-                ? CodeOpens(HouseStore.Of(dialog.DoorMapId, dialog.DoorElementId), MyGuildId(), typed)
-                : HouseStore.Matches(HouseStore.ChestCodeOf(dialog.DoorMapId, dialog.DoorElementId, dialog.ChestElementId), typed);
+                ? CodeOpens(HouseStore.Of(dialog.DoorMapId, dialog.DoorElementId, dialog.Instance), MyGuildId(), typed)
+                : HouseStore.Matches(HouseStore.ChestCodeOf(dialog.DoorMapId, dialog.DoorElementId, dialog.Instance, dialog.ChestElementId), typed);
 
             await SendAsync(stream, Op.Kld, ConnectionProtocol.BuildDialogClosed(HouseProtocol.CodeClosed));
             await SendAsync(stream, Op.Khu, HouseProtocol.BuildCodeResult(wrong: !right));
@@ -970,11 +1017,11 @@ namespace Jondo.Unity.Server.Handlers
             if (dialog.Kind == DialogKind.EnterCode)
             {
                 if (SessionContext.State.MapId == dialog.DoorMapId && Houses.TryGetDoor(dialog.DoorMapId, dialog.DoorElementId, out var door))
-                    await GoInsideAsync(stream, door);
+                    await GoInsideAsync(stream, door, dialog.Instance);
             }
             else
             {
-                await OpenChestAsync(stream, dialog.DoorMapId, dialog.DoorElementId, dialog.ChestElementId);
+                await OpenChestAsync(stream, dialog.DoorMapId, dialog.DoorElementId, dialog.Instance, dialog.ChestElementId);
             }
             return true;
         }
@@ -990,10 +1037,12 @@ namespace Jondo.Unity.Server.Handlers
             byte[]? jai = ConnectionProtocol.ReadPayload(payload, Op.Jai);
             if (jai == null) return false;
             int houseId = (int)VarOf(jai, 3);
+            int instance = (int)VarOf(jai, 4);
             if (!Houses.TryGetByHouseId(houseId, out var door)) return false;
-            var house = HouseStore.Of(door.MapId, door.ElementId);
+            if (!door.HasCopy(instance)) instance = Houses.FirstInstance;
+            var house = HouseStore.Of(door.MapId, door.ElementId, instance);
             if (!IsOwner(house)) return true;
-            await SendAsync(stream, Op.Jak, HouseProtocol.BuildGuildRights(houseId, Houses.Instance, GuildBlockOf(house), house.GuildRights));
+            await SendAsync(stream, Op.Jak, HouseProtocol.BuildGuildRights(houseId, instance, GuildBlockOf(house), house.GuildRights));
             return true;
         }
 
@@ -1008,9 +1057,11 @@ namespace Jondo.Unity.Server.Handlers
             if (jao == null) return false;
             bool share = VarOf(jao, 1) != 0;
             int houseId = (int)VarOf(jao, 2);
+            int instance = (int)VarOf(jao, 3);
             int rights = (int)VarOf(jao, 4);
             if (!Houses.TryGetByHouseId(houseId, out var door)) return false;
-            var house = HouseStore.Of(door.MapId, door.ElementId);
+            if (!door.HasCopy(instance)) instance = Houses.FirstInstance;
+            var house = HouseStore.Of(door.MapId, door.ElementId, instance);
             if (!IsOwner(house)) return true;
 
             long guildId = 0;
@@ -1025,15 +1076,15 @@ namespace Jondo.Unity.Server.Handlers
                 if (guildId == 0) return true;
             }
             long before = house.GuildId;
-            await HouseStore.SetGuildShareAsync(door.MapId, door.ElementId, house.AccountId, guildId, rights);
+            await HouseStore.SetGuildShareAsync(door.MapId, door.ElementId, instance, house.AccountId, guildId, rights);
 
-            house = HouseStore.Of(door.MapId, door.ElementId);
+            house = HouseStore.Of(door.MapId, door.ElementId, instance);
             if (before > 0 && before != house.GuildId) await TellTheGuildAsync(before, house, door);
             if (house.GuildId > 0) await TellTheGuildAsync(house.GuildId, house, door);
-            await SendAsync(stream, Op.Jak, HouseProtocol.BuildGuildRights(houseId, Houses.Instance, GuildBlockOf(house), house.GuildRights));
+            await SendAsync(stream, Op.Jak, HouseProtocol.BuildGuildRights(houseId, instance, GuildBlockOf(house), house.GuildRights));
             await TellTheStreetAsync(door, house);
             await SendAccountHousesAsync(stream);
-            Console.WriteLine($"[Houses] House {houseId} " + (guildId > 0 ? $"shared with guild {guildId}, rights {house.GuildRights}." : "no longer shared."));
+            Console.WriteLine($"[Houses] House {houseId}/{instance} " + (guildId > 0 ? $"shared with guild {guildId}, rights {house.GuildRights}." : "no longer shared."));
             return true;
         }
 
@@ -1048,7 +1099,7 @@ namespace Jondo.Unity.Server.Handlers
             long target = VarOf(jal, 1);
             var mine = CurrentHouse();
             if (mine.MapId == 0 || target == SessionContext.State.CharacterId) return true;
-            if (!IsOwner(HouseStore.Of(mine.MapId, mine.ElementId))) return true;
+            if (!IsOwner(HouseStore.Of(mine.MapId, mine.ElementId, mine.Instance))) return true;
 
             var session = SessionRegistry.FindByCharacter(target);
             if (session == null || HouseOf(session.State) != mine) return true;
@@ -1058,7 +1109,7 @@ namespace Jondo.Unity.Server.Handlers
                 await GoOutAsync(session.Stream);
                 await SendAsync(session.Stream, Op.Lqn, ConnectionProtocol.BuildSystemMessage(ThrownOut, owner));
             }
-            Console.WriteLine($"[Houses] {owner} throws {target} out of the house {mine.MapId}/{mine.ElementId}.");
+            Console.WriteLine($"[Houses] {owner} throws {target} out of the house {mine.MapId}/{mine.ElementId}/{mine.Instance}.");
             return true;
         }
 
@@ -1091,9 +1142,9 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
-            var (doorMap, doorElement) = CurrentHouse();
+            var (doorMap, doorElement, instance) = CurrentHouse();
             if (doorMap == 0) return;
-            var house = HouseStore.Of(doorMap, doorElement);
+            var house = HouseStore.Of(doorMap, doorElement, instance);
             if (!house.Owned) return;
             bool mine = IsOwner(house);
 
@@ -1104,7 +1155,8 @@ namespace Jondo.Unity.Server.Handlers
             {
                 SessionContext.State.HouseDialog = new Dialog
                 {
-                    Kind = DialogKind.ChestCode, DoorMapId = doorMap, DoorElementId = doorElement, ChestElementId = chest.Element.Id,
+                    Kind = DialogKind.ChestCode, DoorMapId = doorMap, DoorElementId = doorElement, Instance = instance,
+                    ChestElementId = chest.Element.Id,
                 };
                 await SendAsync(stream, Op.Kia, HouseProtocol.BuildCodeKeypad(toGetIn: false));
                 return;
@@ -1113,7 +1165,7 @@ namespace Jondo.Unity.Server.Handlers
             // A guild may open it, or be kept from it; a locked chest asks anybody else its code,
             // as a locked door does: an inference.
             var access = ChestAccessFor(house, SessionContext.Current.AccountId, MyGuildId(),
-                                        HouseStore.ChestCodeOf(doorMap, doorElement, chest.Element.Id));
+                                        HouseStore.ChestCodeOf(doorMap, doorElement, instance, chest.Element.Id));
             if (access == ChestAccess.Refused)
             {
                 await SendAsync(stream, Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, ChestRefused));
@@ -1123,21 +1175,22 @@ namespace Jondo.Unity.Server.Handlers
             {
                 SessionContext.State.HouseDialog = new Dialog
                 {
-                    Kind = DialogKind.ChestKeypad, DoorMapId = doorMap, DoorElementId = doorElement, ChestElementId = chest.Element.Id,
+                    Kind = DialogKind.ChestKeypad, DoorMapId = doorMap, DoorElementId = doorElement, Instance = instance,
+                    ChestElementId = chest.Element.Id,
                 };
                 await SendAsync(stream, Op.Kia, HouseProtocol.BuildCodeKeypad(toGetIn: true));
                 return;
             }
 
-            await OpenChestAsync(stream, doorMap, doorElement, chest.Element.Id);
+            await OpenChestAsync(stream, doorMap, doorElement, instance, chest.Element.Id);
         }
 
         /// <summary>kci { 100, 4 } and what is inside: frames 8-9 of the house chest capture.</summary>
-        private static Task OpenChestAsync(NetworkStream? stream, long doorMap, int doorElement, int chestElement)
+        private static Task OpenChestAsync(NetworkStream? stream, long doorMap, int doorElement, int instance, int chestElement)
             => StorageHandler.OpenAsync(stream, new StorageHandler.Window
             {
                 Kind = StorageHandler.Kind.HouseChest,
-                Place = StorageStacks.HouseChest(doorMap, doorElement, chestElement),
+                Place = StorageStacks.HouseChest(doorMap, doorElement, instance, chestElement),
                 MapId = SessionContext.State.MapId,
                 ElementId = chestElement,
             }, StorageProtocol.BuildHouseChestOpened());

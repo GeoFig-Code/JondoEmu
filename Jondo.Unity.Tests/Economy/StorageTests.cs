@@ -152,7 +152,7 @@ namespace Jondo.Unity.Tests.Economy
         public void Part_of_a_stack_goes_in_and_joins_the_same_stack()
         {
             const long character = 8_810_100_003;
-            var chest = StorageStacks.HouseChest(8_810_000_002, 522653, 522477);
+            var chest = StorageStacks.HouseChest(8_810_000_002, 522653, Houses.FirstInstance, 522477);
             Forget(chest, character);
             try
             {
@@ -201,29 +201,37 @@ namespace Jondo.Unity.Tests.Economy
         public void A_house_s_chests_are_emptied_together_and_only_them()
         {
             const long character = 8_810_100_005;
-            var first = StorageStacks.HouseChest(8_810_000_003, 522653, 1);
-            var second = StorageStacks.HouseChest(8_810_000_003, 522653, 2);
-            var neighbour = StorageStacks.HouseChest(8_810_000_003, 5226530, 1);
+            var first = StorageStacks.HouseChest(8_810_000_003, 522653, Houses.FirstInstance, 1);
+            var second = StorageStacks.HouseChest(8_810_000_003, 522653, Houses.FirstInstance, 2);
+            var neighbour = StorageStacks.HouseChest(8_810_000_003, 5226530, Houses.FirstInstance, 1);
+            var secondCopy = StorageStacks.HouseChest(8_810_000_003, 522653, 2, 1);
             Forget(first, character);
             Forget(second);
             Forget(neighbour);
+            Forget(secondCopy);
             try
             {
                 StorageStacks.Put(first, character, Give(character, 392, 2), 2);
                 StorageStacks.Put(second, character, Give(character, 6902, 1), 1);
                 StorageStacks.Put(neighbour, character, Give(character, 6903, 1), 1);
+                StorageStacks.Put(secondCopy, character, Give(character, 6904, 1), 1);
 
-                var taken = StorageStacks.TakeAll(StorageStacks.HouseChestsPrefix(8_810_000_003, 522653));
+                var taken = StorageStacks.TakeAll(StorageStacks.HouseChestsPrefix(8_810_000_003, 522653, Houses.FirstInstance));
                 Assert.Equal(2, taken.Count);
                 Assert.Empty(StorageStacks.ItemsOf(first));
                 Assert.Empty(StorageStacks.ItemsOf(second));
                 Assert.Single(StorageStacks.ItemsOf(neighbour));
+
+                // Another copy of the building keeps its own: emptied with its own prefix only.
+                Assert.Single(StorageStacks.ItemsOf(secondCopy));
+                Assert.Single(StorageStacks.TakeAll(StorageStacks.HouseChestsPrefix(8_810_000_003, 522653, 2)));
             }
             finally
             {
                 Forget(first, character);
                 Forget(second);
                 Forget(neighbour);
+                Forget(secondCopy);
             }
         }
 

@@ -31,7 +31,8 @@ namespace Jondo.Unity.Server.Managers
     /// <para>
     /// Two tables. The haven bag chest keeps its own, HavenBagChest, one row per stack with the
     /// character that owns it. Everything else shares StorageItems, where a storage is named by a
-    /// text key -- "house:map:door:chest", "bin:map:element", "guild:guild:tab" -- so a new storage
+    /// text key -- "house:map:door:chest" ("house:map:door/copy:chest" from a building's second copy
+    /// on), "bin:map:element", "guild:guild:tab" -- so a new storage
     /// is a new key and not a new table. Created at start with CREATE TABLE IF NOT EXISTS:
     /// datos/world.zip, the base CI tests against, has never heard of it.
     /// </para>
@@ -59,13 +60,19 @@ namespace Jondo.Unity.Server.Managers
 
         public const string SharedTable = "StorageItems";
 
-        /// <summary>A chest inside a house, for the house of that door.</summary>
-        public static Place HouseChest(long doorMapId, int doorElementId, int chestElementId)
-            => new Place(SharedTable, "Storage", $"house:{Houses.CanonicalMapOf(doorMapId, doorElementId)}:{doorElementId}:{chestElementId}");
+        /// <summary>A chest inside a house, for that copy of the building behind that door.</summary>
+        public static Place HouseChest(long doorMapId, int doorElementId, int instance, int chestElementId)
+            => new Place(SharedTable, "Storage", HouseChestsPrefix(doorMapId, doorElementId, instance) + chestElementId);
 
-        /// <summary>The prefix every chest of one house shares, to empty them all when it is sold.</summary>
-        public static string HouseChestsPrefix(long doorMapId, int doorElementId)
-            => $"house:{Houses.CanonicalMapOf(doorMapId, doorElementId)}:{doorElementId}:";
+        /// <summary>
+        /// The prefix every chest of one house shares, to empty them all when it is sold. The first
+        /// copy keeps the key houses had before there were copies, so what they hold stays theirs.
+        /// </summary>
+        public static string HouseChestsPrefix(long doorMapId, int doorElementId, int instance)
+        {
+            string house = $"house:{Houses.CanonicalMapOf(doorMapId, doorElementId)}:{doorElementId}";
+            return instance == Houses.FirstInstance ? house + ":" : $"{house}/{instance}:";
+        }
 
         /// <summary>A bin: one per element, public.</summary>
         public static Place Bin(long mapId, int elementId)

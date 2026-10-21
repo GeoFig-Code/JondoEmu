@@ -30,9 +30,13 @@ namespace Jondo.Unity.Server.Managers
     /// of the SAME map, separate from the others. In the capture that building has eleven owners, not
     /// eleven floors.
     ///
-    /// That is why a door leads to one interior and only one, which is how it is done here. And that is why
-    /// in Jondo, where houses have no owner, a single instance is enough: the f3 is read and
-    /// ignored. The day there are owners, that field is the one saying whose copy is opened.
+    /// So a building here has as many COPIES as the highest instance the real server numbered on
+    /// it (<see cref="Door.Copies"/>): 36 buildings have more than one -- the Casa grande de Bonta
+    /// of the capture 24, Astrub's and Frigost's some too --, every other building one. Each copy
+    /// is a house of its own, with its owner, code, chests and guild; the street declares the
+    /// copies that have an owner and the first free one, and the client's door menu turns them into
+    /// one entry per copy («Casa de X», «Casa sin dueño»: SkillMenuMaker.CreateMenu over the
+    /// lpx f7 plaques). The iwo's f3, izv f1, jan f2, jai f4 and jao f3 say which copy.
     ///
     /// ─── What we decided ourselves ──────────────────────────────────────────────────────────
     ///
@@ -41,39 +45,30 @@ namespace Jondo.Unity.Server.Managers
     /// a single field with «house», and «doorCell» gives zero hits in global-metadata.dat. That
     /// link is set by Ankama's server and we do not have it.
     ///
-    /// So we set it ourselves, and with an INCLUSION list, not one of exclusions. The interiors
-    /// come only from the two subzones known to be dwellings —983 Residencia brakmariana and
-    /// 984 Residencia bontariana, 114 maps— handed out by index with everything sorted: the same
-    /// door always leads to the same place, without storing anything.
-    ///
-    /// The first version did the opposite —any map at (0,0) except a list of vetoes— and
-    /// it went wrong in the game: an Astrub door led to a blacksmith's workshop in Tierradala,
-    /// which is a public place reached on foot, and on top of that its FORGE was declared to be
-    /// the house's exit. That is, a profession interactive of a legitimate map ended up throwing
-    /// you out into the street. With 3,357 maps at (0,0) a veto list was never going to be enough:
-    /// one has to say which ones YES.
-    ///
-    /// The price is that houses no longer remember their zone: only Bonta and Brakmar have
-    /// residences, so 1,251 of the 1,437 doors lead to an interior from somewhere else. It is ugly
-    /// and it is on purpose, because the other way broke content that worked.
-    ///
-    /// tools/casas_mundo.py does it, and it can be corrected by hand in the .json.
+    /// So tools/casas_mundo.py sets it, from the measured to the guessed: Bonta's and Brakmar's
+    /// doors lead to their own residences (subareas 983/984, measured); any other door to an
+    /// interior at its own coordinates and in its own subarea, if there is one; else to one of its
+    /// subarea's, area's or region's interiors, the least used first. An interior is never a
+    /// workshop, a shop, a dungeon or a map with a resource or an NPC: the first version took any
+    /// map at (0,0) and an Astrub door led to a forge whose anvil was the way out. 513 of the 765
+    /// doors have no indoor map at their coordinates, so which interior is theirs cannot be known;
+    /// the copies keep a borrowed interior private all the same. The .json can be corrected by hand.
     ///
     /// ─── Owners ──────────────────────────────────────────────────────────────────────────────
     ///
-    /// A house can have an owner now (see <see cref="HouseStore"/>), and only the 37 doors whose
-    /// model is known can: the plaque names the house by its model (f4 of the jss f9 entry) and
-    /// the model is where the price comes from. The other doors stay what they were, open to
-    /// everybody and nobody's.
+    /// Every house whose model is known can have an owner (see <see cref="HouseStore"/>): 764 of
+    /// the 765, the model measured for 37 doors and inferred from their subarea for the rest. The
+    /// plaque names the house by its model (f4 of the jss f9 entry) and the model is where the
+    /// price comes from.
     ///
     /// The plaque -- lnx -- only ever travels for a house WITH an owner: of the 1,276 plaques in
     /// the 34 capture folders, all 1,276 have one, and there is no sample of a free house. A
     /// house that can be owned and has no owner sends one all the same, without a name and at its
     /// model's price: the client opens no buyer's window for a house its map did not declare.
     ///
-    /// Each door is ONE house with ONE instance (<see cref="Instance"/>); the house id the
-    /// protocol carries is ours, the door's rank in (map, element) order, stable while the doors
-    /// are. What is kept is keyed by the door, not by that number.
+    /// The house id the protocol carries is ours, the building's rank in (map, element) order,
+    /// stable while the doors are; a copy is that id and its instance. What is kept is keyed by
+    /// the door and the instance, not by that number.
     /// </summary>
     public static class Houses
     {
@@ -106,11 +101,11 @@ namespace Jondo.Unity.Server.Managers
         public static readonly IReadOnlyList<int> OwnableDoorSkills = new[] { EnterSkill, BuySkill, SellSkill, CodeSkill, PriceSkill };
 
         /// <summary>
-        /// The instance of every house: one per door here. The real server numbers the owners of a
-        /// building -- 22 is Sacrogrito69's in "Casas/" -- and the client sends it back in iwo f3,
-        /// izv f1 and jan f2; it is read and checked against this.
+        /// The first copy of every building, the only one of most. The real server numbers the
+        /// owners of a building -- 22 is Sacrogrito69's in "Casas/" -- and the client sends the
+        /// number back in iwo f3, izv f1, jan f2, jai f4 and jao f3.
         /// </summary>
-        public const int Instance = 1;
+        public const int FirstInstance = 1;
 
         /// <summary>A house chest, as the interior's jss declares it: type 85, "entrar en mi casa", frame 16.</summary>
         public const int ChestType = 85;
@@ -135,11 +130,11 @@ namespace Jondo.Unity.Server.Managers
         public readonly struct Door
         {
             public Door(long mapId, int elementId, int cell, int gfx, long interiorMapId,
-                        int model, string name, long price, int rooms, int dwellings)
+                        int model, string name, long price, int rooms, int copies)
             {
                 MapId = mapId; ElementId = elementId; Cell = cell; Gfx = gfx;
                 InteriorMapId = interiorMapId;
-                Model = model; Name = name; Price = price; Rooms = rooms; Dwellings = dwellings;
+                Model = model; Name = name; Price = price; Rooms = rooms; Copies = Math.Max(1, copies);
             }
 
             public long MapId { get; }
@@ -164,10 +159,14 @@ namespace Jondo.Unity.Server.Managers
             public int Rooms { get; }
 
             /// <summary>
-            /// How many distinct OWNERS the building has, each one with his copy of the same
-            /// interior. They are not floors: see the class's explanation.
+            /// How many copies the building has, each with its owner and its copy of the same
+            /// interior: the highest instance the real server numbered on it ("instancias" in the
+            /// data), one when none was seen. They are not floors: see the class's explanation.
             /// </summary>
-            public int Dwellings { get; }
+            public int Copies { get; }
+
+            /// <summary>Whether this is one of the building's copies.</summary>
+            public bool HasCopy(int instance) => instance >= FirstInstance && instance <= Copies;
 
             public bool IsKnown => Model != 0;
 
@@ -272,9 +271,11 @@ namespace Jondo.Unity.Server.Managers
                     if (interior <= 0) continue;
                     if (MapManager.GetMapInfo(interior) == null) continue;
 
-                    int dwellings = 0;
+                    int copies = 1;
                     if (entry.TryGetProperty("instancias", out var flats))
-                        dwellings = flats.GetArrayLength();
+                    {
+                        foreach (var flat in flats.EnumerateArray()) copies = Math.Max(copies, flat.GetInt32());
+                    }
 
                     var door = new Door(
                         mapId, elementId,
@@ -285,7 +286,7 @@ namespace Jondo.Unity.Server.Managers
                         entry.TryGetProperty("nombre", out var n) ? (n.GetString() ?? "") : "",
                         entry.TryGetProperty("precio", out var pr) ? pr.GetInt64() : 0,
                         entry.TryGetProperty("habitaciones", out var rm) ? rm.GetInt32() : 0,
-                        dwellings);
+                        copies);
 
                     if (_byElement.ContainsKey((mapId, elementId))) continue;
                     _byElement.Add((mapId, elementId), door);

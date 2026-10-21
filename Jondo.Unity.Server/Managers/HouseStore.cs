@@ -18,16 +18,17 @@ namespace Jondo.Unity.Server.Managers
     /// account is the owner.
     /// </para>
     /// <para>
-    /// A house is its street door, (map, element): Jondo has one instance per door (see
-    /// <see cref="Houses"/>), so the door IS the house. Two tables, created at start with
-    /// CREATE TABLE IF NOT EXISTS -- datos/world.zip, the base CI tests against, has never heard
-    /// of them:
+    /// A house is one copy of a building: its street door, (map, element), and its instance --
+    /// most buildings have one copy, some many (see <see cref="Houses"/>). Two tables, created at
+    /// start with CREATE TABLE IF NOT EXISTS -- datos/world.zip, the base CI tests against, has
+    /// never heard of them:
     ///
-    ///   Houses          (MapId, ElementId, AccountId, Price, AccessCode)
-    ///   HouseChestCodes (MapId, ElementId, ChestElementId, Code)
+    ///   Houses          (MapId, ElementId, Instance, AccountId, Price, AccessCode, GuildId, GuildRights)
+    ///   HouseChestCodes (MapId, ElementId, Instance, ChestElementId, Code)
     ///
-    /// A door without a row has no owner and is on sale at its model's price; a row with a zero
-    /// price is not on sale. What its chests hold is in <see cref="StorageStacks"/>.
+    /// A copy without a row has no owner and is on sale at its model's price; a row with a zero
+    /// price is not on sale. What its chests hold is in <see cref="StorageStacks"/>. Tables made
+    /// before the copies get them at start, every house kept being its building's first copy.
     /// </para>
     /// <para>
     /// Thread-safety: every change to a house takes that house's gate, so a buyer and the owner
@@ -41,6 +42,9 @@ namespace Jondo.Unity.Server.Managers
         {
             public long MapId { get; init; }
             public int ElementId { get; init; }
+
+            /// <summary>Which copy of the building it is.</summary>
+            public int Instance { get; init; } = Houses.FirstInstance;
 
             /// <summary>The owning account; zero when nobody owns it.</summary>
             public long AccountId { get; init; }
@@ -118,12 +122,27 @@ namespace Jondo.Unity.Server.Managers
             public const int Rest = 256;
         }
 
-        private static readonly ConcurrentDictionary<(long, int), SemaphoreSlim> _gates = new();
+        private static readonly ConcurrentDictionary<(long, int, int), SemaphoreSlim> _gates = new();
         private static readonly object _tablesLock = new object();
         private static volatile bool _tablesReady;
 
-        private static SemaphoreSlim GateOf(long mapId, int elementId)
-            => _gates.GetOrAdd((mapId, elementId), _ => new SemaphoreSlim(1, 1));
+        private static SemaphoreSlim GateOf(long mapId, int elementId, int instance)
+            => _gates.GetOrAdd((mapId, elementId, instance), _ => new SemaphoreSlim(1, 1));
+
+        /// <summary>The columns a house is read with, in the order <see cref="Read"/> takes them.</summary>
+        private const string Columns = "MapId, ElementId, Instance, AccountId, Price, AccessCode, GuildId, GuildRights";
+
+        private static House Read(SqliteDataReader reader) => new House
+        {
+            MapId = reader.GetInt64(0),
+            ElementId = reader.GetInt32(1),
+            Instance = reader.GetInt32(2),
+            AccountId = reader.GetInt64(3),
+            Price = reader.GetInt64(4),
+            AccessCode = reader.IsDBNull(5) ? "" : reader.GetString(5),
+            GuildId = reader.GetInt64(6),
+            GuildRights = reader.GetInt32(7),
+        };
 
         // ─── Tables ─────────────────────────────────────────────────────────────
 
@@ -146,37 +165,72 @@ namespace Jondo.Unity.Server.Managers
                     using var command = connection.CreateCommand();
                     command.CommandText = @"
                         CREATE TABLE IF NOT EXISTS Houses (
-                            MapId      INTEGER NOT NULL,
-                            ElementId  INTEGER NOT NULL,
-                            AccountId  INTEGER NOT NULL DEFAULT 0,
-                            Price      INTEGER NOT NULL DEFAULT 0,
-                            AccessCode TEXT NOT NULL DEFAULT '',
-                            PRIMARY KEY (MapId, ElementId));
-
-                        CREATE INDEX IF NOT EXISTS HousesByAccount ON Houses (AccountId);
+                            MapId       INTEGER NOT NULL,
+                            ElementId   INTEGER NOT NULL,
+                            Instance    INTEGER NOT NULL DEFAULT 1,
+                            AccountId   INTEGER NOT NULL DEFAULT 0,
+                            Price       INTEGER NOT NULL DEFAULT 0,
+                            AccessCode  TEXT NOT NULL DEFAULT '',
+                            GuildId     INTEGER NOT NULL DEFAULT 0,
+                            GuildRights INTEGER NOT NULL DEFAULT 0,
+                            PRIMARY KEY (MapId, ElementId, Instance));
 
                         CREATE TABLE IF NOT EXISTS HouseChestCodes (
                             MapId          INTEGER NOT NULL,
                             ElementId      INTEGER NOT NULL,
+                            Instance       INTEGER NOT NULL DEFAULT 1,
                             ChestElementId INTEGER NOT NULL,
                             Code           TEXT NOT NULL DEFAULT '',
-                            PRIMARY KEY (MapId, ElementId, ChestElementId));";
+                            PRIMARY KEY (MapId, ElementId, Instance, ChestElementId));";
                     command.ExecuteNonQuery();
 
-                    // The guild a house is shared with, added to tables made before it existed.
-                    var columns = new HashSet<string>();
-                    using (var pragma = connection.CreateCommand())
-                    {
-                        pragma.CommandText = "PRAGMA table_info(Houses);";
-                        using var reader = pragma.ExecuteReader();
-                        while (reader.Read()) columns.Add(reader.GetString(1));
-                    }
+                    // Tables made before the guild sharing, and before the copies.
+                    var houses = ColumnsOf(connection, "Houses");
                     foreach (var column in new[] { "GuildId", "GuildRights" })
                     {
-                        if (columns.Contains(column)) continue;
+                        if (houses.Contains(column)) continue;
                         using var alter = connection.CreateCommand();
                         alter.CommandText = $"ALTER TABLE Houses ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0;";
                         alter.ExecuteNonQuery();
+                    }
+                    if (!houses.Contains("Instance"))
+                    {
+                        Rebuild(connection, "Houses", @"
+                            CREATE TABLE HousesByCopy (
+                                MapId       INTEGER NOT NULL,
+                                ElementId   INTEGER NOT NULL,
+                                Instance    INTEGER NOT NULL DEFAULT 1,
+                                AccountId   INTEGER NOT NULL DEFAULT 0,
+                                Price       INTEGER NOT NULL DEFAULT 0,
+                                AccessCode  TEXT NOT NULL DEFAULT '',
+                                GuildId     INTEGER NOT NULL DEFAULT 0,
+                                GuildRights INTEGER NOT NULL DEFAULT 0,
+                                PRIMARY KEY (MapId, ElementId, Instance));
+                            INSERT INTO HousesByCopy (MapId, ElementId, Instance, AccountId, Price, AccessCode, GuildId, GuildRights)
+                                SELECT MapId, ElementId, 1, AccountId, Price, AccessCode, GuildId, GuildRights FROM Houses;
+                            DROP TABLE Houses;
+                            ALTER TABLE HousesByCopy RENAME TO Houses;");
+                    }
+                    if (!ColumnsOf(connection, "HouseChestCodes").Contains("Instance"))
+                    {
+                        Rebuild(connection, "HouseChestCodes", @"
+                            CREATE TABLE HouseChestCodesByCopy (
+                                MapId          INTEGER NOT NULL,
+                                ElementId      INTEGER NOT NULL,
+                                Instance       INTEGER NOT NULL DEFAULT 1,
+                                ChestElementId INTEGER NOT NULL,
+                                Code           TEXT NOT NULL DEFAULT '',
+                                PRIMARY KEY (MapId, ElementId, Instance, ChestElementId));
+                            INSERT INTO HouseChestCodesByCopy (MapId, ElementId, Instance, ChestElementId, Code)
+                                SELECT MapId, ElementId, 1, ChestElementId, Code FROM HouseChestCodes;
+                            DROP TABLE HouseChestCodes;
+                            ALTER TABLE HouseChestCodesByCopy RENAME TO HouseChestCodes;");
+                    }
+
+                    using (var index = connection.CreateCommand())
+                    {
+                        index.CommandText = "CREATE INDEX IF NOT EXISTS HousesByAccount ON Houses (AccountId);";
+                        index.ExecuteNonQuery();
                     }
                     _tablesReady = true;
                 }
@@ -187,10 +241,32 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
+        private static HashSet<string> ColumnsOf(SqliteConnection connection, string table)
+        {
+            var columns = new HashSet<string>();
+            using var pragma = connection.CreateCommand();
+            pragma.CommandText = $"PRAGMA table_info({table});";
+            using var reader = pragma.ExecuteReader();
+            while (reader.Read()) columns.Add(reader.GetString(1));
+            return columns;
+        }
+
+        /// <summary>A table made again with its new key, in one transaction, its rows the first copy's.</summary>
+        private static void Rebuild(SqliteConnection connection, string table, string sql)
+        {
+            using var transaction = connection.BeginTransaction();
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = sql;
+            command.ExecuteNonQuery();
+            transaction.Commit();
+            Console.WriteLine($"[Houses] {table}: every house is now its building's first copy.");
+        }
+
         /// <summary>
         /// Houses kept under a map their door is not kept under any more -- bought from the second
         /// map a door stands on, before a door was one house -- go to their door's map, chest codes
-        /// and chests with them. One already there wins: two owners of one door cannot both stay.
+        /// and chests with them. One already there wins: two owners of one copy cannot both stay.
         /// </summary>
         private static void MoveToTheirDoors()
         {
@@ -200,7 +276,7 @@ namespace Jondo.Unity.Server.Managers
                 var rows = new List<(long MapId, int ElementId)>();
                 using (var read = connection.CreateCommand())
                 {
-                    read.CommandText = "SELECT MapId, ElementId FROM Houses;";
+                    read.CommandText = "SELECT DISTINCT MapId, ElementId FROM Houses;";
                     using var reader = read.ExecuteReader();
                     while (reader.Read()) rows.Add((reader.GetInt64(0), reader.GetInt32(1)));
                 }
@@ -218,12 +294,16 @@ namespace Jondo.Unity.Server.Managers
                         UPDATE OR IGNORE HouseChestCodes SET MapId = $k WHERE MapId = $m AND ElementId = $e;
                         DELETE FROM HouseChestCodes WHERE MapId = $m AND ElementId = $e;
                         UPDATE StorageItems SET Storage = $to || substr(Storage, length($from) + 1)
-                            WHERE substr(Storage, 1, length($from)) = $from;";
+                            WHERE substr(Storage, 1, length($from)) = $from;
+                        UPDATE StorageItems SET Storage = $toCopy || substr(Storage, length($fromCopy) + 1)
+                            WHERE substr(Storage, 1, length($fromCopy)) = $fromCopy;";
                     move.Parameters.AddWithValue("$k", kept);
                     move.Parameters.AddWithValue("$m", mapId);
                     move.Parameters.AddWithValue("$e", elementId);
                     move.Parameters.AddWithValue("$from", $"house:{mapId}:{elementId}:");
                     move.Parameters.AddWithValue("$to", $"house:{kept}:{elementId}:");
+                    move.Parameters.AddWithValue("$fromCopy", $"house:{mapId}:{elementId}/");
+                    move.Parameters.AddWithValue("$toCopy", $"house:{kept}:{elementId}/");
                     move.ExecuteNonQuery();
                     transaction.Commit();
                     moved++;
@@ -263,69 +343,97 @@ namespace Jondo.Unity.Server.Managers
 
         // ─── Reading ────────────────────────────────────────────────────────────
 
-        /// <summary>The house behind this door, ownerless when the store has nothing on it.</summary>
-        public static House Of(long mapId, int elementId)
+        /// <summary>This copy of the building behind this door, ownerless when the store has nothing on it.</summary>
+        public static House Of(long mapId, int elementId, int instance)
         {
             mapId = Houses.CanonicalMapOf(mapId, elementId);
             EnsureTables();
             try
             {
                 using var connection = Open();
-                return Of(connection, null, mapId, elementId);
+                return Of(connection, null, mapId, elementId, instance);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Houses] Could not read the house {mapId}/{elementId}: {ex.Message}");
-                return new House { MapId = mapId, ElementId = elementId };
+                Console.WriteLine($"[Houses] Could not read the house {mapId}/{elementId}/{instance}: {ex.Message}");
+                return new House { MapId = mapId, ElementId = elementId, Instance = instance };
             }
         }
 
-        private static House Of(SqliteConnection connection, SqliteTransaction? transaction, long mapId, int elementId)
+        private static House Of(SqliteConnection connection, SqliteTransaction? transaction, long mapId, int elementId, int instance)
         {
             using var command = connection.CreateCommand();
             command.Transaction = transaction;
-            command.CommandText = "SELECT AccountId, Price, AccessCode, GuildId, GuildRights FROM Houses WHERE MapId = $m AND ElementId = $e;";
+            command.CommandText = $"SELECT {Columns} FROM Houses WHERE MapId = $m AND ElementId = $e AND Instance = $i;";
             command.Parameters.AddWithValue("$m", mapId);
             command.Parameters.AddWithValue("$e", elementId);
+            command.Parameters.AddWithValue("$i", instance);
             using var reader = command.ExecuteReader();
-            if (!reader.Read()) return new House { MapId = mapId, ElementId = elementId };
-            return new House
-            {
-                MapId = mapId,
-                ElementId = elementId,
-                AccountId = reader.GetInt64(0),
-                Price = reader.GetInt64(1),
-                AccessCode = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                GuildId = reader.GetInt64(3),
-                GuildRights = reader.GetInt32(4),
-            };
+            return reader.Read() ? Read(reader) : new House { MapId = mapId, ElementId = elementId, Instance = instance };
         }
 
-        /// <summary>Every house with an owner, by its door: what the estate agency lists from.</summary>
-        public static Dictionary<(long MapId, int ElementId), House> AllOwned()
+        /// <summary>
+        /// The copies of a building the street is shown: those with an owner, by instance, and the
+        /// first free one if the building has one left -- the copy a newcomer buys.
+        /// </summary>
+        /// <remarks>
+        /// The client builds a street's houses from its jss alone (ehl and fka over jss f9); the
+        /// izz that follows a change only replaces a copy it already has (ehl over izz, by
+        /// instance). So once the free copy is bought, the next one shows when the street is
+        /// loaded again, not before.
+        /// </remarks>
+        public static List<House> CopiesOf(long mapId, int elementId, int copies)
+        {
+            mapId = Houses.CanonicalMapOf(mapId, elementId);
+            var shown = new List<House>();
+            foreach (var house in OwnedOf(mapId, elementId))
+            {
+                if (house.Instance >= Houses.FirstInstance && house.Instance <= copies) shown.Add(house);
+            }
+            for (int instance = Houses.FirstInstance; instance <= copies; instance++)
+            {
+                if (shown.Exists(h => h.Instance == instance)) continue;
+                shown.Add(new House { MapId = mapId, ElementId = elementId, Instance = instance });
+                shown.Sort((a, b) => a.Instance.CompareTo(b.Instance));
+                break;
+            }
+            return shown;
+        }
+
+        /// <summary>The copies of one building that have an owner.</summary>
+        private static List<House> OwnedOf(long mapId, int elementId)
         {
             EnsureTables();
-            var houses = new Dictionary<(long, int), House>();
+            var houses = new List<House>();
             try
             {
                 using var connection = Open();
                 using var command = connection.CreateCommand();
-                command.CommandText = "SELECT MapId, ElementId, AccountId, Price, AccessCode, GuildId, GuildRights FROM Houses WHERE AccountId > 0;";
+                command.CommandText = $"SELECT {Columns} FROM Houses WHERE MapId = $m AND ElementId = $e AND AccountId > 0 ORDER BY Instance;";
+                command.Parameters.AddWithValue("$m", mapId);
+                command.Parameters.AddWithValue("$e", elementId);
                 using var reader = command.ExecuteReader();
-                while (reader.Read())
-                {
-                    var house = new House
-                    {
-                        MapId = reader.GetInt64(0),
-                        ElementId = reader.GetInt32(1),
-                        AccountId = reader.GetInt64(2),
-                        Price = reader.GetInt64(3),
-                        AccessCode = reader.IsDBNull(4) ? "" : reader.GetString(4),
-                        GuildId = reader.GetInt64(5),
-                        GuildRights = reader.GetInt32(6),
-                    };
-                    houses[(house.MapId, house.ElementId)] = house;
-                }
+                while (reader.Read()) houses.Add(Read(reader));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Houses] Could not read the copies of {mapId}/{elementId}: {ex.Message}");
+            }
+            return houses;
+        }
+
+        /// <summary>Every house with an owner: what the estate agency lists from.</summary>
+        public static List<House> AllOwned()
+        {
+            EnsureTables();
+            var houses = new List<House>();
+            try
+            {
+                using var connection = Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = $"SELECT {Columns} FROM Houses WHERE AccountId > 0 ORDER BY MapId, ElementId, Instance;";
+                using var reader = command.ExecuteReader();
+                while (reader.Read()) houses.Add(Read(reader));
             }
             catch (Exception ex)
             {
@@ -336,9 +444,9 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>The houses shared with a guild.</summary>
         public static List<House> SharedWith(long guildId)
-            => guildId <= 0 ? new List<House>() : AllOwned().Values.Where(h => h.GuildId == guildId).ToList();
+            => guildId <= 0 ? new List<House>() : AllOwned().Where(h => h.GuildId == guildId).ToList();
 
-        /// <summary>Every house this account owns, by door.</summary>
+        /// <summary>Every house this account owns, by door and copy.</summary>
         public static List<House> OwnedBy(long accountId)
         {
             EnsureTables();
@@ -348,23 +456,10 @@ namespace Jondo.Unity.Server.Managers
             {
                 using var connection = Open();
                 using var command = connection.CreateCommand();
-                command.CommandText = "SELECT MapId, ElementId, Price, AccessCode, GuildId, GuildRights FROM Houses " +
-                                      "WHERE AccountId = $a ORDER BY MapId, ElementId;";
+                command.CommandText = $"SELECT {Columns} FROM Houses WHERE AccountId = $a ORDER BY MapId, ElementId, Instance;";
                 command.Parameters.AddWithValue("$a", accountId);
                 using var reader = command.ExecuteReader();
-                while (reader.Read())
-                {
-                    houses.Add(new House
-                    {
-                        MapId = reader.GetInt64(0),
-                        ElementId = reader.GetInt32(1),
-                        AccountId = accountId,
-                        Price = reader.GetInt64(2),
-                        AccessCode = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                        GuildId = reader.GetInt64(4),
-                        GuildRights = reader.GetInt32(5),
-                    });
-                }
+                while (reader.Read()) houses.Add(Read(reader));
             }
             catch (Exception ex)
             {
@@ -374,7 +469,7 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>The code on one of this house's chests; empty when it has none.</summary>
-        public static string ChestCodeOf(long mapId, int elementId, int chestElementId)
+        public static string ChestCodeOf(long mapId, int elementId, int instance, int chestElementId)
         {
             mapId = Houses.CanonicalMapOf(mapId, elementId);
             EnsureTables();
@@ -382,9 +477,11 @@ namespace Jondo.Unity.Server.Managers
             {
                 using var connection = Open();
                 using var command = connection.CreateCommand();
-                command.CommandText = "SELECT Code FROM HouseChestCodes WHERE MapId = $m AND ElementId = $e AND ChestElementId = $c;";
+                command.CommandText = "SELECT Code FROM HouseChestCodes " +
+                                      "WHERE MapId = $m AND ElementId = $e AND Instance = $i AND ChestElementId = $c;";
                 command.Parameters.AddWithValue("$m", mapId);
                 command.Parameters.AddWithValue("$e", elementId);
+                command.Parameters.AddWithValue("$i", instance);
                 command.Parameters.AddWithValue("$c", chestElementId);
                 return command.ExecuteScalar() as string ?? "";
             }
@@ -424,13 +521,13 @@ namespace Jondo.Unity.Server.Managers
         /// Puts the house on sale at <paramref name="price"/>, or takes it off with zero. Only
         /// its owner can, and a negative price is refused. False when nothing changed.
         /// </summary>
-        public static async Task<bool> SetPriceAsync(long mapId, int elementId, long ownerAccountId, long price)
+        public static async Task<bool> SetPriceAsync(long mapId, int elementId, int instance, long ownerAccountId, long price)
         {
             mapId = Houses.CanonicalMapOf(mapId, elementId);
             if (ownerAccountId <= 0 || price < 0) return false;
             EnsureTables();
 
-            var gate = GateOf(mapId, elementId);
+            var gate = GateOf(mapId, elementId, instance);
             await gate.WaitAsync().ConfigureAwait(false);
             try
             {
@@ -441,16 +538,17 @@ namespace Jondo.Unity.Server.Managers
                 command.CommandText = "UPDATE Houses SET Price = $p, " +
                                       "GuildId = CASE WHEN $p > 0 THEN 0 ELSE GuildId END, " +
                                       "GuildRights = CASE WHEN $p > 0 THEN 0 ELSE GuildRights END " +
-                                      "WHERE MapId = $m AND ElementId = $e AND AccountId = $a;";
+                                      "WHERE MapId = $m AND ElementId = $e AND Instance = $i AND AccountId = $a;";
                 command.Parameters.AddWithValue("$p", price);
                 command.Parameters.AddWithValue("$m", mapId);
                 command.Parameters.AddWithValue("$e", elementId);
+                command.Parameters.AddWithValue("$i", instance);
                 command.Parameters.AddWithValue("$a", ownerAccountId);
                 return command.ExecuteNonQuery() == 1;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Houses] Could not set the price of {mapId}/{elementId}: {ex.Message}");
+                Console.WriteLine($"[Houses] Could not set the price of {mapId}/{elementId}/{instance}: {ex.Message}");
                 return false;
             }
             finally
@@ -460,29 +558,31 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>The house's access code, set by its owner; empty takes it off. False when not changed.</summary>
-        public static async Task<bool> SetAccessCodeAsync(long mapId, int elementId, long ownerAccountId, string code)
+        public static async Task<bool> SetAccessCodeAsync(long mapId, int elementId, int instance, long ownerAccountId, string code)
         {
             mapId = Houses.CanonicalMapOf(mapId, elementId);
             string? kept = Normalize(code);
             if (ownerAccountId <= 0 || kept == null) return false;
             EnsureTables();
 
-            var gate = GateOf(mapId, elementId);
+            var gate = GateOf(mapId, elementId, instance);
             await gate.WaitAsync().ConfigureAwait(false);
             try
             {
                 using var connection = Open();
                 using var command = connection.CreateCommand();
-                command.CommandText = "UPDATE Houses SET AccessCode = $c WHERE MapId = $m AND ElementId = $e AND AccountId = $a;";
+                command.CommandText = "UPDATE Houses SET AccessCode = $c " +
+                                      "WHERE MapId = $m AND ElementId = $e AND Instance = $i AND AccountId = $a;";
                 command.Parameters.AddWithValue("$c", kept);
                 command.Parameters.AddWithValue("$m", mapId);
                 command.Parameters.AddWithValue("$e", elementId);
+                command.Parameters.AddWithValue("$i", instance);
                 command.Parameters.AddWithValue("$a", ownerAccountId);
                 return command.ExecuteNonQuery() == 1;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Houses] Could not set the code of {mapId}/{elementId}: {ex.Message}");
+                Console.WriteLine($"[Houses] Could not set the code of {mapId}/{elementId}/{instance}: {ex.Message}");
                 return false;
             }
             finally
@@ -492,7 +592,7 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>A chest's code, set by the house's owner; empty takes it off. False when not changed.</summary>
-        public static async Task<bool> SetChestCodeAsync(long mapId, int elementId, int chestElementId,
+        public static async Task<bool> SetChestCodeAsync(long mapId, int elementId, int instance, int chestElementId,
                                                          long ownerAccountId, string code)
         {
             mapId = Houses.CanonicalMapOf(mapId, elementId);
@@ -500,20 +600,21 @@ namespace Jondo.Unity.Server.Managers
             if (ownerAccountId <= 0 || kept == null) return false;
             EnsureTables();
 
-            var gate = GateOf(mapId, elementId);
+            var gate = GateOf(mapId, elementId, instance);
             await gate.WaitAsync().ConfigureAwait(false);
             try
             {
                 using var connection = Open();
-                if (Of(connection, null, mapId, elementId).AccountId != ownerAccountId) return false;
+                if (Of(connection, null, mapId, elementId, instance).AccountId != ownerAccountId) return false;
 
                 using var command = connection.CreateCommand();
                 command.CommandText = kept.Length == 0
-                    ? "DELETE FROM HouseChestCodes WHERE MapId = $m AND ElementId = $e AND ChestElementId = $ch;"
-                    : "INSERT INTO HouseChestCodes (MapId, ElementId, ChestElementId, Code) VALUES ($m, $e, $ch, $c) " +
-                      "ON CONFLICT(MapId, ElementId, ChestElementId) DO UPDATE SET Code = $c;";
+                    ? "DELETE FROM HouseChestCodes WHERE MapId = $m AND ElementId = $e AND Instance = $i AND ChestElementId = $ch;"
+                    : "INSERT INTO HouseChestCodes (MapId, ElementId, Instance, ChestElementId, Code) VALUES ($m, $e, $i, $ch, $c) " +
+                      "ON CONFLICT(MapId, ElementId, Instance, ChestElementId) DO UPDATE SET Code = $c;";
                 command.Parameters.AddWithValue("$m", mapId);
                 command.Parameters.AddWithValue("$e", elementId);
+                command.Parameters.AddWithValue("$i", instance);
                 command.Parameters.AddWithValue("$ch", chestElementId);
                 if (kept.Length > 0) command.Parameters.AddWithValue("$c", kept);
                 command.ExecuteNonQuery();
@@ -530,41 +631,37 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
-        // ─── Buying ─────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// What this house costs to whoever wants it now: the owner's price when it is on sale,
-        /// the model's when it has no owner, zero when it cannot be bought.
-        /// </summary>
         /// <summary>
         /// Shares a house with its owner's guild, with these rights, or stops sharing it (guild
         /// zero). Only its owner can, and not while it is on sale: 1/336 «Mientras tengas tu casa
         /// en venta, no puedes compartirla con tu gremio». False when nothing changed.
         /// </summary>
-        public static async Task<bool> SetGuildShareAsync(long mapId, int elementId, long ownerAccountId, long guildId, int rights)
+        public static async Task<bool> SetGuildShareAsync(long mapId, int elementId, int instance, long ownerAccountId,
+                                                          long guildId, int rights)
         {
             mapId = Houses.CanonicalMapOf(mapId, elementId);
             if (ownerAccountId <= 0 || guildId < 0) return false;
             EnsureTables();
 
-            var gate = GateOf(mapId, elementId);
+            var gate = GateOf(mapId, elementId, instance);
             await gate.WaitAsync().ConfigureAwait(false);
             try
             {
                 using var connection = Open();
                 using var command = connection.CreateCommand();
                 command.CommandText = "UPDATE Houses SET GuildId = $g, GuildRights = $r " +
-                                      "WHERE MapId = $m AND ElementId = $e AND AccountId = $a AND Price = 0;";
+                                      "WHERE MapId = $m AND ElementId = $e AND Instance = $i AND AccountId = $a AND Price = 0;";
                 command.Parameters.AddWithValue("$g", guildId);
                 command.Parameters.AddWithValue("$r", guildId > 0 ? rights : 0);
                 command.Parameters.AddWithValue("$m", mapId);
                 command.Parameters.AddWithValue("$e", elementId);
+                command.Parameters.AddWithValue("$i", instance);
                 command.Parameters.AddWithValue("$a", ownerAccountId);
                 return command.ExecuteNonQuery() > 0;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Houses] Could not share the house {mapId}/{elementId}: {ex.Message}");
+                Console.WriteLine($"[Houses] Could not share the house {mapId}/{elementId}/{instance}: {ex.Message}");
                 return false;
             }
             finally
@@ -592,6 +689,12 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
+        // ─── Buying ─────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// What this house costs to whoever wants it now: the owner's price when it is on sale,
+        /// the model's when it has no owner, zero when it cannot be bought.
+        /// </summary>
         public static long AskingPrice(House house, long modelPrice)
             => house.Owned ? (house.ForSale ? house.Price : 0) : Math.Max(0, modelPrice);
 
@@ -612,14 +715,14 @@ namespace Jondo.Unity.Server.Managers
         /// price changed in between is not bought at the new one.
         /// </remarks>
         public static async Task<(Purchase? Done, Refusal Why)> BuyAsync(
-            long mapId, int elementId, long modelPrice, long buyerAccountId, long buyerCharacterId,
+            long mapId, int elementId, int instance, long modelPrice, long buyerAccountId, long buyerCharacterId,
             long buyerKamas, long expectedPrice)
         {
             mapId = Houses.CanonicalMapOf(mapId, elementId);
             if (buyerAccountId <= 0 || buyerCharacterId <= 0) return (null, Refusal.Failed);
             EnsureTables();
 
-            var gate = GateOf(mapId, elementId);
+            var gate = GateOf(mapId, elementId, instance);
             await gate.WaitAsync().ConfigureAwait(false);
             try
             {
@@ -627,7 +730,7 @@ namespace Jondo.Unity.Server.Managers
                 long price;
                 using (var connection = Open())
                 {
-                    before = Of(connection, null, mapId, elementId);
+                    before = Of(connection, null, mapId, elementId, instance);
                     price = AskingPrice(before, modelPrice);
                     if (price <= 0) return (null, Refusal.NotForSale);
                     if (before.AccountId == buyerAccountId) return (null, Refusal.OwnHouse);
@@ -635,13 +738,14 @@ namespace Jondo.Unity.Server.Managers
                     if (buyerKamas < price) return (null, Refusal.NotEnoughKamas);
 
                     using var transaction = connection.BeginTransaction();
-                    WriteOwner(connection, transaction, mapId, elementId, buyerAccountId);
+                    WriteOwner(connection, transaction, mapId, elementId, instance, buyerAccountId);
                     using (var codes = connection.CreateCommand())
                     {
                         codes.Transaction = transaction;
-                        codes.CommandText = "DELETE FROM HouseChestCodes WHERE MapId = $m AND ElementId = $e;";
+                        codes.CommandText = "DELETE FROM HouseChestCodes WHERE MapId = $m AND ElementId = $e AND Instance = $i;";
                         codes.Parameters.AddWithValue("$m", mapId);
                         codes.Parameters.AddWithValue("$e", elementId);
+                        codes.Parameters.AddWithValue("$i", instance);
                         codes.ExecuteNonQuery();
                     }
                     using (var purse = connection.CreateCommand())
@@ -664,7 +768,7 @@ namespace Jondo.Unity.Server.Managers
                 }
 
                 int lots = 0;
-                var left = StorageStacks.TakeAll(StorageStacks.HouseChestsPrefix(mapId, elementId));
+                var left = StorageStacks.TakeAll(StorageStacks.HouseChestsPrefix(mapId, elementId, instance));
                 if (before.Owned)
                 {
                     foreach (var item in left)
@@ -684,7 +788,7 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Houses] Could not sell {mapId}/{elementId} to account {buyerAccountId}: {ex.Message}");
+                Console.WriteLine($"[Houses] Could not sell {mapId}/{elementId}/{instance} to account {buyerAccountId}: {ex.Message}");
                 return (null, Refusal.Failed);
             }
             finally
@@ -694,14 +798,15 @@ namespace Jondo.Unity.Server.Managers
         }
 
         private static void WriteOwner(SqliteConnection connection, SqliteTransaction transaction,
-                                       long mapId, int elementId, long accountId)
+                                       long mapId, int elementId, int instance, long accountId)
         {
             using var command = connection.CreateCommand();
             command.Transaction = transaction;
-            command.CommandText = "INSERT INTO Houses (MapId, ElementId, AccountId, Price, AccessCode) VALUES ($m, $e, $a, 0, '') " +
-                                  "ON CONFLICT(MapId, ElementId) DO UPDATE SET AccountId = $a, Price = 0, AccessCode = '', GuildId = 0, GuildRights = 0;";
+            command.CommandText = "INSERT INTO Houses (MapId, ElementId, Instance, AccountId, Price, AccessCode) VALUES ($m, $e, $i, $a, 0, '') " +
+                                  "ON CONFLICT(MapId, ElementId, Instance) DO UPDATE SET AccountId = $a, Price = 0, AccessCode = '', GuildId = 0, GuildRights = 0;";
             command.Parameters.AddWithValue("$m", mapId);
             command.Parameters.AddWithValue("$e", elementId);
+            command.Parameters.AddWithValue("$i", instance);
             command.Parameters.AddWithValue("$a", accountId);
             command.ExecuteNonQuery();
         }
@@ -717,10 +822,11 @@ namespace Jondo.Unity.Server.Managers
                 {
                     house.Transaction = transaction;
                     house.CommandText = before.Owned
-                        ? "UPDATE Houses SET AccountId = $a, Price = $p, AccessCode = $c WHERE MapId = $m AND ElementId = $e;"
-                        : "DELETE FROM Houses WHERE MapId = $m AND ElementId = $e;";
+                        ? "UPDATE Houses SET AccountId = $a, Price = $p, AccessCode = $c WHERE MapId = $m AND ElementId = $e AND Instance = $i;"
+                        : "DELETE FROM Houses WHERE MapId = $m AND ElementId = $e AND Instance = $i;";
                     house.Parameters.AddWithValue("$m", before.MapId);
                     house.Parameters.AddWithValue("$e", before.ElementId);
+                    house.Parameters.AddWithValue("$i", before.Instance);
                     if (before.Owned)
                     {
                         house.Parameters.AddWithValue("$a", before.AccountId);
@@ -741,22 +847,32 @@ namespace Jondo.Unity.Server.Managers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Houses] Could not undo the purchase of {before.MapId}/{before.ElementId}: {ex.Message}");
+                Console.WriteLine($"[Houses] Could not undo the purchase of {before.MapId}/{before.ElementId}/{before.Instance}: {ex.Message}");
             }
         }
 
-        /// <summary>Forgets a house entirely: no owner, no codes, nothing in its chests. For tests and tools.</summary>
+        /// <summary>Forgets a building entirely, every copy: no owner, no codes, nothing in its chests. For tests and tools.</summary>
         internal static void Forget(long mapId, int elementId)
         {
             EnsureTables();
+            var instances = new HashSet<int> { Houses.FirstInstance };
             using var connection = Open();
+            using (var read = connection.CreateCommand())
+            {
+                read.CommandText = "SELECT Instance FROM Houses WHERE MapId = $m AND ElementId = $e;";
+                read.Parameters.AddWithValue("$m", mapId);
+                read.Parameters.AddWithValue("$e", elementId);
+                using var reader = read.ExecuteReader();
+                while (reader.Read()) instances.Add(reader.GetInt32(0));
+            }
             using var command = connection.CreateCommand();
             command.CommandText = "DELETE FROM Houses WHERE MapId = $m AND ElementId = $e; " +
                                   "DELETE FROM HouseChestCodes WHERE MapId = $m AND ElementId = $e;";
             command.Parameters.AddWithValue("$m", mapId);
             command.Parameters.AddWithValue("$e", elementId);
             command.ExecuteNonQuery();
-            StorageStacks.TakeAll(StorageStacks.HouseChestsPrefix(mapId, elementId));
+            foreach (int instance in instances)
+                StorageStacks.TakeAll(StorageStacks.HouseChestsPrefix(mapId, elementId, instance));
         }
     }
 }

@@ -17,6 +17,7 @@ namespace Jondo.Unity.Server.Handlers
 
             int skillInstanceId = 0;
             int elementId = 0;
+            int houseInstance = 0;
             foreach (var field in ProtoMessage.Parse(iwo).Fields)
             {
                 if (field.WireType != 0) continue;
@@ -27,6 +28,7 @@ namespace Jondo.Unity.Server.Handlers
                 }
                 if (field.FieldNumber == 1) skillInstanceId = (int)field.VarIntValue;
                 else if (field.FieldNumber == 2) elementId = (int)field.VarIntValue;
+                else if (field.FieldNumber == 3) houseInstance = (int)field.VarIntValue;
             }
 
             // Inside a dream, the doors are interactives that do not exist on the roleplay map,
@@ -133,7 +135,7 @@ namespace Jondo.Unity.Server.Handlers
                     await BinHandler.OpenAsync(stream, interactive.Element.Id, action.SkillId);
                     break;
                 case InteractiveActionKind.HouseDoor:
-                    await HouseHandler.UseDoorAsync(stream, interactive, action);
+                    await HouseHandler.UseDoorAsync(stream, interactive, action, houseInstance);
                     break;
                 case InteractiveActionKind.HouseChest:
                     await HouseHandler.UseChestAsync(stream, interactive, action);

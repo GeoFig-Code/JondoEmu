@@ -120,12 +120,14 @@ namespace Jondo.Unity.Server.Handlers
         {
             var me = SessionContext.State;
             Houses.Door? door = null;
+            int instance = Houses.FirstInstance;
             foreach (var house in HouseStore.OwnedBy(SessionContext.Current.AccountId))
             {
                 if (Houses.TryGetDoor(house.MapId, house.ElementId, out var found) && found.InteriorMapId != 0
                     && MapManager.GetMapInfo(found.InteriorMapId) != null)
                 {
                     door = found;
+                    instance = house.Instance;
                     break;
                 }
             }
@@ -143,7 +145,7 @@ namespace Jondo.Unity.Server.Handlers
                 TravelProtocol.BuildDelayedUse(item.Template, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), me.CharacterId)));
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Hpq, TravelProtocol.BuildDelayFinished(me.CharacterId)));
             if (!await ItemUseHandler.SpendOneAsync(stream, item.Uid)) return;
-            await HouseHandler.GoHomeAsync(stream, door.Value);
+            await HouseHandler.GoHomeAsync(stream, door.Value, instance);
         }
 
         // ─── The anklas' choice ─────────────────────────────────────────────────

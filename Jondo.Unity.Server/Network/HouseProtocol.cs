@@ -34,8 +34,7 @@ namespace Jondo.Unity.Server.Network
 
             /// <summary>
             /// The guild block of a house shared with a guild (f3), as it is to travel; null for
-            /// none. Jondo does not share houses with guilds, so only the tests fill it, to pin the
-            /// captures that carry one.
+            /// none. See <see cref="Handlers.HouseHandler.GuildBlockOf"/>.
             /// </summary>
             public byte[]? GuildBlock { get; init; }
 

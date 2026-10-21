@@ -215,6 +215,9 @@ namespace Jondo.Unity.Server
         /// </summary>
         public int HouseEntryElementId { get; set; }
 
+        /// <summary>Which copy of that building -- most have one, some many, each with its owner.</summary>
+        public int HouseEntryInstance { get; set; }
+
         /// <summary>The house window this character has open -- a sale, a purchase, a code keypad -- if any.</summary>
         public Handlers.HouseHandler.Dialog? HouseDialog { get; set; }
 

@@ -249,7 +249,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Each house is its own copy of its interior: owners of different houses never meet inside
 - ✅ The estate agency of Bonta and Brakmar: every house on sale, searched by price, area, rooms and
   chests
-- ❌ Several owners per building in Bonta and Brakmar
+- ✅ Several owners per building, as in the real game: the Casa grande de Bonta has 24 copies, and
+  the door lists each owner's and the next free one
 - ✅ The Palacio de los Lagos encantados: its door leads into the palace, and its stars, doors and
   stairs take you through its fifteen rooms; the vault door opens on the treasure room's six chests
 - ✅ **67 public bins**, shared by everybody
