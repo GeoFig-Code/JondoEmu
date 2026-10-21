@@ -54,6 +54,7 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(1563, gein.Quest);
             Assert.Equal(new[] { 829 }, gein.Subareas);
             Assert.Equal((8930, 8931, 130023937L), (gein.Catch, gein.Deliver, gein.Map));
+            Assert.Equal(15585, gein.Follower);
             var report = gein.To(2358)!;
             Assert.Equal((21723, 78913, 57773, 57774, 57775),
                          (report.Deliver, report.Pay, report.Found, report.Seen, report.Unseen));

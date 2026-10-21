@@ -302,6 +302,8 @@ namespace Jondo.Unity.Server.Handlers
             {
                 foreach (var drop in DatabaseManager.GetMonsterDrops(monster.MonsterId, monster.GradeIndex))
                 {
+                    // A quest's item is for whoever is on the quest, not for the collector.
+                    if (drop.ReceiverCriterion.Length > 0) continue;
                     double chance = Math.Min(100.0, drop.PercentDrop * prospecting / 100.0);
                     if (Random.Shared.NextDouble() * 100.0 >= chance) continue;
                     int weight = Math.Max(1, DatabaseManager.GetItemRealWeight(drop.ObjectId));

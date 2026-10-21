@@ -45,9 +45,13 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>One jailer's report on one criminal: the replies and messages that are his.</summary>
         public sealed record Report(int Npc, int Deliver, int Pay, int Found, int Seen, int Unseen);
 
-        /// <summary>A criminal: its quest, its zone, the two objectives, and who takes it.</summary>
+        /// <summary>
+        /// A criminal: its quest, its zone, the two objectives, who takes it, and the item that follows
+        /// whoever caught him -- type 32, «¡Alguien te sigue!» naming him: «Lonyon Plata está ahora bajo
+        /// tu control. Debes llevarlo sano y salvo hasta la prisión.» (15585).
+        /// </summary>
         public sealed record Criminal(int Quest, int Monster, IReadOnlyList<int> Subareas, int Catch, int Deliver,
-                                      long Map, IReadOnlyList<Report> Jailers)
+                                      long Map, IReadOnlyList<Report> Jailers, int Follower = 0)
         {
             /// <summary>This jailer's report on him, or null when he is not handed to that one.</summary>
             public Report? To(int npc) => Jailers.FirstOrDefault(j => j.Npc == npc);
@@ -130,7 +134,7 @@ namespace Jondo.Unity.Server.Managers
                     row.GetProperty("subareas").EnumerateArray().Select(z => z.GetInt32()).ToList(),
                     Int(row, "catch"), Int(row, "deliver"),
                     row.TryGetProperty("map", out var map) && map.ValueKind == JsonValueKind.Number ? map.GetInt64() : 0,
-                    reports);
+                    reports, Int(row, "follower"));
                 byMonster[criminal.Monster] = criminal;
                 byQuest[criminal.Quest] = criminal;
             }

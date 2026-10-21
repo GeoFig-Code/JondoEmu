@@ -10523,6 +10523,13 @@ namespace Jondo.Unity.Server.Handlers
                 var table = DatabaseManager.GetMonsterDrops(monster.MonsterId, monster.GradeIndex);
                 foreach (var drop in table)
                 {
+                    // A quest's item to whoever is on it, counting what this fight has already
+                    // dropped him: «PO!11683» is one, not one a monster.
+                    if (drop.ReceiverCriterion.Length > 0 && !Managers.PlayerCriteria.Met(drop.ReceiverCriterion,
+                            fight.RoleplayMapId != 0 ? fight.RoleplayMapId : Network.SessionContext.State.MapId,
+                            item => Managers.Equipment.HowMany(item) + (loot.TryGetValue(item, out int rolled) ? rolled : 0)))
+                        continue;
+
                     // In the loot the bonus raises the PROBABILITY of a drop, not the quantity: it is
                     // one roll per item and per monster, and what the challenge improves is the luck.
                     double probabilidad = extra > 0

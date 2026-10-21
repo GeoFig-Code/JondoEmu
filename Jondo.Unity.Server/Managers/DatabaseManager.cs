@@ -4288,9 +4288,9 @@ namespace Jondo.Unity.Server
         /// its per-grade probability (percentDropForGrade1..5). Taking the Red Piwi as an example:
         /// red piwi feather at 100 %, sesame seeds at 18 %, pouch of lemons at 3 %.
         ///
-        /// Entries with criteria (`hasCriterions`) are discarded, because they are conditional
-        /// — quest or achievement drops — and their criteria language ("Qo=13820&amp;PO!19649&amp;…") is
-        /// not implemented. Never dropping them is preferable to always dropping them.
+        /// Entries with criteria (`hasCriterions`) are conditional -- quest items mostly,
+        /// «Qa=385&amp;PO&lt;2269,10» -- and carry their criterion for the caller to answer for whoever
+        /// would receive them (PlayerCriteria): a database reader does not know the player.
         /// </summary>
         public static List<MonsterDrop> GetMonsterDrops(int monsterId, int gradeIndex)
         {
@@ -4317,7 +4317,14 @@ namespace Jondo.Unity.Server
 
                 foreach (var e in dropsProp.EnumerateArray())
                 {
-                    if (e.TryGetProperty("hasCriterions", out var hc) && hc.GetInt32() != 0) continue;
+                    string criterion = "";
+                    if (e.TryGetProperty("hasCriterions", out var hc) && hc.GetInt32() != 0)
+                    {
+                        criterion = e.TryGetProperty("criterions", out var c) && c.ValueKind == System.Text.Json.JsonValueKind.String
+                            ? c.GetString() ?? ""
+                            : "";
+                        if (criterion.Length == 0) continue;   // a condition nobody wrote down: nobody meets it
+                    }
                     if (!e.TryGetProperty("objectId", out var oid)) continue;
 
                     double pct = 0;
@@ -4325,7 +4332,7 @@ namespace Jondo.Unity.Server
                     else if (e.TryGetProperty("percentDropForGrade1", out var p1)) pct = p1.GetDouble();
                     if (pct <= 0) continue;
 
-                    drops.Add(new MonsterDrop { ObjectId = oid.GetInt32(), PercentDrop = pct });
+                    drops.Add(new MonsterDrop { ObjectId = oid.GetInt32(), PercentDrop = pct, ReceiverCriterion = criterion });
                 }
             }
             catch (Exception ex)
@@ -5817,8 +5824,9 @@ namespace Jondo.Unity.Server
         /// empty when anybody does.
         /// </summary>
         /// <remarks>
-        /// Only the global table carries one. It is what keeps a raid's treasures inside the raid
-        /// and the season's fragments inside the season.
+        /// In the global table it is what keeps a raid's treasures inside the raid and the season's
+        /// fragments inside the season; in the monster's own, what keeps a quest's items to whoever
+        /// is on it.
         /// </remarks>
         public string ReceiverCriterion { get; set; } = "";
     }

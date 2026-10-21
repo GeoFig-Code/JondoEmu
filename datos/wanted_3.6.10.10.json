@@ -164,6 +164,7 @@
    "catch": 431,
    "deliver": 432,
    "map": 192414730,
+   "follower": 7350,
    "jailers": [
     {
      "npc": 606,
@@ -185,6 +186,7 @@
    "catch": 215,
    "deliver": 216,
    "map": 192414730,
+   "follower": 6870,
    "jailers": [
     {
      "npc": 606,
@@ -206,6 +208,7 @@
    "catch": 213,
    "deliver": 214,
    "map": 192414730,
+   "follower": 6871,
    "jailers": [
     {
      "npc": 606,
@@ -227,6 +230,7 @@
    "catch": 313,
    "deliver": 205,
    "map": 192414730,
+   "follower": 6876,
    "jailers": [
     {
      "npc": 606,
@@ -248,6 +252,7 @@
    "catch": 207,
    "deliver": 208,
    "map": 192414730,
+   "follower": 6875,
    "jailers": [
     {
      "npc": 606,
@@ -269,6 +274,7 @@
    "catch": 209,
    "deliver": 210,
    "map": 192414730,
+   "follower": 6874,
    "jailers": [
     {
      "npc": 606,
@@ -290,6 +296,7 @@
    "catch": 310,
    "deliver": 312,
    "map": 192414730,
+   "follower": 6873,
    "jailers": [
     {
      "npc": 606,
@@ -311,6 +318,7 @@
    "catch": 421,
    "deliver": 422,
    "map": 192414730,
+   "follower": 7351,
    "jailers": [
     {
      "npc": 606,
@@ -332,6 +340,7 @@
    "catch": 423,
    "deliver": 424,
    "map": 192414730,
+   "follower": 7352,
    "jailers": [
     {
      "npc": 606,
@@ -353,6 +362,7 @@
    "catch": 425,
    "deliver": 426,
    "map": 192414730,
+   "follower": 7353,
    "jailers": [
     {
      "npc": 606,
@@ -374,6 +384,7 @@
    "catch": 428,
    "deliver": 429,
    "map": 192414730,
+   "follower": 7354,
    "jailers": [
     {
      "npc": 606,
@@ -395,6 +406,7 @@
    "catch": 4019,
    "deliver": 4020,
    "map": 54536207,
+   "follower": 11298,
    "jailers": [
     {
      "npc": 1366,
@@ -416,6 +428,7 @@
    "catch": 3841,
    "deliver": 3842,
    "map": 54536207,
+   "follower": 11299,
    "jailers": [
     {
      "npc": 1366,
@@ -437,6 +450,7 @@
    "catch": 4017,
    "deliver": 4018,
    "map": 54536207,
+   "follower": 11300,
    "jailers": [
     {
      "npc": 1366,
@@ -458,6 +472,7 @@
    "catch": 3839,
    "deliver": 3840,
    "map": 54536207,
+   "follower": 11301,
    "jailers": [
     {
      "npc": 1366,
@@ -479,6 +494,7 @@
    "catch": 3837,
    "deliver": 3838,
    "map": 54536207,
+   "follower": 11302,
    "jailers": [
     {
      "npc": 1366,
@@ -500,6 +516,7 @@
    "catch": 3835,
    "deliver": 3836,
    "map": 54536207,
+   "follower": 11303,
    "jailers": [
     {
      "npc": 1366,
@@ -521,6 +538,7 @@
    "catch": 4265,
    "deliver": 4266,
    "map": 54171466,
+   "follower": 11305,
    "jailers": [
     {
      "npc": 1281,
@@ -550,6 +568,7 @@
    "catch": 4267,
    "deliver": 4268,
    "map": 54536207,
+   "follower": 11901,
    "jailers": [
     {
      "npc": 1281,
@@ -579,6 +598,7 @@
    "catch": 4269,
    "deliver": 4270,
    "map": 54171466,
+   "follower": 11902,
    "jailers": [
     {
      "npc": 1281,
@@ -608,6 +628,7 @@
    "catch": 4263,
    "deliver": 4264,
    "map": 54171466,
+   "follower": 11304,
    "jailers": [
     {
      "npc": 1281,
@@ -637,6 +658,7 @@
    "catch": 7304,
    "deliver": 7305,
    "map": 108922368,
+   "follower": 14188,
    "jailers": [
     {
      "npc": 1999,
@@ -658,6 +680,7 @@
    "catch": 7314,
    "deliver": 7315,
    "map": 54536207,
+   "follower": 14187,
    "jailers": [
     {
      "npc": 1366,
@@ -679,6 +702,7 @@
    "catch": 7306,
    "deliver": 7307,
    "map": 108922368,
+   "follower": 14189,
    "jailers": [
     {
      "npc": 1999,
@@ -700,6 +724,7 @@
    "catch": 7312,
    "deliver": 7313,
    "map": 108922368,
+   "follower": 14192,
    "jailers": [
     {
      "npc": 1999,
@@ -721,6 +746,7 @@
    "catch": 7310,
    "deliver": 7311,
    "map": 108922368,
+   "follower": 14191,
    "jailers": [
     {
      "npc": 1999,
@@ -742,6 +768,7 @@
    "catch": 7308,
    "deliver": 7309,
    "map": 108922368,
+   "follower": 14190,
    "jailers": [
     {
      "npc": 1999,
@@ -763,6 +790,7 @@
    "catch": 7937,
    "deliver": 7938,
    "map": 101713427,
+   "follower": 14586,
    "jailers": [
     {
      "npc": 2185,
@@ -784,6 +812,7 @@
    "catch": 7947,
    "deliver": 7948,
    "map": 121900032,
+   "follower": 14824,
    "jailers": [
     {
      "npc": 2188,
@@ -801,6 +830,7 @@
    "catch": 7949,
    "deliver": 7950,
    "map": 121900032,
+   "follower": 14825,
    "jailers": [
     {
      "npc": 2188,
@@ -822,6 +852,7 @@
    "catch": 7951,
    "deliver": 7952,
    "map": 121900032,
+   "follower": 14826,
    "jailers": [
     {
      "npc": 2188,
@@ -843,6 +874,7 @@
    "catch": 7953,
    "deliver": 7955,
    "map": 121900032,
+   "follower": 14829,
    "jailers": [
     {
      "npc": 2188,
@@ -864,6 +896,7 @@
    "catch": 8551,
    "deliver": 8552,
    "map": 130023937,
+   "follower": 15326,
    "jailers": [
     {
      "npc": 2358,
@@ -885,6 +918,7 @@
    "catch": 8549,
    "deliver": 8550,
    "map": 130023937,
+   "follower": 15325,
    "jailers": [
     {
      "npc": 2358,
@@ -906,6 +940,7 @@
    "catch": 8547,
    "deliver": 8548,
    "map": 130023937,
+   "follower": 15324,
    "jailers": [
     {
      "npc": 2358,
@@ -927,6 +962,7 @@
    "catch": 8932,
    "deliver": 8933,
    "map": 130023937,
+   "follower": 15587,
    "jailers": [
     {
      "npc": 2358,
@@ -948,6 +984,7 @@
    "catch": 8930,
    "deliver": 8931,
    "map": 130023937,
+   "follower": 15585,
    "jailers": [
     {
      "npc": 2358,
@@ -969,6 +1006,7 @@
    "catch": 8934,
    "deliver": 8935,
    "map": 130023937,
+   "follower": 15589,
    "jailers": [
     {
      "npc": 2358,
@@ -990,6 +1028,7 @@
    "catch": 9323,
    "deliver": 9324,
    "map": 130023937,
+   "follower": 15911,
    "jailers": [
     {
      "npc": 2358,
@@ -1011,6 +1050,7 @@
    "catch": 9325,
    "deliver": 9326,
    "map": 130023937,
+   "follower": 15912,
    "jailers": [
     {
      "npc": 2358,
@@ -1032,6 +1072,7 @@
    "catch": 9327,
    "deliver": 9328,
    "map": 130023937,
+   "follower": 15913,
    "jailers": [
     {
      "npc": 2358,
@@ -1053,6 +1094,7 @@
    "catch": 9588,
    "deliver": 9595,
    "map": 101713427,
+   "follower": 16228,
    "jailers": [
     {
      "npc": 2185,
@@ -1074,6 +1116,7 @@
    "catch": 9591,
    "deliver": 9598,
    "map": 101713427,
+   "follower": 16231,
    "jailers": [
     {
      "npc": 2185,
@@ -1095,6 +1138,7 @@
    "catch": 9593,
    "deliver": 9600,
    "map": 101713427,
+   "follower": 16233,
    "jailers": [
     {
      "npc": 2185,
@@ -1116,6 +1160,7 @@
    "catch": 9592,
    "deliver": 9599,
    "map": 101713427,
+   "follower": 16232,
    "jailers": [
     {
      "npc": 2185,
@@ -1137,6 +1182,7 @@
    "catch": 9589,
    "deliver": 9596,
    "map": 101713427,
+   "follower": 16229,
    "jailers": [
     {
      "npc": 2185,
@@ -1158,6 +1204,7 @@
    "catch": 9594,
    "deliver": 9601,
    "map": 101713427,
+   "follower": 16234,
    "jailers": [
     {
      "npc": 2185,
@@ -1179,6 +1226,7 @@
    "catch": 9590,
    "deliver": 9597,
    "map": 101713427,
+   "follower": 16230,
    "jailers": [
     {
      "npc": 2185,
@@ -1200,6 +1248,7 @@
    "catch": 10229,
    "deliver": 10230,
    "map": 101713427,
+   "follower": 17398,
    "jailers": [
     {
      "npc": 2185,
@@ -1221,6 +1270,7 @@
    "catch": 10335,
    "deliver": 10336,
    "map": 0,
+   "follower": 17475,
    "jailers": [
     {
      "npc": 3063,
@@ -1250,6 +1300,7 @@
    "catch": 10337,
    "deliver": 10338,
    "map": 0,
+   "follower": 17476,
    "jailers": [
     {
      "npc": 3063,
@@ -1279,6 +1330,7 @@
    "catch": 10339,
    "deliver": 10340,
    "map": 0,
+   "follower": 17477,
    "jailers": [
     {
      "npc": 3063,
@@ -1308,6 +1360,7 @@
    "catch": 10341,
    "deliver": 10342,
    "map": 0,
+   "follower": 17478,
    "jailers": [
     {
      "npc": 3063,
@@ -1337,6 +1390,7 @@
    "catch": 10343,
    "deliver": 10344,
    "map": 0,
+   "follower": 17479,
    "jailers": [
     {
      "npc": 3063,
@@ -1366,6 +1420,7 @@
    "catch": 10345,
    "deliver": 10346,
    "map": 0,
+   "follower": 17480,
    "jailers": [
     {
      "npc": 3063,
@@ -1395,6 +1450,7 @@
    "catch": 10347,
    "deliver": 10348,
    "map": 0,
+   "follower": 17481,
    "jailers": [
     {
      "npc": 3063,
@@ -1424,6 +1480,7 @@
    "catch": 10349,
    "deliver": 10350,
    "map": 0,
+   "follower": 17482,
    "jailers": [
     {
      "npc": 3063,
@@ -1453,6 +1510,7 @@
    "catch": 10351,
    "deliver": 10352,
    "map": 0,
+   "follower": 17483,
    "jailers": [
     {
      "npc": 3063,
@@ -1482,6 +1540,7 @@
    "catch": 10480,
    "deliver": 10481,
    "map": 130023937,
+   "follower": 17561,
    "jailers": [
     {
      "npc": 606,
@@ -1511,6 +1570,7 @@
    "catch": 11263,
    "deliver": 11264,
    "map": 170132488,
+   "follower": 18101,
    "jailers": [
     {
      "npc": 3338,
@@ -1532,6 +1592,7 @@
    "catch": 11265,
    "deliver": 11266,
    "map": 170132488,
+   "follower": 18102,
    "jailers": [
     {
      "npc": 3338,
@@ -1553,6 +1614,7 @@
    "catch": 11305,
    "deliver": 11306,
    "map": 170132488,
+   "follower": 18153,
    "jailers": [
     {
      "npc": 3338,
@@ -1574,6 +1636,7 @@
    "catch": 11483,
    "deliver": 11497,
    "map": 173936130,
+   "follower": 18233,
    "jailers": [
     {
      "npc": 3605,
@@ -1595,6 +1658,7 @@
    "catch": 11823,
    "deliver": 11825,
    "map": 173936130,
+   "follower": 18352,
    "jailers": [
     {
      "npc": 3605,
@@ -1616,6 +1680,7 @@
    "catch": 12128,
    "deliver": 12129,
    "map": 173936130,
+   "follower": 18553,
    "jailers": [
     {
      "npc": 3605,
@@ -1637,6 +1702,7 @@
    "catch": 12158,
    "deliver": 12159,
    "map": 173936130,
+   "follower": 18575,
    "jailers": [
     {
      "npc": 3605,
@@ -1658,6 +1724,7 @@
    "catch": 12247,
    "deliver": 12248,
    "map": 101713427,
+   "follower": 18656,
    "jailers": [
     {
      "npc": 2185,
@@ -1679,6 +1746,7 @@
    "catch": 12350,
    "deliver": 12351,
    "map": 101713427,
+   "follower": 18801,
    "jailers": [
     {
      "npc": 2185,
@@ -1700,6 +1768,7 @@
    "catch": 12352,
    "deliver": 12353,
    "map": 101713427,
+   "follower": 18802,
    "jailers": [
     {
      "npc": 2185,
@@ -1721,6 +1790,7 @@
    "catch": 12354,
    "deliver": 12355,
    "map": 101713427,
+   "follower": 18803,
    "jailers": [
     {
      "npc": 2185,
@@ -1742,6 +1812,7 @@
    "catch": 13388,
    "deliver": 13389,
    "map": 0,
+   "follower": 19329,
    "jailers": [
     {
      "npc": 3063,
@@ -1771,6 +1842,7 @@
    "catch": 13410,
    "deliver": 13411,
    "map": 0,
+   "follower": 19336,
    "jailers": [
     {
      "npc": 3063,
@@ -1800,6 +1872,7 @@
    "catch": 13390,
    "deliver": 13391,
    "map": 0,
+   "follower": 19327,
    "jailers": [
     {
      "npc": 3063,
@@ -1829,6 +1902,7 @@
    "catch": 13392,
    "deliver": 13393,
    "map": 0,
+   "follower": 19328,
    "jailers": [
     {
      "npc": 3063,
@@ -1858,6 +1932,7 @@
    "catch": 13408,
    "deliver": 13409,
    "map": 0,
+   "follower": 19330,
    "jailers": [
     {
      "npc": 3063,
@@ -1887,6 +1962,7 @@
    "catch": 13396,
    "deliver": 13397,
    "map": 0,
+   "follower": 19331,
    "jailers": [
     {
      "npc": 3063,
@@ -1916,6 +1992,7 @@
    "catch": 13400,
    "deliver": 13401,
    "map": 0,
+   "follower": 19332,
    "jailers": [
     {
      "npc": 3063,
@@ -1945,6 +2022,7 @@
    "catch": 13402,
    "deliver": 13403,
    "map": 0,
+   "follower": 19333,
    "jailers": [
     {
      "npc": 3063,
@@ -1974,6 +2052,7 @@
    "catch": 13404,
    "deliver": 13405,
    "map": 0,
+   "follower": 19334,
    "jailers": [
     {
      "npc": 3063,
@@ -2003,6 +2082,7 @@
    "catch": 13406,
    "deliver": 13407,
    "map": 0,
+   "follower": 19335,
    "jailers": [
     {
      "npc": 3063,
@@ -2032,6 +2112,7 @@
    "catch": 19336,
    "deliver": 19337,
    "map": 130023937,
+   "follower": 31512,
    "jailers": [
     {
      "npc": 2358,
