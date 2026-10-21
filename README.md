@@ -272,7 +272,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The bank: the account's items and kamas, shared by all its characters, in all ten banks of the world
 - ✅ The guild chest, in the 24 banks that have one, with the ranks' rights per tab and a new tab at
   guild levels 3, 7 and 11
-- ❌ The bank's level condition; the guild chest's kamas and history
+- ✅ The guild chest's history: every deposit and withdrawal in the logbook's chest tab
+- ❌ The bank's level condition
 - ✅ The seven marketplaces — resources, equipment, consumables, runes, creatures, souls and
   cosmetics — across **40 counters**, the breeders' village's four among them: browse, buy lots of 1, 10, 100 or 1000, sell for the 2 % tax,
   take a lot back, change its price, the sales history
@@ -325,6 +326,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Rerolling a mission with guild kamas, and marking missions as interesting for the rest of the guild
 - ✅ Your weekly rewards window, and the missions' ranks and categories option showing what the guild chose
 - ✅ The *Casas* tab: the houses the members share with the guild
+- ✅ The logbook: members joining, leaving or turned down, ranks given, created and changed, levels
+  and chest tabs reached, weekly milestones, the tier and missions changed, missions done and
+  rerolled, raids bought, captained, described, left and finished
 - ❌ Anomaly and dream-trial missions
 
 **Raids** — the Eternal Gardens Sanctuary and the Gigalodón Abyss — run on the client's own screens.

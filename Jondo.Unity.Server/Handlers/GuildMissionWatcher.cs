@@ -162,6 +162,9 @@ namespace Jondo.Unity.Server.Handlers
                 await WriteAsync(stream, ConnectionProtocol.Push(Op.Jdc,
                     GuildProtocol.BuildMissionChanged(mission, moved.Value.Now, interested.GetValueOrDefault(mission.Slot))));
                 if (!moved.Value.JustDone) continue;
+                string doneBy = DatabaseManager.GetCharacterById(who)?.Name ?? "";
+                GuildStore.Log(guild.Id, GuildLogProtocol.MissionComplete,
+                    GuildLogProtocol.MissionCompleteLine(who, doneBy, mission.MissionId), who, doneBy);
                 await RewardAsync(stream, guild, who, mission, now);
                 // Done shows as a tick by his name in the others' list of the interested.
                 if (GuildMissions.InterestOf(guild.Id, now).GetValueOrDefault(mission.Slot)?.Contains(who) == true)

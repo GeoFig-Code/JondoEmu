@@ -122,23 +122,101 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_log_is_the_capture()
         {
+            // The founding is the guild's first chest tab; then an application turned down and a joining.
             var entries = new List<GuildStore.LogEntry>
             {
-                new() { GuildId = 42043, WhenMs = 1786567982200, Kind = GuildStore.LogFounded },
-                new() { GuildId = 42043, WhenMs = 1786568036573, Kind = 2, CharacterId = 182801072418, Name = "Hiierbita-Xx" },
-                new() { GuildId = 42043, WhenMs = 1786568106484, Kind = GuildStore.LogJoined, CharacterId = 182801072418, Name = "Hiierbita-Xx" },
+                new() { GuildId = 42043, WhenMs = 1786567982200, Field = GuildLogProtocol.ChestTabUnlocked },
+                new()
+                {
+                    GuildId = 42043, WhenMs = 1786568036573, Field = GuildLogProtocol.PlayerFlow,
+                    Details = GuildLogProtocol.PlayerFlowLine(182801072418, "Hiierbita-Xx", GuildLogProtocol.Flow.ApplicationRefused),
+                },
+                new()
+                {
+                    GuildId = 42043, WhenMs = 1786568106484, Field = GuildLogProtocol.PlayerFlow,
+                    Details = GuildLogProtocol.PlayerFlowLine(182801072418, "Hiierbita-Xx", GuildLogProtocol.Flow.Joined),
+                },
             };
             Assert.Equal("0a0f58bbc8028a01009801f8f8ffbdff330a2658bbc8029801dda183beff33a2011710a282acfea8051a0c4869696572626974612d587820020a2458bbc8029801f4c387beff33a2011510a282acfea8051a0c4869696572626974612d5878",
-                         Hex(GuildProtocol.BuildLog(entries)));
+                         Hex(GuildLogProtocol.BuildLog(entries)));
 
             // And the store writes it on its own: founding is one line, joining is another.
             var guild = GuildStore.Create(7001, "Jondo", 165, 8, 16744448, 9476018);
             GuildStore.Join(7002, guild.Id);
             var log = GuildStore.LogOf(guild.Id);
             Assert.Equal(2, log.Count);
-            Assert.Equal(GuildStore.LogFounded, log[0].Kind);
-            Assert.Equal(GuildStore.LogJoined, log[1].Kind);
+            Assert.Equal(GuildLogProtocol.ChestTabUnlocked, log[0].Field);
+            Assert.Equal(GuildLogProtocol.PlayerFlow, log[1].Field);
             Assert.Equal(7002, log[1].CharacterId);
+        }
+
+        /// <summary>
+        /// Each line goes in its logbook tab -- jil f1 general, f2 missions, f3 raids, f5 chest --
+        /// with the fields the client reads, numbered as its classes number them.
+        /// </summary>
+        [Fact]
+        public void The_journal_s_lines_go_in_their_tabs()
+        {
+            var entries = new List<GuildStore.LogEntry>
+            {
+                Line(GuildLogProtocol.LevelUp, GuildLogProtocol.LevelUpLine(3), 1),
+                Line(GuildLogProtocol.MissionComplete, GuildLogProtocol.MissionCompleteLine(7, "Uno", 417), 2),
+                Line(GuildLogProtocol.RaidPurchase, GuildLogProtocol.RaidPurchaseLine(7, "Uno", 2, "u-1"), 3),
+                Line(GuildLogProtocol.Chest, GuildLogProtocol.ChestLine(7, "Uno", GuildLogProtocol.ChestMove.Withdraw, 2,
+                     ConnectionProtocol.ItemBody(289, Array.Empty<Equipment.ItemEffect>(), 2, 99), 1, 0), 4),
+            };
+            var tabs = ProtoMessage.Parse(GuildLogProtocol.BuildLog(entries)).Fields.Select(f => f.FieldNumber).ToList();
+            Assert.Equal(new[] { 1, 2, 3, 5 }, tabs);
+
+            // lkh { f2 3 }; lks { f1 7, f2 "Uno", f3 417 }; lkc's withdrawal: f2 2, f3 the item, f4 tab 1, f7, f8, f9 1.
+            Assert.Equal("1003", Hex(GuildLogProtocol.LevelUpLine(3)));
+            Assert.Equal("0807" + "1203556e6f" + "18a103", Hex(GuildLogProtocol.MissionCompleteLine(7, "Uno", 417)));
+            var chest = ProtoMessage.Parse(GuildLogProtocol.ChestLine(7, "Uno", GuildLogProtocol.ChestMove.Withdraw, 2,
+                ConnectionProtocol.ItemBody(289, Array.Empty<Equipment.ItemEffect>(), 2, 99), 1, 0)).Fields;
+            Assert.Equal(new[] { 2, 3, 4, 7, 8, 9 }, chest.Select(f => f.FieldNumber));
+            Assert.Equal(1, chest.Single(f => f.FieldNumber == 9).VarIntValue);
+
+            // lkn: the rank { f2 name, f5 id }, who, by whom, and both names.
+            var rank = ProtoMessage.Parse(GuildLogProtocol.PlayerRankLine(3, "Tesorero", 8, "Dos", 7, "Uno")).Fields;
+            Assert.Equal(new[] { 1, 2, 3, 4, 5 }, rank.Select(f => f.FieldNumber));
+            Assert.Equal(8, rank.Single(f => f.FieldNumber == 2).VarIntValue);
+        }
+
+        private static GuildStore.LogEntry Line(int field, byte[] details, long when)
+            => new() { GuildId = 1, WhenMs = when, Field = field, Details = details, Tab = GuildLogProtocol.TabOf(field) };
+
+        /// <summary>
+        /// The store keeps what happens: a level reached (and the chest tab it brings), a member
+        /// leaving, and a line written before the journal had its cases, read back as one.
+        /// </summary>
+        [Fact]
+        public void The_store_keeps_the_guild_s_doings()
+        {
+            var guild = GuildStore.Create(7101, "Bitácora", 165, 8, 16744448, 9476018);
+            GuildStore.Join(7102, guild.Id);
+            GuildStore.AddGuildExperience(guild.Id, 50_000_000);
+            GuildStore.Leave(7102);
+
+            var log = GuildStore.LogOf(guild.Id);
+            Assert.Contains(log, e => e.Field == GuildLogProtocol.LevelUp);
+            Assert.True(log.Count(e => e.Field == GuildLogProtocol.ChestTabUnlocked) >= 2);   // the founding's and a level's
+            var left = log.Last(e => e.Field == GuildLogProtocol.PlayerFlow);
+            Assert.Equal(7102, ProtoMessage.Parse(left.Details).Fields.Single(f => f.FieldNumber == 2).VarIntValue);
+            Assert.Equal(1, ProtoMessage.Parse(left.Details).Fields.Single(f => f.FieldNumber == 4).VarIntValue);
+
+            // An old row: Kind 1, no case -- a joining.
+            using (var connection = new SqliteConnection(GuildStore.ConnectionStringOverride))
+            {
+                connection.Open();
+                var insert = connection.CreateCommand();
+                insert.CommandText = "INSERT INTO GuildLog (GuildId, WhenMs, Kind, CharacterId, Name) VALUES ($g, 1, 1, 7103, 'Viejo');";
+                insert.Parameters.AddWithValue("$g", guild.Id);
+                insert.ExecuteNonQuery();
+            }
+            var old = GuildStore.LogOf(guild.Id).First();
+            Assert.Equal(GuildLogProtocol.PlayerFlow, old.Field);
+            Assert.Equal(GuildStore.LogTab.General, old.Tab);
+            Assert.Equal(7103, ProtoMessage.Parse(old.Details).Fields.Single(f => f.FieldNumber == 2).VarIntValue);
         }
 
         /// <summary>The directory sheet, empty and written, both from the capture of founding «Jondo».</summary>

@@ -215,8 +215,14 @@ namespace Jondo.Unity.Server.Managers
             long after = Math.Min(tier.MaxPoints, before + points);
             Save(week with { Points = after });
 
-            int experience = tier.Milestones.Where(m => m.ActivityPoints > before && m.ActivityPoints <= after)
-                                            .Sum(m => m.Experience);
+            var reached = tier.Milestones.Where(m => m.ActivityPoints > before && m.ActivityPoints <= after).ToList();
+            int experience = reached.Sum(m => m.Experience);
+
+            // The journal: each milestone reached, the last one being the week's maximum.
+            var steps = tier.Milestones.OrderBy(m => m.ActivityPoints).ToList();
+            foreach (var milestone in reached.OrderBy(m => m.ActivityPoints))
+                GuildStore.Log(guild.Id, Network.GuildLogProtocol.WeeklyStep,
+                    Network.GuildLogProtocol.WeeklyStepLine(steps.IndexOf(milestone) + 1, tier.Id));
             int level = experience > 0 ? GuildStore.AddGuildExperience(guild.Id, experience) : guild.Level;
             if (experience > 0)
                 Program.LogDebug($"[Guild] «{guild.Name}» reaches a milestone of tier {tier.Level}: +{experience} experience, level {level}.");

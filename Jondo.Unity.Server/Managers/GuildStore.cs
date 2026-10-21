@@ -77,20 +77,33 @@ namespace Jondo.Unity.Server.Managers
             public int Order { get; set; }
         }
 
-        /// <summary>A line of the guild's journal (jil).</summary>
+        /// <summary>The journal's lists, jil's fields: the logbook's tabs.</summary>
+        public enum LogTab { General = 1, Missions = 2, Raids = 3, Chest = 5 }
+
+        /// <summary>A line of the guild's journal (jil): its list, its case and the case's fields, as they travel.</summary>
         public sealed class LogEntry
         {
             public long GuildId { get; init; }
             public long WhenMs { get; init; }
+            public LogTab Tab { get; init; } = LogTab.General;
 
-            /// <summary>0 the founding, 1 someone joins, 2 someone goes through something with f4 = 2 (measured, not understood).</summary>
-            public int Kind { get; init; }
+            /// <summary>The line's case in the client's oneof (see <see cref="Network.GuildLogProtocol"/>).</summary>
+            public int Field { get; init; }
+
+            /// <summary>The case's own message, already written.</summary>
+            public byte[] Details { get; init; } = Array.Empty<byte>();
+
+            /// <summary>Who did it, when somebody did: for the store's own readers.</summary>
             public long CharacterId { get; init; }
             public string Name { get; init; } = "";
         }
 
-        public const int LogFounded = 0;
-        public const int LogJoined = 1;
+        /// <summary>
+        /// The journal's two kinds before it had its cases: kept in the old rows' Kind, read back as
+        /// a chest tab unlocked (the founding's line) and as a member's coming or going.
+        /// </summary>
+        private const int OldLogFounded = 0;
+        private const int OldLogJoined = 1;
 
         /// <summary>
         /// The guild's public sheet, the directory's: what the leader writes with the jcc and what
@@ -267,6 +280,21 @@ namespace Jondo.Unity.Server.Managers
             {
                 // It was already there.
             }
+
+            // The journal's list, case and case message, for every kind of line the logbook has.
+            foreach (string column in new[] { "Tab INTEGER NOT NULL DEFAULT 1", "Field INTEGER NOT NULL DEFAULT 0", "Details BLOB" })
+            {
+                try
+                {
+                    var add = world.CreateCommand();
+                    add.CommandText = $"ALTER TABLE GuildLog ADD COLUMN {column};";
+                    add.ExecuteNonQuery();
+                }
+                catch (SqliteException)
+                {
+                    // It was already there.
+                }
+            }
         }
 
         /// <summary>A connection string a test can point at a temp database; null uses world.db.</summary>
@@ -311,7 +339,8 @@ namespace Jondo.Unity.Server.Managers
             insertMember.ExecuteNonQuery();
 
             foreach (var rank in DefaultRanks(id)) SaveRank(conexion, rank);
-            WriteLog(conexion, id, ms, LogFounded, 0, "");
+            // The founding's line in the capture: the guild's first chest tab.
+            WriteLog(conexion, id, ms, Network.GuildLogProtocol.ChestTabUnlocked, Array.Empty<byte>(), 0, "");
 
             return new Guild
             {
@@ -484,7 +513,9 @@ namespace Jondo.Unity.Server.Managers
             insert.ExecuteNonQuery();
 
             var character = DatabaseManager.GetCharacterById(characterId);
-            WriteLog(conexion, guildId, ms, LogJoined, characterId, character?.Name ?? "");
+            string name = character?.Name ?? "";
+            WriteLog(conexion, guildId, ms, Network.GuildLogProtocol.PlayerFlow,
+                     Network.GuildLogProtocol.PlayerFlowLine(characterId, name, Network.GuildLogProtocol.Flow.Joined), characterId, name);
             return new Member { CharacterId = characterId, GuildId = guildId, Rank = rank, JoinedUtcMs = ms };
         }
 
@@ -647,16 +678,38 @@ namespace Jondo.Unity.Server.Managers
 
         // ─── The journal ────────────────────────────────────────────────────────
 
-        private static void WriteLog(SqliteConnection conexion, long guildId, long whenMs, int kind, long characterId, string name)
+        private static void WriteLog(SqliteConnection conexion, long guildId, long whenMs, int field, byte[] details,
+                                     long characterId, string name)
         {
             var insert = conexion.CreateCommand();
-            insert.CommandText = "INSERT INTO GuildLog (GuildId, WhenMs, Kind, CharacterId, Name) VALUES ($g, $ms, $k, $c, $n);";
+            insert.CommandText = "INSERT INTO GuildLog (GuildId, WhenMs, Kind, CharacterId, Name, Tab, Field, Details) " +
+                                 "VALUES ($g, $ms, $f, $c, $n, $t, $f, $d);";
             insert.Parameters.AddWithValue("$g", guildId);
             insert.Parameters.AddWithValue("$ms", whenMs);
-            insert.Parameters.AddWithValue("$k", kind);
+            insert.Parameters.AddWithValue("$f", field);
             insert.Parameters.AddWithValue("$c", characterId);
             insert.Parameters.AddWithValue("$n", name ?? "");
+            insert.Parameters.AddWithValue("$t", (int)Network.GuildLogProtocol.TabOf(field));
+            insert.Parameters.AddWithValue("$d", details ?? Array.Empty<byte>());
             insert.ExecuteNonQuery();
+        }
+
+        /// <summary>
+        /// A line of the journal: its case and the case's message (see <see cref="Network.GuildLogProtocol"/>),
+        /// and who did it, when somebody did. Its list follows from its case.
+        /// </summary>
+        public static void Log(long guildId, int field, byte[] details, long characterId = 0, string name = "")
+        {
+            if (guildId <= 0) return;
+            try
+            {
+                using var conexion = Open();
+                WriteLog(conexion, guildId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), field, details, characterId, name);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Guild] A journal line of guild {guildId} could not be written: {ex.Message}");
+            }
         }
 
         /// <summary>A guild's journal, from oldest to newest, as the jil sends it.</summary>
@@ -664,16 +717,32 @@ namespace Jondo.Unity.Server.Managers
         {
             using var conexion = Open();
             var query = conexion.CreateCommand();
-            query.CommandText = "SELECT WhenMs, Kind, CharacterId, Name FROM GuildLog WHERE GuildId = $g ORDER BY WhenMs, Id;";
+            query.CommandText = "SELECT WhenMs, Kind, CharacterId, Name, Tab, Field, Details FROM GuildLog " +
+                                "WHERE GuildId = $g ORDER BY WhenMs, Id;";
             query.Parameters.AddWithValue("$g", guildId);
             using var lector = query.ExecuteReader();
             var fuera = new List<LogEntry>();
             while (lector.Read())
             {
+                long character = lector.GetInt64(2);
+                string name = lector.GetString(3);
+                int field = lector.GetInt32(5);
+                byte[] details = lector.IsDBNull(6) ? Array.Empty<byte>() : (byte[])lector[6];
+                var tab = (LogTab)lector.GetInt32(4);
+                if (field == 0)
+                {
+                    // A line written before the journal had its cases.
+                    int kind = lector.GetInt32(1);
+                    field = kind == OldLogFounded ? Network.GuildLogProtocol.ChestTabUnlocked : Network.GuildLogProtocol.PlayerFlow;
+                    details = kind == OldLogFounded ? Array.Empty<byte>()
+                        : Network.GuildLogProtocol.PlayerFlowLine(character, name,
+                            kind == OldLogJoined ? Network.GuildLogProtocol.Flow.Joined : (Network.GuildLogProtocol.Flow)kind);
+                    tab = LogTab.General;
+                }
                 fuera.Add(new LogEntry
                 {
-                    GuildId = guildId, WhenMs = lector.GetInt64(0), Kind = lector.GetInt32(1),
-                    CharacterId = lector.GetInt64(2), Name = lector.GetString(3),
+                    GuildId = guildId, WhenMs = lector.GetInt64(0), Tab = tab, Field = field, Details = details,
+                    CharacterId = character, Name = name,
                 });
             }
             return fuera;
@@ -1080,6 +1149,13 @@ namespace Jondo.Unity.Server.Managers
         public static int AddGuildExperience(long guildId, long amount)
         {
             using var conexion = Open();
+            int before;
+            using (var was = conexion.CreateCommand())
+            {
+                was.CommandText = "SELECT Level FROM Guilds WHERE Id = $g;";
+                was.Parameters.AddWithValue("$g", guildId);
+                before = was.ExecuteScalar() is long l ? (int)l : 1;
+            }
             if (amount > 0)
             {
                 var add = conexion.CreateCommand();
@@ -1099,6 +1175,15 @@ namespace Jondo.Unity.Server.Managers
             set.Parameters.AddWithValue("$l", level);
             set.Parameters.AddWithValue("$g", guildId);
             set.ExecuteNonQuery();
+
+            // The journal: each level reached, and the chest tab one of them unlocks.
+            long ms = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            for (int reached = before + 1; reached <= level; reached++)
+            {
+                WriteLog(conexion, guildId, ms, Network.GuildLogProtocol.LevelUp, Network.GuildLogProtocol.LevelUpLine(reached), 0, "");
+                if (GuildChests.TabsAtLevel(reached) > GuildChests.TabsAtLevel(reached - 1))
+                    WriteLog(conexion, guildId, ms, Network.GuildLogProtocol.ChestTabUnlocked, Array.Empty<byte>(), 0, "");
+            }
             return level;
         }
 
@@ -1112,6 +1197,10 @@ namespace Jondo.Unity.Server.Managers
             borra.CommandText = "DELETE FROM GuildMembers WHERE CharacterId = $c;";
             borra.Parameters.AddWithValue("$c", characterId);
             borra.ExecuteNonQuery();
+
+            string name = DatabaseManager.GetCharacterById(characterId)?.Name ?? "";
+            WriteLog(conexion, guild.Id, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), Network.GuildLogProtocol.PlayerFlow,
+                     Network.GuildLogProtocol.PlayerFlowLine(characterId, name, Network.GuildLogProtocol.Flow.Left), characterId, name);
 
             // His account's houses are not the guild's any more: 1/277 tells the guild so.
             long account = DatabaseManager.GetCharacterById(characterId)?.AccountId ?? 0;

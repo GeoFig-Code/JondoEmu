@@ -195,6 +195,9 @@ namespace Jondo.Unity.Server.Managers
             raid.Participants.Add(new Participant { CharacterId = characterId, Group = group, IsCaptain = true });
             _raids[raid.Uuid] = raid;
             GuildRaidStore.Save(raid);
+            string buyer = NameOf(characterId);
+            GuildStore.Log(guild.Id, Network.GuildLogProtocol.RaidPurchase,
+                Network.GuildLogProtocol.RaidPurchaseLine(characterId, buyer, raidId, raid.Uuid), characterId, buyer);
             return (PurchaseResult.Done, raid);
         }
 
@@ -349,6 +352,10 @@ namespace Jondo.Unity.Server.Managers
 
             foreach (var p in raid.Participants) p.IsCaptain = p.CharacterId == targetId;
             GuildRaidStore.Save(raid);
+            string by = NameOf(characterId);
+            GuildStore.Log(raid.GuildId, Network.GuildLogProtocol.RaidCaptain,
+                Network.GuildLogProtocol.RaidCaptainLine(characterId, by, targetId, NameOf(targetId), raid.RaidId, raid.Uuid),
+                characterId, by);
             return CaptainResult.Done;
         }
 
@@ -372,6 +379,9 @@ namespace Jondo.Unity.Server.Managers
                 When = DateTimeOffset.UtcNow,
             };
             GuildRaidStore.Save(raid);
+            GuildStore.Log(raid.GuildId, Network.GuildLogProtocol.RaidDescription,
+                Network.GuildLogProtocol.RaidDescriptionLine(characterId, raid.Note.AuthorName, raid.RaidId, raid.Uuid),
+                characterId, raid.Note.AuthorName);
             return true;
         }
 
@@ -391,6 +401,10 @@ namespace Jondo.Unity.Server.Managers
             raid.Participants.Remove(target);
             if (block) raid.Blocked.Add(targetId);
             GuildRaidStore.Save(raid);
+            string captain = NameOf(characterId);
+            GuildStore.Log(raid.GuildId, Network.GuildLogProtocol.RaidKicked,
+                Network.GuildLogProtocol.RaidKickedLine(characterId, captain, targetId, NameOf(targetId), raid.RaidId, raid.Uuid),
+                characterId, captain);
             return RemoveResult.Done;
         }
 
@@ -579,6 +593,8 @@ namespace Jondo.Unity.Server.Managers
             raid.ValidatedGoals.Clear();
             if (validatedGoals != null) raid.ValidatedGoals.AddRange(validatedGoals);
             GuildRaidStore.Save(raid);
+            GuildStore.Log(raid.GuildId, Network.GuildLogProtocol.RaidFinished,
+                Network.GuildLogProtocol.RaidFinishedLine(raid.RaidId, raid.Uuid));
         }
 
         /// <summary>The captaincy of a running raid changes hands.</summary>

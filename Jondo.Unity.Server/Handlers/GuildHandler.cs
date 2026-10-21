@@ -388,12 +388,23 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             var now = DateTimeOffset.UtcNow;
+            var was = GuildActivity.Of(guild.Id, now);
             var week = GuildStore.HasRight(who, GuildActivity.ManageActivityRight)
                 ? GuildActivity.Choose(guild.Id, tier, preferences, now)
                 : null;
             if (week != null)
+            {
                 Console.WriteLine($"[Guild] «{guild.Name}» chooses activity tier {tier}" +
                                   (week.PendingActivityId != 0 ? " for next week." : "."));
+                string name = SessionContext.State.CharacterName;
+                if (week.PendingActivityId != 0 && week.PendingActivityId != was.PendingActivityId)
+                    GuildStore.Log(guild.Id, GuildLogProtocol.NextWeekly,
+                        GuildLogProtocol.NextWeeklyLine(who, name, week.PendingActivityId), who, name);
+                byte[] before = was.NextPreferences ?? was.Preferences ?? Array.Empty<byte>();
+                if (was.HasActivity && !before.AsSpan().SequenceEqual(preferences))
+                    GuildStore.Log(guild.Id, GuildLogProtocol.MissionConfiguration,
+                        GuildLogProtocol.MissionConfigurationLine(who, name), who, name);
+            }
             week ??= GuildActivity.Of(guild.Id, now);
             if (!week.HasActivity) return;
 
@@ -482,6 +493,9 @@ namespace Jondo.Unity.Server.Handlers
 
             Console.WriteLine($"[Guild] «{guild.Name}» rerolls mission {old.MissionId} into {fresh.MissionId} " +
                               $"for {tier.RerollCost} guild kamas.");
+            string rerolledBy = SessionContext.State.CharacterName;
+            GuildStore.Log(guild.Id, GuildLogProtocol.MissionReroll,
+                GuildLogProtocol.MissionRerollLine(who, rerolledBy, old.MissionId, fresh.MissionId), who, rerolledBy);
             byte[] jed = GuildProtocol.BuildRerolled(old.Uuid, fresh);
             await WriteAsync(stream, ConnectionProtocol.Answer(Op.Jed, jed, ConnectionProtocol.RequestId(frame)));
             foreach (var member in GuildStore.Members(guild.Id))
@@ -570,6 +584,7 @@ namespace Jondo.Unity.Server.Handlers
             if (icon != 0) rank.Icon = icon;
             if (order >= 0) rank.Order = order;
             GuildStore.SaveRank(rank);
+            LogRank(guild, rank, GuildLogProtocol.RankAction.Updated);
 
             await SendRanksAsync(stream, guild);
             Console.WriteLine($"[Guild] Rank {id} of «{guild.Name}» edited: «{rank.Name}».");
@@ -595,9 +610,15 @@ namespace Jondo.Unity.Server.Handlers
             if (rank == null) return;
             rank.Rights = rights;
             GuildStore.SaveRank(rank);
+            LogRank(guild, rank, GuildLogProtocol.RankAction.Updated);
 
             await SendRanksAsync(stream, guild);
         }
+
+        /// <summary>A rank created, changed or deleted, in the journal.</summary>
+        private static void LogRank(GuildStore.Guild guild, GuildStore.Rank rank, GuildLogProtocol.RankAction action)
+            => GuildStore.Log(guild.Id, GuildLogProtocol.RankChange, GuildLogProtocol.RankLine(rank.Id, rank.Name, action),
+                              SessionContext.State.CharacterId, SessionContext.State.CharacterName);
 
         /// <summary>Creating a rank (jcv): f1 the order, f4 the name, f5 the icon.</summary>
         public static async Task CreateRankAsync(NetworkStream stream, byte[] frame)
@@ -617,6 +638,7 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             var created = GuildStore.CreateRank(guild.Id, name, icon, order);
+            LogRank(guild, created, GuildLogProtocol.RankAction.Created);
             await SendRanksAsync(stream, guild);
             Console.WriteLine($"[Guild] Rank {created.Id} «{created.Name}» created in «{guild.Name}».");
         }
@@ -696,6 +718,18 @@ namespace Jondo.Unity.Server.Handlers
             var changed = new List<GuildStore.Member> { GuildStore.SetRank(target.CharacterId, rankId) };
             if (rankId == GuildStore.RankLeader && assigner.Rank == GuildStore.RankLeader)
                 changed.Add(GuildStore.SetRank(assigner.CharacterId, target.Rank));
+
+            // The journal: «{0} ha sido nombrado {1} por {2}», for each one whose rank changed.
+            string assignerName = DatabaseManager.GetCharacterById(assignerCharacterId)?.Name ?? "";
+            foreach (var member in changed)
+            {
+                var given = ranks.Find(r => r.Id == member.Rank);
+                string name = DatabaseManager.GetCharacterById(member.CharacterId)?.Name ?? "";
+                if (given != null)
+                    GuildStore.Log(guild.Id, GuildLogProtocol.PlayerRank,
+                        GuildLogProtocol.PlayerRankLine(given.Id, given.Name, member.CharacterId, name, assignerCharacterId, assignerName),
+                        assignerCharacterId, assignerName);
+            }
 
             foreach (var member in changed)
             {
@@ -779,7 +813,7 @@ namespace Jondo.Unity.Server.Handlers
             long who = SessionContext.State.CharacterId;
             var guild = who == 0 ? null : GuildStore.GuildOf(who);
             if (guild == null) return;
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jil, GuildProtocol.BuildLog(GuildStore.LogOf(guild.Id))));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jil, GuildLogProtocol.BuildLog(GuildStore.LogOf(guild.Id))));
         }
 
         /// <summary>
@@ -1186,6 +1220,12 @@ namespace Jondo.Unity.Server.Handlers
             if (application == null) return;
             GuildStore.DropApplication(guild.Id, applicant);
             await ApplicationMovedAsync(guild, application, GuildProtocol.ApplicationGone, who);
+            if (!accepted)
+            {
+                string refused = DatabaseManager.GetCharacterById(applicant)?.Name ?? "";
+                GuildStore.Log(guild.Id, GuildLogProtocol.PlayerFlow,
+                    GuildLogProtocol.PlayerFlowLine(applicant, refused, GuildLogProtocol.Flow.ApplicationRefused), applicant, refused);
+            }
 
             bool joins = accepted && GuildStore.GuildOf(applicant) == null;   // not if he is already in another
             var applicantSession = SessionRegistry.FindByCharacter(applicant);

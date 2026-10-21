@@ -104,7 +104,9 @@ namespace Jondo.Unity.Server.Handlers
             if (window.Kind == Kind.GuildChest && !await GuildChestHandler.MayMoveAsync(stream, window, quantity > 0, uid))
                 return true;
 
-            await MoveAsync(stream, window.Place, quantity, uid, goneFirst: false);
+            var logged = window.Kind == Kind.GuildChest ? GuildChestHandler.ItemOfMove(window, quantity, uid) : null;
+            if (await MoveAsync(stream, window.Place, quantity, uid, goneFirst: false) && logged != null)
+                GuildChestHandler.LogMove(window, quantity, uid, logged.Value);
             return true;
         }
 

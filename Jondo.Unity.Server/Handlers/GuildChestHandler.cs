@@ -42,6 +42,33 @@ namespace Jondo.Unity.Server.Handlers
     /// </remarks>
     public static class GuildChestHandler
     {
+        /// <summary>The item a move is about, read before it moves: from the bag going in, from the tab coming out.</summary>
+        internal static (int Gid, IReadOnlyList<Equipment.ItemEffect> Effects)? ItemOfMove(StorageHandler.Window window, int quantity, long uid)
+        {
+            if (quantity > 0) return Equipment.ByUid(uid) is { } bagged ? (bagged.Template, bagged.Effects) : null;
+            foreach (var stored in StorageStacks.ItemsOf(window.Place))
+                if (stored.Uid == uid) return (stored.Gid, Equipment.ParseEffects(stored.Effects));
+            return null;
+        }
+
+        /// <summary>
+        /// A move into or out of the chest, in the guild's journal (its chest list): «{0} ha
+        /// depositado/retirado {1} x {2}…», the tab it reached or left.
+        /// </summary>
+        internal static void LogMove(StorageHandler.Window window, int quantity, long uid,
+                                     (int Gid, IReadOnlyList<Equipment.ItemEffect> Effects) item)
+        {
+            var state = SessionContext.State;
+            int count = Math.Abs(quantity);
+            bool deposit = quantity > 0;
+            GuildStore.Log(window.GuildId, GuildLogProtocol.Chest,
+                GuildLogProtocol.ChestLine(state.CharacterId, state.CharacterName,
+                    deposit ? GuildLogProtocol.ChestMove.Deposit : GuildLogProtocol.ChestMove.Withdraw, count,
+                    ConnectionProtocol.ItemBody(item.Gid, item.Effects, count, uid),
+                    deposit ? 0 : window.Tab, deposit ? window.Tab : 0),
+                state.CharacterId, state.CharacterName);
+        }
+
         /// <summary>The chest was used: open it on the first tab, if the character may look at it.</summary>
         public static async Task OpenAsync(NetworkStream? stream, int elementId, int skillId)
         {

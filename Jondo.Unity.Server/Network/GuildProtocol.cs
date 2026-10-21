@@ -258,35 +258,6 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
-        /// The journal (jil): one line per f1 { f11 guild, f17 '' if it is the founding, f19 when,
-        /// f20 { f2 character, f3 name, f4 2 in the type that has not been understood } }.
-        /// </summary>
-        /// <remarks>
-        /// Measured in «muchas acciones»: three lines, the founding of «Jondo» two milliseconds
-        /// after being created, and two of Hiierbita-Xx: one with f4 = 2 and, half a minute later, that of his
-        /// joining, whose f19 is exactly the JoinedUtcMs of his jgu.
-        /// </remarks>
-        public static byte[] BuildLog(IReadOnlyList<GuildStore.LogEntry> entries)
-        {
-            var jil = Pb.New();
-            foreach (var entry in entries)
-            {
-                var line = Pb.New().Var(11, entry.GuildId);
-                if (entry.Kind == GuildStore.LogFounded) line.Str(17, "");
-                line.Var(19, entry.WhenMs);
-                if (entry.Kind != GuildStore.LogFounded)
-                {
-                    line.Msg(20, Pb.New()
-                        .Var(2, entry.CharacterId)
-                        .Str(3, entry.Name)
-                        .VarIfNotZero(4, entry.Kind == GuildStore.LogJoined ? 0 : entry.Kind));
-                }
-                jil.Msg(1, line);
-            }
-            return jil.Build();
-        }
-
-        /// <summary>
         /// A guild's directory sheet (jci), or the empty one of a freshly founded guild.
         /// </summary>
         /// <remarks>
