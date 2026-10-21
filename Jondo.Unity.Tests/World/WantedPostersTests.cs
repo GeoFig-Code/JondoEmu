@@ -10,6 +10,13 @@ using Xunit;
 
 namespace Jondo.Unity.Tests.World
 {
+    /// <summary>
+    /// Alone: the placement test loads the maps and changes the world's groups, which the other
+    /// world tests read and load concurrently.
+    /// </summary>
+    [CollectionDefinition("WantedPosters", DisableParallelization = true)]
+    public class WantedPostersCollection { }
+
     /// <summary>The wanted posters: the criminals read off the client's data, and where they stand.</summary>
     [Collection("WantedPosters")]
     public class WantedPostersTests
