@@ -334,6 +334,10 @@ namespace Jondo.Unity.Server.Managers
             return houses;
         }
 
+        /// <summary>The houses shared with a guild.</summary>
+        public static List<House> SharedWith(long guildId)
+            => guildId <= 0 ? new List<House>() : AllOwned().Values.Where(h => h.GuildId == guildId).ToList();
+
         /// <summary>Every house this account owns, by door.</summary>
         public static List<House> OwnedBy(long accountId)
         {

@@ -564,24 +564,49 @@ namespace Jondo.Unity.Server.Handlers
             => SendAsync(stream, Op.Jaa, BuildAccountHouses(SessionContext.Current.AccountId));
 
         public static byte[] BuildAccountHouses(long accountId)
+            => HouseProtocol.BuildAccountHouses(HouseStore.OwnedBy(accountId).Select(OwnedOf).Where(o => o != null)!);
+
+        /// <summary>A house as the lists carry it, with where its street is; null for a door that is not a house.</summary>
+        private static HouseProtocol.Owned? OwnedOf(HouseStore.House house)
         {
-            var owned = new List<HouseProtocol.Owned>();
-            foreach (var house in HouseStore.OwnedBy(accountId))
+            if (!Houses.TryGetDoor(house.MapId, house.ElementId, out var door)) return null;
+            var street = MapManager.GetMapInfo(house.MapId);
+            return new HouseProtocol.Owned
             {
-                if (!Houses.TryGetDoor(house.MapId, house.ElementId, out var door)) continue;
-                var street = MapManager.GetMapInfo(house.MapId);
-                owned.Add(new HouseProtocol.Owned
-                {
-                    HouseId = Houses.HouseIdOf(house.MapId, house.ElementId),
-                    Model = door.Model,
-                    StreetMapId = house.MapId,
-                    WorldX = street?.PosX ?? 0,
-                    WorldY = street?.PosY ?? 0,
-                    SubAreaId = street?.SubAreaId ?? 0,
-                    Plaque = PlaqueOf(house, door),
-                });
-            }
-            return HouseProtocol.BuildAccountHouses(owned);
+                HouseId = Houses.HouseIdOf(house.MapId, house.ElementId),
+                Model = door.Model,
+                StreetMapId = house.MapId,
+                WorldX = street?.PosX ?? 0,
+                WorldY = street?.PosY ?? 0,
+                SubAreaId = street?.SubAreaId ?? 0,
+                Plaque = PlaqueOf(house, door),
+            };
+        }
+
+        /// <summary>
+        /// At the world entry, a guild member's guild houses (jjs): what the guild window's «Casas»
+        /// tab lists. Nothing for whoever has no guild.
+        /// </summary>
+        public static async Task SendGuildHousesAsync(NetworkStream? stream, long characterId)
+        {
+            long guildId;
+            try { guildId = GuildStore.GuildOf(characterId)?.Id ?? 0; }
+            catch { return; }
+            if (guildId == 0) return;
+            var houses = HouseStore.SharedWith(guildId).Select(OwnedOf).Where(o => o != null)!;
+            await SendAsync(stream, Op.Jjs, HouseProtocol.BuildGuildHouses(houses!));
+        }
+
+        /// <summary>The guild's members on line are told a house is theirs now (jjp), or not any more (jjt).</summary>
+        private static async Task TellTheGuildAsync(long guildId, HouseStore.House house, Houses.Door door)
+        {
+            if (guildId <= 0) return;
+            var guild = GuildStore.ById(guildId);
+            if (guild == null) return;
+            byte[] frame = house.GuildId == guildId && OwnedOf(house) is { } owned
+                ? ConnectionProtocol.Push(Op.Jjp, HouseProtocol.BuildGuildHouse(owned))
+                : ConnectionProtocol.Push(Op.Jjt, HouseProtocol.BuildGuildHouseGone(Houses.HouseIdOf(door.MapId, door.ElementId), Houses.Instance));
+            await GuildHandler.TellEveryoneAsync(guild, frame);
         }
 
         // ─── Selling ────────────────────────────────────────────────────────────
@@ -997,9 +1022,12 @@ namespace Jondo.Unity.Server.Handlers
                 guildId = MyGuildId();
                 if (guildId == 0) return true;
             }
+            long before = house.GuildId;
             await HouseStore.SetGuildShareAsync(door.MapId, door.ElementId, house.AccountId, guildId, rights);
 
             house = HouseStore.Of(door.MapId, door.ElementId);
+            if (before > 0 && before != house.GuildId) await TellTheGuildAsync(before, house, door);
+            if (house.GuildId > 0) await TellTheGuildAsync(house.GuildId, house, door);
             await SendAsync(stream, Op.Jak, HouseProtocol.BuildGuildRights(houseId, Houses.Instance, GuildBlockOf(house), house.GuildRights));
             await TellTheStreetAsync(door, house);
             await SendAccountHousesAsync(stream);

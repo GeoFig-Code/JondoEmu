@@ -693,6 +693,11 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(HouseHandler.ChestAccess.Open, HouseHandler.ChestAccessFor(Owned(), Stranger, 0, ""));
         }
 
+        /// <summary>A house the guild loses (jjt): { f3: instance, f4: house }, as the sale capture's frame 15.</summary>
+        [Fact]
+        public void A_house_leaves_the_guild_with_jjt()
+            => Assert.Equal(Convert.FromHexString("1816209cf31f"), HouseProtocol.BuildGuildHouseGone(522652, 22));
+
         /// <summary>jak { f1: instance, f3: rights, f4: house }, Sacrogrito's house 522652, instance 22.</summary>
         [Fact]
         public void The_guild_rights_travel_in_jak()

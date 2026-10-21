@@ -315,7 +315,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Dungeon, expedition, monster-family and Infinite Dreams missions count as you play, once per member,
   with the «¡Encargo terminado!» notice, *gremichas* and activity points
 - ✅ Rerolling a mission with guild kamas, and marking missions as interesting for the rest of the guild
-- ❌ Anomaly and dream-trial missions, and the *Casas* tab
+- ✅ The *Casas* tab: the houses the members share with the guild
+- ❌ Anomaly and dream-trial missions
 
 **Raids** — the Eternal Gardens Sanctuary and the Gigalodón Abyss — run on the client's own screens.
 

@@ -963,6 +963,15 @@ public static class Op
     /// <summary>Client to server: share a house with the guild, { f1: share, f2: house, f3: instance, f4: rights } (equ, on dbb).</summary>
     public const string Jao = "jao";
 
+    /// <summary>
+    /// Server to client: the guild's houses, { f2: lpx each } -- the guild window's «Casas» tab (the
+    /// client's fft). Empty first thing when a guild is founded, in the creation capture.
+    /// </summary>
+    public const string Jjs = "jjs";
+
+    /// <summary>Server to client: one of the guild's houses, shared or changed, { f1: lpx } (fft).</summary>
+    public const string Jjp = "jjp";
+
     /// <summary>Server to client: the estate agency's houses on sale, { f1: izw each, f2: page, f3: pages } (EstateAgencyHandler).</summary>
     public const string Izy = "izy";
 
@@ -1526,8 +1535,6 @@ public static class Op
     /// <summary>The guild's name, written. It is discarded; while it travelled it caused a NullReferenceException in the client. 2 messages.</summary>
     public const string Jhk = "jhk";
 
-    /// <summary>A player stall on the map, with the account behind it; it is discarded. 10 messages.</summary>
-    public const string Jjs = "jjs";
 
     /// <summary>Unidentified. 1 use in the emulator.</summary>
     public const string Joa = "joa";

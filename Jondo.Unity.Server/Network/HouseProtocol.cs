@@ -200,21 +200,40 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildAccountHouses(IEnumerable<Owned> houses)
         {
             var jaa = Pb.New();
-            foreach (var house in houses)
-            {
-                jaa.Msg(1, Pb.New()
-                    .Var(2, house.HouseId)
-                    .Var(4, house.Model)
-                    .Msg(6, Pb.New()
-                        .Msg(1, Pb.New()
-                            .Var(1, house.StreetMapId)
-                            .VarIfNotZero(2, house.WorldX)
-                            .VarIfNotZero(4, house.SubAreaId)
-                            .VarIfNotZero(5, house.WorldY))
-                        .Msg(2, Build(house.Plaque, true))));
-            }
+            foreach (var house in houses) jaa.Msg(1, Lpx(house));
             return jaa.Build();
         }
+
+        /// <summary>One house of a list (lpx): the account's (jaa) and the guild's (jjs, jjp) alike.</summary>
+        private static Pb Lpx(Owned house)
+            => Pb.New()
+                .Var(2, house.HouseId)
+                .Var(4, house.Model)
+                .Msg(6, Pb.New()
+                    .Msg(1, Pb.New()
+                        .Var(1, house.StreetMapId)
+                        .VarIfNotZero(2, house.WorldX)
+                        .VarIfNotZero(4, house.SubAreaId)
+                        .VarIfNotZero(5, house.WorldY))
+                    .Msg(2, Build(house.Plaque, true)));
+
+        /// <summary>The guild's houses (jjs): { f2: lpx each }, the client's fft fills the «Casas» tab from it.</summary>
+        public static byte[] BuildGuildHouses(IEnumerable<Owned> houses)
+        {
+            var jjs = Pb.New();
+            foreach (var house in houses) jjs.Msg(2, Lpx(house));
+            return jjs.Build();
+        }
+
+        /// <summary>One of the guild's houses, shared or changed (jjp): { f1: lpx }.</summary>
+        public static byte[] BuildGuildHouse(Owned house) => Pb.New().Msg(1, Lpx(house)).Build();
+
+        /// <summary>
+        /// A house that is not the guild's any more (jjt): { f3: instance, f4: house } -- the same jjt
+        /// the sale capture sends when a house goes on sale (frame 15), which takes it from its guild.
+        /// </summary>
+        public static byte[] BuildGuildHouseGone(int houseId, int instance)
+            => Pb.New().VarIfNotZero(3, instance).Var(4, houseId).Build();
 
         /// <summary>
         /// kind of the sale window (khr's f4): 1 in both windows captured. An enum of two values

@@ -794,6 +794,9 @@ namespace Jondo.Unity.Server.Network
             // Inside a house: which one, when the way in was not kept.
             Handlers.HouseHandler.OnWorldEntry(SessionContext.Current.AccountId);
 
+            // And the guild's houses, for the guild window's «Casas» tab (jjs).
+            await Handlers.HouseHandler.SendGuildHousesAsync(stream, character.Id);
+
             // What the account sold in the marketplaces, and what came back unsold, for the sales
             // history window: its "last connection" box is the part since the last logout.
             byte[]? sales = Handlers.MarketplaceHandler.SalesHistoryAtEntry(character.Id, SessionContext.Current.AccountId);
