@@ -243,6 +243,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Every house can be bought, each with a model of its own neighbourhood
 - ✅ Owning a house: plaque, selling and taking off sale, the access code and its keypad, the house
   chests with their lock code
+- ✅ Houses with their own rooms and chests: 744 of the 765 doors lead into a house of their own
+  neighbourhood with a chest, its stairs and trapdoors taking you through its rooms
 - ✅ A house is private: only its owner, whoever knows its code, or its guild when he shares it
 - ✅ Sharing a house with the guild, with its rights over the door and the chests
 - ✅ Throwing someone out of your house
@@ -260,9 +262,10 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ❌ Visiting another player's haven bag
 <img width="2560" height="1492" alt="image" src="https://github.com/user-attachments/assets/a81a3b24-8559-4ad5-8a27-e6913eef95a8" />
 
-> The client does not say which interior sits behind each door: Bonta's and Brakmar's lead to their
-> residences, the rest to an interior of their own place or neighbourhood. The mapping lives in
-> `datos/casas_mundo_3.6.10.10.json` and can be corrected by hand.
+> The client does not say which interior sits behind each door: each door leads to one of the
+> client's own houses of its neighbourhood (Bonta's and Brakmar's to their residences), with its
+> rooms and its chests. The mapping lives in `datos/casas_mundo_3.6.10.10.json` and can be
+> corrected by hand.
 
 ### 🏦 Banks and marketplaces
 

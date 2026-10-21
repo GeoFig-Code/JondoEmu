@@ -467,6 +467,9 @@ namespace Jondo.Unity.Server.Managers
                     // the start. Resources leaves those out already; this holds should it have
                     // been read before TeleportManager.
                     if (TeleportManager.TryGet(mapId, resource.ElementId, out _)) continue;
+                    // Nor a house chest: gfx 682 is a level-90 tree outside, where it is animated,
+                    // and the golden chest of Astrub's houses inside, where it is drawn still.
+                    if (Houses.IsInterior(mapId) && _byElement.ContainsKey((mapId, resource.ElementId))) continue;
                     Register(mapId, new Interactives.Element(resource.ElementId, resource.Cell,
                                                              resource.Gfx),
                              resource.Type, InteractiveActionKind.Gather, resource.SkillId);

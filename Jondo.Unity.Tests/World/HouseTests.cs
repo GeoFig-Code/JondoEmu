@@ -493,6 +493,31 @@ namespace Jondo.Unity.Tests.World
             Assert.Single(maps.Select(m => Houses.HouseIdOf(m, DoorElement)).Distinct());
         }
 
+        /// <summary>
+        /// The doors lead to the client's own houses -- an indoor map with a house chest, and the
+        /// rooms the world graph joins to it, of the door's own subarea or area --, and the two
+        /// doors the captures go through to where they go in.
+        /// </summary>
+        [Fact]
+        public void Doors_lead_to_the_client_s_own_houses()
+        {
+            MapManager.Initialize();
+            Interactives.Initialize();
+            Houses.Initialize();
+            Assert.True(Houses.TryGetDoor(Street, DoorElement, out var bonta));
+            Assert.Equal(213124106, bonta.InteriorMapId);                   // "entrar en mi casa"
+            Assert.True(Houses.TryGetDoor(219415040, 522198, out var brakmar));
+            Assert.Equal(212339722, brakmar.InteriorMapId);                 // the Brakmar guild house
+
+            var doors = Houses.AllHouses().ToList();
+            int withChest = doors.Count(d => Houses.ChestCountOf(d.InteriorMapId) > 0);
+            Assert.True(withChest >= 740, $"{withChest} of {doors.Count} houses have a chest");
+
+            // A Frigost house of the burgo: its own subarea, with the rooms behind its stairs.
+            var frigost = doors.First(d => MapManager.GetMapInfo(d.MapId)?.SubAreaId == 601);
+            Assert.Equal(601, MapManager.GetMapInfo(frigost.InteriorMapId)?.SubAreaId);
+        }
+
         [Fact]
         public async Task An_owner_sells_and_locks_and_a_stranger_knocks_and_buys()
         {

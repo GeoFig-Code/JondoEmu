@@ -45,14 +45,16 @@ namespace Jondo.Unity.Server.Managers
     /// a single field with «house», and «doorCell» gives zero hits in global-metadata.dat. That
     /// link is set by Ankama's server and we do not have it.
     ///
-    /// So tools/casas_mundo.py sets it, from the measured to the guessed: Bonta's and Brakmar's
-    /// doors lead to their own residences (subareas 983/984, measured); any other door to an
-    /// interior at its own coordinates and in its own subarea, if there is one; else to one of its
-    /// subarea's, area's or region's interiors, the least used first. An interior is never a
-    /// workshop, a shop, a dungeon or a map with a resource or an NPC: the first version took any
-    /// map at (0,0) and an Astrub door led to a forge whose anvil was the way out. 513 of the 765
-    /// doors have no indoor map at their coordinates, so which interior is theirs cannot be known;
-    /// the copies keep a borrowed interior private all the same. The .json can be corrected by hand.
+    /// What the client does have is its houses: an indoor map with a house chest is a house, the
+    /// world graph of its own 2.73 client joins it to its other rooms (stairs, trapdoors, stars),
+    /// and its way out is the room's door or a star no inside passage uses. They do not stand at
+    /// their street's coordinates -- the burgo of Frigost keeps its 24 on a grid of their own,
+    /// x 0..16, y 0..35, when its streets run from -85 to 0 -- so tools/casas_mundo.py gives each
+    /// door one of its own subarea's houses (its area's when it has none: Bonta's and Brakmar's
+    /// residences), the one at its coordinates first, then the one with its model's rooms, then
+    /// the least used. 142 houses, 744 of the 765 doors behind one with a chest; the two doors the
+    /// captures go through lead where they went in. Several doors share a house, and the copies
+    /// keep it private all the same. The .json can be corrected by hand.
     ///
     /// ─── Owners ──────────────────────────────────────────────────────────────────────────────
     ///
@@ -115,10 +117,11 @@ namespace Jondo.Unity.Server.Managers
         public const int ChestLockSkill = 105;
 
         /// <summary>
-        /// The two chests there are inside the 114 interiors: 12367 -- the one in the capture,
-        /// element 522477 -- and 46581, which the captures declare with type 85 three times.
+        /// The house chests: 12367 -- the one in the capture, element 522477 -- and 46581, which
+        /// the captures declare with type 85 three times; 15817 and 682 are the same golden chest
+        /// drawn another way, the one of Sufokia's, Astrub's and the breeders' houses.
         /// </summary>
-        private static readonly HashSet<int> ChestGraphics = new() { 12367, 46581 };
+        private static readonly HashSet<int> ChestGraphics = new() { 12367, 46581, 15817, 682 };
 
         /// <summary>The type of the inside door, the one leading back to the street.</summary>
         public const int ExitType = 316;
@@ -430,6 +433,10 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The door of a house id, as the client sends it back in izv f2.</summary>
         public static bool TryGetByHouseId(int houseId, out Door door)
             => _byHouseId.TryGetValue(houseId, out door);
+
+        /// <summary>The chests of a whole house: its entrance's and its other rooms'.</summary>
+        public static int ChestCountOf(long hall)
+            => ChestsIn(hall).Count + RoomsOf(hall).Sum(room => ChestsIn(room).Count);
 
         /// <summary>The chests standing in an interior: the elements with a chest's graphic.</summary>
         public static List<Interactives.Element> ChestsIn(long interiorMapId)

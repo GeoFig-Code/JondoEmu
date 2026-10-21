@@ -71,7 +71,7 @@ namespace Jondo.Unity.Server.Handlers
 
                 var street = MapManager.GetMapInfo(door.MapId);
                 int subArea = street?.SubAreaId ?? 0;
-                int chests = Houses.ChestsIn(door.InteriorMapId).Count;
+                int chests = Houses.ChestCountOf(door.InteriorMapId);
                 foreach (var house in shown.OrderBy(h => h.Instance))
                 {
                     listings.Add(new Listing(Houses.HouseIdOf(door.MapId, door.ElementId), house.Instance, door.Model, door.Name,
