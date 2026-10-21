@@ -237,14 +237,17 @@ Built with **Avalonia**, the same toolkit as the Studio.
 
 ### 🏘️ Houses, bins and haven bags
 
-- ✅ **1,437 house doors on 553 maps**, all enterable, with **261 house models**
+- ✅ **765 houses** (1,437 door spots on 553 maps), all enterable, with **261 house models**
 <img width="1112" height="920" alt="image" src="https://github.com/user-attachments/assets/1506283c-f6cd-45b5-b9c4-f345273f67bb" />
 
-- ✅ Owning a house (37 doors with a known model): plaque, selling and taking off sale, the access
-  code and its keypad, the house chests with their lock code
-- 🟡 Buying a house
-- ❌ The other 1,400 doors cannot be owned; houses shared with a guild, kicking someone out, the list
-  of houses on sale
+- ✅ Every house can be bought, each with a model of its own neighbourhood
+- ✅ Owning a house: plaque, selling and taking off sale, the access code and its keypad, the house
+  chests with their lock code
+- ✅ A house is private: only its owner, whoever knows its code, or its guild when he shares it
+- ✅ Sharing a house with the guild, with its rights over the door and the chests
+- ✅ Throwing someone out of your house
+- ✅ Each house is its own copy of its interior: owners of different houses never meet inside
+- ❌ The list of houses on sale, and several owners per building in Bonta and Brakmar
 - ✅ The Palacio de los Lagos encantados: its door leads into the palace, and its stars, doors and
   stairs take you through its fifteen rooms; the vault door opens on the treasure room's six chests
 - ✅ **67 public bins**, shared by everybody
@@ -254,10 +257,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ❌ Visiting another player's haven bag
 <img width="2560" height="1492" alt="image" src="https://github.com/user-attachments/assets/a81a3b24-8559-4ad5-8a27-e6913eef95a8" />
 
-> The client does not say which interior sits behind each door: the 1,437 doors share **114 interiors**,
-> assigned within their own neighbourhood. Two houses whose rooms the client does keep — the palace and
-> one in Astrub — lead to their own. The mapping lives in `datos/casas_mundo_3.6.10.10.json`
-> and can be corrected by hand.
+> The client does not say which interior sits behind each door: Bonta's and Brakmar's lead to their
+> residences, the rest to an interior of their own place or neighbourhood. The mapping lives in
+> `datos/casas_mundo_3.6.10.10.json` and can be corrected by hand.
 
 ### 🏦 Banks and marketplaces
 

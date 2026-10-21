@@ -61,11 +61,11 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>A chest inside a house, for the house of that door.</summary>
         public static Place HouseChest(long doorMapId, int doorElementId, int chestElementId)
-            => new Place(SharedTable, "Storage", $"house:{doorMapId}:{doorElementId}:{chestElementId}");
+            => new Place(SharedTable, "Storage", $"house:{Houses.CanonicalMapOf(doorMapId, doorElementId)}:{doorElementId}:{chestElementId}");
 
         /// <summary>The prefix every chest of one house shares, to empty them all when it is sold.</summary>
         public static string HouseChestsPrefix(long doorMapId, int doorElementId)
-            => $"house:{doorMapId}:{doorElementId}:";
+            => $"house:{Houses.CanonicalMapOf(doorMapId, doorElementId)}:{doorElementId}:";
 
         /// <summary>A bin: one per element, public.</summary>
         public static Place Bin(long mapId, int elementId)

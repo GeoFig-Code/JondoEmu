@@ -51,6 +51,14 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>The access code; empty when anyone may come in.</summary>
             public string AccessCode { get; init; } = "";
 
+            /// <summary>The guild the house is shared with; zero when it is not.</summary>
+            public long GuildId { get; init; }
+
+            /// <summary>What the guild may do there: the client's bits, see <see cref="GuildRights"/>.</summary>
+            public int GuildRights { get; init; }
+
+            public bool SharedWithGuild => GuildId > 0;
+
             public bool Owned => AccountId > 0;
             public bool ForSale => Owned && Price > 0;
             public bool Locked => AccessCode.Length > 0;
@@ -89,6 +97,27 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public const int CodeLength = 8;
 
+        /// <summary>
+        /// What a guild may do in a house shared with it: the bits of the client's guild house
+        /// window (PersonalGuildHouseManagerUi.ComputeRightsAsInt), one a checkbox, the same as
+        /// Dofus 1.29's.
+        /// </summary>
+        public static class GuildRights
+        {
+            /// <summary>«Compartir con el gremio».</summary>
+            public const int Share = 1;
+            /// <summary>The guild comes in without the code.</summary>
+            public const int HouseGuild = 8;
+            /// <summary>Nobody outside the guild comes in, not even with the code.</summary>
+            public const int HouseNoGuild = 16;
+            /// <summary>The guild opens the chests without their codes.</summary>
+            public const int ChestGuild = 32;
+            /// <summary>Nobody outside the guild opens the chests.</summary>
+            public const int ChestNoGuild = 64;
+            public const int Teleport = 128;
+            public const int Rest = 256;
+        }
+
         private static readonly ConcurrentDictionary<(long, int), SemaphoreSlim> _gates = new();
         private static readonly object _tablesLock = new object();
         private static volatile bool _tablesReady;
@@ -101,6 +130,7 @@ namespace Jondo.Unity.Server.Managers
         public static void Initialize()
         {
             EnsureTables();
+            MoveToTheirDoors();
             Console.WriteLine($"[Houses] {OwnedCount()} house(s) with an owner, {ForSaleCount()} of them on sale.");
         }
 
@@ -132,12 +162,77 @@ namespace Jondo.Unity.Server.Managers
                             Code           TEXT NOT NULL DEFAULT '',
                             PRIMARY KEY (MapId, ElementId, ChestElementId));";
                     command.ExecuteNonQuery();
+
+                    // The guild a house is shared with, added to tables made before it existed.
+                    var columns = new HashSet<string>();
+                    using (var pragma = connection.CreateCommand())
+                    {
+                        pragma.CommandText = "PRAGMA table_info(Houses);";
+                        using var reader = pragma.ExecuteReader();
+                        while (reader.Read()) columns.Add(reader.GetString(1));
+                    }
+                    foreach (var column in new[] { "GuildId", "GuildRights" })
+                    {
+                        if (columns.Contains(column)) continue;
+                        using var alter = connection.CreateCommand();
+                        alter.CommandText = $"ALTER TABLE Houses ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0;";
+                        alter.ExecuteNonQuery();
+                    }
                     _tablesReady = true;
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[Houses] The tables could not be created: {ex.Message}");
                 }
+            }
+        }
+
+        /// <summary>
+        /// Houses kept under a map their door is not kept under any more -- bought from the second
+        /// map a door stands on, before a door was one house -- go to their door's map, chest codes
+        /// and chests with them. One already there wins: two owners of one door cannot both stay.
+        /// </summary>
+        private static void MoveToTheirDoors()
+        {
+            try
+            {
+                using var connection = Open();
+                var rows = new List<(long MapId, int ElementId)>();
+                using (var read = connection.CreateCommand())
+                {
+                    read.CommandText = "SELECT MapId, ElementId FROM Houses;";
+                    using var reader = read.ExecuteReader();
+                    while (reader.Read()) rows.Add((reader.GetInt64(0), reader.GetInt32(1)));
+                }
+                int moved = 0;
+                foreach (var (mapId, elementId) in rows)
+                {
+                    long kept = Houses.CanonicalMapOf(mapId, elementId);
+                    if (kept == mapId) continue;
+                    using var transaction = connection.BeginTransaction();
+                    using var move = connection.CreateCommand();
+                    move.Transaction = transaction;
+                    move.CommandText = @"
+                        UPDATE OR IGNORE Houses SET MapId = $k WHERE MapId = $m AND ElementId = $e;
+                        DELETE FROM Houses WHERE MapId = $m AND ElementId = $e;
+                        UPDATE OR IGNORE HouseChestCodes SET MapId = $k WHERE MapId = $m AND ElementId = $e;
+                        DELETE FROM HouseChestCodes WHERE MapId = $m AND ElementId = $e;
+                        UPDATE StorageItems SET Storage = $to || substr(Storage, length($from) + 1)
+                            WHERE substr(Storage, 1, length($from)) = $from;";
+                    move.Parameters.AddWithValue("$k", kept);
+                    move.Parameters.AddWithValue("$m", mapId);
+                    move.Parameters.AddWithValue("$e", elementId);
+                    move.Parameters.AddWithValue("$from", $"house:{mapId}:{elementId}:");
+                    move.Parameters.AddWithValue("$to", $"house:{kept}:{elementId}:");
+                    move.ExecuteNonQuery();
+                    transaction.Commit();
+                    moved++;
+                }
+                if (moved > 0) Console.WriteLine($"[Houses] {moved} house(s) moved to the map their door is kept under.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Houses] Could not move the houses to their doors: {ex.Message}");
             }
         }
 
@@ -171,6 +266,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The house behind this door, ownerless when the store has nothing on it.</summary>
         public static House Of(long mapId, int elementId)
         {
+            mapId = Houses.CanonicalMapOf(mapId, elementId);
             EnsureTables();
             try
             {
@@ -188,7 +284,7 @@ namespace Jondo.Unity.Server.Managers
         {
             using var command = connection.CreateCommand();
             command.Transaction = transaction;
-            command.CommandText = "SELECT AccountId, Price, AccessCode FROM Houses WHERE MapId = $m AND ElementId = $e;";
+            command.CommandText = "SELECT AccountId, Price, AccessCode, GuildId, GuildRights FROM Houses WHERE MapId = $m AND ElementId = $e;";
             command.Parameters.AddWithValue("$m", mapId);
             command.Parameters.AddWithValue("$e", elementId);
             using var reader = command.ExecuteReader();
@@ -200,6 +296,8 @@ namespace Jondo.Unity.Server.Managers
                 AccountId = reader.GetInt64(0),
                 Price = reader.GetInt64(1),
                 AccessCode = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                GuildId = reader.GetInt64(3),
+                GuildRights = reader.GetInt32(4),
             };
         }
 
@@ -213,7 +311,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 using var connection = Open();
                 using var command = connection.CreateCommand();
-                command.CommandText = "SELECT MapId, ElementId, Price, AccessCode FROM Houses " +
+                command.CommandText = "SELECT MapId, ElementId, Price, AccessCode, GuildId, GuildRights FROM Houses " +
                                       "WHERE AccountId = $a ORDER BY MapId, ElementId;";
                 command.Parameters.AddWithValue("$a", accountId);
                 using var reader = command.ExecuteReader();
@@ -226,6 +324,8 @@ namespace Jondo.Unity.Server.Managers
                         AccountId = accountId,
                         Price = reader.GetInt64(2),
                         AccessCode = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                        GuildId = reader.GetInt64(4),
+                        GuildRights = reader.GetInt32(5),
                     });
                 }
             }
@@ -239,6 +339,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The code on one of this house's chests; empty when it has none.</summary>
         public static string ChestCodeOf(long mapId, int elementId, int chestElementId)
         {
+            mapId = Houses.CanonicalMapOf(mapId, elementId);
             EnsureTables();
             try
             {
@@ -288,6 +389,7 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public static async Task<bool> SetPriceAsync(long mapId, int elementId, long ownerAccountId, long price)
         {
+            mapId = Houses.CanonicalMapOf(mapId, elementId);
             if (ownerAccountId <= 0 || price < 0) return false;
             EnsureTables();
 
@@ -318,6 +420,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The house's access code, set by its owner; empty takes it off. False when not changed.</summary>
         public static async Task<bool> SetAccessCodeAsync(long mapId, int elementId, long ownerAccountId, string code)
         {
+            mapId = Houses.CanonicalMapOf(mapId, elementId);
             string? kept = Normalize(code);
             if (ownerAccountId <= 0 || kept == null) return false;
             EnsureTables();
@@ -350,6 +453,7 @@ namespace Jondo.Unity.Server.Managers
         public static async Task<bool> SetChestCodeAsync(long mapId, int elementId, int chestElementId,
                                                          long ownerAccountId, string code)
         {
+            mapId = Houses.CanonicalMapOf(mapId, elementId);
             string? kept = Normalize(code);
             if (ownerAccountId <= 0 || kept == null) return false;
             EnsureTables();
@@ -390,6 +494,62 @@ namespace Jondo.Unity.Server.Managers
         /// What this house costs to whoever wants it now: the owner's price when it is on sale,
         /// the model's when it has no owner, zero when it cannot be bought.
         /// </summary>
+        /// <summary>
+        /// Shares a house with its owner's guild, with these rights, or stops sharing it (guild
+        /// zero). Only its owner can, and not while it is on sale: 1/336 «Mientras tengas tu casa
+        /// en venta, no puedes compartirla con tu gremio». False when nothing changed.
+        /// </summary>
+        public static async Task<bool> SetGuildShareAsync(long mapId, int elementId, long ownerAccountId, long guildId, int rights)
+        {
+            mapId = Houses.CanonicalMapOf(mapId, elementId);
+            if (ownerAccountId <= 0 || guildId < 0) return false;
+            EnsureTables();
+
+            var gate = GateOf(mapId, elementId);
+            await gate.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                using var connection = Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "UPDATE Houses SET GuildId = $g, GuildRights = $r " +
+                                      "WHERE MapId = $m AND ElementId = $e AND AccountId = $a AND Price = 0;";
+                command.Parameters.AddWithValue("$g", guildId);
+                command.Parameters.AddWithValue("$r", guildId > 0 ? rights : 0);
+                command.Parameters.AddWithValue("$m", mapId);
+                command.Parameters.AddWithValue("$e", elementId);
+                command.Parameters.AddWithValue("$a", ownerAccountId);
+                return command.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Houses] Could not share the house {mapId}/{elementId}: {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+
+        /// <summary>The houses of these accounts shared with a guild, to stop sharing them when their owner leaves it.</summary>
+        public static int StopSharing(long guildId, long accountId)
+        {
+            EnsureTables();
+            try
+            {
+                using var connection = Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "UPDATE Houses SET GuildId = 0, GuildRights = 0 WHERE GuildId = $g AND AccountId = $a;";
+                command.Parameters.AddWithValue("$g", guildId);
+                command.Parameters.AddWithValue("$a", accountId);
+                return command.ExecuteNonQuery();
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
         public static long AskingPrice(House house, long modelPrice)
             => house.Owned ? (house.ForSale ? house.Price : 0) : Math.Max(0, modelPrice);
 
@@ -413,6 +573,7 @@ namespace Jondo.Unity.Server.Managers
             long mapId, int elementId, long modelPrice, long buyerAccountId, long buyerCharacterId,
             long buyerKamas, long expectedPrice)
         {
+            mapId = Houses.CanonicalMapOf(mapId, elementId);
             if (buyerAccountId <= 0 || buyerCharacterId <= 0) return (null, Refusal.Failed);
             EnsureTables();
 
@@ -496,7 +657,7 @@ namespace Jondo.Unity.Server.Managers
             using var command = connection.CreateCommand();
             command.Transaction = transaction;
             command.CommandText = "INSERT INTO Houses (MapId, ElementId, AccountId, Price, AccessCode) VALUES ($m, $e, $a, 0, '') " +
-                                  "ON CONFLICT(MapId, ElementId) DO UPDATE SET AccountId = $a, Price = 0, AccessCode = '';";
+                                  "ON CONFLICT(MapId, ElementId) DO UPDATE SET AccountId = $a, Price = 0, AccessCode = '', GuildId = 0, GuildRights = 0;";
             command.Parameters.AddWithValue("$m", mapId);
             command.Parameters.AddWithValue("$e", elementId);
             command.Parameters.AddWithValue("$a", accountId);

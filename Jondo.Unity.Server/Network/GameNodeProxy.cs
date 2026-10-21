@@ -1220,10 +1220,25 @@ namespace Jondo.Unity.Server.Network
                     // The house sale window's answer: on sale at a price, or off sale.
                     await HouseHandler.SellAsync(stream, payload);
                 }
-                else if (payloadStr.Contains(Op.Uri(Op.Jad)) || payloadStr.Contains(Op.Uri(Op.Jal)))
+                else if (payloadStr.Contains(Op.Uri(Op.Jad)))
                 {
-                    // A buyer's yes, by inference: see HouseHandler.BuyAsync.
-                    await HouseHandler.BuyAsync(stream, payload, payloadStr.Contains(Op.Uri(Op.Jad)) ? Op.Jad : Op.Jal);
+                    // A buyer's yes: see HouseHandler.BuyAsync.
+                    await HouseHandler.BuyAsync(stream, payload, Op.Jad);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Jal)))
+                {
+                    // An owner throwing somebody out of his house.
+                    await HouseHandler.KickAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Jai)))
+                {
+                    // The guild house window asking a house's guild rights.
+                    await HouseHandler.GuildRightsAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Jao)))
+                {
+                    // A house shared with the guild, or not any more.
+                    await HouseHandler.ShareWithGuildAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Khv)))
                 {

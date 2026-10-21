@@ -943,13 +943,25 @@ public static class Op
     public const string Jan = "jan";
 
     /// <summary>
-    /// Client to server, { f1: int64 }: one of the two house requests with a lone number, built by
-    /// the class that builds jan and khv. Taken as a buyer's yes by inference; see HouseHandler.BuyAsync.
+    /// Client to server, { f1: int64 }: the buyer's yes, the price. The client's house frame (equ)
+    /// sends it on the purchase window's event; see HouseHandler.BuyAsync.
     /// </summary>
     public const string Jad = "jad";
 
-    /// <summary>The other one; see <see cref="Jad"/>.</summary>
+    /// <summary>Client to server, { f1: character }: the owner throws somebody out of his house (equ, on daz).</summary>
     public const string Jal = "jal";
+
+    /// <summary>Client to server, { f3: house, f4: instance }: the guild house window asks a house's guild rights (equ, on dba).</summary>
+    public const string Jai = "jai";
+
+    /// <summary>
+    /// Server to client: a house's guild and rights, { f1: instance, f2: guild block, f3: rights,
+    /// f4: house } -- read by the client's eqx into its house list and the guild house window.
+    /// </summary>
+    public const string Jak = "jak";
+
+    /// <summary>Client to server: share a house with the guild, { f1: share, f2: house, f3: instance, f4: rights } (equ, on dbb).</summary>
+    public const string Jao = "jao";
 
     /// <summary>Server to client: jjt { f3: instance, f4: house }, a house going on sale (sale frame 15).</summary>
     public const string Jjt = "jjt";

@@ -213,6 +213,14 @@ namespace Jondo.Unity.Server.Network
             var here = _sessions.Values.Where(s => s.IsInWorld && s.MapId == mapId);
             if (Managers.Merkasako.IsHavenBag(mapId) && SessionContext.Actual is { } viewer)
                 here = here.Where(s => s.CharacterId == viewer.CharacterId);
+
+            // And a house's interior is that house's: several doors lead to one interior map, and
+            // each house is its own copy of it -- who came in through another door is not there.
+            if (Managers.Houses.IsInterior(mapId) && SessionContext.Actual is { } guest)
+            {
+                var house = Handlers.HouseHandler.HouseOf(guest.State);
+                here = here.Where(s => Handlers.HouseHandler.HouseOf(s.State) == house);
+            }
             return here.ToArray();
         }
 

@@ -203,6 +203,14 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Which door leads back to the street from each interior.</summary>
         private static readonly Dictionary<long, Door> _wayBack = new();
 
+        /// <summary>
+        /// The map each door's house is kept under: the lowest of the maps its element stands on.
+        /// A door is an element, and 502 of the 765 stand on two to four maps -- the building
+        /// crosses the edge --: clicked from any of them it is the same house, with one owner, one
+        /// code and the same chests.
+        /// </summary>
+        private static readonly Dictionary<int, long> _canonical = new();
+
         /// <summary>The house id of every door, and the door of every house id.</summary>
         private static readonly Dictionary<(long MapId, int ElementId), int> _houseIds = new();
         private static readonly Dictionary<int, Door> _byHouseId = new();
@@ -238,6 +246,7 @@ namespace Jondo.Unity.Server.Managers
             _rooms.Clear();
             _houseIds.Clear();
             _byHouseId.Clear();
+            _canonical.Clear();
 
             string path = Paths.Resolve("casas_mundo_3.6.10.10.json");
             if (!File.Exists(path))
@@ -348,14 +357,23 @@ namespace Jondo.Unity.Server.Managers
                 }
             }
 
-            // The house ids: the doors' rank in (map, element) order, from 1.
-            var keys = new List<(long MapId, int ElementId)>(_byElement.Keys);
-            keys.Sort();
-            for (int i = 0; i < keys.Count; i++)
+            // Each door's house is its element's, kept under the lowest of its maps.
+            foreach (var key in _byElement.Keys)
             {
-                _houseIds[keys[i]] = i + 1;
-                _byHouseId[i + 1] = _byElement[keys[i]];
+                if (!_canonical.TryGetValue(key.ElementId, out long kept) || key.MapId < kept)
+                    _canonical[key.ElementId] = key.MapId;
             }
+
+            // The house ids: the houses' rank in (map, element) order, from 1 -- one per house, the
+            // same from every map its door stands on.
+            var houses = _canonical.Select(p => (MapId: p.Value, ElementId: p.Key)).OrderBy(k => k).ToList();
+            var idOf = new Dictionary<int, int>();
+            for (int i = 0; i < houses.Count; i++)
+            {
+                idOf[houses[i].ElementId] = i + 1;
+                _byHouseId[i + 1] = _byElement[houses[i]];
+            }
+            foreach (var key in _byElement.Keys) _houseIds[key] = idOf[key.ElementId];
 
             int puertasDeVerdad = 0;
             foreach (var exit in _exits.Values)
@@ -381,6 +399,14 @@ namespace Jondo.Unity.Server.Managers
 
         public static bool TryGetDoor(long mapId, int elementId, out Door door)
             => _byElement.TryGetValue((mapId, elementId), out door);
+
+        /// <summary>The map this door's house is kept under; the map itself for anything that is not a door.</summary>
+        public static long CanonicalMapOf(long mapId, int elementId)
+            => _byElement.ContainsKey((mapId, elementId)) && _canonical.TryGetValue(elementId, out long kept) ? kept : mapId;
+
+        /// <summary>Every map a house's door stands on, for the house changes the client is told of.</summary>
+        public static List<long> MapsOfDoor(int elementId)
+            => _byElement.Keys.Where(k => k.ElementId == elementId).Select(k => k.MapId).OrderBy(m => m).ToList();
 
         /// <summary>Is this map the interior of some house?</summary>
         public static bool IsInterior(long mapId) => _exits.ContainsKey(mapId) || _hallOf.ContainsKey(mapId);

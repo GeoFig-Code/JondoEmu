@@ -469,6 +469,21 @@ namespace Jondo.Unity.Tests.World
             }
         }
 
+        /// <summary>
+        /// Door 522653 stands on three maps of Bonta: clicked from any, the same house, kept under
+        /// the lowest, with one house id.
+        /// </summary>
+        [Fact]
+        public void A_door_on_three_maps_is_one_house()
+        {
+            MapManager.Initialize();
+            Houses.Initialize();
+            var maps = Houses.MapsOfDoor(DoorElement);
+            if (maps.Count < 2) return;
+            Assert.All(maps, m => Assert.Equal(maps.Min(), Houses.CanonicalMapOf(m, DoorElement)));
+            Assert.Single(maps.Select(m => Houses.HouseIdOf(m, DoorElement)).Distinct());
+        }
+
         [Fact]
         public async Task An_owner_sells_and_locks_and_a_stranger_knocks_and_buys()
         {
@@ -619,5 +634,69 @@ namespace Jondo.Unity.Tests.World
                 Restore(saved);
             }
         }
+    }
+}
+
+namespace Jondo.Unity.Tests.World
+{
+    /// <summary>
+    /// Who comes into a house and opens its chests: its owner; its guild when the house is shared
+    /// and the rights say so; anybody else with the code -- and a house without one lets nobody
+    /// else in.
+    /// </summary>
+    public class HouseAccessTests
+    {
+        private const long Owner = 10, Stranger = 20, Guild = 5;
+
+        private static HouseStore.House Owned(string code = "", long guild = 0, int rights = 0)
+            => new() { AccountId = Owner, AccessCode = code, GuildId = guild, GuildRights = rights };
+
+        [Fact]
+        public void Only_the_owner_walks_into_his_house()
+        {
+            Assert.Equal(HouseHandler.Access.In, HouseHandler.EnterAccess(new HouseStore.House(), Stranger, 0));
+            Assert.Equal(HouseHandler.Access.In, HouseHandler.EnterAccess(Owned(), Owner, 0));
+            Assert.Equal(HouseHandler.Access.Keypad, HouseHandler.EnterAccess(Owned(), Stranger, 0));
+            Assert.Equal(HouseHandler.Access.Keypad, HouseHandler.EnterAccess(Owned("1234"), Stranger, Guild));
+        }
+
+        [Fact]
+        public void A_house_without_a_code_opens_to_no_code()
+        {
+            Assert.False(HouseHandler.CodeOpens(Owned(), 0, ""));
+            Assert.False(HouseHandler.CodeOpens(Owned(), 0, "1234"));
+            Assert.True(HouseHandler.CodeOpens(Owned("1234"), 0, "1234"));
+            Assert.False(HouseHandler.CodeOpens(Owned("1234"), 0, "4321"));
+        }
+
+        [Fact]
+        public void The_guild_comes_in_as_its_rights_say()
+        {
+            var open = Owned(guild: Guild, rights: HouseStore.GuildRights.Share | HouseStore.GuildRights.HouseGuild);
+            Assert.Equal(HouseHandler.Access.In, HouseHandler.EnterAccess(open, Stranger, Guild));
+            Assert.Equal(HouseHandler.Access.Keypad, HouseHandler.EnterAccess(open, Stranger, Guild + 1));
+
+            var closed = Owned("1234", Guild, HouseStore.GuildRights.Share | HouseStore.GuildRights.HouseNoGuild);
+            Assert.Equal(HouseHandler.Access.Keypad, HouseHandler.EnterAccess(closed, Stranger, Guild));
+            Assert.True(HouseHandler.CodeOpens(closed, Guild, "1234"));
+            Assert.False(HouseHandler.CodeOpens(closed, Guild + 1, "1234"));
+        }
+
+        [Fact]
+        public void The_chests_follow_the_guild_rights()
+        {
+            var shared = Owned(guild: Guild, rights: HouseStore.GuildRights.ChestGuild | HouseStore.GuildRights.ChestNoGuild);
+            Assert.Equal(HouseHandler.ChestAccess.Open, HouseHandler.ChestAccessFor(shared, Owner, 0, "99"));
+            Assert.Equal(HouseHandler.ChestAccess.Open, HouseHandler.ChestAccessFor(shared, Stranger, Guild, "99"));
+            Assert.Equal(HouseHandler.ChestAccess.Refused, HouseHandler.ChestAccessFor(shared, Stranger, 0, ""));
+            Assert.Equal(HouseHandler.ChestAccess.Keypad, HouseHandler.ChestAccessFor(Owned(), Stranger, 0, "99"));
+            Assert.Equal(HouseHandler.ChestAccess.Open, HouseHandler.ChestAccessFor(Owned(), Stranger, 0, ""));
+        }
+
+        /// <summary>jak { f1: instance, f3: rights, f4: house }, Sacrogrito's house 522652, instance 22.</summary>
+        [Fact]
+        public void The_guild_rights_travel_in_jak()
+            => Assert.Equal(Convert.FromHexString("081618092" + "09cf31f"),
+                            HouseProtocol.BuildGuildRights(522652, 22, null, 9));
     }
 }

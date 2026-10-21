@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Jondo.Unity.Server.Managers;
@@ -160,9 +161,10 @@ namespace Jondo.Unity.Server.Handlers
             await SendAsync(stream, Op.Iwn, ConnectionProtocol.BuildElementInUse(
                 elementId, skillId, SessionContext.State.CharacterId));
 
-            // A locked house that is not one's own asks for its code first: pandala, frame 3884.
+            // A house that is not one's own asks for its code first (pandala, frame 3884), unless
+            // it is shared with one's guild and the guild may come in without it.
             var house = HouseStore.Of(here, elementId);
-            if (house.Owned && house.Locked && house.AccountId != SessionContext.Current.AccountId)
+            if (EnterAccess(house, SessionContext.Current.AccountId, MyGuildId()) == Access.Keypad)
             {
                 SessionContext.State.HouseDialog = new Dialog
                 {
@@ -213,8 +215,80 @@ namespace Jondo.Unity.Server.Handlers
                               $"{door.InteriorMapId}, cell {SessionContext.State.CellId}.");
         }
 
+        // ─── Who may come in ────────────────────────────────────────────────────
+
+        /// <summary>How somebody comes into a house: straight in, or asked its code.</summary>
+        public enum Access { In, Keypad }
+
+        /// <summary>
+        /// Whether one comes straight into a house or is asked its code. Its owner comes in, and
+        /// anybody into a house nobody owns -- it is on sale, to be seen. Into anybody else's only
+        /// with its code, or its guild with the right to come in without it. A house without a code
+        /// lets nobody else in: the code is how an owner opens it to others (his wish, 21/10/2026).
+        /// </summary>
+        public static Access EnterAccess(HouseStore.House house, long accountId, long guildId)
+        {
+            if (!house.Owned || house.AccountId == accountId) return Access.In;
+            if (InTheGuild(house, guildId) && (house.GuildRights & HouseStore.GuildRights.HouseGuild) != 0) return Access.In;
+            return Access.Keypad;
+        }
+
+        /// <summary>Whether this guild is the one a house is shared with.</summary>
+        public static bool InTheGuild(HouseStore.House house, long guildId)
+            => house.SharedWithGuild && guildId > 0 && guildId == house.GuildId;
+
+        /// <summary>
+        /// Whether a typed code opens a house's door: its code, and not to somebody its guild rights
+        /// keep out -- «nobody outside the guild», even with it.
+        /// </summary>
+        public static bool CodeOpens(HouseStore.House house, long guildId, string typed)
+            => !(house.SharedWithGuild && (house.GuildRights & HouseStore.GuildRights.HouseNoGuild) != 0
+                 && !InTheGuild(house, guildId))
+               && HouseStore.Matches(house.AccessCode, typed);
+
+        /// <summary>How somebody gets at a house chest.</summary>
+        public enum ChestAccess { Open, Keypad, Refused }
+
+        /// <summary>
+        /// A chest is its owner's; the guild opens it without its code when the rights say so, and
+        /// nobody outside the guild when they forbid it; anybody else, its code when it has one.
+        /// </summary>
+        public static ChestAccess ChestAccessFor(HouseStore.House house, long accountId, long guildId, string chestCode)
+        {
+            if (house.AccountId == accountId) return ChestAccess.Open;
+            bool member = InTheGuild(house, guildId);
+            if (member && (house.GuildRights & HouseStore.GuildRights.ChestGuild) != 0) return ChestAccess.Open;
+            if (!member && house.SharedWithGuild && (house.GuildRights & HouseStore.GuildRights.ChestNoGuild) != 0)
+                return ChestAccess.Refused;
+            return chestCode.Length > 0 ? ChestAccess.Keypad : ChestAccess.Open;
+        }
+
+        /// <summary>The guild of whoever is in session, or zero.</summary>
+        private static long MyGuildId()
+        {
+            try { return GuildStore.GuildOf(SessionContext.State.CharacterId)?.Id ?? 0; }
+            catch { return 0; }
+        }
+
+        /// <summary>1/708 «Acción imposible. No puedes acceder a tu cofre de casa.»</summary>
+        public const int ChestRefused = 708;
+
+        /// <summary>1/336 «Mientras tengas tu casa en venta, no puedes compartirla con tu gremio.»</summary>
+        public const int NoShareWhileOnSale = 336;
+
+        /// <summary>0/18 «{0} te ha echado de su casa...»</summary>
+        public const int ThrownOut = 18;
+
         /// <summary>The client has clicked the inside door.</summary>
         public static async Task LeaveAsync(NetworkStream? stream, int elementId, int skillId)
+        {
+            await SendAsync(stream, Op.Iwn, ConnectionProtocol.BuildElementInUse(
+                elementId, skillId, SessionContext.State.CharacterId));
+            await GoOutAsync(stream);
+        }
+
+        /// <summary>Out of the house, through the door one came in by: the leaving after the iwn.</summary>
+        private static async Task GoOutAsync(NetworkStream? stream)
         {
             long here = SessionContext.State.MapId;
 
@@ -231,9 +305,6 @@ namespace Jondo.Unity.Server.Handlers
                 salidaMapa = puerta.MapId;
                 salidaCasilla = puerta.Cell;
             }
-
-            await SendAsync(stream, Op.Iwn, ConnectionProtocol.BuildElementInUse(
-                elementId, skillId, SessionContext.State.CharacterId));
 
             SessionContext.State.MapId = salidaMapa;
             SessionContext.State.CellId = MapManager.GetNearestWalkableCell(salidaMapa, salidaCasilla);
@@ -343,17 +414,45 @@ namespace Jondo.Unity.Server.Handlers
         /// The house this character is inside: the door he came in by, or the one the data gives
         /// for the interior when he reconnected inside. (0, 0) when he is not in a house.
         /// </summary>
-        public static (long MapId, int ElementId) CurrentHouse()
+        public static (long MapId, int ElementId) CurrentHouse() => HouseOf(SessionContext.State);
+
+        /// <summary>
+        /// The house somebody is inside, by the door he came in through and kept under its map:
+        /// the house of his chests and the copy of the interior he sees. (0, 0) outside a house.
+        /// </summary>
+        public static (long MapId, int ElementId) HouseOf(SessionState state)
         {
-            long here = SessionContext.State.MapId;
+            long here = state.MapId;
             if (!Houses.IsInterior(here)) return (0, 0);
 
-            long map = SessionContext.State.HouseEntryMapId;
-            int element = SessionContext.State.HouseEntryElementId;
+            long map = state.HouseEntryMapId;
+            int element = state.HouseEntryElementId;
             if (map != 0 && element != 0 && Houses.TryGetDoor(map, element, out var door) && door.InteriorMapId == Houses.HallOf(here))
-                return (map, element);
+                return (Houses.CanonicalMapOf(map, element), element);
 
-            return Houses.TryGetWayBack(here, out var wayBack) ? (wayBack.MapId, wayBack.ElementId) : (0, 0);
+            return Houses.TryGetWayBack(here, out var wayBack)
+                ? (Houses.CanonicalMapOf(wayBack.MapId, wayBack.ElementId), wayBack.ElementId)
+                : (0, 0);
+        }
+
+        /// <summary>
+        /// At the world entry inside a house whose door was not kept -- the way in is not saved --:
+        /// one of the account's own houses that leads there, so its owner is in his own copy, with
+        /// his chests. Anybody else is in the data's.
+        /// </summary>
+        public static void OnWorldEntry(long accountId)
+        {
+            var state = SessionContext.State;
+            if (!Houses.IsInterior(state.MapId) || state.HouseEntryElementId != 0) return;
+            foreach (var owned in HouseStore.OwnedBy(accountId))
+            {
+                if (!Houses.TryGetDoor(owned.MapId, owned.ElementId, out var door)) continue;
+                if (door.InteriorMapId != Houses.HallOf(state.MapId)) continue;
+                state.HouseEntryMapId = door.MapId;
+                state.HouseEntryCell = door.Cell;
+                state.HouseEntryElementId = door.ElementId;
+                return;
+            }
         }
 
         // ─── The plaque ─────────────────────────────────────────────────────────
@@ -371,7 +470,26 @@ namespace Jondo.Unity.Server.Handlers
                 Price = HouseStore.AskingPrice(house, door.Price),
                 Locked = house.Owned && house.Locked,
                 Rooms = door.Rooms,
+                GuildBlock = GuildBlockOf(house),
             };
+        }
+
+        /// <summary>
+        /// The guild a house is shared with, as the plaque carries it (f3): the guild block of the
+        /// guild messages -- emblem, id, name, level --, the same as Pandala's «Arma de Dios».
+        /// </summary>
+        public static byte[]? GuildBlockOf(HouseStore.House house)
+        {
+            if (!house.SharedWithGuild) return null;
+            try
+            {
+                var guild = GuildStore.ById(house.GuildId);
+                return guild == null ? null : GuildProtocol.GuildBlock(guild).Build();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -589,14 +707,14 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Everybody else on the street gets the door as they see it and the plaque. Nobody else
-        /// was there in the captures: an inference.
+        /// Everybody else on the street gets the door as they see it and the plaque, on every map
+        /// the door stands on. Nobody else was there in the captures: an inference.
         /// </summary>
         private static async Task TellTheStreetAsync(Houses.Door door, HouseStore.House house)
         {
             byte[] plaque = ConnectionProtocol.Push(Op.Izz, HouseProtocol.BuildChanged(
                 Houses.HouseIdOf(door.MapId, door.ElementId), new long[] { door.ElementId }, PlaqueOf(house, door)));
-            foreach (var session in SessionRegistry.OnMap(door.MapId))
+            foreach (var session in Houses.MapsOfDoor(door.ElementId).SelectMany(SessionRegistry.OnMap))
             {
                 if (session.Id == SessionContext.Current.Id) continue;
                 try
@@ -810,10 +928,9 @@ namespace Jondo.Unity.Server.Handlers
             dialog.Answered = true;
             SessionContext.State.HouseDialog = null;
 
-            string expected = dialog.Kind == DialogKind.EnterCode
-                ? HouseStore.Of(dialog.DoorMapId, dialog.DoorElementId).AccessCode
-                : HouseStore.ChestCodeOf(dialog.DoorMapId, dialog.DoorElementId, dialog.ChestElementId);
-            bool right = HouseStore.Matches(expected, typed);
+            bool right = dialog.Kind == DialogKind.EnterCode
+                ? CodeOpens(HouseStore.Of(dialog.DoorMapId, dialog.DoorElementId), MyGuildId(), typed)
+                : HouseStore.Matches(HouseStore.ChestCodeOf(dialog.DoorMapId, dialog.DoorElementId, dialog.ChestElementId), typed);
 
             await SendAsync(stream, Op.Kld, ConnectionProtocol.BuildDialogClosed(HouseProtocol.CodeClosed));
             await SendAsync(stream, Op.Khu, HouseProtocol.BuildCodeResult(wrong: !right));
@@ -833,6 +950,95 @@ namespace Jondo.Unity.Server.Handlers
                 await OpenChestAsync(stream, dialog.DoorMapId, dialog.DoorElementId, dialog.ChestElementId);
             }
             return true;
+        }
+
+        // ─── The guild ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// jai { f3: house, f4: instance }: the guild house window asks what the house's guild may
+        /// do, answered with jak. Only the owner's: the window is his. False when it names no house.
+        /// </summary>
+        public static async Task<bool> GuildRightsAsync(NetworkStream? stream, byte[] payload)
+        {
+            byte[]? jai = ConnectionProtocol.ReadPayload(payload, Op.Jai);
+            if (jai == null) return false;
+            int houseId = (int)VarOf(jai, 3);
+            if (!Houses.TryGetByHouseId(houseId, out var door)) return false;
+            var house = HouseStore.Of(door.MapId, door.ElementId);
+            if (!IsOwner(house)) return true;
+            await SendAsync(stream, Op.Jak, HouseProtocol.BuildGuildRights(houseId, Houses.Instance, GuildBlockOf(house), house.GuildRights));
+            return true;
+        }
+
+        /// <summary>
+        /// jao { f1: share, f2: house, f3: instance, f4: rights }: the owner shares his house with
+        /// his guild, with these rights, or stops sharing it. Not while it is on sale (1/336). The
+        /// client is told with jak, the street with the plaque (izz) and the owner's list (jaa).
+        /// </summary>
+        public static async Task<bool> ShareWithGuildAsync(NetworkStream? stream, byte[] payload)
+        {
+            byte[]? jao = ConnectionProtocol.ReadPayload(payload, Op.Jao);
+            if (jao == null) return false;
+            bool share = VarOf(jao, 1) != 0;
+            int houseId = (int)VarOf(jao, 2);
+            int rights = (int)VarOf(jao, 4);
+            if (!Houses.TryGetByHouseId(houseId, out var door)) return false;
+            var house = HouseStore.Of(door.MapId, door.ElementId);
+            if (!IsOwner(house)) return true;
+
+            long guildId = 0;
+            if (share)
+            {
+                if (house.ForSale)
+                {
+                    await SendAsync(stream, Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, NoShareWhileOnSale));
+                    return true;
+                }
+                guildId = MyGuildId();
+                if (guildId == 0) return true;
+            }
+            await HouseStore.SetGuildShareAsync(door.MapId, door.ElementId, house.AccountId, guildId, rights);
+
+            house = HouseStore.Of(door.MapId, door.ElementId);
+            await SendAsync(stream, Op.Jak, HouseProtocol.BuildGuildRights(houseId, Houses.Instance, GuildBlockOf(house), house.GuildRights));
+            await TellTheStreetAsync(door, house);
+            await SendAccountHousesAsync(stream);
+            Console.WriteLine($"[Houses] House {houseId} " + (guildId > 0 ? $"shared with guild {guildId}, rights {house.GuildRights}." : "no longer shared."));
+            return true;
+        }
+
+        /// <summary>
+        /// jal { f1: character }: the owner throws somebody out of his house. He goes out through
+        /// the door he came in by, told «{0} te ha echado de su casa...» (0/18).
+        /// </summary>
+        public static async Task<bool> KickAsync(NetworkStream? stream, byte[] payload)
+        {
+            byte[]? jal = ConnectionProtocol.ReadPayload(payload, Op.Jal);
+            if (jal == null) return false;
+            long target = VarOf(jal, 1);
+            var mine = CurrentHouse();
+            if (mine.MapId == 0 || target == SessionContext.State.CharacterId) return true;
+            if (!IsOwner(HouseStore.Of(mine.MapId, mine.ElementId))) return true;
+
+            var session = SessionRegistry.FindByCharacter(target);
+            if (session == null || HouseOf(session.State) != mine) return true;
+            string owner = SessionContext.State.CharacterName;
+            using (SessionContext.Push(session))
+            {
+                await GoOutAsync(session.Stream);
+                await SendAsync(session.Stream, Op.Lqn, ConnectionProtocol.BuildSystemMessage(ThrownOut, owner));
+            }
+            Console.WriteLine($"[Houses] {owner} throws {target} out of the house {mine.MapId}/{mine.ElementId}.");
+            return true;
+        }
+
+        private static long VarOf(byte[] body, int number)
+        {
+            foreach (var field in ProtoMessage.Parse(body).Fields)
+            {
+                if (field.FieldNumber == number && field.WireType == 0) return field.VarIntValue;
+            }
+            return 0;
         }
 
         private static string TextOf(byte[] body)
@@ -874,8 +1080,16 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
-            // A locked chest asks a stranger for its code, as a locked door does: an inference.
-            if (!mine && HouseStore.ChestCodeOf(doorMap, doorElement, chest.Element.Id).Length > 0)
+            // A guild may open it, or be kept from it; a locked chest asks anybody else its code,
+            // as a locked door does: an inference.
+            var access = ChestAccessFor(house, SessionContext.Current.AccountId, MyGuildId(),
+                                        HouseStore.ChestCodeOf(doorMap, doorElement, chest.Element.Id));
+            if (access == ChestAccess.Refused)
+            {
+                await SendAsync(stream, Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, ChestRefused));
+                return;
+            }
+            if (!mine && access == ChestAccess.Keypad)
             {
                 SessionContext.State.HouseDialog = new Dialog
                 {

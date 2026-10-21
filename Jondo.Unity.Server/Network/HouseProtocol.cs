@@ -136,6 +136,18 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildChanged(int houseId, IEnumerable<long> doors, Plaque plaque)
             => Pb.New().Msg(1, Build(plaque, false)).Var(2, houseId).Packed(3, doors).Build();
 
+        /// <summary>
+        /// A house's guild and rights (jak): { f1: instance, f2: guild block, f3: rights, f4: house }.
+        /// The client's eqx finds the house in its list by f4 and f1, gives it the guild of f2 and
+        /// hands f3 to the guild house window. Not captured; read off the client.
+        /// </summary>
+        public static byte[] BuildGuildRights(int houseId, int instance, byte[]? guild, int rights)
+        {
+            var jak = Pb.New().VarIfNotZero(1, instance);
+            if (guild != null) jak.Bytes(2, guild);
+            return jak.VarIfNotZero(3, rights).Var(4, houseId).Build();
+        }
+
         /// <summary>The answer to izv (izr, response): { f1: full plaque }. Frame 5 of the sale.</summary>
         public static byte[] BuildInfo(Plaque plaque) => Pb.New().Msg(1, Build(plaque, true)).Build();
 

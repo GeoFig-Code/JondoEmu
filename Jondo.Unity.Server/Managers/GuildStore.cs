@@ -1112,6 +1112,10 @@ namespace Jondo.Unity.Server.Managers
             borra.CommandText = "DELETE FROM GuildMembers WHERE CharacterId = $c;";
             borra.Parameters.AddWithValue("$c", characterId);
             borra.ExecuteNonQuery();
+
+            // His account's houses are not the guild's any more: 1/277 tells the guild so.
+            long account = DatabaseManager.GetCharacterById(characterId)?.AccountId ?? 0;
+            if (account > 0) HouseStore.StopSharing(guild.Id, account);
             return guild;
         }
     }
