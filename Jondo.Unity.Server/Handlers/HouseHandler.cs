@@ -659,6 +659,7 @@ namespace Jondo.Unity.Server.Handlers
             if (!Houses.TryGetDoor(dialog.DoorMapId, dialog.DoorElementId, out var door)) return true;
             long account = SessionContext.Current.AccountId;
             long newPrice = onSale && price > 0 ? price : 0;
+            long sharedWith = HouseStore.Of(dialog.DoorMapId, dialog.DoorElementId).GuildId;
             if (!await HouseStore.SetPriceAsync(dialog.DoorMapId, dialog.DoorElementId, account, newPrice))
             {
                 await SendAsync(stream, Op.Kld, ConnectionProtocol.BuildDialogClosed(HouseProtocol.SaleClosed));
@@ -680,6 +681,7 @@ namespace Jondo.Unity.Server.Handlers
             {
                 await SendAsync(stream, Op.Jjt, HouseProtocol.BuildPutOnSale(Houses.Instance, houseId));
                 await SendDoorAndPlaqueAsync(stream, door, house, account);
+                if (sharedWith > 0) await TellTheGuildAsync(sharedWith, house, door);
             }
 
             var (name, tag) = AccountTagOf(account);

@@ -436,7 +436,12 @@ namespace Jondo.Unity.Server.Managers
             {
                 using var connection = Open();
                 using var command = connection.CreateCommand();
-                command.CommandText = "UPDATE Houses SET Price = $p WHERE MapId = $m AND ElementId = $e AND AccountId = $a;";
+                // On sale it is not the guild's any more: «Mientras tengas tu casa en venta, no
+                // puedes compartirla con tu gremio» (1/336), and the sale capture's jjt.
+                command.CommandText = "UPDATE Houses SET Price = $p, " +
+                                      "GuildId = CASE WHEN $p > 0 THEN 0 ELSE GuildId END, " +
+                                      "GuildRights = CASE WHEN $p > 0 THEN 0 ELSE GuildRights END " +
+                                      "WHERE MapId = $m AND ElementId = $e AND AccountId = $a;";
                 command.Parameters.AddWithValue("$p", price);
                 command.Parameters.AddWithValue("$m", mapId);
                 command.Parameters.AddWithValue("$e", elementId);
