@@ -218,6 +218,9 @@ namespace Jondo.Unity.Server
         /// <summary>Which copy of that building -- most have one, some many, each with its owner.</summary>
         public int HouseEntryInstance { get; set; }
 
+        /// <summary>Whether he wants to know when a member of his guild comes on line (jha/jhf).</summary>
+        public bool WarnGuildConnections { get; set; }
+
         /// <summary>The house window this character has open -- a sale, a purchase, a code keypad -- if any.</summary>
         public Handlers.HouseHandler.Dialog? HouseDialog { get; set; }
 

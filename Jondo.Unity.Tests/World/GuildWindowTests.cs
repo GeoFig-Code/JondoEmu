@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Jondo.Unity.Protocol;
+using Jondo.Unity.Server;
 using Jondo.Unity.Server.Handlers;
 using Jondo.Unity.Server.Managers;
 using Jondo.Unity.Server.Network;
@@ -379,6 +380,41 @@ namespace Jondo.Unity.Tests.World
                                              .Fields.Single(f => f.FieldNumber == 1).BytesValue);
             Assert.Equal(7003, leo.Fields.Single(f => f.FieldNumber == 1).VarIntValue);   // the leader
             Assert.Equal(1, leo.Fields.Single(f => f.FieldNumber == 7).VarIntValue);      // one member
+        }
+
+        /// <summary>
+        /// A member coming on line is shown on line in the others' lists (jgz), and those who asked
+        /// to be warned (jha) are told (jhd: him, on line); after jhf, only the list.
+        /// </summary>
+        [Fact]
+        public async Task A_member_coming_on_line_warns_who_asked()
+        {
+            const long account = 8_900_000_077;
+            long comer = DatabaseManager.CreateCharacter(account, 1, "Avisado-Uno", 8, 0, 1, new long[] { -1, -1, -1, -1, -1 },
+                                                         191105026, 1, 0, 0, Array.Empty<(int, int)>());
+            long watcher = DatabaseManager.CreateCharacter(account, 1, "Avisado-Dos", 8, 0, 1, new long[] { -1, -1, -1, -1, -1 },
+                                                           191105026, 1, 0, 0, Array.Empty<(int, int)>());
+            try
+            {
+                var guild = GuildStore.Create(watcher, "Avisos", 165, 8, 16744448, 9476018);
+                GuildStore.Join(comer, guild.Id);
+                await using var wire = await global::Jondo.Unity.Tests.Combat.PortalTests.Wire.Open(watcher);
+                using (SessionContext.Push(wire.Session))
+                    await GuildHandler.WarnConnectionsAsync(true);
+                await GuildHandler.TellConnectionAsync(comer, online: true);
+                using (SessionContext.Push(wire.Session))
+                    await GuildHandler.WarnConnectionsAsync(false);
+                await GuildHandler.TellConnectionAsync(comer, online: true);
+
+                var frames = await wire.Drain();
+                Assert.Equal(new[] { Op.Jgz, Op.Jhd, Op.Jgz }, frames.Select(f => f.Op));
+                Assert.Equal(Pb.New().Var(1, comer).Var(2, 1).Build(), frames[1].Payload);
+            }
+            finally
+            {
+                DatabaseManager.DeleteCharacter(comer, account);
+                DatabaseManager.DeleteCharacter(watcher, account);
+            }
         }
 
         /// <summary>The guild coins come from the contributions: ten for each one, in total.</summary>

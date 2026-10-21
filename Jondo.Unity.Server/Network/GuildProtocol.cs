@@ -160,6 +160,10 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         public static byte[] BuildMessageOfTheDay(GuildStore.Notice notice) => Pb.New().Msg(2, Notice(notice)).Build();
 
+        /// <summary>A member's connection (jhd): { f1 the character, f2 on line }.</summary>
+        public static byte[] BuildMemberConnection(long characterId, bool online)
+            => Pb.New().Var(1, characterId).VarIfNotZero(2, online ? 1 : 0).Build();
+
         /// <summary>The logbook's bulletin (jjf): { f1 the notice } -- fft.behl, shown by GuildLogBook.</summary>
         public static byte[] BuildBulletin(GuildStore.Notice notice) => Pb.New().Msg(1, Notice(notice)).Build();
 

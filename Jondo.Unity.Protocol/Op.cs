@@ -1578,6 +1578,16 @@ public static class Op
     /// </summary>
     public const string Jhk = "jhk";
 
+    /// <summary>
+    /// C→S: warn me when a guild member comes on line (jha) or stop (jhf), both empty. The option
+    /// lives in the client's own settings, which it reports each time its guild arrives (ffr.beex).
+    /// </summary>
+    public const string Jha = "jha";
+    public const string Jhf = "jhf";
+
+    /// <summary>S→C: a guild member's connection, { f1 the character, f2 on line } -- fft.begy prints «{0} se ha conectado».</summary>
+    public const string Jhd = "jhd";
+
     /// <summary>C→S: the message of the day written, { f1 text } (GuildUI.RequestSetMessageOfTheDay).</summary>
     public const string Jjd = "jjd";
 

@@ -1010,6 +1010,36 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>A frame for everybody in the guild who is connected.</summary>
+        /// <summary>The warning of members coming on line, on (jha) or off (jhf): kept for the session.</summary>
+        public static Task WarnConnectionsAsync(bool on)
+        {
+            SessionContext.State.WarnGuildConnections = on;
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// A member came into the world or left it: the others' member lists see it (jgz), and on
+        /// coming in those who asked to be warned are (jhd).
+        /// </summary>
+        public static async Task TellConnectionAsync(long characterId, bool online)
+        {
+            var guild = GuildStore.GuildOf(characterId);
+            var member = guild == null ? null : GuildStore.Members(guild.Id).Find(m => m.CharacterId == characterId);
+            var character = member == null ? null : DatabaseManager.GetCharacterById(characterId);
+            if (character == null) return;
+
+            byte[] updated = ConnectionProtocol.Push(Op.Jgz, MemberUpdated(member, character));
+            byte[] warning = ConnectionProtocol.Push(Op.Jhd, GuildProtocol.BuildMemberConnection(characterId, true));
+            foreach (var other in GuildStore.Members(guild.Id))
+            {
+                if (other.CharacterId == characterId) continue;
+                var session = SessionRegistry.FindByCharacter(other.CharacterId);
+                if (session == null) continue;
+                await session.SendAsync(updated);
+                if (online && session.State.WarnGuildConnections) await session.SendAsync(warning);
+            }
+        }
+
         internal static async Task TellEveryoneAsync(GuildStore.Guild guild, byte[] frame)
         {
             foreach (var member in GuildStore.Members(guild.Id))

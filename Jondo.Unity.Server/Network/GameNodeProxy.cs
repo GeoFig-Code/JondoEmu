@@ -154,6 +154,8 @@ namespace Jondo.Unity.Server.Network
                         {
                             try { await Handlers.GuildRaidHandler.OnLeaveWorldAsync(gone); }
                             catch (Exception ex) { Console.WriteLine($"[Raids] Could not tell the raid {gone} left: {ex.Message}"); }
+                            try { await Handlers.GuildHandler.TellConnectionAsync(gone, online: false); }
+                            catch (Exception ex) { Console.WriteLine($"[Guild] Could not tell the guild {gone} left: {ex.Message}"); }
                         }
                         Console.WriteLine($"[Game Node] Session {sesion.Id} closed; " +
                                           $"{SessionRegistry.Count} still connected.");
@@ -1021,6 +1023,10 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.GuildHandler.MissionPreferencesAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jet)))
                     await Handlers.GuildHandler.ChooseTierAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jha)))
+                    await Handlers.GuildHandler.WarnConnectionsAsync(true);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jhf)))
+                    await Handlers.GuildHandler.WarnConnectionsAsync(false);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jhp)))
                     await Handlers.GuildHandler.ShowGuildAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jey)))
@@ -2061,6 +2067,9 @@ namespace Jondo.Unity.Server.Network
 
             // His guild raid sees him connected, and a running one comes back with its panel.
             await Handlers.GuildRaidHandler.OnEnterWorldAsync(chosen.Id);
+
+            // His guild sees him on line, and whoever asked is warned.
+            await Handlers.GuildHandler.TellConnectionAsync(chosen.Id, online: true);
 
             // His mutual friends see him playing.
             await Handlers.FriendsHandler.AnnouncePresenceAsync(SessionContext.Current.AccountId);
