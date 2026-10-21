@@ -140,6 +140,19 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         public static byte[] BuildDefaultRanks() => BuildRanks(GuildStore.DefaultRanks(0));
 
+        /// <summary>A notice as the client reads it (leg): { f1 the text, f2 when, f3 the author's name, f4 the author }.</summary>
+        private static Pb Notice(GuildStore.Notice notice)
+            => Pb.New().Str(1, notice.Text).Var(2, notice.WhenMs).Str(3, notice.AuthorName).Var(4, notice.AuthorId);
+
+        /// <summary>
+        /// The message of the day (jhk): { f2 the notice } -- fft.behj keeps it for the window's tooltip
+        /// and, the option on, prints «Mensaje del día del gremio: …» in the chat.
+        /// </summary>
+        public static byte[] BuildMessageOfTheDay(GuildStore.Notice notice) => Pb.New().Msg(2, Notice(notice)).Build();
+
+        /// <summary>The logbook's bulletin (jjf): { f1 the notice } -- fft.behl, shown by GuildLogBook.</summary>
+        public static byte[] BuildBulletin(GuildStore.Notice notice) => Pb.New().Msg(1, Notice(notice)).Build();
+
         /// <summary>
         /// A guild's ranks (jco), one per f2 { f2 name, f3 permissions, f4 { f2 icon,
         /// f3 order }, f5 id }. The permissions are { f1 flag, f3 list } just as they arrived.

@@ -1062,6 +1062,12 @@ public static class Op
     /// <summary>C→S: creating a rank. f1 the order, f4 the name, f5 the icon. It is answered with the jco.</summary>
     public const string Jcv = "jcv";
 
+    /// <summary>C→S: every rank at once, f1 each as the jco carries it (the ranks window's UpdateAllRankRequestAction).</summary>
+    public const string Jcu = "jcu";
+
+    /// <summary>C→S: deleting a rank, f1 the rank, f2 the one its members go to (RemoveRankUi, ffr.beeb).</summary>
+    public const string Jcn = "jcn";
+
     /// <summary>C→S: a member's note. f1 the text, f3 the character. It is answered with the jgz.</summary>
     public const string Jjj = "jjj";
 
@@ -1532,8 +1538,20 @@ public static class Op
     /// <summary>The guild again: founding date, level and number of members. It is discarded; while it travelled it caused a NullReferenceException in the client. 18 messages.</summary>
     public const string Jhh = "jhh";
 
-    /// <summary>The guild's name, written. It is discarded; while it travelled it caused a NullReferenceException in the client. 2 messages.</summary>
+    /// <summary>
+    /// S→C: the guild's message of the day, { f2 { f1 text, f2 when, f3 author's name, f4 author } }.
+    /// The captured one is discarded (it named somebody else's guild); our own goes with the guild.
+    /// </summary>
     public const string Jhk = "jhk";
+
+    /// <summary>C→S: the message of the day written, { f1 text } (GuildUI.RequestSetMessageOfTheDay).</summary>
+    public const string Jjd = "jjd";
+
+    /// <summary>S→C: the logbook's bulletin, { f1 { f1 text, f2 when, f3 author's name, f4 author } }.</summary>
+    public const string Jjf = "jjf";
+
+    /// <summary>C→S: the logbook's bulletin written, { f1 text } (GuildLogBook.OnValidBulletin).</summary>
+    public const string Jik = "jik";
 
 
     /// <summary>Unidentified. 1 use in the emulator.</summary>

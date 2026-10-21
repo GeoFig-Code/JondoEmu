@@ -77,6 +77,12 @@ namespace Jondo.Unity.Server.Managers
             public int Order { get; set; }
         }
 
+        /// <summary>The guild's two notices: the message of the day (jhk) and the logbook's bulletin (jjf).</summary>
+        public enum NoticeKind { MessageOfTheDay = 1, Bulletin = 2 }
+
+        /// <summary>A notice as it was written, and by whom.</summary>
+        public sealed record Notice(string Text, long WhenMs, long AuthorId, string AuthorName);
+
         /// <summary>The journal's lists, jil's fields: the logbook's tabs.</summary>
         public enum LogTab { General = 1, Missions = 2, Raids = 3, Chest = 5 }
 
@@ -280,6 +286,19 @@ namespace Jondo.Unity.Server.Managers
             {
                 // It was already there.
             }
+
+            // The message of the day and the logbook's bulletin.
+            var notices = world.CreateCommand();
+            notices.CommandText = @"
+                CREATE TABLE IF NOT EXISTS GuildNotices (
+                    GuildId    INTEGER NOT NULL,
+                    Kind       INTEGER NOT NULL,
+                    Text       TEXT NOT NULL DEFAULT '',
+                    WhenMs     INTEGER NOT NULL DEFAULT 0,
+                    AuthorId   INTEGER NOT NULL DEFAULT 0,
+                    AuthorName TEXT NOT NULL DEFAULT '',
+                    PRIMARY KEY (GuildId, Kind));";
+            notices.ExecuteNonQuery();
 
             // The journal's list, case and case message, for every kind of line the logbook has.
             foreach (string column in new[] { "Tab INTEGER NOT NULL DEFAULT 1", "Field INTEGER NOT NULL DEFAULT 0", "Details BLOB" })
@@ -674,6 +693,80 @@ namespace Jondo.Unity.Server.Managers
             var created = new Rank { GuildId = guildId, Id = id, Name = name ?? "", Icon = icon, Order = order, Flag = true };
             SaveRank(conexion, created);
             return created;
+        }
+
+        /// <summary>
+        /// A rank deleted: its members go to <paramref name="replacementId"/> and the ranks below it
+        /// go up one. Never the leader's, nor one without the flag the client draws as removable
+        /// (the usual first and fourth). The members moved, or null when it may not be deleted.
+        /// </summary>
+        public static List<long> DeleteRank(long guildId, int rankId, int replacementId)
+        {
+            var ranks = Ranks(guildId);
+            var gone = ranks.Find(r => r.Id == rankId);
+            if (gone == null || rankId == RankLeader || !gone.Flag || rankId == replacementId
+                || replacementId == RankLeader || ranks.Find(r => r.Id == replacementId) == null)
+                return null;
+
+            using var conexion = Open();
+            var moved = new List<long>();
+            using (var read = conexion.CreateCommand())
+            {
+                read.CommandText = "SELECT CharacterId FROM GuildMembers WHERE GuildId = $g AND Rank = $r;";
+                read.Parameters.AddWithValue("$g", guildId);
+                read.Parameters.AddWithValue("$r", rankId);
+                using var lector = read.ExecuteReader();
+                while (lector.Read()) moved.Add(lector.GetInt64(0));
+            }
+            using (var write = conexion.CreateCommand())
+            {
+                write.CommandText = "UPDATE GuildMembers SET Rank = $to WHERE GuildId = $g AND Rank = $r; " +
+                                    "DELETE FROM GuildRanks WHERE GuildId = $g AND RankId = $r;";
+                write.Parameters.AddWithValue("$to", replacementId);
+                write.Parameters.AddWithValue("$g", guildId);
+                write.Parameters.AddWithValue("$r", rankId);
+                write.ExecuteNonQuery();
+            }
+            foreach (var rank in ranks)
+            {
+                if (rank.Id == rankId || rank.Order <= gone.Order) continue;
+                rank.Order--;
+                SaveRank(conexion, rank);
+            }
+            return moved;
+        }
+
+        // ─── The notices ────────────────────────────────────────────────────────
+
+        /// <summary>A guild's notice, or null when nobody has written it.</summary>
+        public static Notice NoticeOf(long guildId, NoticeKind kind)
+        {
+            using var conexion = Open();
+            var query = conexion.CreateCommand();
+            query.CommandText = "SELECT Text, WhenMs, AuthorId, AuthorName FROM GuildNotices WHERE GuildId = $g AND Kind = $k;";
+            query.Parameters.AddWithValue("$g", guildId);
+            query.Parameters.AddWithValue("$k", (int)kind);
+            using var lector = query.ExecuteReader();
+            return lector.Read() ? new Notice(lector.GetString(0), lector.GetInt64(1), lector.GetInt64(2), lector.GetString(3)) : null;
+        }
+
+        /// <summary>Writes a guild's notice. The notice as written.</summary>
+        public static Notice SetNotice(long guildId, NoticeKind kind, string text, long authorId, string authorName)
+        {
+            var notice = new Notice(text ?? "", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), authorId, authorName ?? "");
+            using var conexion = Open();
+            var upsert = conexion.CreateCommand();
+            upsert.CommandText = @"
+                INSERT INTO GuildNotices (GuildId, Kind, Text, WhenMs, AuthorId, AuthorName) VALUES ($g, $k, $t, $ms, $a, $n)
+                ON CONFLICT(GuildId, Kind) DO UPDATE SET Text = $t, WhenMs = $ms, AuthorId = $a, AuthorName = $n;";
+            upsert.Parameters.AddWithValue("$g", guildId);
+            upsert.Parameters.AddWithValue("$k", (int)kind);
+            upsert.Parameters.AddWithValue("$t", notice.Text);
+            upsert.Parameters.AddWithValue("$ms", notice.WhenMs);
+            upsert.Parameters.AddWithValue("$a", authorId);
+            upsert.Parameters.AddWithValue("$n", notice.AuthorName);
+            upsert.ExecuteNonQuery();
+            return notice;
         }
 
         // ─── The journal ────────────────────────────────────────────────────────

@@ -219,6 +219,48 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(7103, ProtoMessage.Parse(old.Details).Fields.Single(f => f.FieldNumber == 2).VarIntValue);
         }
 
+        /// <summary>
+        /// Deleting a rank (jcn): its members go to the rank chosen and the ranks below go up one;
+        /// the leader's, and the usual fourth without the removable flag, stay.
+        /// </summary>
+        [Fact]
+        public void A_deleted_rank_hands_its_members_on()
+        {
+            var guild = GuildStore.Create(7201, "Rangos", 165, 8, 16744448, 9476018);
+            GuildStore.Join(7202, guild.Id, rank: 2);
+            var custom = GuildStore.CreateRank(guild.Id, "Temporal", 102, 2);
+
+            Assert.Null(GuildStore.DeleteRank(guild.Id, GuildStore.RankLeader, 2));
+            Assert.Null(GuildStore.DeleteRank(guild.Id, 4, 2));
+            Assert.Equal(new long[] { 7202 }, GuildStore.DeleteRank(guild.Id, 2, 3));
+            Assert.Equal(3, GuildStore.MemberOf(7202).Rank);
+
+            var ranks = GuildStore.Ranks(guild.Id);
+            Assert.DoesNotContain(ranks, r => r.Id == 2);
+            Assert.Equal(Enumerable.Range(0, ranks.Count), ranks.Select(r => r.Order));
+            Assert.Contains(ranks, r => r.Id == custom.Id);
+        }
+
+        /// <summary>
+        /// The message of the day and the logbook's bulletin: kept per guild, and sent as the
+        /// client reads them -- jhk { f2 notice }, jjf { f1 notice }, a notice { f1 text, f2 when,
+        /// f3 author's name, f4 author }.
+        /// </summary>
+        [Fact]
+        public void The_notices_are_kept_and_sent()
+        {
+            var guild = GuildStore.Create(7301, "Avisos", 165, 8, 16744448, 9476018);
+            Assert.Null(GuildStore.NoticeOf(guild.Id, GuildStore.NoticeKind.MessageOfTheDay));
+            GuildStore.SetNotice(guild.Id, GuildStore.NoticeKind.MessageOfTheDay, "Hola", 7301, "Jefe");
+            var motd = GuildStore.NoticeOf(guild.Id, GuildStore.NoticeKind.MessageOfTheDay);
+            Assert.Equal("Hola", motd.Text);
+            Assert.Null(GuildStore.NoticeOf(guild.Id, GuildStore.NoticeKind.Bulletin));
+
+            var sent = new GuildStore.Notice("Hola", 5, 7, "Jefe");
+            Assert.Equal("1210" + "0a04486f6c61" + "1005" + "1a044a656665" + "2007", Hex(GuildProtocol.BuildMessageOfTheDay(sent)));
+            Assert.Equal("0a10" + "0a04486f6c61" + "1005" + "1a044a656665" + "2007", Hex(GuildProtocol.BuildBulletin(sent)));
+        }
+
         /// <summary>The directory sheet, empty and written, both from the capture of founding «Jondo».</summary>
         [Fact]
         public void The_profile_is_the_capture()

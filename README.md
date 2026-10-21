@@ -326,6 +326,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Rerolling a mission with guild kamas, and marking missions as interesting for the rest of the guild
 - ✅ Your weekly rewards window, and the missions' ranks and categories option showing what the guild chose
 - ✅ The *Casas* tab: the houses the members share with the guild
+- ✅ The message of the day and the logbook's bulletin, with who wrote them and when
+- ✅ Ranks deleted (their members moved to the rank chosen) and dragged into another order
 - ✅ The logbook: members joining, leaving or turned down, ranks given, created and changed, levels
   and chest tabs reached, weekly milestones, the tier and missions changed, missions done and
   rerolled, raids bought, captained, described, left and finished

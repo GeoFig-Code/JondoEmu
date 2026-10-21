@@ -193,12 +193,57 @@ namespace Jondo.Unity.Server.Handlers
             int rank = GuildStore.RankOf(characterId);
             var members = GuildStore.Members(guild.Id);
 
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jco, GuildProtocol.BuildDefaultRanks()));
+            // The guild's own ranks: a member of a rank of its own is looked up among them.
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jco, GuildProtocol.BuildRanks(GuildStore.Ranks(guild.Id))));
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jgw,
                 GuildProtocol.BuildGuildJoined(guild, rank)));
             await WriteAsync(stream, MembersFrame(members));
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jhh,
                 GuildProtocol.BuildGuildInfo(guild, members.Count)));
+
+            // And its notices, written or not written.
+            if (GuildStore.NoticeOf(guild.Id, GuildStore.NoticeKind.MessageOfTheDay) is { } motd)
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Jhk, GuildProtocol.BuildMessageOfTheDay(motd)));
+            if (GuildStore.NoticeOf(guild.Id, GuildStore.NoticeKind.Bulletin) is { } bulletin)
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Jjf, GuildProtocol.BuildBulletin(bulletin)));
+        }
+
+        /// <summary>The right to write the message of the day: the guild window binds its edit to right 7 (GuildUI.InitUiBindings). Inferred.</summary>
+        public const int MessageOfTheDayRight = 7;
+
+        /// <summary>The right to write the logbook's bulletin: GuildLogBook.EnableEditIfHasRight asks for right 15.</summary>
+        public const int BulletinRight = 15;
+
+        /// <summary>
+        /// The message of the day written (jjd: f1 the text, GuildUI.RequestSetMessageOfTheDay):
+        /// kept, and every member on line told (jhk).
+        /// </summary>
+        public static async Task SetMessageOfTheDayAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jjd = ConnectionProtocol.ReadPayload(frame, Op.Jjd);
+            await SetNoticeAsync(jjd, GuildStore.NoticeKind.MessageOfTheDay, MessageOfTheDayRight,
+                                 notice => ConnectionProtocol.Push(Op.Jhk, GuildProtocol.BuildMessageOfTheDay(notice)));
+        }
+
+        /// <summary>The logbook's bulletin written (jik: f1 the text, GuildLogBook.OnValidBulletin): kept, and told (jjf).</summary>
+        public static async Task SetBulletinAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jik = ConnectionProtocol.ReadPayload(frame, Op.Jik);
+            await SetNoticeAsync(jik, GuildStore.NoticeKind.Bulletin, BulletinRight,
+                                 notice => ConnectionProtocol.Push(Op.Jjf, GuildProtocol.BuildBulletin(notice)));
+        }
+
+        private static async Task SetNoticeAsync(byte[] request, GuildStore.NoticeKind kind, int right, Func<GuildStore.Notice, byte[]> frameOf)
+        {
+            long who = SessionContext.State.CharacterId;
+            var guild = request == null || who == 0 ? null : GuildStore.GuildOf(who);
+            if (guild == null) return;
+            if (GuildStore.RankOf(who) != GuildStore.RankLeader && !GuildStore.HasRight(who, right)) return;
+            var text = ProtoMessage.Parse(request).Fields.Find(f => f.FieldNumber == 1 && f.WireType == 2);
+            string written = text == null ? "" : System.Text.Encoding.UTF8.GetString(text.BytesValue);
+            var notice = GuildStore.SetNotice(guild.Id, kind, written, who, SessionContext.State.CharacterName);
+            await TellEveryoneAsync(guild, frameOf(notice));
+            Console.WriteLine($"[Guild] «{guild.Name}»'s {(kind == GuildStore.NoticeKind.Bulletin ? "bulletin" : "message of the day")} written by {notice.AuthorName}.");
         }
 
         /// <summary>
@@ -546,11 +591,56 @@ namespace Jondo.Unity.Server.Handlers
             var inner = ProtoMessage.Parse(jct).Fields.Find(f => f.FieldNumber == 1 && f.WireType == 2);
             if (inner == null) return;
 
+            var rank = GuildStore.Ranks(guild.Id).Find(r => r.Id == RankIdOf(inner.BytesValue));
+            if (rank == null) return;
+            ApplyRank(rank, inner.BytesValue);
+            GuildStore.SaveRank(rank);
+            LogRank(guild, rank, GuildLogProtocol.RankAction.Updated);
+
+            await SendRanksAsync(stream, guild);
+            Console.WriteLine($"[Guild] Rank {rank.Id} of «{guild.Name}» edited: «{rank.Name}».");
+        }
+
+        /// <summary>
+        /// Every rank at once (jcu: f1 each rank, as the jco carries them), the ranks window's
+        /// UpdateAllRankRequestAction after dragging them into another order: each saved, the jco back.
+        /// </summary>
+        public static async Task UpdateRanksAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jcu = ConnectionProtocol.ReadPayload(frame, Op.Jcu);
+            if (jcu == null) return;
+            var guild = GuildIfLeader(SessionContext.State.CharacterId);
+            if (guild == null) return;
+
+            var ranks = GuildStore.Ranks(guild.Id);
+            foreach (var field in ProtoMessage.Parse(jcu).Fields)
+            {
+                if (field.FieldNumber != 1 || field.WireType != 2) continue;
+                var rank = ranks.Find(r => r.Id == RankIdOf(field.BytesValue));
+                if (rank == null) continue;
+                if (ApplyRank(rank, field.BytesValue)) LogRank(guild, rank, GuildLogProtocol.RankAction.Updated);
+                GuildStore.SaveRank(rank);
+            }
+            await SendRanksAsync(stream, guild);
+            Console.WriteLine($"[Guild] The ranks of «{guild.Name}» are saved in a new order.");
+        }
+
+        /// <summary>A rank's id in the client's rank (ldt f5).</summary>
+        private static int RankIdOf(byte[] ldt)
+            => (int)(ProtoMessage.Parse(ldt).Fields.Find(f => f.FieldNumber == 5 && f.WireType == 0)?.VarIntValue ?? 0);
+
+        /// <summary>
+        /// A rank as the client sends it (ldt: f2 name, f3 { f1 flag, f3 rights }, f4 { f2 icon,
+        /// f3 order }, f5 id) over the stored one: what it leaves out stays. True when its name or
+        /// rights changed.
+        /// </summary>
+        private static bool ApplyRank(GuildStore.Rank rank, byte[] ldt)
+        {
             string name = null;
             byte[] rights = null;
             bool? flag = null;
-            int icon = 0, order = -1, id = 0;
-            foreach (var field in ProtoMessage.Parse(inner.BytesValue).Fields)
+            int icon = 0, order = -1;
+            foreach (var field in ProtoMessage.Parse(ldt).Fields)
             {
                 switch (field.FieldNumber)
                 {
@@ -571,23 +661,17 @@ namespace Jondo.Unity.Server.Handlers
                             else if (look.FieldNumber == 3 && look.WireType == 0) order = (int)look.VarIntValue;
                         }
                         break;
-                    case 5 when field.WireType == 0: id = (int)field.VarIntValue; break;
                 }
             }
 
-            var rank = GuildStore.Ranks(guild.Id).Find(r => r.Id == id);
-            if (rank == null) return;
-
+            bool changed = (name != null && name != rank.Name)
+                           || (rights != null && !rights.AsSpan().SequenceEqual(rank.Rights ?? Array.Empty<byte>()));
             if (name != null) rank.Name = name;
             if (rights != null) rank.Rights = rights;
             if (flag.HasValue) rank.Flag = flag.Value;
             if (icon != 0) rank.Icon = icon;
             if (order >= 0) rank.Order = order;
-            GuildStore.SaveRank(rank);
-            LogRank(guild, rank, GuildLogProtocol.RankAction.Updated);
-
-            await SendRanksAsync(stream, guild);
-            Console.WriteLine($"[Guild] Rank {id} of «{guild.Name}» edited: «{rank.Name}».");
+            return changed;
         }
 
         /// <summary>A rank's permissions (jck): f1 the list as it is, f2 the rank. The mark stays.</summary>
@@ -613,6 +697,38 @@ namespace Jondo.Unity.Server.Handlers
             LogRank(guild, rank, GuildLogProtocol.RankAction.Updated);
 
             await SendRanksAsync(stream, guild);
+        }
+
+        /// <summary>
+        /// Deleting a rank (jcn): f1 the rank, f2 the one its members go to -- the client's
+        /// RemoveRankUi (ffr.beeb). The jco back, each member moved told to everybody (jgz).
+        /// </summary>
+        public static async Task DeleteRankAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jcn = ConnectionProtocol.ReadPayload(frame, Op.Jcn);
+            if (jcn == null) return;
+            var guild = GuildIfLeader(SessionContext.State.CharacterId);
+            if (guild == null) return;
+            int rankId = (int)FieldValue(jcn, 1);
+            int replacement = (int)FieldValue(jcn, 2);
+            var rank = GuildStore.Ranks(guild.Id).Find(r => r.Id == rankId);
+            var moved = rank == null ? null : GuildStore.DeleteRank(guild.Id, rankId, replacement);
+            if (moved == null)
+            {
+                await SendRanksAsync(stream, guild);
+                return;
+            }
+
+            LogRank(guild, rank!, GuildLogProtocol.RankAction.Deleted);
+            await SendRanksAsync(stream, guild);
+            foreach (long member in moved)
+            {
+                var character = DatabaseManager.GetCharacterById(member);
+                var updated = GuildStore.MemberOf(member);
+                if (character != null && updated != null)
+                    await TellEveryoneAsync(guild, ConnectionProtocol.Push(Op.Jgz, MemberUpdated(updated, character)));
+            }
+            Console.WriteLine($"[Guild] Rank {rankId} «{rank!.Name}» of «{guild.Name}» deleted; {moved.Count} member(s) to rank {replacement}.");
         }
 
         /// <summary>A rank created, changed or deleted, in the journal.</summary>

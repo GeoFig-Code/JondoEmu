@@ -1102,6 +1102,22 @@ namespace Jondo.Unity.Server.Network
                 {
                     await Handlers.GuildHandler.CreateRankAsync(stream, payload);
                 }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jcn)))
+                {
+                    await Handlers.GuildHandler.DeleteRankAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jcu)))
+                {
+                    await Handlers.GuildHandler.UpdateRanksAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jjd)))
+                {
+                    await Handlers.GuildHandler.SetMessageOfTheDayAsync(stream, payload);
+                }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jik)))
+                {
+                    await Handlers.GuildHandler.SetBulletinAsync(stream, payload);
+                }
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jjj)))
                 {
                     await Handlers.GuildHandler.NoteAsync(stream, payload);
