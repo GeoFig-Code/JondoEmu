@@ -438,6 +438,12 @@ namespace Jondo.Unity.Server.Managers
         public static int ChestCountOf(long hall)
             => ChestsIn(hall).Count + RoomsOf(hall).Sum(room => ChestsIn(room).Count);
 
+        /// <summary>The skills of the workshops standing in every room of a house, as its plaque lists them.</summary>
+        public static List<long> WorkshopSkillsOf(long hall)
+            => RoomsOf(hall).Prepend(hall).Where(IsInterior)
+                .SelectMany(room => Workshops.On(room)).SelectMany(w => w.Station.Skills)
+                .Distinct().Select(skill => (long)skill).ToList();
+
         /// <summary>The chests standing in an interior: the elements with a chest's graphic.</summary>
         public static List<Interactives.Element> ChestsIn(long interiorMapId)
         {

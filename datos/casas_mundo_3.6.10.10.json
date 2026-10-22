@@ -15552,10 +15552,10 @@
    "interior": 85459457,
    "subzona": 231,
    "origen": "propia",
-   "casa": 234,
-   "nombre": "Casa mediana de ganadero",
-   "precio": 1000000,
-   "habitaciones": 1,
+   "casa": 314,
+   "nombre": "El palacio de los lagos",
+   "precio": 60000000,
+   "habitaciones": 15,
    "instancias": [
     1
    ],

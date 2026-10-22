@@ -1333,8 +1333,9 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Jal)))
                 {
-                    // An owner throwing somebody out of his house.
-                    await HouseHandler.KickAsync(stream, payload);
+                    // A buyer's yes, with the price, or an owner throwing somebody out of his house.
+                    if (!await HouseHandler.BuyAsync(stream, payload, Op.Jal))
+                        await HouseHandler.KickAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Jai)))
                 {

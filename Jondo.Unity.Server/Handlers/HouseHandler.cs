@@ -535,6 +535,8 @@ namespace Jondo.Unity.Server.Handlers
                 Price = HouseStore.AskingPrice(house, door.Price),
                 Locked = house.Owned && house.Locked,
                 Rooms = door.Rooms,
+                Chests = Houses.ChestCountOf(door.InteriorMapId),
+                Skills = Houses.WorkshopSkillsOf(door.InteriorMapId),
                 GuildBlock = GuildBlockOf(house),
             };
         }
@@ -867,12 +869,10 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// The buyer's yes. INFERENCE: no capture buys a house, so the client's message for it is
-        /// not measured. The client's code index (datos/indice_3.6.10.10.json) has the house's
-        /// requests built by one class -- jan the sale, khv the code, and jad and jal, each a lone
-        /// int64 -- and a purchase says a price and nothing else. Either of the two is taken as the
-        /// yes, but ONLY with a buyer's window open and only when its number is the price that
-        /// window showed: whatever the other one is, it cannot buy a house by accident.
+        /// The buyer's yes: jal { f1: price }, seen from the client at the palace of the Lacs
+        /// enchantés. jal is also the owner's kick, with a character for its number, so it is taken
+        /// as the yes ONLY with a buyer's window open and only when its number is the price that
+        /// window showed: a kick cannot buy a house by accident. jad is taken the same way.
         /// </summary>
         public static async Task<bool> BuyAsync(NetworkStream? stream, byte[] payload, string opcode)
         {
