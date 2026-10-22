@@ -593,6 +593,8 @@ An alliance is made of characters, not guilds.
   chest closes the quest, one hunt a day from 7:00
 - ✅ Legendary hunts: put a criminal's map together from its fragments at the Pupitre, start it at
   the planning table and fight the criminal at its end; a defeat gives the map back
+- ✅ The guidebook's suggestions: cards drawn from the client's 1,410 activities by level, category and
+  area, and the ones you lock stay
 
 Full workings in **`docs/quests.md`**.
 

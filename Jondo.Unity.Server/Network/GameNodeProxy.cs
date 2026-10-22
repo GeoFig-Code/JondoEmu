@@ -652,6 +652,9 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr == Op.Uri("ido")) await QuestHandler.StartFromDocumentAsync(stream, payload);
                 // The item tooltips' average prices.
                 else if (payloadStr == Op.Uri("ivp")) await MarketplaceHandler.AveragePricesAsync(stream);
+                // The guidebook's suggestions: the cards asked for, and a card locked.
+                else if (payloadStr == Op.Uri("hmo")) await ActivitySuggestionHandler.SuggestAsync(stream, payload);
+                else if (payloadStr == Op.Uri("hmp")) await ActivitySuggestionHandler.LockAsync(stream, payload);
                 else if (payloadStr == Op.Uri("hom"))
                 {
                     // The spouse's information, asked with the contact lists: nobody here is
