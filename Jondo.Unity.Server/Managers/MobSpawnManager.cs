@@ -230,9 +230,10 @@ namespace Jondo.Unity.Server.Managers
             _mapMobs.Clear();
 
             // Load MapMobs from SQLite database
-            // Who is an archmonster and where each one belongs. It has to be known before the
-            // groups are read, because they are thinned as they come in.
+            // Who is an archmonster, who is a wanted monster, and where each one belongs. It has to
+            // be known before the groups are read, because they are thinned as they come in.
             Archimonsters.Initialize(connection);
+            WantedMonsters.Initialize(connection);
 
             // And who is wanted: the criminals come out of the groups as they are read, and are
             // put back one to a zone (PlaceCriminals).
@@ -250,6 +251,7 @@ namespace Jondo.Unity.Server.Managers
             int count = 0;
             int archmonsters = 0;
             int criminals = 0;
+            int wanted = 0;
             int bajoTecho = 0;
             using (var reader = cmdMapMobs.ExecuteReader())
             {
@@ -290,6 +292,10 @@ namespace Jondo.Unity.Server.Managers
                             // version of, so the group keeps its size.
                             if (Archimonsters.Thin(mapId, mobId, ids) != 0) archmonsters++;
 
+                            // The wanted monsters come in 6.352 groups. Same rules; the ones that
+                            // do not stay have no ordinary version and are taken out (id 0).
+                            if (WantedMonsters.Thin(mapId, mobId, ids) != 0) wanted++;
+
                             for (int i = 0; i < ids.Count; i++) {
                                 // A wanted criminal stands in one group of his zone, not in the
                                 // 6,352 the database puts him in.
@@ -310,8 +316,9 @@ namespace Jondo.Unity.Server.Managers
                         }
                     } catch {}
 
-                    // A group that was only its criminal is no group.
-                    if (group.Members.Count == 0 && hadCriminal) continue;
+                    // A group that was only its criminal, or only wanted monsters that did not get to
+                    // stay, is no group.
+                    if (group.Members.Count == 0) continue;
 
                     if (!_mapMobs.ContainsKey(mapId))
                         _mapMobs[mapId] = new List<MobGroup>();
@@ -357,6 +364,8 @@ namespace Jondo.Unity.Server.Managers
                               $"({100.0 * archmonsters / Math.Max(1, count):0.0}% of them), one per map and one per zone.");
             Console.WriteLine($"[MobSpawnManager] {criminals} wanted criminals taken out of the groups; " +
                               "each comes back in one group of its zone when the first map is loaded.");
+            Console.WriteLine($"[MobSpawnManager] {wanted} groups keep a wanted monster " +
+                              $"({100.0 * wanted / Math.Max(1, count):0.0}% of them), one per map and one per zone.");
             // The two numbers separately, not the subtraction. With one group placed and another removed the
             // subtraction gives zero and the line does not come out, which is exactly the start where it is most needed
             // to see that content/ has touched something.
@@ -803,13 +812,19 @@ namespace Jondo.Unity.Server.Managers
             var ids = new List<int>(groupSize);
             for (int m = 0; m < groupSize; m++) ids.Add(availableMonsters[_rand.Next(availableMonsters.Count)]);
 
-            // The archmonster rules hold for a group that comes out now as for the ones read at
-            // start: the subarea's roster holds the one that stood there, and drawn freely a group
-            // could have it two and three times over. And one of the subarea's that is standing
-            // nowhere may come back in its ordinary version's place.
+            // The archmonster and wanted monster rules hold for a group that comes out now as for
+            // the ones read at start: the subarea's roster holds the one that stood there, and drawn
+            // freely a group could have it two and three times over. And one of the subarea's that
+            // is up -- standing nowhere, its respawn time over -- may come back, and stays without
+            // a draw.
             var map = MapManager.GetMapInfo(mapId);
-            if (map != null) Archimonsters.MayComeBack(map.SubAreaId, ids);
-            Archimonsters.Thin(mapId, group.MobId, ids);
+            if (map != null)
+            {
+                Archimonsters.MayComeBack(map.SubAreaId, ids);
+                WantedMonsters.MayComeBack(map.SubAreaId, ids);
+            }
+            Archimonsters.Thin(mapId, group.MobId, ids, draw: false);
+            WantedMonsters.Thin(mapId, group.MobId, ids, draw: false);
 
             // And no criminal: each stands in one group of his zone, and that one is chosen by
             // PlaceCriminals, not drawn from the roster.
@@ -839,7 +854,7 @@ namespace Jondo.Unity.Server.Managers
                 });
             }
 
-            return group;
+            return group.Members.Count == 0 ? null : group;
         }
 
         private static List<MobGroup> GenerateDynamicMobsForMap(long mapId)
@@ -1244,7 +1259,7 @@ namespace Jondo.Unity.Server.Managers
             lock (_candado)
             {
                 if (!_mapMobs.TryGetValue(mapId, out var mobs)) return false;
-                ReleaseArchmonster(mapId, mobs, mobId);
+                ReleaseRareMonsters(mapId, mobs, mobId);
                 if (mobs.RemoveAll(m => m.MobId == mobId) == 0) return false;
                 if (mobs.Count == 0) _emptiedByHand.Add(mapId);
                 return true;
@@ -1260,22 +1275,25 @@ namespace Jondo.Unity.Server.Managers
             {
                 if (_mapMobs.TryGetValue(mapId, out var mobs))
                 {
-                    ReleaseArchmonster(mapId, mobs, mobId);
+                    ReleaseRareMonsters(mapId, mobs, mobId);
                     mobs.RemoveAll(m => m.MobId == mobId);
                 }
             }
         }
 
         /// <summary>
-        /// A group that leaves its map lets its archmonster go, so the zone can have it again
-        /// somewhere else (<see cref="Archimonsters.MayComeBack"/>), and its criminal, who comes back
-        /// in another group (<see cref="PlaceCriminals"/>).
+        /// A group that leaves its map lets its archmonster and its wanted monster go, so the zone
+        /// can have them again somewhere else (<see cref="Archimonsters.MayComeBack"/>,
+        /// <see cref="WantedMonsters.MayComeBack"/>), and its criminal, who comes back in another
+        /// group (<see cref="PlaceCriminals"/>).
         /// </summary>
-        private static void ReleaseArchmonster(long mapId, List<MobGroup> mobs, long mobId)
+        private static void ReleaseRareMonsters(long mapId, List<MobGroup> mobs, long mobId)
         {
             var group = mobs.Find(m => m.MobId == mobId);
             if (group == null) return;
-            Archimonsters.Release(mapId, group.Members.Where(m => m.Monster != null).Select(m => m.Monster.Id));
+            var members = group.Members.Where(m => m.Monster != null).Select(m => m.Monster.Id).ToList();
+            Archimonsters.Release(mapId, members);
+            WantedMonsters.Release(mapId, members);
             WantedPosters.Released(mapId, mobId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         }
 

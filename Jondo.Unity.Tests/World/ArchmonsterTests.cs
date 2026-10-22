@@ -9,7 +9,8 @@ namespace Jondo.Unity.Tests.World
 {
     /// <summary>
     /// One of each archmonster per zone, until something kills it: a beaten group lets its
-    /// archmonster go, and a group that comes out in the zone can bring it back.
+    /// archmonster go, and once its respawn time is over a group that comes out in the zone can
+    /// bring it back.
     /// </summary>
     [Collection("MapManager")]
     public class ArchmonsterTests
@@ -22,11 +23,7 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void A_beaten_archmonster_can_stand_again_and_only_once()
         {
-            using (var connection = new SqliteConnection(DatabaseManager.WorldConnectionString))
-            {
-                connection.Open();
-                Archimonsters.Initialize(connection);
-            }
+            Load();
             try
             {
                 // Standing nowhere, it may come back in its ordinary version's place.
@@ -48,39 +45,41 @@ namespace Jondo.Unity.Tests.World
                 Archimonsters.MayComeBack(SubArea, again);
                 Assert.Equal(new[] { Ordinary }, again);
 
-                // Beaten on another map, it is not let go; beaten on its own, it is, and stays away
-                // 2 h ± 15 min before it stands anywhere again.
+                // Beaten on another map, it is not let go; beaten on its own, it is, once its
+                // respawn time is over.
                 Archimonsters.Release(2, new[] { Rare });
                 Assert.Equal(0, Archimonsters.Thin(3, first, new List<int> { Rare }));
                 Archimonsters.Release(1, new[] { Ordinary, Rare });
-                Assert.True(Archimonsters.IsAway(Rare));
                 Assert.Equal(0, Stand(mapId: 3));
-                var away = new List<int> { Ordinary };
-                Archimonsters.MayComeBack(SubArea, away);
-                Assert.Equal(new[] { Ordinary }, away);
-
-                // Beaten three hours ago, it is back.
-                Assert.Equal(0, Stand(mapId: 4));
-                using (var connection = new SqliteConnection(DatabaseManager.WorldConnectionString))
-                {
-                    connection.Open();
-                    Archimonsters.Initialize(connection);
-                }
-                Assert.NotEqual(0, Stand(mapId: 1));
-                long threeHoursAgo = DateTimeOffset.UtcNow.AddHours(-3).ToUnixTimeMilliseconds();
-                Archimonsters.Release(1, new[] { Rare }, threeHoursAgo);
-                Assert.False(Archimonsters.IsAway(Rare));
+                RareMonsterPool.Clock = () => DateTime.UtcNow.AddHours(3);
                 Assert.NotEqual(0, Stand(mapId: 3));
             }
             finally
             {
-                // Nobody else's groups are thinned by what was placed here.
-                using var empty = new SqliteConnection("Data Source=:memory:");
-                empty.Open();
-                using var create = empty.CreateCommand();
-                create.CommandText = "CREATE TABLE MonsterTemplates (Id INTEGER, Data TEXT);";
-                create.ExecuteNonQuery();
-                Archimonsters.Initialize(empty);
+                Unload();
+            }
+        }
+
+        [Fact]
+        public void A_beaten_archmonster_is_back_after_two_hours_give_or_take_fifteen_minutes()
+        {
+            Load();
+            var now = DateTime.UtcNow;
+            try
+            {
+                RareMonsterPool.Clock = () => now;
+                Assert.Equal(Rare, Archimonsters.Thin(1, 1, new List<int> { Rare }, draw: false));
+                Archimonsters.Release(1, new[] { Rare });
+
+                RareMonsterPool.Clock = () => now.AddMinutes(104);
+                Assert.Equal(0, Archimonsters.Thin(2, 2, new List<int> { Rare }, draw: false));
+
+                RareMonsterPool.Clock = () => now.AddMinutes(136);
+                Assert.Equal(Rare, Archimonsters.Thin(2, 2, new List<int> { Rare }, draw: false));
+            }
+            finally
+            {
+                Unload();
             }
         }
 
@@ -92,6 +91,25 @@ namespace Jondo.Unity.Tests.World
                 if (Archimonsters.Thin(mapId, group, new List<int> { Rare }) == Rare) return group;
             }
             return 0;
+        }
+
+        private static void Load()
+        {
+            using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+            connection.Open();
+            Archimonsters.Initialize(connection);
+        }
+
+        /// <summary>Nobody else's groups are thinned by what was placed here.</summary>
+        private static void Unload()
+        {
+            RareMonsterPool.Clock = () => DateTime.UtcNow;
+            using var empty = new SqliteConnection("Data Source=:memory:");
+            empty.Open();
+            using var create = empty.CreateCommand();
+            create.CommandText = "CREATE TABLE MonsterTemplates (Id INTEGER, Data TEXT);";
+            create.ExecuteNonQuery();
+            Archimonsters.Initialize(empty);
         }
     }
 }
