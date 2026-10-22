@@ -381,7 +381,7 @@ namespace Jondo.Protocol
 
                 // === Context: In Game ===
                 case Op.Kkr: return ("In Game", "Map", "MapComplementaryInfoRequest (Request for actors and interactives)");
-                case Op.Lxd: return ("In Game", "Map", "MapComplementaryInfo (Wrapper for interactives, cells and weather)");
+                case Op.Lxd: return ("In Game", "Appearance", "AppearanceColorsAnswer (the colours picked, taken or not)");
                 case Op.Jpv: return ("In Game", "Character", "MapActorsShowMessage (Character spawns on the current map)");
                 case Op.Kns: return ("In Game", "Sync", "KnockAck / Heartbeat (Sync heartbeat / Pong)");
                 case Op.Kod: return ("In Game", "Sync", "HeartbeatRequest (Sync heartbeat / Ping)");

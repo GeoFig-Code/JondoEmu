@@ -3230,6 +3230,9 @@ public static class Op
     /// <summary>S→C: the answer to an idle picked { f2: taken }; eqq::bbfy copies it into the drafted outfit.</summary>
     public const string Lwn = "lwn";
 
+    /// <summary>C→S: the appearance window's colours tab { f1 lvd { f2: the colours } } (AppearanceColorsTab).</summary>
+    public const string Lyl = "lyl";
+
     /// <summary>C→S: a room clicked on the Infinite Dream's map { f1: the room id, as text }.</summary>
     public const string Ixn = "ixn";
 
@@ -3245,7 +3248,11 @@ public static class Op
     /// </summary>
     public const string Lwq = "lwq";
 
-    /// <summary>Unidentified. 3 uses in the emulator.</summary>
+    /// <summary>
+    /// S→C: the answer to the colours picked in the appearance window { f1: taken }; eqq::bbga
+    /// copies them into the drafted outfit. The old map-load path (MapLoadHandler, on kkr, jqf or
+    /// igx, which no 3.6 client sends) still names it as an empty wrapper.
+    /// </summary>
     public const string Lxd = "lxd";
 
     /// <summary>Showing or hiding what is in a slot; with f3 set that skin disappears from the next lxc, the garment is not taken off, it stops being drawn.</summary>

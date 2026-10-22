@@ -24,6 +24,7 @@ namespace Jondo.Unity.Server.Handlers
     ///   client  lwl { f1: head }        a face                   → server lxc + lye { f2: 1 }
     ///   client  lyo { f2: body }        a body                   → server lxc + lyz { f1: 1 }
     ///   client  lwu { f1: idle }        an idle animation        → server lwn { f2: 1 }
+    ///   client  lyl { f1 { f2: colours } } the colours           → server lxc + lxd { f1: 1 }
     ///
     /// The difference between the two ways of putting on: `lys` lets the server choose the slot --
     /// and gives it back in the `lwz` -- and accepts a variant, which is what the "living items" use
@@ -155,6 +156,42 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Answer(Op.Lwn, Pb.New().VarIfNotZero(2, taken ? 1 : 0).Build(),
                                           ConnectionProtocol.RequestId(frame)));
             Console.WriteLine(taken ? $"[Appearances] Idle {idle}." : $"[Appearances] Idle {idle} is not offered.");
+        }
+
+        /// <summary>
+        /// The colours tab (lyl { f1 lvd { f2: the colours } }): the breed's palette, slot by slot,
+        /// -1 for the breed's own colour -- the same lvd the outfit carries in its f1 --, kept in
+        /// the persisted look as the creation's are. The answer is lxd { f1: 1 }, which makes the
+        /// client copy the colours into its drafted outfit, and lxd without it for a palette that
+        /// is not one (more colours than the breed has, or values past RGB). INFERRED from the
+        /// client: no capture recolours a character.
+        /// </summary>
+        public static async Task ColorsAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[]? lyl = ConnectionProtocol.ReadPayload(frame, Op.Lyl);
+            if (lyl == null) return;
+
+            var colors = new List<long>();
+            var lvd = ProtoMessage.Parse(lyl).Fields.FirstOrDefault(f => f.FieldNumber == 1 && f.WireType == 2);
+            if (lvd != null)
+                colors.AddRange(BankHandler.PackedOrSingle(ProtoMessage.Parse(lvd.BytesValue).Fields, 2)
+                                           .Select(c => (long)(int)c));
+
+            var character = DatabaseManager.GetCharacterById(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
+            int slots = character == null ? 0 : BreedLookTable.IndexedColors(character.Breed, character.Sex).Count;
+            bool taken = character != null && colors.Count > 0 && colors.Count <= slots
+                         && colors.TrueForAll(c => c >= -1 && c <= 0xFFFFFF);
+            if (taken)
+            {
+                var palette = BreedLookTable.CreationColors(character!.Breed, character.Sex, colors);
+                DatabaseManager.SaveCharacterLook(character.Id,
+                    BreedLookTable.BuildLook(character.Breed, character.Sex, character.HeadId, palette, characterId: character.Id));
+                await PreviewAsync(stream);
+            }
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Answer(Op.Lxd, Pb.New().VarIfNotZero(1, taken ? 1 : 0).Build(),
+                                          ConnectionProtocol.RequestId(frame)));
+            Console.WriteLine(taken ? $"[Appearances] Colours {string.Join(",", colors)}." : "[Appearances] Colours refused.");
         }
 
         /// <summary>Putting on a garment and letting the server work out the slot.</summary>

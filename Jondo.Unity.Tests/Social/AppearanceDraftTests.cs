@@ -50,6 +50,48 @@ namespace Jondo.Unity.Tests.Social
         }
 
         /// <summary>
+        /// The colours tab (lyl): the palette is kept in the look, -1 for the breed's own colour,
+        /// and answered lxc and lxd f1 1; more colours than the breed has get lxd without it.
+        /// </summary>
+        [Fact]
+        public async Task The_colours_tab_keeps_the_palette_in_the_look()
+        {
+            long character = DatabaseManager.CreateCharacter(Account + 4, 1, "Color-Uno", 11, 0, 1,
+                new long[] { -1, -1, -1, -1, -1 }, 191105026, 50, 0, 0, Array.Empty<(int, int)>());
+            Assert.True(character > 0);
+            try
+            {
+                await using var pipe = await ClientPipe.OpenAsync(Account + 4, character, 990_100_076, "Color-Uno");
+                using (SessionContext.Push(pipe.Session))
+                {
+                    byte[] Lyl(params long[] colors)
+                        => ConnectionProtocol.Push(Op.Lyl, Pb.New().Msg(1, Pb.New().Packed(2, colors)).Build());
+
+                    var defaults = BreedLookTable.PlainColors(11, 0, null);
+                    var picked = new long[] { 0x112233, -1, 0x445566, -1, 0x778899 }
+                        .Concat(Enumerable.Repeat(-1L, Math.Max(0, defaults.Count - 5))).Take(defaults.Count).ToArray();
+
+                    await AppearanceHandler.ColorsAsync(pipe.ToClient, Lyl(picked));
+                    await pipe.Next(Op.Lxc);
+                    Assert.Equal(1, Field(await pipe.Next(Op.Lxd), 1).VarIntValue);
+
+                    var kept = BreedLookTable.PlainColors(11, 0, BreedLookTable.SavedColors(DatabaseManager.GetCharacterById(character)!));
+                    var expected = picked.Select((c, i) => c >= 0 ? c : defaults[i]).ToList();
+                    Assert.Equal(expected, kept);
+
+                    // More colours than the breed has slots for: refused, the palette as it was.
+                    await AppearanceHandler.ColorsAsync(pipe.ToClient, Lyl(Enumerable.Repeat(0x010101L, defaults.Count + 1).ToArray()));
+                    Assert.DoesNotContain(ProtoMessage.Parse(await pipe.Next(Op.Lxd)).Fields, f => f.FieldNumber == 1);
+                    Assert.Equal(expected, BreedLookTable.PlainColors(11, 0, BreedLookTable.SavedColors(DatabaseManager.GetCharacterById(character)!)));
+                }
+            }
+            finally
+            {
+                DatabaseManager.DeleteCharacter(character, Account + 4);
+            }
+        }
+
+        /// <summary>
         /// The idles tab (lwu): the Sacrier's «Retro» idle (24) and the plain one (3) are taken with
         /// lwn f2 1; its «NewAge» one (25), not known, and a Feca's (4) get lwn without it.
         /// </summary>
