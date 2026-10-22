@@ -378,4 +378,7 @@ experience); the others carry conditions whose types the client does not explain
 
 - **Editing quests.** Studio shows them; it does not write them.
 - **The escorting objectives.** Type 10, 26 of them: their parameter is a text, not who to escort.
-- **`repeatLimit`**, which needs counting how many times a quest has been done and that is not stored.
+
+Not missing, though it looked so: **`repeatLimit`** is 1 in all 1,976 quests, and every `QF` of the quests'
+and achievements' conditions is `QF>quest,0` -- finished at least once --, so no count of how many times
+a quest was done is ever asked for.
