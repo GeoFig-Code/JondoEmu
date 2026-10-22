@@ -680,6 +680,9 @@ namespace Jondo.Unity.Server.Managers
 
                 // Every account is subscribed here: its end date is a year away (Subscription).
                 "PZ" => 1,
+
+                // The client's AlwaysTrueCriterion (mw.ood): «BT=1» on 45 old quests.
+                "BT" => 1,
                 "QQ" => S.Quests?.Runs.Values.Count(r => r.Finished) ?? 0,
                 "EA" or "Ea" or "NT" => Tally(op, 0),
                 "lB" => BestLeague(),

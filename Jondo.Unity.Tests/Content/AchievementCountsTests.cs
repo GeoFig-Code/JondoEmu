@@ -103,6 +103,7 @@ namespace Jondo.Unity.Tests.Content
                 Assert.False(Judge("Ps=1&Pa=0").Met);              // nobody is Bontarian
                 Assert.True(Judge("Ps=1&Pa=0").FullyJudged);
                 Assert.True(Judge("Ps=0").Met);
+                Assert.True(Judge("BT=1").Met);                    // the client's AlwaysTrueCriterion
             }
         }
 

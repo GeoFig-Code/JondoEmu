@@ -126,8 +126,10 @@ Its own six: `PL` level, `Qf` quest finished, `Qa` quest in progress, `Qc` finis
 `Qo` objective met, `Pm` current map. And what the server knows of the character and the world:
 `Ad` today's Almanax (its 390 offering quests), `OA` an achievement, `PG` the class (the class
 quests: «The Tymador Job» is `PG=13`), `PJ`/`Pj` a job's level, `PO` an item held, `QF`, `SC` the
-server's type, `PZ` the subscription, and `Ps`, `Pa`, `Pr` the alignment's side, level and rank.
-Together they cover **every** term of 1,716 of the 1,976 conditions.
+server's type, `PZ` the subscription, `BT` (the client's AlwaysTrueCriterion), and `Ps`, `Pa`, `Pr` the
+alignment's side, level and rank. `Sc` is the client's StaticCriterionCriterion, which only the real server
+judges and no data describes: it stays let through.
+Together they cover **every** term of 1,758 of the 1,976 conditions.
 
 `Qc` is read as «finished» because of what appears next to it: `(Qa=890|Qc=890)` is «890 is in progress
 or already done». `Qo` carries objective ids, 116 of 116.
