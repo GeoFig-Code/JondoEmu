@@ -4330,8 +4330,9 @@ namespace Jondo.Unity.Server.Handlers
                 }
             }
             if (cost <= 0) cost = DefaultCastCost;
-            // The spell's own modifiers of its AP cost: 285 takes off, 296 adds.
-            if (spell != 0) cost = Managers.SpellModifiers.ApCost(caster, spell, cost, fight.RoundNumber);
+            // The spell's own modifiers of its AP cost: 285 takes off, 296 adds -- the weapon's too, a
+            // trial's «Las armas tienen: -1 PA».
+            cost = Managers.SpellModifiers.ApCost(caster, spell, cost, fight.RoundNumber);
             if (cost > caster.CurrentAP) return;
 
             // Aimed at a portal that is on, the spell comes out of the network's last portal and
@@ -7751,7 +7752,8 @@ namespace Jondo.Unity.Server.Handlers
             // Flecha Helada puts it on itself, so the second time it is cast it hits harder than
             // the first.
             int deEmbrujo = capturedSpellBonus ?? caster.Buffs.DelHechizo(
-                spell, Jondo.Unity.World.Fights.SpellAspect.DanoBase, fight.RoundNumber);
+                spell, Jondo.Unity.World.Fights.SpellAspect.DanoBase, fight.RoundNumber)
+                + caster.AllSpellsModifier(spell, Jondo.Unity.World.Fights.SpellAspect.DanoBase);
             if (deEmbrujo != 0)
             {
                 baseDamage += deEmbrujo;
@@ -8888,6 +8890,7 @@ namespace Jondo.Unity.Server.Handlers
 
                 var monster = BuildMonsterFighter(member, fight.SiguienteIdDeInvocado(), cell);
                 Managers.Dreams.ScaleTo(monster, level);
+                Managers.Dreams.AsTrialWants(monster, DreamHandler.DreamOf(fight));
                 monster.Wave = wave;
                 fight.Join(monster);
                 arrivals.Add(monster);

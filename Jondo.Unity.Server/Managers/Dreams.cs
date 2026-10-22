@@ -1690,7 +1690,44 @@ namespace Jondo.Unity.Server.Managers
                 if (!ApplyOne(fighter, bonus.Efecto, v, bonus.Anidado)) continue;
                 applied.Add($"{bonus.Efecto}:{v}");
             }
+
+            // The trial FONSOCAC's weapons (InfiniteDreamTrialsDataRoot 8): «Las armas tienen: -1 PA,
+            // +1 lanzamiento por turno y +10 de daños básicos».
+            if (IsTrial(dream, FonsocacSeed))
+            {
+                Add(fighter.WeaponModifiers, SpellAspect.ApCostDown, 1);
+                Add(fighter.WeaponModifiers, SpellAspect.CastsPerTurnUp, 1);
+                Add(fighter.WeaponModifiers, SpellAspect.DanoBase, 10);
+                applied.Add("FONSOCAC weapons");
+            }
             return applied;
+        }
+
+        // ─── The trials ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The trial FONSOCAC's code: the dream hub's «Pruebas» tab starts a trial with its seed
+        /// (InfiniteDreamTrialsDataRoot's «seed»), as a code is started.
+        /// </summary>
+        public const string FonsocacSeed = "FONSOCAC";
+
+        /// <summary>
+        /// FONSOCAC's «Los monstruos tienen PdV adicionales», in percent. INFERRED: the trial gives
+        /// no number.
+        /// </summary>
+        public const int FonsocacMonsterLifePercent = 50;
+
+        /// <summary>Whether the dream is that trial: started from its seed.</summary>
+        public static bool IsTrial(Sueno dream, string seed)
+            => dream.FromSouvenir && string.Equals(dream.Seed, seed, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>A monster of a dream's fight as its trial makes it: FONSOCAC's, with more life.</summary>
+        public static void AsTrialWants(Fighter monster, Sueno? dream)
+        {
+            if (dream == null || !IsTrial(dream, FonsocacSeed) || !monster.IsMonster) return;
+            int extra = (int)Math.Round(monster.MaxHP * FonsocacMonsterLifePercent / 100.0);
+            monster.MaxHP += extra;
+            monster.CurrentHP += extra;
         }
 
         private static bool ApplyOne(Fighter fighter, int effect, int v, bool nested)

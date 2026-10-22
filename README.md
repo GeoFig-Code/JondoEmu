@@ -633,7 +633,8 @@ Entered from the Plano Astral's well: a dream of 26 rooms in depth, walked band 
 - ✅ The Dream Market: Neru Stalar and Gobribe
 - ✅ A dream is saved and resumed after a disconnection or a restart
 - ✅ `.sueno [row]` for administrators
-- ❌ The trials' own rules; dreams in a group
+- ✅ The trial FONSOCAC's rules: weapons cheaper, faster and harder-hitting, monsters with more life
+- ❌ The other four trials' rules; dreams in a group
 
 ### 🪙 Jondo Coin
 

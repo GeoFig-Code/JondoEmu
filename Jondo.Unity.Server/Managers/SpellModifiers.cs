@@ -90,10 +90,14 @@ namespace Jondo.Unity.Server.Managers
 
         // ─── What the cast honours ─────────────────────────────────────────────────
 
-        /// <summary>The AP a cast costs: the level's, less 285, plus 296, never below zero.</summary>
+        /// <summary>
+        /// The AP a cast costs: the level's, less 285, plus 296 -- the spell's rows and what the fighter
+        /// carries for every spell or for the weapon -- never below zero.
+        /// </summary>
         public static int ApCost(Fighter caster, int spell, int levelCost, int round)
             => Math.Max(0, levelCost
                            - caster.Buffs.DelHechizo(spell, SpellAspect.ApCostDown, round)
+                           - caster.AllSpellsModifier(spell, SpellAspect.ApCostDown)
                            + caster.Buffs.DelHechizo(spell, SpellAspect.ApCostUp, round));
 
         /// <summary>

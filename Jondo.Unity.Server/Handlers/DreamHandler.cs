@@ -935,6 +935,8 @@ namespace Jondo.Unity.Server.Handlers
                 foreach (var monster in fight.Rojo) Dreams.ScaleTo(monster, Dreams.MonsterLevel(sueno));
 
             if (DreamCatalogue.Holds(sueno, DreamCatalogue.AlliesPlayFirst)) fight.BlueTakesInitiative = true;
+            if (!sala.EsFinal)
+                foreach (var monster in fight.Rojo) Dreams.AsTrialWants(monster, sueno);
             if (DreamCatalogue.Holds(sueno, DreamCatalogue.PlaceAnywhere))
             {
                 var red = fight.RedPlacementCells.ToHashSet();
@@ -945,7 +947,11 @@ namespace Jondo.Unity.Server.Handlers
             if (!sala.EsFinal) return;
 
             var rules = Dreams.FinalRulesOf(sueno.Dificultad);
-            foreach (var monster in fight.Rojo) Dreams.ScaleTo(monster, rules.BaseLevel);
+            foreach (var monster in fight.Rojo)
+            {
+                Dreams.ScaleTo(monster, rules.BaseLevel);
+                Dreams.AsTrialWants(monster, sueno);
+            }
             _finales[fight.FightId] = new FinalFight { CharacterId = sueno.CharacterId, Rules = rules };
             Console.WriteLine($"[Dreams] Fin du rêve of {sueno.CharacterId}: wave 1 at level {rules.BaseLevel}, " +
                               $"{rules.MinWaves} to win, {(rules.MaxWaves > 0 ? rules.MaxWaves.ToString() : "no")} most.");

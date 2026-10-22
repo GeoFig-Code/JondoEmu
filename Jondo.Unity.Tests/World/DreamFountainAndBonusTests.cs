@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Jondo.Unity.Server.Handlers;
@@ -152,6 +152,36 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(6243, gob.Bones);
             Assert.Equal(6243, gob.BoneId);
             Assert.Contains(1665L, gob.Skins);
+        }
+
+        /// <summary>
+        /// FONSOCAC, started from its seed: «Las armas tienen: -1 PA, +1 lanzamiento por turno y +10 de
+        /// daños básicos. Los monstruos tienen PdV adicionales». Another code's dream changes nothing.
+        /// </summary>
+        [Fact]
+        public void The_trial_fonsocac_changes_the_weapons_and_the_monsters()
+        {
+            Interactives.Initialize();
+            Dreams.OlvidarTodo();
+            var trial = Dreams.Crear(1, "Prueba", 200, 4, 100, 200, seed: Dreams.FonsocacSeed);
+            Assert.True(Dreams.IsTrial(trial, Dreams.FonsocacSeed));
+
+            var fighter = new Fighter { MaxAP = 7, CurrentAP = 7 };
+            Dreams.ApplyTo(fighter, trial);
+            Assert.Equal(1, fighter.AllSpellsModifier(0, SpellAspect.ApCostDown));
+            Assert.Equal(1, fighter.AllSpellsModifier(0, SpellAspect.CastsPerTurnUp));
+            Assert.Equal(10, fighter.AllSpellsModifier(0, SpellAspect.DanoBase));
+            Assert.Equal(3, SpellModifiers.ApCost(fighter, 0, 4, 1));          // a 4 AP weapon costs 3
+            Assert.Equal(4, SpellModifiers.ApCost(fighter, 161, 4, 1));        // a spell does not change
+
+            var monster = new Fighter { IsMonster = true, MaxHP = 200, CurrentHP = 200 };
+            Dreams.AsTrialWants(monster, trial);
+            Assert.Equal((300, 300), (monster.MaxHP, monster.CurrentHP));
+
+            var plain = New();
+            var other = new Fighter { IsMonster = true, MaxHP = 200, CurrentHP = 200 };
+            Dreams.AsTrialWants(other, plain);
+            Assert.Equal(200, other.MaxHP);
         }
     }
 }
