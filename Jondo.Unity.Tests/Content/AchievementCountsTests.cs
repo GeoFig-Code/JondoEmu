@@ -104,6 +104,12 @@ namespace Jondo.Unity.Tests.Content
                 Assert.True(Judge("Ps=1&Pa=0").FullyJudged);
                 Assert.True(Judge("Ps=0").Met);
                 Assert.True(Judge("BT=1").Met);                    // the client's AlwaysTrueCriterion
+                session.State.Sex = 1;
+                session.State.Kamas = 5000;
+                session.State.Emotes.Add(8);
+                Assert.True(Judge("PS=1&PK>999").Met);
+                Assert.False(Judge("PE!8").Met);                   // the emote is known already
+                Assert.True(Judge("PE!9&OV>2879").Met);
             }
         }
 

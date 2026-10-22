@@ -430,6 +430,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A map been on, by its id: <c>BI=85983744</c>.</summary>
         private const string VisitedKind = "BI";
 
+        /// <summary>A year in minutes: how long every account has been subscribed, for OV.</summary>
+        private const long SubscribedMinutes = 365L * 24 * 60;
+
         /// <summary>The tally kind for monsters beaten in their dungeon: EM with the "d" flag.</summary>
         private const string DungeonKind = "EMd";
 
@@ -683,6 +686,16 @@ namespace Jondo.Unity.Server.Managers
 
                 // The client's AlwaysTrueCriterion (mw.ood): «BT=1» on 45 old quests.
                 "BT" => 1,
+
+                // The client's SexCriterion, KamaCriterion and SubareaCriterion (mw.ood): «PS=0»
+                // a male, «PK>999» the kamas carried, «PB=4|PB=22» the subarea stood in.
+                "PS" => S.Sex,
+                "PK" => S.Kamas,
+                "PB" => DatabaseManager.SubAreaOfMap(S.MapId),
+
+                // SubscriptionDurationCriterion, in minutes («OV>2879», two days): every account
+                // is subscribed here for a year (Subscription).
+                "OV" => SubscribedMinutes,
                 "QQ" => S.Quests?.Runs.Values.Count(r => r.Finished) ?? 0,
                 "EA" or "Ea" or "NT" => Tally(op, 0),
                 "lB" => BestLeague(),
@@ -710,6 +723,10 @@ namespace Jondo.Unity.Server.Managers
                 // A job's level: «PJ>26,79», the alchemist past 79; «Pj» the same in the
                 // Vulkania quests' «Pj>26,99».
                 "PJ" or "Pj" => S.JobLevel((int)key),
+
+                // An emote known, the client's EmoteCriterion: «PE!8», the scroll of an emote not
+                // learnt yet.
+                "PE" => S.Emotes.Contains((int)key) ? 1 : 0,
 
                 AchievementCatalogue.ExploreKey => Tally(AchievementCatalogue.ExploreKey, key),
                 AchievementCatalogue.JobKey => S.Jobs.Values.Count(j => j.Level >= key),
