@@ -11,6 +11,7 @@ namespace Jondo.Unity.Tests.Content
     /// The challenges a boss imposes, against the client's table: who judges each one, and which
     /// are left out because nobody does.
     /// </summary>
+    [Collection("Challenges table")]   // Challenges.Initialize reloads a static table
     public class BossChallengeTests
     {
         private static bool Available => File.Exists(Paths.Resolve("retos_3.6.10.10.json"));

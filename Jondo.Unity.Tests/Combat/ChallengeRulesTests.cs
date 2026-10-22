@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Threading.Tasks;
 using Jondo.Unity.Launcher;
 using Jondo.Unity.Server.Handlers;
@@ -16,6 +16,7 @@ namespace Jondo.Unity.Tests.Combat
     /// «Cada uno con su monstruo» (nobody else's enemy), «Espejo» (an ally behind the one who falls)
     /// and how «El dos por uno» and the others are offered at all.
     /// </summary>
+    [Collection("Challenges table")]   // Challenges.Initialize reloads a static table
     public class ChallengeRulesTests
     {
         private static bool Available => File.Exists(Paths.Resolve("retos_3.6.10.10.json"));
@@ -28,8 +29,12 @@ namespace Jondo.Unity.Tests.Combat
             lock (_once)
             {
                 if (_loaded) return;
-                Challenges.Initialize();
-                Challenges.OnlyOffer(ChallengeWatcher.Watched);
+                // Loaded once for the whole run: reloading it under another class's feet empties it.
+                if (Challenges.KindOf(ChallengeWatcher.Zombi) != ChallengeWatcher.Zombi)
+                {
+                    Challenges.Initialize();
+                    Challenges.OnlyOffer(ChallengeWatcher.Watched);
+                }
                 _loaded = true;
             }
         }
