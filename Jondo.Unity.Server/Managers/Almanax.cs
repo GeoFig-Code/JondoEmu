@@ -194,6 +194,9 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>"La regeneración de puntos de vida aumenta un 300% (fuera de combate)".</summary>
             public const int LifeRegeneration = 20;
 
+            /// <summary>"Se propondrá un reto extra contra los monstruos presentes en la zona ...": its amount, 1, is the count.</summary>
+            public const int ExtraChallenge = 5;
+
             /// <summary>"Las monturas que nazcan este día tendrán la capacidad Resistente": its 17 names the capacity.</summary>
             public const int NewbornCapacity = 37;
 

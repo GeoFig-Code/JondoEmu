@@ -84,7 +84,12 @@ namespace Jondo.Unity.Server.Handlers
         {
             if (!Any(fight)) return;
 
-            fight.ChallengesToPick = NormalCount;
+            // And one more where today's Almanax says «Se propondrá un reto extra» (type 5): against
+            // these monsters, or in this subarea.
+            int extra = Managers.Almanax.BonusPercent(Managers.Almanax.BonusType.ExtraChallenge,
+                Managers.Almanax.ForFight(fight.RoleplayMapId, fight.Rojo.Where(m => m.IsMonster).Select(m => m.MonsterId),
+                                          Array.Empty<int>(), DungeonManager.IsRoom(fight.RoleplayMapId)));
+            fight.ChallengesToPick = NormalCount + Math.Min(1, extra);
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kxa,
                 Network.FightProtocol.BuildChallengeCount(fight.ChallengesToPick)));
 
