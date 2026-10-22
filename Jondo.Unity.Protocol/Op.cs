@@ -3224,6 +3224,12 @@ public static class Op
     /// <summary>S→C: the answer to a body picked { f1: taken }; eqq::bbfx copies it into the drafted outfit.</summary>
     public const string Lyz = "lyz";
 
+    /// <summary>C→S: the appearance window's idles tab picks an idle { f1: the idle } (AppearanceIdlesTab.AddIdle).</summary>
+    public const string Lwu = "lwu";
+
+    /// <summary>S→C: the answer to an idle picked { f2: taken }; eqq::bbfy copies it into the drafted outfit.</summary>
+    public const string Lwn = "lwn";
+
     /// <summary>C→S: a room clicked on the Infinite Dream's map { f1: the room id, as text }.</summary>
     public const string Ixn = "ixn";
 

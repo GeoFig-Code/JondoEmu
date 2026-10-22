@@ -74,6 +74,19 @@ namespace Jondo.Unity.Server.Managers
                     // it was already there
                 }
 
+                // The idle picked in the appearance window's idles tab (lwu); 0 is none picked.
+                try
+                {
+                    var espera = connection.CreateCommand();
+                    espera.CommandText =
+                        "ALTER TABLE CharacterWardrobe ADD COLUMN IdleId INTEGER NOT NULL DEFAULT 0;";
+                    espera.ExecuteNonQuery();
+                }
+                catch (Microsoft.Data.Sqlite.SqliteException)
+                {
+                    // it was already there
+                }
+
                 // The body picked in the appearance window's bodies tab (lyo); 0 is the breed's own.
                 try
                 {
@@ -159,6 +172,28 @@ namespace Jondo.Unity.Server.Managers
 
         public static void SaveBody(long characterId, int bodyId)
             => Save(characterId, "BodyId", bodyId);
+
+        /// <summary>The idle the appearance window picked; 0 for none.</summary>
+        public static int IdleOf(long characterId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT IdleId FROM CharacterWardrobe WHERE CharacterId = $id;";
+                command.Parameters.AddWithValue("$id", characterId);
+                return command.ExecuteScalar() is long idle ? (int)idle : None;
+            }
+            catch (Exception)
+            {
+                return None;
+            }
+        }
+
+        public static void SaveIdle(long characterId, int idleId)
+            => Save(characterId, "IdleId", idleId);
 
         public static void SaveCardBackground(long characterId, int background)
             => Save(characterId, "CardBackground", background);

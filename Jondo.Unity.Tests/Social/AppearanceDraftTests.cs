@@ -50,6 +50,45 @@ namespace Jondo.Unity.Tests.Social
         }
 
         /// <summary>
+        /// The idles tab (lwu): the Sacrier's «Retro» idle (24) and the plain one (3) are taken with
+        /// lwn f2 1; its «NewAge» one (25), not known, and a Feca's (4) get lwn without it.
+        /// </summary>
+        [Fact]
+        public async Task The_idles_tab_takes_the_known_idle_of_ones_breed()
+        {
+            const int Retro = 24, NewAge = 25, Feca = 4;
+            Wardrobe.Initialize();
+            long character = DatabaseManager.CreateCharacter(Account + 3, 1, "Espera-Uno", 11, 0, 1,
+                new long[] { -1, -1, -1, -1, -1 }, 191105026, 50, 0, 0, Array.Empty<(int, int)>());
+            Assert.True(character > 0);
+            try
+            {
+                await using var pipe = await ClientPipe.OpenAsync(Account + 3, character, 990_100_075, "Espera-Uno");
+                using (SessionContext.Push(pipe.Session))
+                {
+                    byte[] Lwu(int idle) => ConnectionProtocol.Push(Op.Lwu, Pb.New().Var(1, idle).Build());
+
+                    foreach (int taken in new[] { Retro, IdleTable.Plain })
+                    {
+                        await AppearanceHandler.IdleAsync(pipe.ToClient, Lwu(taken));
+                        Assert.Equal(1, Field(await pipe.Next(Op.Lwn), 2).VarIntValue);
+                        Assert.Equal(taken, Wardrobe.IdleOf(character));
+                    }
+                    foreach (int refused in new[] { NewAge, Feca })
+                    {
+                        await AppearanceHandler.IdleAsync(pipe.ToClient, Lwu(refused));
+                        Assert.DoesNotContain(ProtoMessage.Parse(await pipe.Next(Op.Lwn)).Fields, f => f.FieldNumber == 2);
+                        Assert.Equal(IdleTable.Plain, Wardrobe.IdleOf(character));
+                    }
+                }
+            }
+            finally
+            {
+                DatabaseManager.DeleteCharacter(character, Account + 3);
+            }
+        }
+
+        /// <summary>
         /// The bodies tab (lyo): the Sacrier's «retro» body (110, skin 5881) is taken and goes first
         /// in the look; its payable one (66) and a Feca's (2) are answered lyz without f1.
         /// </summary>

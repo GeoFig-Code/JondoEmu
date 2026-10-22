@@ -1657,6 +1657,11 @@ namespace Jondo.Unity.Server.Network
                     // The aura.
                     await AppearanceHandler.AuraAsync(stream, payload);
                 }
+                else if (payloadStr.Contains(Op.Uri(Op.Lwu)))
+                {
+                    // An idle animation from the idles tab.
+                    await AppearanceHandler.IdleAsync(stream, payload);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Lyo)))
                 {
                     // A body from the bodies tab.

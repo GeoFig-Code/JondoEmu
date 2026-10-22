@@ -23,6 +23,7 @@ namespace Jondo.Unity.Server.Handlers
     ///   client  lww { f1: 1 }           the draft switch         → server lxc + lwq { f1: outfit }
     ///   client  lwl { f1: head }        a face                   → server lxc + lye { f2: 1 }
     ///   client  lyo { f2: body }        a body                   → server lxc + lyz { f1: 1 }
+    ///   client  lwu { f1: idle }        an idle animation        → server lwn { f2: 1 }
     ///
     /// The difference between the two ways of putting on: `lys` lets the server choose the slot --
     /// and gives it back in the `lwz` -- and accepts a variant, which is what the "living items" use
@@ -131,6 +132,29 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Answer(Op.Lyz, Pb.New().VarIfNotZero(1, taken ? 1 : 0).Build(),
                                           ConnectionProtocol.RequestId(frame)));
             Console.WriteLine(taken ? $"[Appearances] Body {body}." : $"[Appearances] Body {body} is not offered.");
+        }
+
+        /// <summary>
+        /// An idle animation from the idles tab (lwu { f1: idle }): the plain one, or the breed's
+        /// known one (<see cref="IdleTable.OfferedFreely"/>). The answer is lwn { f2: 1 }, which
+        /// makes the client copy it into its drafted outfit, and lwn without it otherwise. The
+        /// choice is kept; how the others are told of it is not known -- no capture changes an
+        /// idle --, so for now only the window shows it. INFERRED from the client.
+        /// </summary>
+        public static async Task IdleAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[]? lwu = ConnectionProtocol.ReadPayload(frame, Op.Lwu);
+            if (lwu == null) return;
+            int idle = (int)(ProtoMessage.Parse(lwu).Fields
+                .FirstOrDefault(f => f.FieldNumber == 1 && f.WireType == 0)?.VarIntValue ?? 0);
+
+            var character = DatabaseManager.GetCharacterById(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
+            bool taken = character != null && IdleTable.OfferedFreely(idle, character.Breed);
+            if (taken) Wardrobe.SaveIdle(character!.Id, idle);
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Answer(Op.Lwn, Pb.New().VarIfNotZero(2, taken ? 1 : 0).Build(),
+                                          ConnectionProtocol.RequestId(frame)));
+            Console.WriteLine(taken ? $"[Appearances] Idle {idle}." : $"[Appearances] Idle {idle} is not offered.");
         }
 
         /// <summary>Putting on a garment and letting the server work out the slot.</summary>

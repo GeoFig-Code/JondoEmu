@@ -1,0 +1,199 @@
+{
+ "idles": {
+  "3": {
+   "breed": 0,
+   "known": 0,
+   "animation": ""
+  },
+  "4": {
+   "breed": 1,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro1"
+  },
+  "5": {
+   "breed": 1,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge1"
+  },
+  "6": {
+   "breed": 2,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro2"
+  },
+  "7": {
+   "breed": 2,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge2"
+  },
+  "8": {
+   "breed": 3,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro3"
+  },
+  "9": {
+   "breed": 3,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge3"
+  },
+  "10": {
+   "breed": 4,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro4"
+  },
+  "11": {
+   "breed": 4,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge4"
+  },
+  "12": {
+   "breed": 5,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro5"
+  },
+  "13": {
+   "breed": 5,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge5"
+  },
+  "14": {
+   "breed": 6,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro6"
+  },
+  "15": {
+   "breed": 6,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge6"
+  },
+  "16": {
+   "breed": 7,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro7"
+  },
+  "17": {
+   "breed": 7,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge7"
+  },
+  "18": {
+   "breed": 8,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro8"
+  },
+  "19": {
+   "breed": 8,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge8"
+  },
+  "20": {
+   "breed": 9,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro9"
+  },
+  "21": {
+   "breed": 9,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge9"
+  },
+  "22": {
+   "breed": 10,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro10"
+  },
+  "23": {
+   "breed": 10,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge10"
+  },
+  "24": {
+   "breed": 11,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro11"
+  },
+  "25": {
+   "breed": 11,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge11"
+  },
+  "26": {
+   "breed": 12,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro12"
+  },
+  "27": {
+   "breed": 12,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge12"
+  },
+  "28": {
+   "breed": 13,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro13"
+  },
+  "29": {
+   "breed": 13,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge13"
+  },
+  "30": {
+   "breed": 14,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro14"
+  },
+  "31": {
+   "breed": 14,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge14"
+  },
+  "32": {
+   "breed": 15,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro15"
+  },
+  "33": {
+   "breed": 15,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge15"
+  },
+  "34": {
+   "breed": 16,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro16"
+  },
+  "35": {
+   "breed": 16,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge16"
+  },
+  "36": {
+   "breed": 17,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro17"
+  },
+  "37": {
+   "breed": 17,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge17"
+  },
+  "38": {
+   "breed": 18,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro18"
+  },
+  "39": {
+   "breed": 18,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge18"
+  },
+  "40": {
+   "breed": 20,
+   "known": 1,
+   "animation": "AnimStatiqueExploRetro20"
+  },
+  "41": {
+   "breed": 20,
+   "known": 0,
+   "animation": "AnimStatiqueExploNewAge20"
+  }
+ }
+}

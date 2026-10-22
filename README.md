@@ -551,6 +551,7 @@ An alliance is made of characters, not guilds.
 - ✅ Hiding an empty slot hides the real piece under it
 - ✅ The faces tab: any creation face of your class and sex
 - ✅ The bodies tab: your class's «base» or «retro» body
+- 🟡 The idles tab: your class's idle is kept, but the others do not see it yet
 
 ### ⛏️ Professions
 
