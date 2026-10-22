@@ -32,6 +32,8 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>jtg: the account's gifts, in the shape of the captures'.</summary>
         public static byte[] BuildList(long accountId)
         {
+            // The veteran rewards its days have earned come in as gifts first (VeteranRewards).
+            VeteranRewards.GrantDue(accountId);
             var jtg = Pb.New();
             foreach (var gift in Gifts.Of(accountId))
             {

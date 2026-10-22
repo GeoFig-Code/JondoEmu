@@ -289,6 +289,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
   take a lot back, change its price, the sales history
 - ✅ Item tooltips show the average price items sell for in the marketplaces
 - ✅ The shop's gifts window: take a gift, or all of them, with any of the account's characters
+- ✅ The veteran rewards: the 76 the client lists, from 5 «Silbar» scrolls at a week to the as'hesin set,
+  arrive as gifts as the account's days of subscription earn them
 - ❌ Merchant mode: the 3.6 client has no screen for it
 
 ### 💬 Social

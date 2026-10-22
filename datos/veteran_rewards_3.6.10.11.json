@@ -1,0 +1,461 @@
+{
+ "version": "3.6.10.11",
+ "rewards": [
+  {
+   "id": 1,
+   "days": 7,
+   "item": 15884,
+   "quantity": 5
+  },
+  {
+   "id": 2,
+   "days": 30,
+   "item": 15752,
+   "quantity": 1
+  },
+  {
+   "id": 3,
+   "days": 90,
+   "item": 15753,
+   "quantity": 1
+  },
+  {
+   "id": 4,
+   "days": 180,
+   "item": 15754,
+   "quantity": 1
+  },
+  {
+   "id": 5,
+   "days": 270,
+   "item": 15755,
+   "quantity": 1
+  },
+  {
+   "id": 6,
+   "days": 360,
+   "item": 15756,
+   "quantity": 1
+  },
+  {
+   "id": 7,
+   "days": 390,
+   "item": 15757,
+   "quantity": 1
+  },
+  {
+   "id": 8,
+   "days": 450,
+   "item": 15758,
+   "quantity": 1
+  },
+  {
+   "id": 9,
+   "days": 540,
+   "item": 15759,
+   "quantity": 1
+  },
+  {
+   "id": 10,
+   "days": 630,
+   "item": 15761,
+   "quantity": 1
+  },
+  {
+   "id": 11,
+   "days": 720,
+   "item": 15763,
+   "quantity": 1
+  },
+  {
+   "id": 12,
+   "days": 750,
+   "item": 15765,
+   "quantity": 1
+  },
+  {
+   "id": 13,
+   "days": 810,
+   "item": 15766,
+   "quantity": 1
+  },
+  {
+   "id": 14,
+   "days": 900,
+   "item": 15767,
+   "quantity": 1
+  },
+  {
+   "id": 15,
+   "days": 990,
+   "item": 15769,
+   "quantity": 1
+  },
+  {
+   "id": 16,
+   "days": 1080,
+   "item": 15770,
+   "quantity": 1
+  },
+  {
+   "id": 19,
+   "days": 1110,
+   "item": 15772,
+   "quantity": 1
+  },
+  {
+   "id": 20,
+   "days": 1170,
+   "item": 15774,
+   "quantity": 1
+  },
+  {
+   "id": 21,
+   "days": 1260,
+   "item": 15775,
+   "quantity": 1
+  },
+  {
+   "id": 22,
+   "days": 1350,
+   "item": 15777,
+   "quantity": 1
+  },
+  {
+   "id": 23,
+   "days": 1440,
+   "item": 15885,
+   "quantity": 5
+  },
+  {
+   "id": 26,
+   "days": 1470,
+   "item": 15785,
+   "quantity": 1
+  },
+  {
+   "id": 27,
+   "days": 1530,
+   "item": 15786,
+   "quantity": 1
+  },
+  {
+   "id": 28,
+   "days": 1620,
+   "item": 15787,
+   "quantity": 1
+  },
+  {
+   "id": 29,
+   "days": 1710,
+   "item": 15788,
+   "quantity": 1
+  },
+  {
+   "id": 30,
+   "days": 1800,
+   "item": 15790,
+   "quantity": 1
+  },
+  {
+   "id": 33,
+   "days": 1830,
+   "item": 15792,
+   "quantity": 1
+  },
+  {
+   "id": 34,
+   "days": 1890,
+   "item": 15797,
+   "quantity": 1
+  },
+  {
+   "id": 35,
+   "days": 1980,
+   "item": 15812,
+   "quantity": 1
+  },
+  {
+   "id": 36,
+   "days": 2070,
+   "item": 15813,
+   "quantity": 1
+  },
+  {
+   "id": 37,
+   "days": 2160,
+   "item": 15814,
+   "quantity": 1
+  },
+  {
+   "id": 40,
+   "days": 2190,
+   "item": 15815,
+   "quantity": 1
+  },
+  {
+   "id": 41,
+   "days": 2250,
+   "item": 15816,
+   "quantity": 1
+  },
+  {
+   "id": 42,
+   "days": 2340,
+   "item": 15817,
+   "quantity": 1
+  },
+  {
+   "id": 43,
+   "days": 2430,
+   "item": 15818,
+   "quantity": 1
+  },
+  {
+   "id": 44,
+   "days": 2520,
+   "item": 15819,
+   "quantity": 1
+  },
+  {
+   "id": 47,
+   "days": 2550,
+   "item": 15820,
+   "quantity": 1
+  },
+  {
+   "id": 48,
+   "days": 2610,
+   "item": 15821,
+   "quantity": 1
+  },
+  {
+   "id": 49,
+   "days": 2700,
+   "item": 15822,
+   "quantity": 1
+  },
+  {
+   "id": 50,
+   "days": 2790,
+   "item": 15825,
+   "quantity": 1
+  },
+  {
+   "id": 51,
+   "days": 2880,
+   "item": 12322,
+   "quantity": 5
+  },
+  {
+   "id": 54,
+   "days": 2910,
+   "item": 15829,
+   "quantity": 1
+  },
+  {
+   "id": 55,
+   "days": 2970,
+   "item": 15830,
+   "quantity": 1
+  },
+  {
+   "id": 56,
+   "days": 3060,
+   "item": 15846,
+   "quantity": 1
+  },
+  {
+   "id": 57,
+   "days": 3150,
+   "item": 15847,
+   "quantity": 1
+  },
+  {
+   "id": 58,
+   "days": 3240,
+   "item": 15849,
+   "quantity": 1
+  },
+  {
+   "id": 61,
+   "days": 3270,
+   "item": 15856,
+   "quantity": 1
+  },
+  {
+   "id": 62,
+   "days": 3330,
+   "item": 15857,
+   "quantity": 1
+  },
+  {
+   "id": 63,
+   "days": 3420,
+   "item": 15858,
+   "quantity": 1
+  },
+  {
+   "id": 64,
+   "days": 3510,
+   "item": 15859,
+   "quantity": 1
+  },
+  {
+   "id": 65,
+   "days": 3600,
+   "item": 15861,
+   "quantity": 1
+  },
+  {
+   "id": 68,
+   "days": 3630,
+   "item": 15862,
+   "quantity": 1
+  },
+  {
+   "id": 69,
+   "days": 3690,
+   "item": 15863,
+   "quantity": 1
+  },
+  {
+   "id": 70,
+   "days": 3780,
+   "item": 15864,
+   "quantity": 1
+  },
+  {
+   "id": 71,
+   "days": 3870,
+   "item": 15865,
+   "quantity": 1
+  },
+  {
+   "id": 72,
+   "days": 3960,
+   "item": 15826,
+   "quantity": 1
+  },
+  {
+   "id": 75,
+   "days": 3990,
+   "item": 15867,
+   "quantity": 1
+  },
+  {
+   "id": 76,
+   "days": 4050,
+   "item": 15869,
+   "quantity": 1
+  },
+  {
+   "id": 77,
+   "days": 4140,
+   "item": 15881,
+   "quantity": 1
+  },
+  {
+   "id": 78,
+   "days": 4230,
+   "item": 15883,
+   "quantity": 1
+  },
+  {
+   "id": 79,
+   "days": 4320,
+   "item": 15888,
+   "quantity": 5
+  },
+  {
+   "id": 82,
+   "days": 4350,
+   "item": 19196,
+   "quantity": 1
+  },
+  {
+   "id": 83,
+   "days": 4410,
+   "item": 19197,
+   "quantity": 1
+  },
+  {
+   "id": 84,
+   "days": 4500,
+   "item": 19198,
+   "quantity": 1
+  },
+  {
+   "id": 85,
+   "days": 4590,
+   "item": 19199,
+   "quantity": 1
+  },
+  {
+   "id": 86,
+   "days": 4680,
+   "item": 19200,
+   "quantity": 1
+  },
+  {
+   "id": 87,
+   "days": 4710,
+   "item": 19202,
+   "quantity": 1
+  },
+  {
+   "id": 88,
+   "days": 4770,
+   "item": 19203,
+   "quantity": 1
+  },
+  {
+   "id": 89,
+   "days": 4860,
+   "item": 19204,
+   "quantity": 1
+  },
+  {
+   "id": 90,
+   "days": 4950,
+   "item": 19205,
+   "quantity": 1
+  },
+  {
+   "id": 91,
+   "days": 5040,
+   "item": 19201,
+   "quantity": 1
+  },
+  {
+   "id": 92,
+   "days": 5070,
+   "item": 20304,
+   "quantity": 1
+  },
+  {
+   "id": 93,
+   "days": 5130,
+   "item": 20302,
+   "quantity": 1
+  },
+  {
+   "id": 94,
+   "days": 5220,
+   "item": 20300,
+   "quantity": 1
+  },
+  {
+   "id": 95,
+   "days": 5310,
+   "item": 20303,
+   "quantity": 1
+  },
+  {
+   "id": 96,
+   "days": 5400,
+   "item": 20301,
+   "quantity": 1
+  }
+ ]
+}
