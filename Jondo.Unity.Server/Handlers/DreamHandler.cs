@@ -303,6 +303,49 @@ namespace Jondo.Unity.Server.Handlers
             return false;
         }
 
+        /// <summary>
+        /// A room clicked on the dream's map (ixn { f1: the room, as the map names it }). The map's
+        /// InfiniteDreamMap.OnRoomClick sends it; it moves the player there the way that room's
+        /// door would, and under the same rules: standing in the dream, the room stood in cleared,
+        /// and the one clicked among its exits. Nothing for anything else.
+        /// </summary>
+        /// <remarks>
+        /// INFERRED from the client: no capture clicks the map. The room ids are the strings the
+        /// map was given (<see cref="DreamProtocol"/>), so the click names one of them.
+        /// </remarks>
+        public static async Task ChooseRoomAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? ixn = ConnectionProtocol.ReadPayload(payload, Op.Ixn);
+            if (ixn == null || !Dreams.IsDreamMap(GameState.MapId)) return;
+            var sueno = Dreams.De(GameState.CharacterId);
+            if (sueno == null) return;
+
+            string clicked = "";
+            foreach (var field in ProtoMessage.Parse(ixn).Fields)
+            {
+                if (field.FieldNumber == 1 && field.WireType == 2)
+                    clicked = System.Text.Encoding.UTF8.GetString(field.BytesValue);
+            }
+
+            int? room = RoomChosen(sueno, clicked);
+            if (room == null)
+            {
+                Console.WriteLine($"[Dreams] Room «{clicked}» clicked on the map: not a way out of where he stands.");
+                return;
+            }
+            await EntrarEnSalaAsync(stream, sueno, room.Value);
+        }
+
+        /// <summary>The room a click on the map leads to, if the room stood in lets him go there.</summary>
+        public static int? RoomChosen(Dreams.Sueno sueno, string clicked)
+        {
+            if (!int.TryParse(clicked, System.Globalization.NumberStyles.None,
+                              System.Globalization.CultureInfo.InvariantCulture, out int id)) return null;
+            var actual = sueno.SalaActual;
+            if (actual == null || !Dreams.CanLeave(actual) || !actual.Salidas.Contains(id)) return null;
+            return id;
+        }
+
         /// <summary>Puts the player in a room: the state and the map change.</summary>
         private static async Task EntrarEnSalaAsync(NetworkStream stream, Dreams.Sueno sueno,
                                                     int salaId)

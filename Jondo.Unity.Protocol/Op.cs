@@ -3200,6 +3200,9 @@ public static class Op
     /// <summary>Your look has changed: the panel's preview, which nobody else sees. f1 is a uuid constant within the session and different per character; where the client learns it has not been found.</summary>
     public const string Lxc = "lxc";
 
+    /// <summary>C→S: a room clicked on the Infinite Dream's map { f1: the room id, as text }.</summary>
+    public const string Ixn = "ixn";
+
     /// <summary>
     /// C→S: the cosmetics window's draft switch (CosmeticUi.OnDraftToggle sends { f1: 1 }; the
     /// builds' frame sends it too). Answered with lxc and lwq.
