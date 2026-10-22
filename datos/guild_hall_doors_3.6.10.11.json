@@ -472,19 +472,6 @@
    "enabled": true
   },
   {
-   "sourceMapId": 204997891,
-   "elementId": 540575,
-   "sourceCellId": 283,
-   "gfxId": 121287,
-   "interactiveType": -1,
-   "skillId": 184,
-   "destinationMapId": 207627266,
-   "destinationCellId": 479,
-   "sourceVersion": "guild-halls-3.6.10.11",
-   "confidence": "inferred-pairing",
-   "enabled": true
-  },
-  {
    "sourceMapId": 54526212,
    "elementId": 540441,
    "sourceCellId": 443,

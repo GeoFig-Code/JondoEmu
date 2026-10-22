@@ -62,6 +62,10 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal((99093249L, 201), (doors[(99091201, 540556)].DestinationMapId, doors[(99091201, 540556)].DestinationCellId));
             Assert.Equal(88212760, doors[(99093249, 540377)].DestinationMapId);
             Assert.All(doors.Values, d => Assert.Equal(184, d.SkillId));
+
+            // One passage a cell, as the start's regression guard wants: Pandala's street has its
+            // door twice on cell 283, and only one of the two is a passage.
+            Assert.Equal(doors.Count, doors.Values.Select(d => (d.SourceMapId, d.SourceCellId)).Distinct().Count());
         }
 
         /// <summary>
