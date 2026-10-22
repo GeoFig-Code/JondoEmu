@@ -27,12 +27,12 @@ namespace Jondo.Unity.Server.Managers
     ///   quest cannot be taken again that day.</item>
     /// </list>
     ///
-    /// Of the day's bonuses, these are applied (see <see cref="BonusType"/>): job experience,
-    /// quest experience and kamas, the fights' experience, drops and challenge bonuses, the
-    /// Koliseo's experience and tokens, and what consumables heal. Their conditions are read the
-    /// way the days' own descriptions word them (<see cref="Fits"/>). The rest -- harvests,
-    /// resources' respawn, crafting, tax collectors, breeding, regeneration -- are read and named,
-    /// not applied.
+    /// Every type of the days' bonuses is applied, to everybody: they hang on the date, not on
+    /// having made the offering (see <see cref="BonusType"/>). Their conditions are read the way the
+    /// days' own descriptions word them (<see cref="Fits"/>).
+    ///
+    /// And «El año del dragón» (<see cref="Dragon"/>): while it is in hand, each offering made gives
+    /// a page of the calendar, and the 365 pages taken to Ontoral give the Dolmanax.
     /// </remarks>
     public static class Almanax
     {
@@ -82,6 +82,54 @@ namespace Jondo.Unity.Server.Managers
             }
 
             return best;
+        }
+
+        /// <summary>
+        /// «El año del dragón»: the quest, the calendar page and how many it takes. Read off the
+        /// data rather than written here: the one quest Ontoral hands out that is not an offering and
+        /// asks for an item brought back to him by the hundreds -- 954, 365 of item 13345.
+        /// </summary>
+        /// <remarks>
+        /// The client's own words for it: «Cada vez que pases por el santuario del Almanax, podrás
+        /// obtener una página del calendario si celebras el día del santo. Cuando tengas 365, Ontoral
+        /// Zo te recompensará con un dolmanax» (its step's description), and the page's: «Ontoral Zo
+        /// te dará una página de calendario cada día que pase». No reward of the data gives the page:
+        /// it is handed over here when an offering is finished with the quest in hand.
+        /// </remarks>
+        public static (int Quest, int Page, int Pages) Dragon
+        {
+            get
+            {
+                if (_dragon.Quest == 0) _dragon = FindDragon();
+                return _dragon;
+            }
+        }
+
+        private static (int Quest, int Page, int Pages) _dragon;
+
+        /// <summary>
+        /// The Dolmanax, which «El año del dragón» pays. Its step's reward in the data carries only
+        /// experience; the item is the one Ontoral names as he hands it over -- «Toma este dolmanax,
+        /// este auténtico huevo de dragón» (his line 16041) -- and the only Dofus called so.
+        /// </summary>
+        public const int Dolmanax = 13344;
+
+        private static (int, int, int) FindDragon()
+        {
+            var calendar = _calendar;
+            var book = Quests.Book;
+            int giver = Giver;
+            if (calendar == null || !calendar.Ready || book == null || giver == 0) return (0, 0, 0);
+
+            foreach (var quest in book.All())
+            {
+                if (calendar.IsOffering(quest.Id) || !quest.Givers.Any(g => g.NpcId == giver)) continue;
+                foreach (var step in quest.Steps)
+                    foreach (var objective in step.Objectives)
+                        if (objective.ConsumesItems && objective.NpcId == giver && objective.ItemCount >= 300)
+                            return (quest.Id, objective.ItemId, objective.ItemCount);
+            }
+            return (0, 0, 0);
         }
 
         private static volatile AlmanaxCalendar? _calendar;
@@ -228,6 +276,15 @@ namespace Jondo.Unity.Server.Managers
 
             /// <summary>"En los apareamientos de monturas, se añade un bonus del 20% a la probabilidad de obtener la generación objetivo".</summary>
             public const int TargetGeneration = 38;
+
+            /// <summary>
+            /// Thirteen days: «La cantidad de carne tierna que consiguen los cazadores aumenta un
+            /// 125%», the meats named one by one (kind 9, an item obtained); 08/10 names all forty.
+            /// </summary>
+            public const int HunterMeat = 26;
+
+            /// <summary>04/07: «se añade un bonus del 75% a las posibilidades de conseguir botín en los Sueños».</summary>
+            public const int DreamDrops = 34;
         }
 
         /// <summary>
@@ -237,9 +294,12 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public sealed record Where(int Area, int Subarea, IReadOnlyCollection<int> Monsters, IReadOnlyCollection<int> Races,
                                    IReadOnlyCollection<int> Worn, bool InDungeon, int Job = 0, int Skill = 0,
-                                   int PaddockGauge = 0)
+                                   int PaddockGauge = 0, int Item = 0)
         {
             public static readonly Where Anywhere = new(-1, 0, Array.Empty<int>(), Array.Empty<int>(), Array.Empty<int>(), false);
+
+            /// <summary>An item obtained: the hunters' meats.</summary>
+            public static Where Obtaining(int item) => Anywhere with { Item = item };
 
             /// <summary>A job's work: its experience, a harvest by one of its skills.</summary>
             public static Where AtWork(int job, int skill = 0) => Anywhere with { Job = job, Skill = skill };
@@ -274,7 +334,7 @@ namespace Jondo.Unity.Server.Managers
         /// comes with 2437 --, 5 a job («los pescadores»: 36), 7 an item worn («para todos los
         /// aventureros que lleven equipado»), 10 a job's skill («centeno» and «arroz»: skills 52 and
         /// 159, «Segar» rye and rice), 15 the dungeons, 13 «las zonas influenciadas por una anomalía temporal»
-        /// (Anomalies' zones). Every other kind is never met here.
+        /// (Anomalies' zones), 9 an item obtained (the hunters' meats). Every other kind is never met here.
         /// </summary>
         public static bool Fits(AlmanaxBonus bonus, Where where)
         {
@@ -288,6 +348,7 @@ namespace Jondo.Unity.Server.Managers
                     4 => where.Races.Contains(c.Value),
                     5 => where.Job == c.Value,
                     7 => where.Worn.Contains(c.Value),
+                    9 => where.Item == c.Value,
                     10 => where.Skill == c.Value,
                     16 => where.PaddockGauge == c.Value,
                     15 => where.InDungeon,
@@ -327,6 +388,17 @@ namespace Jondo.Unity.Server.Managers
             int met = 0;
             for (int i = 0; i < units; i++) if (dice.Next(100) < percent) met++;
             return met;
+        }
+
+        /// <summary>
+        /// A quantity with a percent bonus on top, the part of a unit it does not reach drawn:
+        /// one meat at +125% is two, and a third one time in four.
+        /// </summary>
+        public static int Raised(int quantity, int percent, Random dice)
+        {
+            if (quantity <= 0 || percent <= 0) return quantity;
+            long extra = (long)quantity * percent;
+            return quantity + (int)(extra / 100) + ChancesMet(1, (int)(extra % 100), dice);
         }
 
         /// <summary>An amount with today's bonus of that type that fits here on top.</summary>

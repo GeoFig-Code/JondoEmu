@@ -252,6 +252,74 @@ namespace Jondo.Unity.Tests.Sessions
             }
         }
 
+        /// <summary>
+        /// «El año del dragón»: handed over with the offering, a page for each offering made while
+        /// it is in hand, and the Dolmanax for the 365.
+        /// </summary>
+        [Fact]
+        public async Task A_year_of_offerings_ends_in_the_Dolmanax()
+        {
+            if (!Available || !File.Exists(Paths.AlmanaxJson) || !File.Exists(Paths.QuestsJson)) return;
+            QuestEngine.Load();
+            Achievements.Load();
+            Almanax.Load();
+            Forget();
+
+            void Clean()
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "DELETE FROM CharacterQuests WHERE CharacterId = $c; " +
+                                      "DELETE FROM CharacterItems WHERE CharacterId = $c AND Gid IN (13344, 13345, 27399);";
+                command.Parameters.AddWithValue("$c", Character);
+                try { command.ExecuteNonQuery(); } catch (SqliteException) { }
+            }
+            Clean();
+
+            var clock = Almanax.Clock;
+            Almanax.Clock = () => new DateTime(2026, 9, 26, 12, 0, 0);
+            try
+            {
+                await using var at = await Connected.OpenAsync();
+                using (SessionContext.Push(at.Player))
+                {
+                    at.Player.State.CharacterLevel = 50;
+                    at.Player.State.MapId = 101450251;
+                    QuestEngine.LoadFrom(Character);
+                    Achievements.LoadFrom(Character);
+
+                    // Read off the data: quest 954, 365 of item 13345.
+                    Assert.Equal((954, 13345, 365), Almanax.Dragon);
+
+                    at.Player.State.OpenDialogueNpcId = 1625;
+                    await QuestEngine.OnReplyAsync(at.ToClient, 12047);
+                    Assert.True(QuestEngine.Log!.Active(965));
+                    Assert.True(QuestEngine.Log!.Active(954));
+
+                    // Today's offering made: one page.
+                    foreach (var objective in QuestEngine.Book!.Of(965)!.Steps[0].Objectives)
+                        await QuestEngine.TickAsync(at.ToClient, 965, objective.Id);
+                    Assert.False(QuestEngine.Log!.Active(965));
+                    Assert.Equal(1, Equipment.HowMany(13345));
+
+                    // A year of them, brought to Ontoral: the pages go, the Dolmanax comes.
+                    Assert.True(await Equipment.GiveAsync(at.ToClient, 13345, 364));
+                    await QuestEngine.OnTalkingToAsync(at.ToClient, 1625);
+                    Assert.False(QuestEngine.Log!.Active(954));
+                    Assert.Equal(0, Equipment.HowMany(13345));
+                    Assert.Equal(1, Equipment.HowMany(Almanax.Dolmanax));
+                }
+            }
+            finally
+            {
+                Almanax.Clock = clock;
+                Almanax.Reset();
+                Clean();
+                Forget();
+            }
+        }
+
         [Fact]
         public async Task The_juggler_plays_for_the_map_and_a_second_one_too_soon_does_not()
         {

@@ -628,11 +628,13 @@ Full workings in **`docs/achievements.md`**.
 - ✅ The temple follows the seasons: the sanctuary's door opens on the hall of today's season, its door on
   the room of today's month, and the other seasons' rooms lie asleep
 - ✅ Every day its saint, alone in the room of its month
-- ✅ The day's bonuses to fights (experience, drops, challenges and an extra one, a second loot in dungeons — by zone,
+- ✅ The day's bonuses, for everybody, to fights (experience, drops, challenges and an extra one, a second loot in dungeons — by zone,
   dungeon, monster family or item worn), the Koliseo, quests, jobs, harvests, crafting (ingredients
   saved, a second item, runes kept), tax collectors, breeding and paddock items, resources' respawn, life
   regeneration and healing consumables, resource protectors, archmonsters, the quality of what a city crafts,
-  pets and wanted criminals
+  pets, wanted criminals, the hunters' meat and the loot in the Dreams
+- ✅ «El año del dragón»: every offering gives a page of the calendar, and Ontoral Zo trades 365 of them
+  for the Dolmanax
 
 ### 🏰 Dungeons
 <img width="2550" height="1498" alt="image" src="https://github.com/user-attachments/assets/f79f7881-c68e-45b5-ae29-b4aaba928a1d" />

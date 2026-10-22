@@ -370,9 +370,24 @@ the other seasons' rooms are read the same way. The sanctuary's door (element 47
 hall of today's season -- the one of the four halls whose door of that season is drawn otherwise --;
 there that door leads to today's room and the other three to their dark rooms; every room's way out
 back to today's hall. The cell the saint stands on is ours (302): no capture enters the temple.
-Of the day's bonuses, the ones applied are those that
-carry no condition and touch quests or jobs (quest experience and kamas, job
-experience); the others carry conditions whose types the client does not explain, and are not applied.
+
+Every type of the days' bonuses is applied, to everybody: they hang on the date, not on having made
+the offering. The client gives only their numbers; each is named after the day whose description
+says what it does, and so are their conditions (an area, a subarea, a monster or its race, a job, a
+skill, an item worn or obtained, the dungeons, the anomalies' zones; `Almanax.BonusType`, `Fits`).
+The last two named: 26, «la cantidad de carne que consiguen los cazadores aumenta un 125%», on the
+quantity of each meat named, and 34, «un bonus del 75% a las posibilidades de conseguir botín en los
+Sueños». The 21 days with no bonus are events of their own (repeatable quests, treasure chests,
+surprise gifts in the loot).
+
+**«El año del dragón» (quest 954) and the Dolmanax.** Ontoral hands it over with the offering, once.
+While it is in hand each offering made gives a page of the calendar (item 13345) -- «Ontoral Zo te
+dará una página de calendario cada día que pase» --, and the 365 pages brought to him finish it and
+give the Dolmanax (13344): «Toma este dolmanax, este auténtico huevo de dragón». The quest, the page
+and the 365 are read off the data (the one quest of his that is not an offering and asks for an item
+by the hundreds); the step's reward in the data carries only experience, so the page and the
+Dolmanax are handed over by `Quests` when an offering or the quest finishes. The achievements for
+100, 200 and 300 pages (`PO>13345,99`...) and for the quest (`Qf=954`) follow by themselves.
 
 ## 11. What is missing
 

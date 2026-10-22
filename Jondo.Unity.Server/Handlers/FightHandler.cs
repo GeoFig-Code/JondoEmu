@@ -10702,6 +10702,9 @@ namespace Jondo.Unity.Server.Handlers
                 // this place, what he wears.
                 int almanax = Managers.Almanax.BonusPercent(Managers.Almanax.BonusType.MonsterDrops,
                     Managers.Almanax.ForFight(fight.RoleplayMapId, new[] { monster.MonsterId }, worn, inDungeon));
+                // And in a dream, the day that says «en los Sueños» (type 34).
+                if (Managers.Dreams.IsDreamMap(fight.RoleplayMapId))
+                    almanax += Managers.Almanax.BonusPercent(Managers.Almanax.BonusType.DreamDrops, Managers.Almanax.Where.Anywhere);
                 double WithAlmanax(double chance) => almanax > 0 ? Math.Min(100.0, chance * (100.0 + almanax) / 100.0) : chance;
 
                 // And in a dungeon, now and then a second roll of its tables: «un 20% de probabilidad
@@ -10761,6 +10764,13 @@ namespace Jondo.Unity.Server.Handlers
                         if (drop.Exo != 0) perfect?.Add(drop);
                     }
                 }
+            }
+
+            // The days that give the hunters more of a meat (type 26): the quantity, not the chance.
+            foreach (int item in loot.Keys.ToList())
+            {
+                int more = Managers.Almanax.BonusPercent(Managers.Almanax.BonusType.HunterMeat, Managers.Almanax.Where.Obtaining(item));
+                if (more > 0) loot[item] = Managers.Almanax.Raised(loot[item], more, Random.Shared);
             }
 
             return loot;

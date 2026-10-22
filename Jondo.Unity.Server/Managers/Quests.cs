@@ -213,6 +213,11 @@ namespace Jondo.Unity.Server.Managers
             {
                 int today = Almanax.TodaysOffering();
                 if (today != 0 && log.Run(today) is not { Finished: false }) await StartAsync(stream, today);
+
+                // And «El año del dragón», which no line of his hands over either: the year of
+                // offerings that ends in the Dolmanax. Once only; its own condition says from when.
+                int dragon = Almanax.Dragon.Quest;
+                if (dragon != 0 && log.Run(dragon) == null) await StartAsync(stream, dragon);
             }
         }
 
@@ -1034,7 +1039,17 @@ namespace Jondo.Unity.Server.Managers
                 if (Almanax.IsOffering(questId))
                 {
                     Achievements.SetTally(Almanax.OfferingKind, questId, Almanax.DayKey(Almanax.Clock()));
+
+                    // A page of the calendar for whoever is on «El año del dragón».
+                    var dragon = Almanax.Dragon;
+                    if (dragon.Quest != 0 && Log?.Run(dragon.Quest) is { Finished: false }
+                        && !await Equipment.GiveAsync(stream, dragon.Page, 1))
+                        Console.WriteLine($"[Almanax] The calendar page {dragon.Page} could not be given.");
                 }
+
+                // The 365 pages brought: the Dolmanax, as Ontoral hands it over.
+                if (questId == Almanax.Dragon.Quest && !await Equipment.GiveAsync(stream, Almanax.Dolmanax, 1))
+                    Console.WriteLine($"[Almanax] The Dolmanax {Almanax.Dolmanax} could not be given.");
 
                 // And whatever that finished quest has earned. 259 achievements hang from finishing one, and
                 // the tutorial's 8518 «Primer tiempo» is literally (Qf=2511).
