@@ -135,11 +135,12 @@ They now go in the right order.
 
 ## 6. What is missing
 
+Not missing any more: the dungeon challenges. The 684 flagged `solo_mazmorra` all name a monster, and
+the boss room imposes those of the monsters in front (`ChallengeHandler.ImposeAsync`), bonus at zero, as
+the anomaly's capture shows.
+
 - **The internal passages.** That is what separates this from the real dungeon. They are ~1,800 doors and the
   passage editor already knows how to place them; what there is not is somewhere to take them from automatically.
 - **The guardian's dialog tree**, with the confirmation and a «no, thanks» that does not let you in.
 - **The waves** of some new dungeons (Despedazadora, Venerable, Bzupervibzor) and the hunting altar.
-- **Dungeon challenges**: 684 of the 842 are flagged `solo_mazmorra` and are never offered,
-  because nothing tells the fight it is inside one. `DungeonHandler.IsBossRoom` and
-  `DungeonManager.OfRoom` now do know it.
 - **Automatic matchmaking** and the lobby. There is nothing, and the data already carries the flags.
