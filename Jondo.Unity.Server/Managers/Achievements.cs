@@ -407,6 +407,13 @@ namespace Jondo.Unity.Server.Managers
                     ConnectionProtocol.Push(Op.Mfu, AchievementProtocol.BuildEarned(
                         LevelOnTheWire(state.CharacterLevel), state.CharacterId, achievementId)));
 
+                // And whoever stands by reads it in his chat. INFERRED: no capture has an mgc, and
+                // the map is who the client's own line («ha desbloqueado el logro») suits.
+                if (SessionContext.Current is { } me && !state.IsInFight)
+                    await SessionRegistry.BroadcastToMapAsync(state.MapId, ConnectionProtocol.Push(Op.Mgc,
+                        AchievementProtocol.BuildUnlockedBy(state.CharacterId, state.CharacterName,
+                                                            LevelOnTheWire(state.CharacterLevel), achievementId)), me.Id);
+
                 Console.WriteLine($"[Achievements] {state.CharacterName} earns {achievementId}.");
             }
         }

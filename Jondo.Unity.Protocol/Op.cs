@@ -399,6 +399,9 @@ public static class Op
     /// <summary>An achievement obtained, with whom and at what level: 1{1 level, 2 character, 3 achievement}.</summary>
     public const string Mfu = "mfu";
 
+    /// <summary>S→C: another character earned an achievement, for the chat. f1 his id, f2 his name, f3 the mfu's entry.</summary>
+    public const string Mgc = "mgc";
+
     /// <summary>The client asks for an achievement's reward: 1 = the achievement, or -1 for all.</summary>
     public const string Mga = "mga";
 

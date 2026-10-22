@@ -578,7 +578,8 @@ Full workings in **`docs/quests.md`**.
 - ✅ Rewards claimed from the window: kamas, experience, items and emotes
 - ✅ Breeding, ride hunting, sweets, breaking items, Koliseo leagues, guild missions and tokens, challenge
   tallies and the guild hall's achievements
-- ❌ Alignment and tutorial achievements; announcements in the chat
+- ✅ Players nearby read in their chat the achievements one unlocks
+- ❌ Alignment and tutorial achievements
 
 Full workings in **`docs/achievements.md`**.
 

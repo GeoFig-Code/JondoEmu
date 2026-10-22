@@ -42,6 +42,15 @@ namespace Jondo.Unity.Server.Network
             => Pb.New().Msg(1, Entry(characterLevel, characterId, achievementId)).Build();
 
         /// <summary>
+        /// Somebody else earned one (mgc): «{0} ha desbloqueado el logro $achievement{1}.» in the chat,
+        /// his name a link to his menu (epj.bapt, ui.achievement.characterUnlocksAchievement).
+        ///
+        ///   f1: character id, f2: his name, f3: the mfu's entry
+        /// </summary>
+        public static byte[] BuildUnlockedBy(long characterId, string name, int characterLevel, int achievementId)
+            => Pb.New().Var(1, characterId).Str(2, name ?? "").Msg(3, Entry(characterLevel, characterId, achievementId)).Build();
+
+        /// <summary>
         /// An achievement has been paid for (mfs).
         ///
         ///   f2: 1
