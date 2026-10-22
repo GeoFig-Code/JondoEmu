@@ -562,6 +562,50 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(601, MapManager.GetMapInfo(frigost.InteriorMapId)?.SubAreaId);
         }
 
+        /// <summary>
+        /// The «Casa mediana de Astrub» of 5,-17 is left by its sun, element 514729. With an f15
+        /// the client did not draw it, and the house had no way out.
+        /// </summary>
+        [Fact]
+        public void The_way_out_is_declared_without_a_state()
+        {
+            const long interior = 192021507;
+            const int sun = 514729;
+            if (MapManager.GetMapInfo(interior) == null) MapManager.Initialize();
+            if (MapManager.GetMapInfo(interior) == null) return;   // no world data
+            Interactives.Initialize();
+            Houses.Initialize();
+            InteractiveRegistry.Initialize();
+
+            var me = new DatabaseManager.DbCharacter { Id = 990_000_801, Name = "Visita", Level = 200, Breed = 1 };
+            var jss = ProtoMessage.Parse(ConnectionProtocol.BuildMapActors(interior, me, 429, 1, 990_000_801));
+            long ElementOf(ProtoMessage m, int field)
+                => m.Fields.FirstOrDefault(f => f.FieldNumber == field)?.VarIntValue ?? 0;
+
+            Assert.Contains(jss.Fields.Where(f => f.FieldNumber == 11),
+                            f => ElementOf(ProtoMessage.Parse(f.BytesValue), 5) == sun);
+            Assert.DoesNotContain(jss.Fields.Where(f => f.FieldNumber == 15),
+                                  f => ElementOf(ProtoMessage.Parse(f.BytesValue), 3) == sun);
+        }
+
+        /// <summary>The small house of Sufokia, 17,29, has two suns: both lead out.</summary>
+        [Fact]
+        public void Every_sun_of_the_way_out_leads_out()
+        {
+            const long interior = 90966529;
+            if (MapManager.GetMapInfo(interior) == null) MapManager.Initialize();
+            if (MapManager.GetMapInfo(interior) == null) return;   // no world data
+            Interactives.Initialize();
+            Houses.Initialize();
+            InteractiveRegistry.Initialize();
+
+            foreach (int sun in new[] { 505761, 505762 })
+            {
+                var declared = Assert.Single(InteractiveRegistry.OnMap(interior), i => i.Element.Id == sun);
+                Assert.Equal(InteractiveActionKind.HouseExit, Assert.Single(declared.Actions).Kind);
+            }
+        }
+
         [Fact]
         public async Task An_owner_sells_and_locks_and_a_stranger_knocks_and_buys()
         {

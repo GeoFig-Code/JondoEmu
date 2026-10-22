@@ -339,6 +339,15 @@ namespace Jondo.Unity.Server.Managers
                 if (!Houses.TryGetExit(interior, out var exit)) continue;
                 Register(interior, new Interactives.Element(exit.ElementId, exit.Cell, exit.Gfx),
                          Houses.ExitType, InteractiveActionKind.HouseExit, Houses.ExitSkill);
+
+                // A room with two suns -- Sufokia's small house, 505761 and 505762 -- is left by
+                // either: the other sun of the exit's drawing leads out too, unless it is a passage.
+                foreach (var element in Interactives.ElementsOf(interior))
+                {
+                    if (element.Id == exit.ElementId || element.Gfx != exit.Gfx || exit.IsRealDoor) continue;
+                    if (TeleportManager.TryGet(interior, element.Id, out _)) continue;
+                    Register(interior, element, Houses.ExitType, InteractiveActionKind.HouseExit, Houses.ExitSkill);
+                }
             }
 
             // And the chests inside, type 85 with "Abrir" and "Poner el cerrojo" as the interior's
