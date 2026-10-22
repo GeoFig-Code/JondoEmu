@@ -89,7 +89,7 @@ public static class Op
     /// <summary>Part of the 3.6.4.3 initialisation burst that kkn fires. It does not appear in any of the 242 captures.</summary>
     public const string Hmd = "hmd";
 
-    /// <summary>Unidentified. 2 uses in the emulator.</summary>
+    /// <summary>C→S: a mimisymbic turns a real item into an appearance one, { f1 mimisymbic uid, f2 host uid } (MimicryHandler).</summary>
     public const string Hmj = "hmj";
 
     /// <summary>Unidentified. 2 uses in the emulator.</summary>

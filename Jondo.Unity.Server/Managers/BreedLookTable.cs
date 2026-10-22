@@ -460,7 +460,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 foreach (var prenda in appearance)
                 {
-                    if (prenda.Hidden) continue;      // with the eye closed it covers nothing
+                    // With the eye closed it still covers: the slot shows nothing, real piece included.
                     if (prenda.Slot == Cosmetics.SlotHat) tapados.Add(SlotSombrero);
                     else if (prenda.Slot == Cosmetics.SlotCape) tapados.Add(SlotCapa);
                     else if (prenda.Slot == Cosmetics.SlotShield) tapados.Add(SlotEscudo);

@@ -112,6 +112,9 @@ namespace Jondo.Unity.Server.Handlers
 
             foreach (int gid in BankHandler.PackedOrSingle(ProtoMessage.Parse(lxh).Fields, 1).Select(g => (int)g))
             {
+                // A mimisymbic's appearance stays for good: «il n'est pas possible de retirer de votre
+                // collection une apparence issue d'un mimibiote».
+                if (!CosmeticCollection.Takes(gid)) continue;
                 var entry = CosmeticCollection.Take(account, gid);
                 if (entry == null) continue;
 

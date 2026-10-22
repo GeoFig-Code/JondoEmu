@@ -191,8 +191,13 @@ namespace Jondo.Unity.Server.Managers
                 connection.Open();
 
                 var command = connection.CreateCommand();
-                command.CommandText = "UPDATE CharacterAppearance SET Hidden = $h " +
-                                      "WHERE CharacterId = $id AND Slot = $slot;";
+                // An empty slot can be hidden too, to hide the real piece under it (a shield with no
+                // cosmetic): it is kept as a row with no garment, and dropped when shown again.
+                command.CommandText = "INSERT INTO CharacterAppearance (CharacterId, Slot, Uid, Gid, Hidden) " +
+                                      "VALUES ($id, $slot, 0, 0, $h) " +
+                                      "ON CONFLICT(CharacterId, Slot) DO UPDATE SET Hidden = $h; " +
+                                      "DELETE FROM CharacterAppearance " +
+                                      "WHERE CharacterId = $id AND Slot = $slot AND Gid = 0 AND Hidden = 0;";
                 command.Parameters.AddWithValue("$id", characterId);
                 command.Parameters.AddWithValue("$slot", slot);
                 command.Parameters.AddWithValue("$h", hidden ? 1 : 0);

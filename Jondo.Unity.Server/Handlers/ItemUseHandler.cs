@@ -47,6 +47,9 @@ namespace Jondo.Unity.Server.Handlers
             if (await AllianceHandler.TryUsePotionAsync(stream, item)) return;
             if (await GuildHandler.TryUsePotionAsync(stream, item)) return;
 
+            // A mimisymbic: its window opens, to turn a real item into an appearance one.
+            if (await MimicryHandler.TryOpenAsync(stream, item)) return;
+
             // A tax collector potion: one of the alliance's tax collectors where the user stands.
             if (await TaxCollectorHandler.TryPlaceAsync(stream, item)) return;
 

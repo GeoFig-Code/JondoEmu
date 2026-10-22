@@ -2014,6 +2014,7 @@ namespace Jondo.Unity.Server.Network
 
             foreach (var worn in Managers.Wardrobe.AppearanceOf(character.Id))
             {
+                if (worn.Gid == 0) continue;   // a hidden empty slot: no garment to show
                 body.Msg(17, Pb.New()
                     .VarIfNotZero(1, worn.Slot)
                     .Msg(2, Pb.New().Var(2, worn.Gid)));

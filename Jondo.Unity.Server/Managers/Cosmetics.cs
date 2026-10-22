@@ -63,6 +63,25 @@ namespace Jondo.Unity.Server.Managers
             { 251, 13 },             // arma
         };
 
+        /// <summary>
+        /// The slot a mimisymbic puts a REAL item in, by the real item's type. It is the table of
+        /// effect 1179 in docs/appearances.md §7, read the other way: the type a garment imitates and
+        /// the slot measured for it. These are also the only types a mimisymbic takes as host.
+        /// </summary>
+        private static readonly Dictionary<int, int> SlotOfRealType = new Dictionary<int, int>
+        {
+            { 1, 0 }, { 9, 1 }, { 10, 3 }, { 11, 4 },              // amulet, ring, belt, boots
+            { 17, SlotCape }, { 16, SlotHat }, { 18, SlotPet }, { 82, SlotShield },
+            { 121, SlotMount },                                     // petsmount
+            { 2, 13 }, { 3, 14 }, { 4, 15 }, { 5, 16 }, { 22, 17 }, // bow, wand, staff, dagger, scythe
+            { 19, 18 }, { 271, 19 }, { 7, 20 }, { 8, 21 }, { 6, 22 }, // axe, lance, hammer, shovel, sword
+        };
+
+        /// <summary>The slot of a real item turned into an appearance by a mimisymbic, or -1 if it cannot be.</summary>
+        public static int MimicrySlotOf(int gid)
+            => Of(gid) == null && SlotOfRealType.TryGetValue(DatabaseManager.GetItemTemplateType(gid), out int slot)
+                ? slot : -1;
+
         public sealed class Piece
         {
             public int Type { get; init; }
@@ -141,6 +160,7 @@ namespace Jondo.Unity.Server.Managers
                 {
                     LoadCatalogue();
                     LoadLooks();
+                    LoadRealLooks();
 
                     int resueltas = 0;
                     foreach (var gid in _catalogue.Keys)
@@ -289,6 +309,27 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
+        /// <summary>
+        /// A mimisymbic wears a real pet or petsmount as an appearance one, so the real ones' measured
+        /// looks go in the same tables. Their gids never collide with the appearance ones'.
+        /// </summary>
+        private static void LoadRealLooks()
+        {
+            string path = Paths.EquipmentSkinsJson;
+            if (!File.Exists(path)) return;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                ReadLooks(doc.RootElement, "pets", _pets);
+                ReadLooks(doc.RootElement, "mounts", _mounts);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Appearances] Could not read the real items' look: {ex.Message}");
+            }
+        }
+
         /// <summary>The looks that do not go through skins: pets and mounts.</summary>
         private static void ReadLooks(JsonElement root, string name, Dictionary<int, PieceLook> into)
         {
@@ -419,7 +460,7 @@ namespace Jondo.Unity.Server.Managers
             if (_slots.TryGetValue(gid, out int slot)) return slot;
 
             var piece = Of(gid);
-            if (piece == null) return -1;
+            if (piece == null) return MimicrySlotOf(gid);
             return SlotOfType.TryGetValue(piece.Type, out int porTipo) ? porTipo : -1;
         }
 
@@ -436,7 +477,11 @@ namespace Jondo.Unity.Server.Managers
                 // A variant that is not measured must not fall into another's skin: better nothing.
                 if (variant != 0) return _ninguna;
             }
-            return _skins.TryGetValue(gid, out var pieles) ? pieles : _ninguna;
+            if (_skins.TryGetValue(gid, out var pieles)) return pieles;
+
+            // A mimisymbic: a real item worn as an appearance one shows the real item's skin.
+            int real = EquipmentSkins.SkinOf(gid);
+            return real > 0 ? new[] { real } : _ninguna;
         }
 
         /// <summary>
