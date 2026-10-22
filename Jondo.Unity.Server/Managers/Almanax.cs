@@ -197,6 +197,9 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>"Se propondrá un reto extra contra los monstruos presentes en la zona ...": its amount, 1, is the count.</summary>
             public const int ExtraChallenge = 5;
 
+            /// <summary>"El efecto de los acariciadores se duplica en los cercados": its 16 is the paddock gauge (2 the patter, 4 the trough).</summary>
+            public const int PaddockItems = 36;
+
             /// <summary>"Las monturas que nazcan este día tendrán la capacidad Resistente": its 17 names the capacity.</summary>
             public const int NewbornCapacity = 37;
 
@@ -210,7 +213,8 @@ namespace Jondo.Unity.Server.Managers
         /// character wears.
         /// </summary>
         public sealed record Where(int Area, int Subarea, IReadOnlyCollection<int> Monsters, IReadOnlyCollection<int> Races,
-                                   IReadOnlyCollection<int> Worn, bool InDungeon, int Job = 0, int Skill = 0)
+                                   IReadOnlyCollection<int> Worn, bool InDungeon, int Job = 0, int Skill = 0,
+                                   int PaddockGauge = 0)
         {
             public static readonly Where Anywhere = new(-1, 0, Array.Empty<int>(), Array.Empty<int>(), Array.Empty<int>(), false);
 
@@ -254,6 +258,7 @@ namespace Jondo.Unity.Server.Managers
                     5 => where.Job == c.Value,
                     7 => where.Worn.Contains(c.Value),
                     10 => where.Skill == c.Value,
+                    16 => where.PaddockGauge == c.Value,
                     15 => where.InDungeon,
                     _ => false,
                 });

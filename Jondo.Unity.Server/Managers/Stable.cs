@@ -243,7 +243,11 @@ namespace Jondo.Unity.Server.Managers
                     gauges.Values[gauge] = value - amount;
                     working = true;
                     changed = true;
-                    foreach (var ride in rides) ride.Effects = Worked(ride, gauge, amount);
+                    // Today's Almanax may double what it does: «El efecto de los acariciadores se
+                    // duplica en los cercados» (type 36, by gauge); what it spends stays the same.
+                    int given = (int)Almanax.WithBonus(Almanax.BonusType.PaddockItems, amount,
+                        Almanax.Where.Anywhere with { PaddockGauge = gauge });
+                    foreach (var ride in rides) ride.Effects = Worked(ride, gauge, given);
                 }
                 if (!working) break;
             }

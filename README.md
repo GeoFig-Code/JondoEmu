@@ -590,9 +590,9 @@ Full workings in **`docs/achievements.md`**.
 - 🟡 The saint of the day only stands on 80 of the 373 days
 - ✅ The day's bonuses to fights (experience, drops, challenges and an extra one, a second loot in dungeons — by zone,
   dungeon, monster family or item worn), the Koliseo, quests, jobs, harvests, crafting (ingredients
-  saved, a second item, runes kept), tax collectors, breeding, resources' respawn, life regeneration and
-  healing consumables
-- 🟡 The bonuses to paddock items, resource protectors and wanted monsters are not applied yet
+  saved, a second item, runes kept), tax collectors, breeding and paddock items, resources' respawn, life
+  regeneration and healing consumables
+- 🟡 The bonuses to resource protectors, crafted quality, pets and wanted monsters are not applied yet
 
 ### 🏰 Dungeons
 <img width="2550" height="1498" alt="image" src="https://github.com/user-attachments/assets/f79f7881-c68e-45b5-ae29-b4aaba928a1d" />
