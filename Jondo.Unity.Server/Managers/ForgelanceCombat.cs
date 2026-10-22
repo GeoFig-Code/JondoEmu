@@ -17,7 +17,8 @@ namespace Jondo.Unity.Server.Managers
         internal const int GuardAppearance = 2062;
         internal const int LanceSkin = 3650;
 
-        internal static bool Is(Fighter fighter) => fighter != null && fighter.Breed == Breed;
+        /// <summary>A Forgelance fighting as himself: not one a dream trial or a mutation made a monster.</summary>
+        internal static bool Is(Fighter fighter) => fighter != null && fighter.Breed == Breed && fighter.IncarnatedMonster == 0;
 
         internal static bool IsActor(FightInstance fight, Fighter fighter)
             => Is(fighter) || (fighter is { EsInvocado: true, MonsterId: Lance }
