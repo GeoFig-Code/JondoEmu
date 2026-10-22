@@ -176,6 +176,17 @@ namespace Jondo.Unity.Server.Handlers
             }
             if (uid == 0 || quantity == 0) return true;
 
+            await MoveOneAsync(stream, uid, quantity);
+            await AfterMovingAsync(stream);
+            return true;
+        }
+
+        /// <summary>
+        /// One stack in (a positive quantity) or out (a negative one), with the frames that tell the
+        /// client: kcr's answer, and each of the transfers' (kez, kcg, kgx, kck, kdd).
+        /// </summary>
+        private static async Task<bool> MoveOneAsync(NetworkStream stream, long uid, long quantity)
+        {
             long account = SessionContext.Current.AccountId;
             long character = SessionContext.State.CharacterId;
 
@@ -185,7 +196,7 @@ namespace Jondo.Unity.Server.Handlers
                 if (deposit == null)
                 {
                     Console.WriteLine($"[Bank] {uid} x{quantity} could not go into the bank.");
-                    return true;
+                    return false;
                 }
 
                 Equipment.Remove(deposit.FromUid, deposit.Moved);
@@ -203,7 +214,7 @@ namespace Jondo.Unity.Server.Handlers
                 if (withdrawal == null)
                 {
                     Console.WriteLine($"[Bank] {uid} x{-quantity} could not come out of the bank.");
-                    return true;
+                    return false;
                 }
 
                 Equipment.Add(withdrawal.InBag.Uid, withdrawal.InBag.Gid, withdrawal.Moved, Equipment.Bag,
@@ -220,12 +231,114 @@ namespace Jondo.Unity.Server.Handlers
                 else
                     await SendAsync(stream, Op.Itd, ConnectionProtocol.BuildItemArrived(1, withdrawal.LeftInBank));
             }
-
-            await SendAsync(stream, Op.Iun, ConnectionProtocol.BuildPods(0, 1000 + 5L * SessionContext.State.TotalStrength));
-
-            // Another character of this account at a counter of his own sees the same bank.
-            await RefreshWindowsAsync(account, SessionContext.Current.Id);
             return true;
+        }
+
+        /// <summary>The bag's weight, and the same bank for another character of the account at a counter.</summary>
+        private static async Task AfterMovingAsync(NetworkStream stream)
+        {
+            await SendAsync(stream, Op.Iun, ConnectionProtocol.BuildPods(0, 1000 + 5L * SessionContext.State.TotalStrength));
+            await RefreshWindowsAsync(SessionContext.Current.AccountId, SessionContext.Current.Id);
+        }
+
+        // ─── Transfers ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The windows' transfer buttons, read in the client (actions cyk, cyl, cym, cyo, cyd, sent
+        /// by emq): kez «everything to the bank» and kgx «what the bank has already» from the bag's
+        /// side (BankPlayerInventoryBehavior), kcg «everything to the bag» and kck «what the bag has
+        /// already» from the bank's (BankBehavior), and kdd { 1 the stacks } a selection into the
+        /// bank, sent in batches of 71. Dofus 2's ExchangeObjectTransfert*Message, the same five.
+        /// INFERRED: no capture presses them; each stack moves as a kcr would move it.
+        /// False when the bank is not open.
+        /// </summary>
+        public static async Task<bool> TransferAsync(NetworkStream stream, byte[] payload, string op)
+        {
+            if (!IsOpen) return false;
+            long account = SessionContext.Current.AccountId;
+
+            List<(long Uid, long Quantity)> moves;
+            switch (op)
+            {
+                case "kez":
+                    moves = BagStacks().Select(i => (i.Uid, (long)i.Quantity)).ToList();
+                    break;
+                case "kgx":
+                {
+                    var inBank = Bank.ItemsOf(account).Select(i => i.Gid).ToHashSet();
+                    moves = BagStacks().Where(i => inBank.Contains(i.Template)).Select(i => (i.Uid, (long)i.Quantity)).ToList();
+                    break;
+                }
+                case "kcg":
+                    moves = Bank.ItemsOf(account).Select(i => (i.Uid, -(long)i.Quantity)).ToList();
+                    break;
+                case "kck":
+                {
+                    var inBag = BagStacks().Select(i => i.Template).ToHashSet();
+                    moves = Bank.ItemsOf(account).Where(i => inBag.Contains(i.Gid)).Select(i => (i.Uid, -(long)i.Quantity)).ToList();
+                    break;
+                }
+                case "kdd":
+                {
+                    byte[]? kdd = ConnectionProtocol.ReadPayload(payload, "kdd");
+                    if (kdd == null) return true;
+                    var fields = ProtoMessage.Parse(kdd).Fields;
+                    var uids = PackedOrSingle(fields, 1);
+                    var quantities = PackedOrSingle(fields, 2);
+                    var bag = BagStacks().ToDictionary(i => i.Uid);
+                    moves = new List<(long, long)>();
+                    for (int k = 0; k < uids.Count; k++)
+                    {
+                        if (!bag.TryGetValue(uids[k], out var item)) continue;
+                        long wanted = k < quantities.Count && quantities[k] > 0 ? Math.Min(quantities[k], item.Quantity) : item.Quantity;
+                        moves.Add((item.Uid, wanted));
+                    }
+                    break;
+                }
+                default:
+                    return false;
+            }
+
+            int moved = 0;
+            foreach (var (uid, quantity) in moves)
+                if (await MoveOneAsync(stream, uid, quantity)) moved++;
+            await AfterMovingAsync(stream);
+            Console.WriteLine($"[Bank] {SessionContext.State.CharacterName}: {op}, {moved} of {moves.Count} stack(s) moved.");
+            return true;
+        }
+
+        /// <summary>The bag's stacks, the worn ones aside.</summary>
+        private static List<Equipment.Item> BagStacks()
+            => Equipment.All.Where(i => i.Position == Equipment.Bag).ToList();
+
+        /// <summary>A repeated int32 field's values, packed or one by one.</summary>
+        internal static List<long> PackedOrSingle(IEnumerable<ProtoField> fields, int number)
+        {
+            var values = new List<long>();
+            foreach (var f in fields)
+            {
+                if (f.FieldNumber != number) continue;
+                if (f.WireType == 0) values.Add(f.VarIntValue);
+                else if (f.WireType == 2)
+                {
+                    int i = 0;
+                    var bytes = f.BytesValue;
+                    while (i < bytes.Length)
+                    {
+                        long value = 0;
+                        int shift = 0;
+                        byte b;
+                        do
+                        {
+                            b = bytes[i++];
+                            value |= (long)(b & 0x7F) << shift;
+                            shift += 7;
+                        } while ((b & 0x80) != 0 && i < bytes.Length);
+                        values.Add(value);
+                    }
+                }
+            }
+            return values;
         }
 
         /// <summary>

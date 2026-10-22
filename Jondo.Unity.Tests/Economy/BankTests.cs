@@ -495,6 +495,60 @@ namespace Jondo.Unity.Tests.Economy
             }
         }
 
+        /// <summary>The transfer buttons: everything in, everything out, a selection, what is already there.</summary>
+        [Fact]
+        public async Task The_transfer_buttons_move_whole_bags()
+        {
+            const long account = 8_800_000_011, character = 8_800_100_011;
+            Forget(new[] { account }, new[] { character });
+            var player = GameSession.SinSocket();
+            player.BindAccount(account, 1);
+            player.State.CharacterId = character;
+            player.State.MapId = 217059328;
+            player.State.Kamas = 1_000;
+            player.State.CharacterLevel = Bankers.MinimumLevel;
+            player.EnterWorld();
+            Assert.True(SessionRegistry.Register(player));
+            try
+            {
+                using (SessionContext.Push(player))
+                {
+                    long first = Give(character, 17626, 1), second = Give(character, 289, 5);
+                    Equipment.Add(first, 17626, 1, Equipment.Bag, null);
+                    Equipment.Add(second, 289, 5, Equipment.Bag, null);
+                    await BankHandler.OpenAsync(null!);
+
+                    // A selection: only the first.
+                    var kdd = ConnectionProtocol.Push("kdd", Pb.New().Packed(1, new List<long> { first }).Build());
+                    Assert.True(await BankHandler.TransferAsync(null!, kdd, "kdd"));
+                    Assert.Single(Bank.ItemsOf(account));
+
+                    // Everything else in, then everything out.
+                    Assert.True(await BankHandler.TransferAsync(null!, ConnectionProtocol.Push("kez"), "kez"));
+                    Assert.Equal(2, Bank.ItemsOf(account).Count);
+                    Assert.DoesNotContain(Equipment.All, i => i.Position == Equipment.Bag && (i.Template == 17626 || i.Template == 289));
+
+                    Assert.True(await BankHandler.TransferAsync(null!, ConnectionProtocol.Push("kcg"), "kcg"));
+                    Assert.Empty(Bank.ItemsOf(account));
+                    Assert.Contains(Equipment.All, i => i.Template == 289 && i.Quantity == 5);
+
+                    // What the bank already has: a second stack of 289 joins it, 17626 stays.
+                    Assert.True(await BankHandler.MoveAsync(null!, Kcr(2, Equipment.All.First(i => i.Template == 289).Uid)));
+                    Assert.True(await BankHandler.TransferAsync(null!, ConnectionProtocol.Push("kgx"), "kgx"));
+                    Assert.Equal(5, Bank.ItemsOf(account).Where(i => i.Gid == 289).Sum(i => i.Quantity));
+                    Assert.Contains(Equipment.All, i => i.Template == 17626 && i.Position == Equipment.Bag);
+
+                    await BankHandler.CloseAsync(null!);
+                    Assert.False(await BankHandler.TransferAsync(null!, ConnectionProtocol.Push("kez"), "kez"));
+                }
+            }
+            finally
+            {
+                SessionRegistry.Unregister(player);
+                Forget(new[] { account }, new[] { character });
+            }
+        }
+
         private static byte[] Kcr(long quantity, long uid)
             => ConnectionProtocol.Push(Op.Kcr, Pb.New().Var(1, quantity).Var(2, uid).Build());
 

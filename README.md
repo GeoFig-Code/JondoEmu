@@ -283,6 +283,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 ### 🏦 Banks and marketplaces
 
 - ✅ The bank: the account's items and kamas, shared by all its characters, in all ten banks of the world
+- ✅ The bank's transfer buttons: everything in or out, what is already on the other side, a selection
 - ✅ The guild chest, in the 24 banks that have one, with the ranks' rights per tab and a new tab at
   guild levels 3, 7 and 11
 - ✅ The guild chest's history: every deposit and withdrawal in the logbook's chest tab

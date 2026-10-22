@@ -652,6 +652,10 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr == Op.Uri("ido")) await QuestHandler.StartFromDocumentAsync(stream, payload);
                 // The item tooltips' average prices.
                 else if (payloadStr == Op.Uri("ivp")) await MarketplaceHandler.AveragePricesAsync(stream);
+                // The bank's transfer buttons: everything, what is already there, a selection.
+                else if (payloadStr == Op.Uri("kez") || payloadStr == Op.Uri("kgx") || payloadStr == Op.Uri("kcg")
+                         || payloadStr == Op.Uri("kck") || payloadStr == Op.Uri("kdd"))
+                    await BankHandler.TransferAsync(stream, payload, payloadStr.Substring(payloadStr.LastIndexOf('/') + 1));
                 // The zaap window's «Guardar»: the position saved at that zaap.
                 else if (payloadStr == Op.Uri("hip")) await ZaapTravelHandler.SaveAsync(stream);
                 // The guidebook's suggestions: the cards asked for, and a card locked.
