@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Jondo.Unity.Server;
@@ -86,7 +86,7 @@ namespace Jondo.Unity.Tests.World
 
         /// <summary>
         /// A travel item is one that only travels: the bound recall potion still is, Mr. Scuty's,
-        /// which also gives an item, is not; the home potion is, the guild's house potion is not yet.
+        /// which also gives an item, is not; the home potion and the guild's house and hall potions are.
         /// </summary>
         [Fact]
         public void Only_the_items_that_just_travel_are_travel_items()
@@ -98,7 +98,9 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(830, TravelItemHandler.TravelOf(new List<DatabaseManager.ItemEffectData> { Effect(830, 5) })?.EffectId);
 
             Assert.Null(TravelItemHandler.TravelOf(new List<DatabaseManager.ItemEffectData> { Effect(193, 10911), Effect(826, 39) }));
-            Assert.Null(TravelItemHandler.TravelOf(new List<DatabaseManager.ItemEffectData> { Effect(830, 1) }));
+            Assert.Equal(830, TravelItemHandler.TravelOf(new List<DatabaseManager.ItemEffectData> { Effect(830, 1) })?.EffectId);
+            Assert.Equal(4054, TravelItemHandler.TravelOf(new List<DatabaseManager.ItemEffectData> { Effect(4054, 0) })?.EffectId);
+            Assert.Null(TravelItemHandler.TravelOf(new List<DatabaseManager.ItemEffectData> { Effect(830, 3) }));
             Assert.Null(TravelItemHandler.TravelOf(new List<DatabaseManager.ItemEffectData> { Effect(110, 50) }));
         }
 

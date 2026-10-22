@@ -23,10 +23,10 @@ namespace Jondo.Unity.Server.Handlers
     /// </para>
     /// <para>
     /// By effect: 600 the save point; 826 and 1155 a map reference of the client's data (189 is
-    /// Bonta, 282 Brakmar); 830 at 5 one's own house, entered with the house's jqw; 3008 a choice of
-    /// destinations, which only spends the ankla once one is chosen. Not yet: 830 at 1 (the house
-    /// shared with the guild) and 4054 (the guild hall), which Jondo does not have; and the items
-    /// that also do something else -- start a quest, give an item --, left to whoever does that.
+    /// Bonta, 282 Brakmar); 830 at 5 one's own house and at 1 the guild's, entered with the house's
+    /// jqw; 3008 a choice of destinations, which only spends the ankla once one is chosen; 4054 the
+    /// guild hall. Not yet: the items that also do something else -- start a quest, give an item --,
+    /// left to whoever does that.
     /// </para>
     /// </remarks>
     public static class TravelItemHandler
@@ -42,6 +42,7 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>Effect 830's value for one's own house; 1 is the guild's.</summary>
         public const int OwnHouse = 5;
+        public const int GuildHouse = 1;
 
         /// <summary>
         /// Effects that say something of the item and do nothing on use: 981 bound to the character,
@@ -56,7 +57,8 @@ namespace Jondo.Unity.Server.Handlers
         internal static DatabaseManager.ItemEffectData TravelOf(IReadOnlyList<DatabaseManager.ItemEffectData> effects)
         {
             var travel = effects.FirstOrDefault(e => e.EffectId is RecallEffect or MapReferenceEffect
-                or OtherMapReferenceEffect or ChoiceEffect or GuildHallEffect || (e.EffectId == HouseEffect && e.Value == OwnHouse));
+                or OtherMapReferenceEffect or ChoiceEffect or GuildHallEffect
+                || (e.EffectId == HouseEffect && e.Value is OwnHouse or GuildHouse));
             if (travel == null) return null;
             return effects.All(e => ReferenceEquals(e, travel) || Markers.Contains(e.EffectId)) ? travel : null;
         }
@@ -88,6 +90,9 @@ namespace Jondo.Unity.Server.Handlers
                         await GoAsync(stream, item.Uid, mapId, cellId);
                     else
                         Console.WriteLine($"[Travel] Item {item.Template}: map reference {travel.Value} is not in the data.");
+                    break;
+                case HouseEffect when travel.Value == GuildHouse:
+                    await GuildHomeAsync(stream, item);
                     break;
                 case HouseEffect:
                     await HomeAsync(stream, item);
@@ -168,6 +173,45 @@ namespace Jondo.Unity.Server.Handlers
                 await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
                     ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, InfoMessages.RequirementsNotMet)));
                 Console.WriteLine($"[Travel] {me.CharacterName} has no house to go home to.");
+                return;
+            }
+            if (await Jail.KeepsInAsync(stream)) return;
+            if (await ConquestHandler.HoldsInAsync(stream, ConquestHandler.NoTeleportInAWar)) return;
+
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Hpp,
+                TravelProtocol.BuildDelayedUse(item.Template, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), me.CharacterId)));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Hpq, TravelProtocol.BuildDelayFinished(me.CharacterId)));
+            if (!await ItemUseHandler.SpendOneAsync(stream, item.Uid)) return;
+            await HouseHandler.GoHomeAsync(stream, door.Value, instance);
+        }
+
+        /// <summary>
+        /// The guild home potion (830 at 1): into a house shared with one's guild whose rights let the
+        /// guild teleport (128), the way «pocima hogar a gremio» goes -- hpp, hpq, the potion spent,
+        /// the house's jqw. Without such a house it is refused.
+        /// </summary>
+        private static async Task GuildHomeAsync(NetworkStream stream, Equipment.Item item)
+        {
+            var me = SessionContext.State;
+            var guild = GuildStore.GuildOf(me.CharacterId);
+            Houses.Door? door = null;
+            int instance = Houses.FirstInstance;
+            foreach (var house in guild == null ? new List<HouseStore.House>() : HouseStore.SharedWith(guild.Id))
+            {
+                if ((house.GuildRights & HouseStore.GuildRights.Teleport) == 0) continue;
+                if (Houses.TryGetDoor(house.MapId, house.ElementId, out var found) && found.InteriorMapId != 0
+                    && MapManager.GetMapInfo(found.InteriorMapId) != null)
+                {
+                    door = found;
+                    instance = house.Instance;
+                    break;
+                }
+            }
+            if (door == null)
+            {
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, InfoMessages.RequirementsNotMet)));
+                Console.WriteLine($"[Travel] {me.CharacterName} has no guild house to go to.");
                 return;
             }
             if (await Jail.KeepsInAsync(stream)) return;
