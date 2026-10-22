@@ -634,7 +634,8 @@ Entered from the Plano Astral's well: a dream of 26 rooms in depth, walked band 
 - ✅ A dream is saved and resumed after a disconnection or a restart
 - ✅ `.sueno [row]` for administrators
 - ✅ The trial FONSOCAC's rules: weapons cheaper, faster and harder-hitting, monsters with more life
-- ❌ The other four trials' rules; dreams in a group
+- ✅ Dreams in a group: the owner invites his party, who follow him room to room and fight beside him
+- ❌ The other four trials' rules
 
 ### 🪙 Jondo Coin
 

@@ -361,6 +361,9 @@ namespace Jondo.Unity.Server.Handlers
 
             int aterriza = await TeleportHandler.ToMapAsync(stream, mapa, 0);
 
+            // And his guests follow him in.
+            if (sueno.CharacterId == GameState.CharacterId) await BringGuestsAsync(sueno);
+
             Console.WriteLine($"[Dreams] Room {salaId} (row {sala.Fila}): map {mapa}, " +
                               $"group {sala.Grupo} of map {sala.MapaId} with " +
                               $"{sala.Miembros.Count} monster(s), effect {sala.Efecto} of " +
@@ -861,6 +864,16 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>Leaving the dream (iyx) and going back to where he was.</summary>
         public static async Task LeaveAsync(NetworkStream stream, byte[] payload)
         {
+            // A guest leaves his host's dream, as the invitation capture's does: the way out (jru),
+            // ixg, and the iyb «0801».
+            if (IsGuest(GameState.CharacterId))
+            {
+                await GuestOutAsync(stream);
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Answer(Op.Iyb, DreamProtocol.BuildLeft(), ConnectionProtocol.RequestId(payload)));
+                return;
+            }
+
             var sueno = Dreams.De(GameState.CharacterId);
             if (sueno == null) return;
 
@@ -894,9 +907,10 @@ namespace Jondo.Unity.Server.Handlers
                               $"{sueno.Actual} with {sueno.DreamPoints} dream point(s).");
 
             // Leaving keeps the dream: the well offers it to continue, in the captures and here.
-            // Only its groups leave their maps.
+            // Only its groups leave their maps -- and its guests, who were in it with him.
             Dreams.Unplant(sueno);
             Persist(sueno);
+            await SendGuestsOutAsync(sueno.CharacterId);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -1051,8 +1065,17 @@ namespace Jondo.Unity.Server.Handlers
         internal static (long MapOut, int CellOut, string? Notice, bool Ended, byte[]? Result) AfterTheFight(
             Jondo.Unity.World.Fights.FightInstance fight, bool won)
         {
+            if (!Dreams.IsDreamMap(fight.RoleplayMapId)) { _finales.TryRemove(fight.FightId, out _); return (0, 0, null, false, null); }
+
+            // A guest's fight is his host's: he goes back to the room, or out when the dream is over.
+            if (_dreamOver.TryRemove(GameState.CharacterId, out _))
+            {
+                var (guestMap, guestCell) = GuestWayOut();
+                return (guestMap, guestCell, null, true, null);
+            }
+            if (IsGuest(GameState.CharacterId)) return (0, 0, null, false, null);
+
             _finales.TryRemove(fight.FightId, out var final);
-            if (!Dreams.IsDreamMap(fight.RoleplayMapId)) return (0, 0, null, false, null);
             var sueno = Dreams.De(GameState.CharacterId);
             var sala = sueno?.SalaActual;
             if (sueno == null || sala == null || sala.MapaDeLaSala != fight.RoleplayMapId) return (0, 0, null, false, null);
@@ -1146,7 +1169,197 @@ namespace Jondo.Unity.Server.Handlers
             Dreams.Olvidar(sueno.CharacterId);
             DatabaseManager.DeleteDream(sueno.CharacterId);
             Console.WriteLine($"[Dreams] The dream of {sueno.CharacterId} is over; out to map {mapa}.");
+            _ = DreamOverForGuestsAsync(sueno.CharacterId);
             return (mapa, casilla);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  Dreams in a group
+        // ═══════════════════════════════════════════════════════════════════
+
+        /// <summary>Who is in somebody else's dream: guest → the dream's owner.</summary>
+        private static readonly ConcurrentDictionary<long, long> _guests = new();
+
+        /// <summary>The invitations waiting for their answer: guest → the owner, until when.</summary>
+        private static readonly ConcurrentDictionary<long, (long Owner, DateTime Until)> _invited = new();
+
+        /// <summary>Guests whose dream ended under them in a fight: they leave with its end.</summary>
+        private static readonly ConcurrentDictionary<long, bool> _dreamOver = new();
+
+        /// <summary>«No puedes entrar en el pozo de los sueños porque ya se ha invitado a tres aventureros».</summary>
+        public const int MaxGuests = 3;
+
+        /// <summary>
+        /// The iyd's f2: -300 in both of «recibir invitacion a sueños», the popup's countdown
+        /// (fyo.bjcv). The invitation is kept as long.
+        /// </summary>
+        public const int InvitationSeconds = 300;
+
+        // The invitations' info messages (InfoMessagesDataRoot, type 1).
+        private const int Warning = 1, OtherInvitation = 582, DreamFull = 585, BadMap = 592, InAFight = 593,
+                          OnlyTheLeader = 595;
+
+        public static bool IsGuest(long characterId) => _guests.ContainsKey(characterId);
+
+        /// <summary>The owner of the dream a guest is in, or 0.</summary>
+        public static long HostOf(long characterId) => _guests.TryGetValue(characterId, out long host) ? host : 0;
+
+        public static List<long> GuestsOf(long owner) => _guests.Where(g => g.Value == owner).Select(g => g.Key).ToList();
+
+        /// <summary>
+        /// Only the dream's owner starts its fights: «No puedes iniciar un combate en el pozo de los
+        /// sueños si no eres jefe de grupo» (1/595). True when the character in session may not.
+        /// </summary>
+        internal static async Task<bool> GuestMayNotFightAsync(NetworkStream stream)
+        {
+            if (!Dreams.IsDreamMap(GameState.MapId) || !IsGuest(GameState.CharacterId)) return false;
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(Warning, OnlyTheLeader)));
+            return true;
+        }
+
+        /// <summary>
+        /// «Invitar al grupo» (iwt, empty; InfiniteDreamTrackingUi.InviteGroup): every member of the
+        /// owner's party gets «{0} te invita a que te unas a su pozo de los sueños.» (iyd { f1 his
+        /// name, f2 -300 }), the capture's two -- unless he is fighting (1/593), on a map that does
+        /// not let him (1/592) or has another invitation waiting (1/582).
+        /// </summary>
+        public static async Task InviteGroupAsync(NetworkStream stream)
+        {
+            long me = GameState.CharacterId;
+            var sueno = Dreams.De(me);
+            var party = Managers.Parties.Of(me);
+            if (sueno?.SalaActual == null || party == null || !Dreams.IsDreamMap(GameState.MapId)) return;
+
+            string name = GameState.CharacterName;
+            var now = DateTime.UtcNow;
+            foreach (long member in party.Members.ToList())
+            {
+                if (member == me || IsGuest(member)) continue;
+                var session = SessionRegistry.FindByCharacter(member);
+                if (session == null) continue;
+
+                int refusal = session.State.IsInFight ? InAFight
+                            : Dreams.IsDreamMap(session.State.MapId) || Managers.Merkasako.IsHavenBag(session.State.MapId) ? BadMap
+                            : _invited.TryGetValue(member, out var waiting) && waiting.Until > now && waiting.Owner != me ? OtherInvitation
+                            : 0;
+                if (refusal != 0)
+                {
+                    await session.SendAsync(ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(Warning, refusal, name)));
+                    continue;
+                }
+
+                _invited[member] = (me, now.AddSeconds(InvitationSeconds));
+                await session.SendAsync(ConnectionProtocol.Push(Op.Iyd,
+                    Pb.New().Str(1, name).Var(2, -InvitationSeconds).Build()));
+            }
+            Console.WriteLine($"[Dreams] {name} invites his party into his dream.");
+        }
+
+        /// <summary>
+        /// The invitation's answer (ixk { f1 accepts }; its popup's buttons): a yes takes the guest
+        /// into the owner's room with the owner's dream state (izg), as «recibir invitacion a sueños»
+        /// shows after its ixk -- unless the dream already has its three guests (1/585).
+        /// </summary>
+        public static async Task AnswerInvitationAsync(NetworkStream stream, byte[] payload)
+        {
+            long me = GameState.CharacterId;
+            byte[]? ixk = ConnectionProtocol.ReadPayload(payload, Op.Ixk);
+            if (ixk == null || !_invited.TryRemove(me, out var invitation) || invitation.Until < DateTime.UtcNow) return;
+            bool accepts = ProtoMessage.Parse(ixk).Fields.Any(f => f.FieldNumber == 1 && f.WireType == 0 && f.VarIntValue != 0);
+            if (!accepts) return;
+
+            var owner = Dreams.De(invitation.Owner);
+            if (owner?.SalaActual == null || SessionRegistry.FindByCharacter(invitation.Owner) == null) return;
+            if (GameState.IsInFight) return;
+            if (GuestsOf(invitation.Owner).Count >= MaxGuests)
+            {
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(Warning, DreamFull)));
+                return;
+            }
+
+            if (!Dreams.IsDreamMap(GameState.MapId)) Dreams.RecordarDeDondeViene(me, GameState.MapId, GameState.CellId);
+            _guests[me] = invitation.Owner;
+            Console.WriteLine($"[Dreams] {GameState.CharacterName} joins the dream of {invitation.Owner}.");
+            await JoinRoomAsync(stream, owner);
+        }
+
+        /// <summary>A guest into his host's room: the host's dream state (izg) and the room's map.</summary>
+        private static async Task JoinRoomAsync(NetworkStream stream, Dreams.Sueno owner)
+        {
+            var sala = owner.SalaActual;
+            if (sala == null || sala.MapaDeLaSala == 0) return;
+            _enElSueno[GameState.CharacterId] = true;
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Izg, StateOf(owner)));
+            await TeleportHandler.ToMapAsync(stream, sala.MapaDeLaSala, 0);
+        }
+
+        /// <summary>
+        /// The owner went into another room: his guests with him, each with the state and the map
+        /// change -- the invitation capture's guest follows his host room after room without asking.
+        /// </summary>
+        private static async Task BringGuestsAsync(Dreams.Sueno owner)
+        {
+            foreach (long guest in GuestsOf(owner.CharacterId))
+            {
+                var session = SessionRegistry.FindByCharacter(guest);
+                if (session?.Stream == null || session.State.IsInFight) continue;
+                using (SessionContext.Push(session)) await JoinRoomAsync(session.Stream, owner);
+            }
+        }
+
+        /// <summary>Where a guest goes out to: where he came in from, or the Plano Astral.</summary>
+        private static (long Map, int Cell) GuestWayOut()
+        {
+            var (mapa, casilla) = Dreams.DeDondeViene(GameState.CharacterId);
+            if (mapa == 0 || Dreams.IsDreamMap(mapa)) { mapa = PlanoAstral; casilla = 0; }
+            return (mapa, casilla);
+        }
+
+        /// <summary>A guest out of the dream: back where he came from, the interface closed (ixg).</summary>
+        private static async Task GuestOutAsync(NetworkStream stream)
+        {
+            _guests.TryRemove(GameState.CharacterId, out _);
+            var (mapa, casilla) = GuestWayOut();
+            _enElSueno[GameState.CharacterId] = false;
+            await TeleportHandler.ToMapAsync(stream, mapa, casilla);
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ixg));
+        }
+
+        /// <summary>The owner left his dream: his guests leave it too.</summary>
+        private static async Task SendGuestsOutAsync(long owner)
+        {
+            foreach (long guest in GuestsOf(owner))
+            {
+                var session = SessionRegistry.FindByCharacter(guest);
+                if (session?.Stream == null || session.State.IsInFight) { _guests.TryRemove(guest, out _); continue; }
+                using (SessionContext.Push(session)) await GuestOutAsync(session.Stream);
+            }
+        }
+
+        /// <summary>
+        /// The dream is over: a guest still fighting leaves with his fight's end (AfterTheFight), the
+        /// others now.
+        /// </summary>
+        private static async Task DreamOverForGuestsAsync(long owner)
+        {
+            foreach (long guest in GuestsOf(owner))
+            {
+                var session = SessionRegistry.FindByCharacter(guest);
+                _guests.TryRemove(guest, out _);
+                if (session?.Stream == null) continue;
+                if (session.State.IsInFight) { _dreamOver[guest] = true; continue; }
+                using (SessionContext.Push(session)) await GuestOutAsync(session.Stream);
+            }
+        }
+
+        /// <summary>For tests: every guest and invitation forgotten.</summary>
+        internal static void ForgetGroups()
+        {
+            _guests.Clear();
+            _invited.Clear();
+            _dreamOver.Clear();
         }
 
         /// <summary>
@@ -1203,11 +1416,13 @@ namespace Jondo.Unity.Server.Handlers
             if (!antes || aqui) return;
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Ixg));
+            _guests.TryRemove(yo, out _);
             var sueno = Dreams.De(yo);
             if (sueno != null)
             {
                 Dreams.Unplant(sueno);
                 Persist(sueno);
+                await SendGuestsOutAsync(yo);
             }
             Console.WriteLine($"[Dreams] {yo} left the dream's maps without its exit: the interface closed.");
         }
@@ -1224,6 +1439,13 @@ namespace Jondo.Unity.Server.Handlers
         public static async Task OnWorldEntryAsync(NetworkStream stream)
         {
             if (!Dreams.IsDreamMap(GameState.MapId)) return;
+
+            // A guest back while his host still dreams: to the host's room.
+            if (Dreams.De(HostOf(GameState.CharacterId)) is { SalaActual: not null } hosts)
+            {
+                await JoinRoomAsync(stream, hosts);
+                return;
+            }
 
             var sueno = Dreams.De(GameState.CharacterId);
             if (sueno?.SalaActual == null)

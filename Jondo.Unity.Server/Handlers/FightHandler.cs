@@ -38,6 +38,9 @@ namespace Jondo.Unity.Server.Handlers
                                                                long mobContextId = 0, FightRules rules = null,
                                                                long arenaMapId = 0)
         {
+            // In somebody else's dream only its owner starts the fights; a guest joins them.
+            if (rules == null && await DreamHandler.GuestMayNotFightAsync(stream)) return;
+
             // A group already being fought went off the map with a kmu: it is nobody's to attack
             // a second time. Its fight is joined by its swords (kay), not by clicking the group.
             if (IsGroupFighting(mobGroup.MobId))
@@ -1976,6 +1979,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             long groupId = Network.FightProtocol.ReadFightRequest(payload);
             if (groupId == 0) return;
+            if (await DreamHandler.GuestMayNotFightAsync(stream)) return;
 
             long here = GameState.MapId;
             var group = MobSpawnManager.GetMobsForMap(here).Find(g => g.MobId == groupId);

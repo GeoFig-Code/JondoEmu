@@ -929,6 +929,15 @@ public static class Op
     /// <summary>Salir del sueno. Viaja vacio.</summary>
     public const string Iyx = "iyx";
 
+    /// <summary>C→S: «Invitar al grupo» in the dream's tracking panel. Empty.</summary>
+    public const string Iwt = "iwt";
+
+    /// <summary>S→C: the invitation into a dream. f1 the owner's name, f2 -300, the popup's countdown.</summary>
+    public const string Iyd = "iyd";
+
+    /// <summary>C→S: the answer to that invitation. f1 accepts.</summary>
+    public const string Ixk = "ixk";
+
     /// <summary>The leaving acknowledgement. «0801», through root 3.</summary>
     public const string Iyb = "iyb";
 

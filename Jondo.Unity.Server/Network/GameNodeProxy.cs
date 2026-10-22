@@ -1293,6 +1293,10 @@ namespace Jondo.Unity.Server.Network
                     // Leaving the dream.
                     await DreamHandler.LeaveAsync(stream, payload);
                 }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Iwt)))
+                    await DreamHandler.InviteGroupAsync(stream);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Ixk)))
+                    await DreamHandler.AnswerInvitationAsync(stream, payload);
                 else if (payloadStr.Contains(Op.Uri(Op.Iwo)))
                 {
                     // All the elements go through the same registry; it decides which action is
