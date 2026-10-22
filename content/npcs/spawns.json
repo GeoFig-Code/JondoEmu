@@ -626,6 +626,20 @@
       "cell": 247,
       "orientation": 3,
       "why": "The Orbalantir on the epic fight it leads to, measured in «orbalantir de meriana-teleport a todas las peleas epicas»: «Pensar en la casa de Meriana.» takes one back."
+    },
+    {
+      "map": 153356294,
+      "npc": 5064,
+      "cell": 301,
+      "orientation": 3,
+      "why": "Chantal Inea, who has one swear loyalty to Bonta or Brakmar before going down to the World of the Twelve (AlignmentHandler). INFERRED: no capture shows her; the client's map hint «Milicia» of Incarnam stands on 153878788 [0,-4], and of that square's indoor maps this one is the militia's office -- its counter, the cities' shields --; she stands behind the counter, facing the room."
+    },
+    {
+      "map": 95685125,
+      "npc": 7658,
+      "cell": 319,
+      "orientation": 3,
+      "why": "Morry Gann, who makes one neutral again for a fee (AlignmentHandler). The Guardia de Amakna (2849) sends one to him: «¿Has jurado lealtad a Bonta o Brakmar y has cambiado de idea? Ve a ver a Morry Gann.», and the guides put him in Amakna's militia, behind the castle's door at [5,-6] (hint «Milicia», 68551681) -- the hall 95685125 the door leads into. INFERRED: the cell, by the hall's desk."
     }
   ]
 }

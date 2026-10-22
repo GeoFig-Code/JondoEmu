@@ -445,6 +445,9 @@ An alliance is made of characters, not guilds.
 
 ### 🎒 Character and inventory
 
+- ✅ Alignment: Chantal Inea, in Incarnam's militia, has you swear loyalty to Bonta or Brakmar, Morry
+  Gann, in Amakna's, makes you neutral again for his fee, two weeks apart; your side shows on your
+  sheet and to the others, and opens the cities' quests
 - ✅ **21,748 item templates** — spawning, equipping, bags, destruction, persistence
 - ✅ **929 item sets** with their bonuses
 - ✅ Boxes that open with a double click, by their own drop tables
@@ -593,7 +596,7 @@ Full workings in **`docs/quests.md`**.
   tallies and the guild hall's achievements
 - ✅ Players nearby read in their chat the achievements one unlocks
 - ✅ Incarnam's maps, the Infinite Dreams' fragments, monsters and guardians, and the dream trials
-- ❌ Alignment achievements: the server has no alignment ranks
+- 🟡 Alignment achievements: a side is sworn, but no grade nor honour is earned on this server
 
 Full workings in **`docs/achievements.md`**.
 

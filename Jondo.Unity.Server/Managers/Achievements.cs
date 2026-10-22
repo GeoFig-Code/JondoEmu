@@ -677,9 +677,10 @@ namespace Jondo.Unity.Server.Managers
                 // His class: «The Tymador Job» asks PG=13, the class quests and items theirs.
                 "PG" => S.Breed,
 
-                // His alignment's side, level and rank: this server has none, so everybody is
-                // neutral -- the Bontarian and Brakmarian quests (Ps=1, Ps=2) are not his.
-                "Ps" or "Pa" or "Pr" => 0,
+                // His alignment's side (Alignments): 0 neutral, 1 Bonta, 2 Brakmar. Its level and
+                // rank are not earned here.
+                "Ps" => Alignments.CriterionSide(S.CharacterId),
+                "Pa" or "Pr" => 0,
 
                 // Every account is subscribed here: its end date is a year away (Subscription).
                 "PZ" => 1,

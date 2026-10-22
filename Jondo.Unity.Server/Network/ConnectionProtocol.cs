@@ -603,7 +603,7 @@ namespace Jondo.Unity.Server.Network
                 .Var(4, FreshUnknownF4)
                 .VarIfNotZero(7, ExperienceTable.LevelFloor(level))
                 .VarIfNotZero(8, Jondo.Unity.Server.Network.SessionContext.State.Experience)
-                .Bytes(9, FreshUnknownF9())
+                .Bytes(9, AlignmentSheet())
                 .VarIfNotZero(10, Jondo.Unity.Server.Network.SessionContext.State.Kamas);
 
             // The six the player spends points on: the base, which is the points, and beside it
@@ -723,20 +723,25 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
-        /// Two fields of the body we cannot name yet, sent with the value a character has the day
-        /// it is created.
-        ///
-        /// f4 is 5 on a brand new character and 30 on the level 154 of the other capture, so it
-        /// grows with something; f9 is a block that reads { f2: 2, f3 { f3: 500 }, f5: 1 } when new
-        /// and { f1: 100, f2: 3, f3 { f3: 500 }, f5: 200 } on the old character. Until we know what
-        /// they are, the honest value is the one the game itself gives a new character: it is ours
-        /// to send, it is not somebody else's number, and leaving them out altogether is not the
-        /// same as sending the default.
+        /// A field of the body we cannot name yet, sent with the value a character has the day it
+        /// is created: f4 is 5 on a brand new character and 30 on the level 154 of the other
+        /// capture, so it grows with something.
         /// </summary>
         private const long FreshUnknownF4 = 5;
 
-        private static byte[] FreshUnknownF9() =>
-            Pb.New().Var(2, 2).Msg(3, Pb.New().Var(3, 500)).Var(5, 1).Build();
+        /// <summary>
+        /// The sheet's alignment block (f9, Alignments): { f2: 2, f3 { f3: 500 }, f5: 1 } on a brand
+        /// new character, { f1: 100, f2: 3, f3 { f3: 500 }, f5: 200 } on the level 200 Bontarian --
+        /// the side, the next grade's honour, the level.
+        /// </summary>
+        private static byte[] AlignmentSheet()
+        {
+            var state = Jondo.Unity.Server.Network.SessionContext.State;
+            var alignment = Managers.Alignments.Of(state.CharacterId);
+            return Pb.New().Var(2, alignment.Side).Msg(3, Pb.New().Var(3, 500))
+                     .VarIfNotZero(4, alignment.Grade)
+                     .Var(5, Math.Max(1, Handlers.StatsHandler.StatLevel(state.CharacterLevel))).Build();
+        }
 
         /// <summary>
         /// One characteristic: f2 the base, f3 what the scrolls gave, f5 what the alterations add, f7
@@ -1843,11 +1848,14 @@ namespace Jondo.Unity.Server.Network
             // captures: below 200 both are equal (64), and every one above shows 200 in f1.f5 and its
             // full level in the ornament (255) -- a 253 is a 200 with Omega 53. See AddCharacterOptions.
             // A mutated character carries, in place of that f1, f2 { f1 grade, f2 monster } (Mutations).
+            // f1 is the alignment block (Alignments): the side in f2, the grade in f4.
             var mutation = Managers.Mutations.OfCharacter(character.Id);
+            var alignment = Managers.Alignments.Of(character.Id);
             var cuerpo = mutation != null
                 ? Pb.New().Msg(2, Pb.New().Var(1, mutation.Grade).Var(2, mutation.Monster)).Var(3, accountId)
                 : Pb.New()
-                    .Msg(1, Pb.New().Var(2, HumanKind)
+                    .Msg(1, Pb.New().Var(2, alignment.Side)
+                                    .VarIfNotZero(4, alignment.Grade)
                                     .VarIfNotZero(5, Handlers.StatsHandler.StatLevel(character.Level)))
                     .Var(3, accountId);
 
@@ -2635,9 +2643,6 @@ namespace Jondo.Unity.Server.Network
                 humanoidBody.Msg(5, Pb.New().Msg(6, lhz));
             }
         }
-
-        /// <summary>The identity block's f2. It is 3 for the players in the captures.</summary>
-        private const int HumanKind = 3;
 
         /// <summary>The f7 that closes the block, a single byte with the same value in every capture.</summary>
         private static readonly byte[] HumanTrailer = { 0x0b };

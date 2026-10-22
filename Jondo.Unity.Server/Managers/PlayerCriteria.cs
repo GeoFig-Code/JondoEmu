@@ -82,6 +82,9 @@ namespace Jondo.Unity.Server.Managers
                 // Every account is subscribed here (Subscription).
                 case "PZ": return Compare(1, op, value);
 
+                // His alignment's side: 0 neutral, 1 Bonta, 2 Brakmar (Alignments).
+                case "Ps": return facts.State == null ? Answer.Unknown : Compare(Alignments.CriterionSide(facts.State.CharacterId), op, value);
+
                 case "PO": return Holding(condition, facts.Held);
 
                 case "Qa": return facts.Log == null ? Answer.Unknown : Truth(facts.Log.Active((int)value), op);

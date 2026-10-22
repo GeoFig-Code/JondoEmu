@@ -209,6 +209,20 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // Chantal Inea's oath and Morry Gann's way back to neutral: what they offer is the
+            // character's side, fee and last change (AlignmentHandler).
+            if (AlignmentHandler.Owns(npc.NpcId))
+            {
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Ioc, ConnectionProtocol.BuildNpcDialog(mapId, npc.ContextualId)));
+                var (question, replies) = AlignmentHandler.Opening(npc.NpcId);
+                SessionContext.State.OpenDialogueNpcId = npc.NpcId;
+                SessionContext.State.OpenDialogueMapId = mapId;
+                SessionContext.State.OpenDialogueMessage = question;
+                await PreguntarAsync(stream, question, replies);
+                return;
+            }
+
             // The Dispensador de favores of a dream favour opens on what the favour is at.
             if (npc.NpcId == Managers.Dreams.FavorNpc)
             {
@@ -893,6 +907,22 @@ namespace Jondo.Unity.Server.Handlers
             if (SessionContext.State.OpenDialogueNpcId == Kanojedo.MasterNpc && Kanojedo.Owns(reply))
             {
                 await MasterReplyAsync(stream, reply);
+                return;
+            }
+
+            // The alignment's two NPCs (AlignmentHandler).
+            if (AlignmentHandler.Owns(SessionContext.State.OpenDialogueNpcId))
+            {
+                var (question, replies) = await AlignmentHandler.ReplyAsync(stream, SessionContext.State.OpenDialogueNpcId, reply);
+                if (question == 0)
+                {
+                    CerrarConversacion();
+                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                        ConnectionProtocol.Push(Op.Kld, ConnectionProtocol.BuildDialogClosed(ConnectionProtocol.NpcDialogCloseReason)));
+                    return;
+                }
+                SessionContext.State.OpenDialogueMessage = question;
+                await PreguntarAsync(stream, question, replies);
                 return;
             }
 
