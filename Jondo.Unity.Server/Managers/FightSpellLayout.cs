@@ -30,6 +30,10 @@ namespace Jondo.Unity.Server.Managers
         /// </remarks>
         public static Layout Current(int breed, int level, long accountId)
         {
+            // A bar never written is filled whole; one the player emptied stays empty. Asked before
+            // PlaceNewlyUnlocked, which writes the bar's level.
+            bool neverWritten = SpellChoices.Bar.Count == 0 && SpellChoices.BarLevel == 0;
+
             // What a level-up unlocked goes on the saved bar before it is drawn.
             SpellChoices.PlaceNewlyUnlocked(breed, level);
 
@@ -43,7 +47,7 @@ namespace Jondo.Unity.Server.Managers
                     conocidos.Add(new SpellTable.KnownSpell(spell, spell, grade));
             }
 
-            return Build(conocidos, SpellChoices.Bar);
+            return Build(conocidos, SpellChoices.Bar, neverWritten);
         }
 
         /// <summary>
@@ -104,8 +108,13 @@ namespace Jondo.Unity.Server.Managers
         /// bar yet. Once they have touched it (including removing a spell), putting those spells
         /// back would undo the remove on the next <c>itg</c> / fight bar rebuild.
         /// </remarks>
+        /// <param name="seed">
+        /// Whether to fill the free slots with the known spells. By default, when nothing is saved;
+        /// <see cref="Current"/> says it only for a bar never written, so that one the player
+        /// emptied -- the bar's «vaciar» (iuz), or slot by slot -- is not filled again.
+        /// </param>
         public static Layout Build(IEnumerable<SpellTable.KnownSpell> known,
-                                   IReadOnlyDictionary<int, int> savedBar)
+                                   IReadOnlyDictionary<int, int> savedBar, bool? seed = null)
         {
             var layout = new Layout();
             var available = new HashSet<int>();
@@ -129,7 +138,7 @@ namespace Jondo.Unity.Server.Managers
 
             // First session only: seed free slots with known spells. Slot zero stays clear for the
             // weapon — in 37 of the 51 captured bars it is empty for that reason.
-            if (savedBar == null || savedBar.Count == 0)
+            if (seed ?? (savedBar == null || savedBar.Count == 0))
             {
                 int next = 1;
                 foreach (var spell in layout.Spells)

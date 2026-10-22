@@ -54,6 +54,33 @@ namespace Jondo.Unity.Server.Handlers
             await WriteSlotAsync(stream, second, atSecond);
         }
 
+        /// <summary>
+        /// The bar's «vaciar» (iuz, the client's UIActionBar.ClearBarAction): every slot of that bar
+        /// emptied, each with its ivr. The bar is the message's number, 1 the spells' and left out
+        /// for the items'. The weapon stays: its slot is the fist's, on every bar. INFERRED: no
+        /// capture presses it; each slot is answered as iul answers one.
+        /// </summary>
+        public static async Task ClearAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? iuz = ConnectionProtocol.ReadPayload(payload, "iuz");
+            if (iuz == null) return;
+            long bar = ProtoMessage.Parse(iuz).Fields.Where(f => f.WireType == 0).Select(f => (long)f.VarIntValue).DefaultIfEmpty(0).Max();
+
+            if (bar == ConnectionProtocol.SpellBar)
+            {
+                foreach (int slot in SpellChoices.Bar.Keys.OrderBy(s => s).ToList())
+                {
+                    SpellChoices.PutInBar(slot, 0);
+                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                        ConnectionProtocol.Push(Op.Ivr, ConnectionProtocol.BuildShortcutRemoved(slot, ConnectionProtocol.SpellBar)));
+                }
+                return;
+            }
+
+            foreach (int slot in ItemShortcuts.Of(Me).Keys.ToList())
+                await RemoveAsync(stream, slot);
+        }
+
         private static Task WriteSlotAsync(NetworkStream stream, int slot, byte[]? shortcut)
             => Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, shortcut == null
                 ? ConnectionProtocol.Push(Op.Ivr, ConnectionProtocol.BuildShortcutRemoved(slot, ItemShortcuts.Bar))

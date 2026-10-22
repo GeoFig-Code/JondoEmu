@@ -497,7 +497,8 @@ An alliance is made of characters, not guilds.
 - ✅ Dodge, withdrawal, escape, lock, initiative, prospecting and pods count what your equipment gives
 - ✅ Builds («Conjuntos»): made empty, from what you wear or as a copy, with their own items, points,
   spells, name and icon; saved or thrown away, updated, deleted, and put on in one click
-- ✅ The item bar keeps what you drag onto it — items, emotes and builds — between sessions
+- ✅ The item bar keeps what you drag onto it — items, emotes and builds — between sessions, and either
+  bar can be emptied in one go and stays empty
 <img width="708" height="1048" alt="image" src="https://github.com/user-attachments/assets/b07f0ac2-f701-4f3a-82e2-c04f884d696d" />
 
 - ✅ **17,113 spells**; **638 character heads**
