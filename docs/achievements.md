@@ -25,7 +25,7 @@ parentheses and `!` included, so the same evaluator reads them.
 | Rewards | **6,394** |
 | Categories | 134 |
 | Objectives the client names and does not describe | **322 achievements**, 272 tied |
-| Achievements with all their objectives in terms this engine judges | **2,390** |
+| Achievements with all their objectives in terms this engine judges | **2,410** |
 
 ---
 

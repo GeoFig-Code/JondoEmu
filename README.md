@@ -579,7 +579,7 @@ Full workings in **`docs/quests.md`**.
 
 - ✅ The achievement window with each objective's progress
 - ✅ Earned by quests, exploration, levels, crafting, monsters, dungeon challenges and items —
-  **2,390 of 2,780** fully judged
+  **2,410 of 2,780** fully judged
 - ✅ Rewards claimed from the window: kamas, experience, items and emotes
 - ✅ Breeding, ride hunting, sweets, breaking items, Koliseo leagues, guild missions and tokens, challenge
   tallies and the guild hall's achievements
