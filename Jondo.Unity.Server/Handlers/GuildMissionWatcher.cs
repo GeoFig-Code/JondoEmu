@@ -27,8 +27,10 @@ namespace Jondo.Unity.Server.Handlers
     ///     mazmorras)», fifty of them, in the area or subarea when the objective names one;
     ///   - Infinite Dreams: «completar un sueño, especificando la intensidad y la franja que hay
     ///     que alcanzar» -- a band ends on its fountain, the last one with the Fin du rêve, and the
-    ///     intensity is the dream's difficulty (DreamData keys both alike).
-    /// The anomalies, the dream trials and the live events' kinds are not counted yet.
+    ///     intensity is the dream's difficulty (DreamData keys both alike);
+    ///   - the dream trials: «Terminar la prueba de sueños FONSOCAC», the objective's seedId the
+    ///     trial's id (DreamTrials), done with the trial's Fin du rêve.
+    /// The anomalies -- which this server has none of -- and the live events' kinds are not counted.
     /// </para>
     /// <para>
     /// THE WIRE, read off the client: the mission changed goes as a jdc with the member's standing
@@ -71,7 +73,10 @@ namespace Jondo.Unity.Server.Handlers
             // The Fin du rêve finishes the dream's last band, won or with its minimum of waves down.
             var dream = DreamHandler.PayOf(fight, won);
             if (dream != null && dream.Finished)
+            {
                 await DreamBandDoneAsync(stream, dream.Difficulty, Dreams.Bands);
+                if (dream.Trial > 0) await MoveAsync(stream, guild, who, objective => TrialWorth(objective, dream.Trial), DateTimeOffset.UtcNow);
+            }
             if (!won) return;
 
             var beaten = new Dictionary<int, int>();
@@ -122,7 +127,7 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// A band of a dream finished at a difficulty: the dream missions that asked for that band
-        /// at that intensity are done. Not the trials (a seed), which this server does not run.
+        /// at that intensity are done. Not the trials' (a seed): see <see cref="TrialWorth"/>.
         /// </summary>
         public static async Task DreamBandDoneAsync(NetworkStream stream, int difficulty, int band)
         {
@@ -138,6 +143,10 @@ namespace Jondo.Unity.Server.Handlers
                 Console.WriteLine($"[Guild] The missions could not count band {band} of a dream: {ex.Message}");
             }
         }
+
+        /// <summary>One for the objective of this trial (its seedId), nothing for any other.</summary>
+        public static int TrialWorth(GuildMissions.Objective objective, int trial)
+            => objective != null && trial > 0 && objective.SeedId == trial ? 1 : 0;
 
         /// <summary>One for a dream objective of this intensity and band, nothing for any other.</summary>
         public static int DreamWorth(GuildMissions.Objective objective, int difficulty, int band)

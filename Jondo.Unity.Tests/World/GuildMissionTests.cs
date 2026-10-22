@@ -261,6 +261,12 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(0, GuildMissionWatcher.DreamWorth(boss, 1, 3));
             Assert.Equal(0, GuildMissionWatcher.DreamWorth(dream with { SeedId = 8 }, 1, 3));
 
+            // «Terminar la prueba de sueños FONSOCAC»: the trial whose id is its seedId, no other.
+            var trial = new GuildMissions.Objective(436, 434, 1) { SeedId = 8, SubareaId = 904 };
+            Assert.Equal(1, GuildMissionWatcher.TrialWorth(trial, 8));
+            Assert.Equal(0, GuildMissionWatcher.TrialWorth(trial, 17));
+            Assert.Equal(0, GuildMissionWatcher.TrialWorth(dream, 8));
+
             if (GuildMissions.All.Count == 0) return;   // no client data
             Assert.Equal(147, GuildMissions.ObjectiveOf(2).MonsterId);
             Assert.Equal(new[] { 62, 178, 6901, 6902 }, GuildMissions.ObjectiveOf(25).FamilyMonsters);

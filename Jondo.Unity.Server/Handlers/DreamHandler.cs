@@ -998,7 +998,7 @@ namespace Jondo.Unity.Server.Handlers
         /// fell. Null for a fight that is not a dream's.
         /// </summary>
         internal sealed record DreamPay(int Difficulty, int Row, int LootBonus, bool Finished, int Waves, int Fragments,
-                                        bool Souvenir = false);
+                                        bool Souvenir = false, int Trial = 0);
 
         internal static DreamPay? PayOf(Jondo.Unity.World.Fights.FightInstance fight, bool won)
         {
@@ -1015,7 +1015,7 @@ namespace Jondo.Unity.Server.Handlers
             }
             return new DreamPay(sueno.Dificultad, sala.Fila, sueno.Bonus, finished, waves,
                                 finished && !sueno.FromSouvenir ? Dreams.FragmentsFor(sueno.Dificultad, waves) : 0,
-                                sueno.FromSouvenir);
+                                sueno.FromSouvenir, DreamTrials.Of(sueno)?.Id ?? 0);
         }
 
         /// <summary>

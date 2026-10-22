@@ -340,7 +340,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The logbook: members joining, leaving or turned down, ranks given, created and changed, levels
   and chest tabs reached, weekly milestones, the tier and missions changed, missions done and
   rerolled, raids bought, captained, described, left and finished
-- ❌ Anomaly and dream-trial missions
+- ✅ Dream-trial missions, done by finishing the trial
+- ❌ Anomaly missions (the server has no anomalies)
 
 **Raids** — the Eternal Gardens Sanctuary and the Gigalodón Abyss — run on the client's own screens.
 
