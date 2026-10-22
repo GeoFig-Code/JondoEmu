@@ -314,6 +314,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Chat status: available, away with a message, idle, private (only friends whisper to you) and solo (no party invitations), seen by your friends, guild and party
 - ✅ Parties — invite, accept, refuse, leave, hand over the lead, kick, follow the leader, and the leader's
   switch that has the whole party follow him
+- ✅ Following any member of the party from his card, not only the leader
 - ✅ Trading with another player: items and kamas
 - ✅ Commands answer in Spanish, English or French
 - ✅ Emotes, sitting included, and smileys; emotes learned from scrolls and potions
@@ -545,6 +546,7 @@ An alliance is made of characters, not guilds.
 - ✅ Real equipment renders too, and a cosmetic replaces it
 - ✅ Per-character colours: the ones chosen at creation are kept in the look
 - ✅ The cosmetics collection: each account keeps its own, filled from the bag and emptied back into it
+- ✅ The appearance window's draft switch
 
 ### ⛏️ Professions
 
@@ -697,6 +699,7 @@ Entered from the Plano Astral's well: a dream of 26 rooms in depth, walked band 
 - ✅ `.sueno [row]` for administrators
 - ✅ The trial FONSOCAC's rules: weapons cheaper, faster and harder-hitting, monsters with double life
 - ✅ Dreams in a group: the owner invites his party, who follow him room to room and fight beside him
+- ✅ Clicking a room on the dream's map takes you there, once the room you stand in is cleared
 - ✅ The trials REVERSED (fight as the dungeon guardian you choose against adventurers' scraps), NILEZAFF (a hit from afar swaps places and sends the damage back around), SINJSONJ (fight as Simueño beside its Monórico) and DOFOUSSE (fight as Yoy, RamboPL, Snyler or Crvor)
 - ✅ Each trial at its own difficulty, with its achievement for winning its final fight
 
@@ -737,10 +740,11 @@ One fight engine serves four kinds of fight:
 - ✅ End-of-fight statistics
 - ✅ Monsters and bosses run their own spells' mechanics — see **`docs/bosses.md`**
 - ✅ Monster AI that plans its turn
-- 🟡 Weapon strikes apply their damage; the slash animation does not show
+- ✅ Weapon strikes, with their slash
 - ✅ Push and collision damage
 - ✅ Joining someone else's fight; party fights and their options
 - ✅ Cells marked for your side
+- ✅ The Forgelance's spells drawn as in the real game, and its Immortal Lance's states
 - ✅ Watching a fight: the map's list of fights, or a friend's, guild mate's or alliance mate's from
   their lists; the fight's sides can close it to spectators
 - ✅ A won fight is shared among the players

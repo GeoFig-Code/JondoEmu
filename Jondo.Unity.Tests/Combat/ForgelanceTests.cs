@@ -182,9 +182,7 @@ namespace Jondo.Unity.Tests.Combat
             var lance = new Fighter { Id = -20, MonsterId = 7139, IsMonster = true, CurrentHP = 100 };
             fight.Invocar(lance, other);
             Assert.Null(ForgelanceCombat.OwnLance(fight, owner));
-            Assert.Equal(0, ForgelanceCombat.ActionSequence(owner));
             var cra = Person(Player + 2, 9);
-            Assert.Equal(FightProtocol.ActionSequence, ForgelanceCombat.ActionSequence(cra));
             var effect = new SpellEffect { EffectId = 3792, Value = 21070, TargetMask = "C", Triggers = "I" };
             var outcomes = EffectEngine.ResolveEffects(fight, cra, 23393, 1, cra, EffectEngine.AlLanzar,
                 fight.RoundNumber, new[] { effect });

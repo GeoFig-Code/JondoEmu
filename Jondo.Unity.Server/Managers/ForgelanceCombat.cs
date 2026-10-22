@@ -41,8 +41,5 @@ namespace Jondo.Unity.Server.Managers
         internal static bool IsAura(FightInstance fight, Glifo glyph)
             => glyph.Tipo == 1091 && glyph.HechizoQueLoPuso == 24391
                && IsActor(fight, fight.Buscar(glyph.Dueno));
-
-        internal static int ActionSequence(Fighter fighter)
-            => Is(fighter) ? 0 : Network.FightProtocol.ActionSequence;
     }
 }

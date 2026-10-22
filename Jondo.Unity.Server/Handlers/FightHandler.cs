@@ -4559,7 +4559,7 @@ namespace Jondo.Unity.Server.Handlers
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                 Network.FightProtocol.BuildSequenceStart(caster.Id,
-                                                         Managers.ForgelanceCombat.ActionSequence(caster))));
+                                                         Network.FightProtocol.CastSequence(weapon: spell == 0))));
 
             // A weapon's blow always counts its hits this turn (f4 f2, 1 or 2 in every capture); a
             // punch counts nothing.
@@ -4652,7 +4652,7 @@ namespace Jondo.Unity.Server.Handlers
             int cierre = fight.SiguienteAccion();
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                 Network.FightProtocol.BuildSequenceEnd(cierre, caster.Id,
-                                                       Managers.ForgelanceCombat.ActionSequence(caster))));
+                                                       Network.FightProtocol.CastSequence(weapon: spell == 0))));
 
             Program.LogDebug($"[Fight] Casts spell {spell} (grade {spellLevel}) at cell " +
                              $"{cell} for {cost} AP; {caster.CurrentAP} left.");
@@ -5259,7 +5259,7 @@ namespace Jondo.Unity.Server.Handlers
             int nivelId = LimitesDeGrado(hechizo, grado).LevelId;
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
-                Network.FightProtocol.BuildSequenceStart(quien.Id, Network.FightProtocol.ActionSequence)));
+                Network.FightProtocol.BuildSequenceStart(quien.Id, Network.FightProtocol.SpellSequence)));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildAction(
                     quien.Id, Network.FightProtocol.Cast,
@@ -5272,7 +5272,7 @@ namespace Jondo.Unity.Server.Handlers
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                 Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), quien.Id,
-                                                       Network.FightProtocol.ActionSequence)));
+                                                       Network.FightProtocol.SpellSequence)));
             Program.LogDebug($"[Fight] {quien.Id} casts its behaviour spell {hechizo} (grade {grado}).");
         }
 
@@ -7302,7 +7302,7 @@ namespace Jondo.Unity.Server.Handlers
 
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                         Network.FightProtocol.BuildSequenceStart(quien.Id,
-                                                                 Managers.ForgelanceCombat.ActionSequence(quien))));
+                                                                 Network.FightProtocol.SpellSequence)));
 
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                         Network.FightProtocol.BuildAction(
@@ -7316,7 +7316,7 @@ namespace Jondo.Unity.Server.Handlers
 
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                         Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), quien.Id,
-                                                               Managers.ForgelanceCombat.ActionSequence(quien))));
+                                                               Network.FightProtocol.SpellSequence)));
                 }
 
                 if (quien.Buffs.Actitudes.Count > 0)
@@ -7381,7 +7381,7 @@ namespace Jondo.Unity.Server.Handlers
             var target = TodosLosCombatientes(fight).FirstOrDefault(f => f != null && f.IsAlive && f.CellId == cell);
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
-                Network.FightProtocol.BuildSequenceStart(caster.Id, Network.FightProtocol.ActionSequence)));
+                Network.FightProtocol.BuildSequenceStart(caster.Id, Network.FightProtocol.SpellSequence)));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildAction(
                     caster.Id, Network.FightProtocol.Cast,
@@ -7392,7 +7392,7 @@ namespace Jondo.Unity.Server.Handlers
                                       cell, armar: false);
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                 Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), caster.Id,
-                                                       Network.FightProtocol.ActionSequence)));
+                                                       Network.FightProtocol.SpellSequence)));
         }
 
         /// <summary>
@@ -8956,7 +8956,7 @@ namespace Jondo.Unity.Server.Handlers
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                 Network.FightProtocol.BuildSequenceStart(monster.Id,
-                                                         Managers.ForgelanceCombat.ActionSequence(monster))));
+                                                         Network.FightProtocol.SpellSequence)));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildAction(
                     monster.Id, Network.FightProtocol.Cast,
@@ -9021,7 +9021,7 @@ namespace Jondo.Unity.Server.Handlers
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                 Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), monster.Id,
-                                                       Managers.ForgelanceCombat.ActionSequence(monster))));
+                                                       Network.FightProtocol.SpellSequence)));
 
             monster.LanzadosEsteTurno.TryGetValue(spell, out int esteTurno);
             monster.LanzadosEsteTurno[spell] = esteTurno + 1;

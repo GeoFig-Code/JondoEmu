@@ -519,14 +519,14 @@ namespace Jondo.Unity.Server.Network
         /// in the fifteen captures, exactly the same, which is what gives them away as a pair.
         /// </summary>
         public static byte[] BuildSequenceStart(long author, int kind)
-            => Pb.New().Var(1, author).Var(2, kind).Build();
+            => Pb.New().Var(1, author).VarIfNotZero(2, kind).Build();
 
         /// <summary>
         /// Closes a sequence (jwi): <c>f1</c> the action number, <c>f2</c> who and <c>f3</c>
         /// the same type it was opened with. The client acknowledges each closing with a jti.
         /// </summary>
         public static byte[] BuildSequenceEnd(int actionId, long author, int kind)
-            => Pb.New().Var(1, actionId).Var(2, author).Var(3, kind).Build();
+            => Pb.New().Var(1, actionId).Var(2, author).VarIfNotZero(3, kind).Build();
 
         /// <summary>
         /// The sequence a fight is abandoned with.
@@ -1428,9 +1428,26 @@ namespace Jondo.Unity.Server.Network
                     .Msg(5, SheetEntry(TemporaryLifeMalus, deficit, -Math.Abs(erosion), false)))
                 .Build();
 
-        /// <summary>The walking sequence and that of any action.</summary>
+        /// <summary>The walking sequence, and that of whatever something set off.</summary>
         public const int WalkSequence = 4;
         public const int ActionSequence = 3;
+
+        /// <summary>
+        /// The sequence a cast opens, in the client's numbering of them (jsv, Dofus 2's
+        /// SequenceTypeEnum less one: 0 spell, 1 weapon, 2 glyph or trap, 3 set off, 4 move,
+        /// 5 death, 6 turn start, 7 turn end, 8 fight start).
+        /// </summary>
+        /// <remarks>
+        /// Measured over the class and fight captures, on the jto right before each cast: the 424
+        /// casts somebody makes (a jwe 300 with its f8), player's or monster's, open a 0; the 9
+        /// weapon blows (jwe 303) a 1; and only the casts something chained (no f8) sit in a 3.
+        /// Not one cast with its f8 goes in a 3. Ours all went in a 3, and the weapon blows landed
+        /// with no slash; the Forgelance's spells, sent in a 0 since PR #68, drew theirs.
+        /// </remarks>
+        public const int SpellSequence = 0, WeaponSequence = 1;
+
+        /// <summary>The sequence a cast opens and closes: a weapon's blow, or a spell.</summary>
+        public static int CastSequence(bool weapon) => weapon ? WeaponSequence : SpellSequence;
 
         /// <summary>
         /// The short sequence the real server wraps each loose sheet in: in the capture,

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -320,7 +320,7 @@ namespace Jondo.Unity.Server.Handlers
             int nivelId = LimitesDeGrado(spell, grade).LevelId;
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
-                Network.FightProtocol.BuildSequenceStart(quien.Id, Network.FightProtocol.ActionSequence)));
+                Network.FightProtocol.BuildSequenceStart(quien.Id, Network.FightProtocol.SpellSequence)));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildAction(
                     quien.Id, Network.FightProtocol.Cast,
@@ -330,7 +330,7 @@ namespace Jondo.Unity.Server.Handlers
                                       Managers.EffectEngine.AlLanzar, quien.CellId, armar: false);
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                 Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), quien.Id,
-                                                       Network.FightProtocol.ActionSequence)));
+                                                       Network.FightProtocol.SpellSequence)));
         }
     }
 }

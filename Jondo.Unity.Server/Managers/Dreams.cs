@@ -769,7 +769,7 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>Draconiros arenas, the retries: the f17. See <see cref="StartingArenas"/>.</summary>
             /// <remarks>
             /// It was sent as the f19 for a time, and the f19 is something else: whether the room
-            /// one stands in is clear. Spending it on a death is not implemented.
+            /// one stands in is clear. A lost fight spends one (DreamHandler.AfterTheFight).
             /// </remarks>
             public int Arena { get; set; }
 
