@@ -531,6 +531,13 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>htu: two rides bred: their children in the stable, the parents sterile, the rewards given.</summary>
+        /// <summary>A child's capacity: its mákina's, or else the one today's Almanax gives the mounts born today.</summary>
+        private static int CapacityOf(Mating.Preview preview, Random dice)
+        {
+            int capacity = Mating.DrawCapacity(preview.Capacities, dice);
+            return capacity != 0 ? capacity : Almanax.NewbornCapacity(dice);
+        }
+
         public static async Task BreedAsync(NetworkStream stream, byte[] frame)
         {
             byte[] payload = ConnectionProtocol.ReadPayload(frame, Op.Htu);
@@ -565,7 +572,7 @@ namespace Jondo.Unity.Server.Handlers
                     CharacterId = Me,
                     Place = Stable.StablePlace,
                     Gid = ride.Item,
-                    Effects = Mating.ChildOf(colour, a!, b!, Mating.DrawCapacity(preview.Capacities, dice), dice),
+                    Effects = Mating.ChildOf(colour, a!, b!, CapacityOf(preview, dice), dice),
                 };
                 if (Stable.Save(child)) children.Add(child);
             }

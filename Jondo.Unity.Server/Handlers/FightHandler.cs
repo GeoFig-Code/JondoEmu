@@ -10535,8 +10535,13 @@ namespace Jondo.Unity.Server.Handlers
                     Managers.Almanax.ForFight(fight.RoleplayMapId, new[] { monster.MonsterId }, worn, inDungeon));
                 double WithAlmanax(double chance) => almanax > 0 ? Math.Min(100.0, chance * (100.0 + almanax) / 100.0) : chance;
 
+                // And in a dungeon, now and then a second roll of its tables: «un 20% de probabilidad
+                // de generar un segundo botín con todos los monstruos de las mazmorras» (type 35).
+                int passes = 1 + Managers.Almanax.ChancesMet(1, Managers.Almanax.BonusPercent(Managers.Almanax.BonusType.SecondLoot,
+                    Managers.Almanax.ForFight(fight.RoleplayMapId, new[] { monster.MonsterId }, worn, inDungeon)), Random.Shared);
+
                 var table = DatabaseManager.GetMonsterDrops(monster.MonsterId, monster.GradeIndex);
-                foreach (var drop in table)
+                foreach (var drop in Enumerable.Repeat(table, passes).SelectMany(t => t))
                 {
                     // A quest's item to whoever is on it, counting what this fight has already
                     // dropped him: «PO!11683» is one, not one a monster.
@@ -10560,7 +10565,7 @@ namespace Jondo.Unity.Server.Handlers
                 // is where the raids' loot lives: the nine monsters of the Sima carry not a single row
                 // in their own table and carry fifty-five in this one -- the salt of the depths and the
                 // seven gems --, so without this a raid is a place where nothing drops.
-                foreach (var drop in DatabaseManager.GetMonsterGlobalDrops(monster.MonsterId))
+                foreach (var drop in Enumerable.Repeat(DatabaseManager.GetMonsterGlobalDrops(monster.MonsterId), passes).SelectMany(t => t))
                 {
                     if (!SeLoLleva(drop.ReceiverCriterion)) continue;
 

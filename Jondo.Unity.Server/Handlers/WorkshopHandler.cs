@@ -348,7 +348,14 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             // Out of the bag: the stacks on the bench first, then any other of the same template.
-            var owed = recipe!.Ingredients.GroupBy(i => i.ItemId).ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity) * count);
+            // Today's Almanax may spare some: «ahorran un 15% de ingredientes» (type 10, by job).
+            var atWork = Managers.Almanax.Where.AtWork(recipe!.JobId, bench.SkillId);
+            int spared = Managers.Almanax.BonusPercent(Managers.Almanax.BonusType.IngredientsSaved, atWork);
+            var owed = recipe.Ingredients.GroupBy(i => i.ItemId).ToDictionary(g => g.Key, g =>
+            {
+                int units = g.Sum(i => i.Quantity) * count;
+                return units - Managers.Almanax.ChancesMet(units, spared, Dice);
+            });
             int signatures = signs ? Math.Min(count, BagCount(Forgemagic.SignatureRune)) : 0;
             if (signatures > 0) owed[Forgemagic.SignatureRune] = signatures;
             foreach (var (uid, _) in bench.Slots.ToList())
@@ -374,9 +381,13 @@ namespace Jondo.Unity.Server.Handlers
                 }
             }
 
-            // Into the bag.
-            var (reportEffects, reportUid) = await ProduceAsync(stream, recipe.ResultId, template!, count, signatures);
-            await SendAsync(stream, Op.Kdr, WorkshopProtocol.BuildCrafted(recipe.ResultId, reportEffects, count, reportUid));
+            // Into the bag, with the second ones today's Almanax may give: «un 25% de posibilidades de
+            // crear un segundo objeto» (type 19, by job or by skill).
+            int seconds = signatures == 0
+                ? Managers.Almanax.ChancesMet(count, Managers.Almanax.BonusPercent(Managers.Almanax.BonusType.SecondItem, atWork), Dice)
+                : 0;
+            var (reportEffects, reportUid) = await ProduceAsync(stream, recipe.ResultId, template!, count + seconds, signatures);
+            await SendAsync(stream, Op.Kdr, WorkshopProtocol.BuildCrafted(recipe.ResultId, reportEffects, count + seconds, reportUid));
 
             int experience = 0;
             if (recipe.JobId != BaseJob)
@@ -645,9 +656,15 @@ namespace Jondo.Unity.Server.Handlers
                     await GiveJobExperienceAsync(stream, skill.ParentJobId, experience);
                 }
 
-                // 3. The rune is spent, out of whoever's bag it came, and leaves the table.
+                // 3. The rune is spent, out of whoever's bag it came, and leaves the table -- unless
+                // today's Almanax spares it: «un 15% de probabilidad de no consumir ninguna runa»
+                // (type 31, by the magus' job).
                 long runeUid = rune.Uid;
-                await ConsumeAsync(runeOwner, rune, 1);
+                int kept = SkillManager.TryGet(bench.SkillId, out var magus)
+                    ? Managers.Almanax.BonusPercent(Managers.Almanax.BonusType.RuneKept,
+                                                    Managers.Almanax.Where.AtWork(magus.ParentJobId, bench.SkillId))
+                    : 0;
+                if (kept <= 0 || Dice.Next(100) >= kept) await ConsumeAsync(runeOwner, rune, 1);
                 await SendAsync(stream, Op.Kfs, WorkshopProtocol.BuildRemoved(runeUid));
                 await SendAsync(customer, Op.Kfs, WorkshopProtocol.BuildRemoved(runeUid, remote: true));
                 if (!typed) bench.RuneSlot = null;

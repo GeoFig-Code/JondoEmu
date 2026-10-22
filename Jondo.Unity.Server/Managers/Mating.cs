@@ -158,6 +158,9 @@ namespace Jondo.Unity.Server.Managers
             {
                 chance = BaseTargetPercent + PercentPerLevel * (Rides.LevelOf(a.Effects) + Rides.LevelOf(b.Effects));
                 if (fits) chance += makina!.QualityBoost;
+                // And today's Almanax: «se añade un bonus del 20% a la probabilidad de obtener la
+                // generación objetivo» (type 38).
+                chance += Almanax.BonusPercent(Almanax.BonusType.TargetGeneration, Almanax.Where.Anywhere);
                 chance = Math.Min(100, chance);
             }
 

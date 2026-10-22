@@ -188,5 +188,16 @@ namespace Jondo.Unity.Tests.Quests
             Assert.True(AlmanaxManager.Fits(Bonus(7, (10, 52), (10, 159)), AlmanaxManager.Where.AtWork(28, 52)));   // centeno
             Assert.False(AlmanaxManager.Fits(Bonus(7, (10, 52)), AlmanaxManager.Where.AtWork(28, 46)));
         }
+
+        /// <summary>«Ahorran un 15%», «un 25% de posibilidades»: each unit its own chance.</summary>
+        [Fact]
+        public void Chances_are_drawn_unit_by_unit()
+        {
+            var dice = new Random(7);
+            Assert.Equal(0, AlmanaxManager.ChancesMet(100, 0, dice));
+            Assert.Equal(100, AlmanaxManager.ChancesMet(100, 100, dice));
+            int some = AlmanaxManager.ChancesMet(1000, 25, dice);
+            Assert.InRange(some, 180, 320);
+        }
     }
 }

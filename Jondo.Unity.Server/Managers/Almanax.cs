@@ -172,6 +172,27 @@ namespace Jondo.Unity.Server.Managers
 
             /// <summary>"La cantidad de peces que consiguen los pescadores ... aumenta un 100%".</summary>
             public const int HarvestQuantity = 7;
+
+            /// <summary>"Los campesinos ahorran un 15% de ingredientes cuando fabrican objetos".</summary>
+            public const int IngredientsSaved = 10;
+
+            /// <summary>"Por cada objeto que fabriquen, los campesinos tendrán un 25% de posibilidades de crear un segundo objeto".</summary>
+            public const int SecondItem = 19;
+
+            /// <summary>"Los aventureros tienen un 20% de probabilidad de generar un segundo botín con todos los monstruos de las mazmorras".</summary>
+            public const int SecondLoot = 35;
+
+            /// <summary>"El botín que generan los recaudadores aumenta un 200% en las mazmorras de nivel 160 a 190".</summary>
+            public const int TaxCollectorLoot = 6;
+
+            /// <summary>"Los escultomagos tienen un 15% de probabilidad de no consumir ninguna runa".</summary>
+            public const int RuneKept = 31;
+
+            /// <summary>"Las monturas que nazcan este día tendrán la capacidad Resistente": its 17 names the capacity.</summary>
+            public const int NewbornCapacity = 37;
+
+            /// <summary>"En los apareamientos de monturas, se añade un bonus del 20% a la probabilidad de obtener la generación objetivo".</summary>
+            public const int TargetGeneration = 38;
         }
 
         /// <summary>
@@ -230,6 +251,36 @@ namespace Jondo.Unity.Server.Managers
                 if (!met) return false;
             }
             return true;
+        }
+
+        /// <summary>
+        /// The capacity today's Almanax gives a mount born now, as its effect (Rides.Chameleon 3823 to
+        /// Rides.Grower 3828), or 0: the bonus's 17 counts them from the chameleon, «Sabia» being 3 and
+        /// «Resistente» 4 (3825, 3826), drawn at the bonus's percent.
+        /// </summary>
+        public static int NewbornCapacity(Random dice)
+        {
+            var today = Today();
+            if (today == null) return 0;
+            foreach (var bonus in today.Bonuses)
+            {
+                if (bonus.Type != BonusType.NewbornCapacity || dice.Next(100) >= bonus.Amount) continue;
+                foreach (var (kind, value) in bonus.Criteria)
+                    if (kind == 17 && value >= 1 && value <= 6) return Rides.Chameleon - 1 + value;
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// How many of <paramref name="units"/> a percent chance each comes out on: the Almanax's
+        /// «ahorran un 15% de ingredientes», «un 25% de posibilidades de crear un segundo objeto».
+        /// </summary>
+        public static int ChancesMet(int units, int percent, Random dice)
+        {
+            if (units <= 0 || percent <= 0) return 0;
+            int met = 0;
+            for (int i = 0; i < units; i++) if (dice.Next(100) < percent) met++;
+            return met;
         }
 
         /// <summary>An amount with today's bonus of that type that fits here on top.</summary>
