@@ -242,7 +242,11 @@ namespace Jondo.Unity.Server.Managers
         /// template's range: two Plussains (8537) are two different rolls of 4 to 6 strength.
         /// Weapon damage keeps its range and a compound effect its three numbers.
         /// </summary>
-        public static List<Equipment.ItemEffect> Roll(Template template, Random dice)
+        /// <param name="quality">
+        /// A percent of the way each rolled characteristic comes from its roll to its best -- the top
+        /// of a bonus, the bottom of a malus --: the Almanax's «calidad de los objetos fabricados».
+        /// </param>
+        public static List<Equipment.ItemEffect> Roll(Template template, Random dice, int quality = 0)
         {
             var effects = new List<Equipment.ItemEffect>();
             foreach (var line in template.Lines)
@@ -256,6 +260,11 @@ namespace Jondo.Unity.Server.Managers
                 if (info.UseDice || info.Weight != 0)
                 {
                     int rolled = line.Max > line.Min ? dice.Next(line.Min, line.Max + 1) : line.Max;
+                    if (quality > 0 && line.Max > line.Min)
+                    {
+                        int best = info.IsMalus ? line.Min : line.Max;
+                        rolled += (int)Math.Round((best - rolled) * Math.Min(quality, 100) / 100.0, MidpointRounding.AwayFromZero);
+                    }
                     effects.Add(new Equipment.ItemEffect(line.Effect, rolled, 0, 0));
                     continue;
                 }

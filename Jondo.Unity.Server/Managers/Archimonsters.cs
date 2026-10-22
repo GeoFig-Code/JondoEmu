@@ -160,9 +160,11 @@ namespace Jondo.Unity.Server.Managers
             if (_busyMaps.Contains(mapId)) return false;          // one per map
             if (_placed.ContainsKey(rare)) return false;          // one of each, anywhere
 
-            // One in ten. Mixing the group and the monster keeps two groups on the same map from
-            // drawing alike.
-            return Draw(groupId, rare) % OneInHowMany == 0;
+            // One in ten -- three on the Almanax's day 292, «la velocidad de aparición de los
+            // archimonstruos aumenta un 200%». Mixing the group and the monster keeps two groups on
+            // the same map from drawing alike.
+            long odds = Almanax.WithBonus(Almanax.BonusType.Archmonsters, 100);
+            return Draw(groupId, rare) % (OneInHowMany * 100) < odds;
         }
 
         private static void Reserve(long mapId, int rare)

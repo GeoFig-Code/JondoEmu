@@ -257,6 +257,9 @@ namespace Jondo.Unity.Server.Handlers
 
                 await DepletedAsync(stream, resource, skillId, instance);
 
+                // And maybe the resource's protector, which attacks there and then (ResourceProtectors).
+                await ResourceProtectors.MayComeOutAsync(stream, resource.ItemId, nivel);
+
                 Console.WriteLine($"[Jobs] Job {resource.JobId}: {cuantos} of {resource.ItemId}, " +
                                   $"+{JobExperience.PerGather} exp, level {nivel}" +
                                   (subeNivel ? " (level up!)" : "") + $", map {resource.MapId}.");

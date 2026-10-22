@@ -421,6 +421,8 @@ namespace Jondo.Unity.Server.Handlers
             NetworkStream stream, int gid, Forgemagic.Template template, int count, int signatures)
         {
             string name = SessionContext.State.CharacterName;
+            // Today's Almanax may make what is crafted in this city better (its type 11).
+            int quality = Almanax.BonusPercent(Almanax.BonusType.CraftQuality, Almanax.Where.At(SessionContext.State.MapId));
             if (Forgemagic.Stacks(template) && signatures == 0)
             {
                 var effects = Forgemagic.Roll(template, Dice);
@@ -441,7 +443,7 @@ namespace Jondo.Unity.Server.Handlers
             var arrived = new List<Equipment.Item>();
             for (int i = 0; i < count; i++)
             {
-                var effects = Forgemagic.Roll(template, Dice);
+                var effects = Forgemagic.Roll(template, Dice, quality);
                 if (i < signatures) effects = Forgemagic.Signed(effects, Forgemagic.CraftedBy, name);
                 var created = Equipment.Create(gid, 1, effects);
                 if (created != null) arrived.Add(created);

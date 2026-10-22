@@ -203,6 +203,20 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>"Las monturas que nazcan este día tendrán la capacidad Resistente": its 17 names the capacity.</summary>
             public const int NewbornCapacity = 37;
 
+            /// <summary>
+            /// Day 292: «Los protectores de recursos tienen 5 veces más de posibilidades de aparecer
+            /// durante la actividad de recolección» (400) -- and «la velocidad de aparición de los
+            /// archimonstruos aumenta un 200%», type 18 (200).
+            /// </summary>
+            public const int ResourceProtectors = 9, Archmonsters = 18;
+
+            /// <summary>
+            /// Day 140: «La calidad de los objetos fabricados en la ciudad de Bonta será mayor» (20),
+            /// and six other cities by their area or subarea. INFERRED: each characteristic rolled
+            /// comes that percent of the way from its roll to its best (Forgemagic.Roll).
+            /// </summary>
+            public const int CraftQuality = 11;
+
             /// <summary>"En los apareamientos de monturas, se añade un bonus del 20% a la probabilidad de obtener la generación objetivo".</summary>
             public const int TargetGeneration = 38;
         }
@@ -220,6 +234,13 @@ namespace Jondo.Unity.Server.Managers
 
             /// <summary>A job's work: its experience, a harvest by one of its skills.</summary>
             public static Where AtWork(int job, int skill = 0) => Anywhere with { Job = job, Skill = skill };
+
+            /// <summary>On a map: its subarea and that subarea's area.</summary>
+            public static Where At(long mapId)
+            {
+                int subarea = DatabaseManager.SubAreaOfMap(mapId);
+                return Anywhere with { Subarea = subarea, Area = subarea > 0 ? Interactives.AreaOfSubArea(subarea) : -1 };
+            }
         }
 
         /// <summary>
