@@ -324,8 +324,14 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Dungeon, expedition, monster-family and Infinite Dreams missions count as you play, once per member,
   with the «¡Encargo terminado!» notice, *gremichas* and activity points
 - ✅ Rerolling a mission with guild kamas, and marking missions as interesting for the rest of the guild
-- ✅ Your weekly rewards window, and the missions' ranks and categories option showing what the guild chose
-- ✅ The *Casas* tab: the houses the members share with the guild
+- ✅ Your weekly rewards window, with the guild acknowledgments the milestones leave and its *Recuperar*
+- ✅ Saving next week's tier and the missions' ranks and categories from their own windows
+- ✅ The *Casas* tab: the houses the members share with the guild, and *Ir* to go into them
+- ✅ The guild halls of the seven nations: walking through their rooms, choosing one for the guild and
+  giving it one of the looks its level opens; the guild hall and guild home potions
+- ✅ A guild's card from its name in the chat or the friends list
+- ✅ Joining a guild of open recruitment at once
+- ✅ A warning when a guild mate comes on line
 - ✅ The message of the day and the logbook's bulletin, with who wrote them and when
 - ✅ Ranks deleted (their members moved to the rank chosen) and dragged into another order
 - ✅ The logbook: members joining, leaving or turned down, ranks given, created and changed, levels
@@ -442,7 +448,10 @@ An alliance is made of characters, not guilds.
 - ✅ Alterations, with their own window, and the items that grant them
 - ✅ Candies and blessings in their bonus slots
 - ✅ Spell scrolls: the special spells are learnt for good
-- ❌ The guild hall and guild house potions; pets' croquettes; the bonus slots that change the look
+- ✅ The guild hall and guild house potions
+- ✅ Legendary pets: the bebemot's reflection makes a pet legendary, an impregnated croquette gives it a
+  power, and the power is a spell in your fights
+- ❌ The bonus slots that change the look
 - ✅ **520 mounts** with their look, swapped and unequipped correctly
 <img width="2560" height="1500" alt="image" src="https://github.com/user-attachments/assets/375da573-ab61-4bf0-83fd-6f2a8f872cde" />
 <img width="2560" height="1506" alt="image" src="https://github.com/user-attachments/assets/581b105c-9569-4f54-ab77-01e122b8ce06" />
@@ -655,6 +664,8 @@ One fight engine serves four kinds of fight:
 - 🟡 Weapon strikes apply their damage; the slash animation does not show
 - ✅ Push and collision damage
 - ✅ Joining someone else's fight; party fights and their options
+- ✅ Watching a fight: the map's list of fights, or a friend's, guild mate's or alliance mate's from
+  their lists; the fight's sides can close it to spectators
 - ✅ A won fight is shared among the players
 - ✅ Experience as the monster group's tooltip counts it: group bonus, levels, wisdom and the 5 % bonus
 - ✅ Limit on earned experience, from the characteristics panel
