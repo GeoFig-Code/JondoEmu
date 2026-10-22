@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Jondo.Unity.Server.Managers;
@@ -772,8 +772,8 @@ namespace Jondo.Unity.Server.Network
             var state = Jondo.Unity.Server.Network.SessionContext.State;
             var alignment = Managers.Alignments.Of(state.CharacterId);
             return Pb.New().VarIfNotZero(1, Managers.Alignments.Level())
-                     .Var(2, alignment.Side).Msg(3, Pb.New().Var(3, 500))
-                     .VarIfNotZero(4, alignment.Grade)
+                     .Var(2, alignment.Side).Msg(3, Pb.New().VarIfNotZero(2, alignment.AggressionStatus).Var(3, 500))
+                     .VarIfNotZero(4, alignment.ShownGrade)
                      .Var(5, Math.Max(1, Handlers.StatsHandler.StatLevel(state.CharacterLevel))).Build();
         }
 
@@ -1890,16 +1890,17 @@ namespace Jondo.Unity.Server.Network
             // captures: below 200 both are equal (64), and every one above shows 200 in f1.f5 and its
             // full level in the ornament (255) -- a 253 is a 200 with Omega 53. See AddCharacterOptions.
             // A mutated character carries, in place of that f1, f2 { f1 grade, f2 monster } (Mutations).
-            // f1 is the alignment block (Alignments): the side in f2, the grade in f4.
+            // f1 is the alignment block (Alignments): the side in f2, the grade in f4, and with PvP on
+            // the honour block's aggression status in f3, which is what the others' clients read.
             var mutation = Managers.Mutations.OfCharacter(character.Id);
             var alignment = Managers.Alignments.Of(character.Id);
+            var side = Pb.New().Var(2, alignment.Side);
+            if (alignment.PvpOn) side.Msg(3, Pb.New().Var(2, alignment.AggressionStatus));
+            side.VarIfNotZero(4, alignment.ShownGrade)
+                .VarIfNotZero(5, Handlers.StatsHandler.StatLevel(character.Level));
             var cuerpo = mutation != null
                 ? Pb.New().Msg(2, Pb.New().Var(1, mutation.Grade).Var(2, mutation.Monster)).Var(3, accountId)
-                : Pb.New()
-                    .Msg(1, Pb.New().Var(2, alignment.Side)
-                                    .VarIfNotZero(4, alignment.Grade)
-                                    .VarIfNotZero(5, Handlers.StatsHandler.StatLevel(character.Level)))
-                    .Var(3, accountId);
+                : Pb.New().Msg(1, side).Var(3, accountId);
 
             AddCharacterOptions(cuerpo, character.Id, character.Level);
 

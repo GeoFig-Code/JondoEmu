@@ -32,8 +32,16 @@ namespace Jondo.Unity.Server.Managers
     /// The alignment's level and rank are the quests' (<see cref="Progression"/>).
     /// </para>
     /// <para>
+    /// PvP is the sworn's own switch, the sheet's alignment tab's (hnu, <see cref="SetPvp"/>). The
+    /// client reads it from the block's f3, the honour's: { f1 honour, f2 the aggression status,
+    /// f3 the next grade's honour, f4 this grade's }, the status its lbc -- the old game's
+    /// AggressableStatus, 1 «PvP enabled, aggressable» --, and draws the switch on for 1 or 2
+    /// (AlignmentUi.DisplayPvpInformations). Every player of the captures has it off, f2 absent,
+    /// and none has a grade: a grade only shows with PvP on, where honour 0 is the first grade.
+    /// </para>
+    /// <para>
     /// Kept in world.db, in a table of its own created at first use:
-    /// <c>CharacterAlignments (CharacterId, Side, Grade, ChangedMs)</c>.
+    /// <c>CharacterAlignments (CharacterId, Side, Grade, ChangedMs, Pvp)</c>.
     /// </para>
     /// </remarks>
     public static class Alignments
@@ -47,10 +55,22 @@ namespace Jondo.Unity.Server.Managers
         public const long FirstLeaveCost = 500;
         public const int LeaveSteps = 10;
 
-        public sealed record Alignment(int Side, int Grade, long ChangedMs)
+        public sealed record Alignment(int Side, int Grade, long ChangedMs, bool Pvp = false)
         {
             public bool Sworn => Side == Bonta || Side == Brakmar;
+
+            /// <summary>Whether his PvP is on: the sworn's only.</summary>
+            public bool PvpOn => Sworn && Pvp;
+
+            /// <summary>The grade the wings show: none with PvP off, the first at least with it on.</summary>
+            public int ShownGrade => PvpOn ? Math.Max(1, Grade) : 0;
+
+            /// <summary>The honour block's aggression status: 1 with PvP on, else nothing.</summary>
+            public int AggressionStatus => PvpOn ? PvpAggressable : 0;
         }
+
+        /// <summary>The client's lbc 1, the old game's PvP_ENABLED_AGGRESSABLE.</summary>
+        public const int PvpAggressable = 1;
 
         private static readonly Alignment Unsworn = new(Neutral, 0, 0);
         private static readonly ConcurrentDictionary<long, Alignment> _known = new();
@@ -77,10 +97,21 @@ namespace Jondo.Unity.Server.Managers
         public static bool MayChange(Alignment alignment, long nowMs)
             => alignment.ChangedMs == 0 || nowMs - alignment.ChangedMs >= (long)ChangeLock.TotalMilliseconds;
 
-        /// <summary>Sworn to a city, or back to neutral: kept, with when.</summary>
+        /// <summary>Sworn to a city, or back to neutral: kept, with when. PvP starts off.</summary>
         public static Alignment Set(long characterId, int side, long nowMs)
         {
             var alignment = new Alignment(side, 0, nowMs);
+            _known[characterId] = alignment;
+            Store(characterId, alignment);
+            return alignment;
+        }
+
+        /// <summary>PvP switched on or off; a neutral one has none to switch.</summary>
+        public static Alignment SetPvp(long characterId, bool on)
+        {
+            var alignment = Of(characterId);
+            if (!alignment.Sworn || alignment.Pvp == on) return alignment;
+            alignment = alignment with { Pvp = on };
             _known[characterId] = alignment;
             Store(characterId, alignment);
             return alignment;
@@ -244,8 +275,17 @@ namespace Jondo.Unity.Server.Managers
                         CharacterId INTEGER PRIMARY KEY,
                         Side        INTEGER NOT NULL,
                         Grade       INTEGER NOT NULL DEFAULT 0,
-                        ChangedMs   INTEGER NOT NULL DEFAULT 0);";
+                        ChangedMs   INTEGER NOT NULL DEFAULT 0,
+                        Pvp         INTEGER NOT NULL DEFAULT 0);";
                 command.ExecuteNonQuery();
+
+                // A table made before PvP gets its column.
+                command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('CharacterAlignments') WHERE name = 'Pvp';";
+                if (Convert.ToInt64(command.ExecuteScalar()) == 0)
+                {
+                    command.CommandText = "ALTER TABLE CharacterAlignments ADD COLUMN Pvp INTEGER NOT NULL DEFAULT 0;";
+                    command.ExecuteNonQuery();
+                }
                 _tableReady = true;
             }
         }
@@ -258,10 +298,12 @@ namespace Jondo.Unity.Server.Managers
                 connection.Open();
                 EnsureTable(connection);
                 var command = connection.CreateCommand();
-                command.CommandText = "SELECT Side, Grade, ChangedMs FROM CharacterAlignments WHERE CharacterId = $id;";
+                command.CommandText = "SELECT Side, Grade, ChangedMs, Pvp FROM CharacterAlignments WHERE CharacterId = $id;";
                 command.Parameters.AddWithValue("$id", characterId);
                 using var reader = command.ExecuteReader();
-                return reader.Read() ? new Alignment(reader.GetInt32(0), reader.GetInt32(1), reader.GetInt64(2)) : Unsworn;
+                return reader.Read()
+                    ? new Alignment(reader.GetInt32(0), reader.GetInt32(1), reader.GetInt64(2), reader.GetInt64(3) != 0)
+                    : Unsworn;
             }
             catch (Exception ex)
             {
@@ -278,13 +320,14 @@ namespace Jondo.Unity.Server.Managers
                 connection.Open();
                 EnsureTable(connection);
                 var command = connection.CreateCommand();
-                command.CommandText = "INSERT INTO CharacterAlignments (CharacterId, Side, Grade, ChangedMs) " +
-                                      "VALUES ($id, $side, $grade, $when) ON CONFLICT(CharacterId) DO UPDATE SET " +
-                                      "Side = excluded.Side, Grade = excluded.Grade, ChangedMs = excluded.ChangedMs;";
+                command.CommandText = "INSERT INTO CharacterAlignments (CharacterId, Side, Grade, ChangedMs, Pvp) " +
+                                      "VALUES ($id, $side, $grade, $when, $pvp) ON CONFLICT(CharacterId) DO UPDATE SET " +
+                                      "Side = excluded.Side, Grade = excluded.Grade, ChangedMs = excluded.ChangedMs, Pvp = excluded.Pvp;";
                 command.Parameters.AddWithValue("$id", characterId);
                 command.Parameters.AddWithValue("$side", alignment.Side);
                 command.Parameters.AddWithValue("$grade", alignment.Grade);
                 command.Parameters.AddWithValue("$when", alignment.ChangedMs);
+                command.Parameters.AddWithValue("$pvp", alignment.Pvp ? 1 : 0);
                 command.ExecuteNonQuery();
             }
             catch (Exception ex)

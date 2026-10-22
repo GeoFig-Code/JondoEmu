@@ -107,6 +107,44 @@ namespace Jondo.Unity.Tests.World
         }
 
         [Fact]
+        public async Task The_pvp_switch_shows_on_the_sheet_and_the_wings()
+        {
+            const long me = 9_400_300_004;
+            Alignments.Set(me, Alignments.Bonta, 0);
+            await using var pipe = await ClientPipe.OpenAsync(me, me, 990_100_131, "Alado");
+            using (SessionContext.Push(pipe.Session))
+            {
+                // hnu { 1 true }: the sheet's honour block says «PvP enabled, aggressable», and a grade.
+                await AlignmentHandler.PvpAsync(pipe.ToClient, ConnectionProtocol.Push("hnu", Pb.New().Var(1, 1).Build()));
+                var sheet = Sub(Sub(ProtoMessage.Parse(await pipe.Next(Op.Kub)), 2), 9);
+                Assert.Equal(1, Sub(sheet, 3).Fields.First(f => f.FieldNumber == 2).VarIntValue);
+                Assert.Equal(1, sheet.Fields.First(f => f.FieldNumber == 4).VarIntValue);
+                Alignments.Forget(me);
+                Assert.True(Alignments.Of(me).PvpOn);   // kept in the base
+
+                // And the others see it: the actor's block carries the status and the grade.
+                var character = new DatabaseManager.DbCharacter { Id = me, Name = "Alado", Level = 120, Breed = 1 };
+                var actor = ProtoMessage.Parse(ConnectionProtocol.BuildPlayerActorBlock(character, 300, 1, 1));
+                var block = Sub(Sub(Sub(Sub(Sub(actor, 2), 1), 5), 3), 1);
+                Assert.Equal(1, Sub(block, 3).Fields.First(f => f.FieldNumber == 2).VarIntValue);
+                Assert.Equal(1, block.Fields.First(f => f.FieldNumber == 4).VarIntValue);
+
+                // hnu {}: off again, the block as every player of the captures has it.
+                await AlignmentHandler.PvpAsync(pipe.ToClient, ConnectionProtocol.Push("hnu", Array.Empty<byte>()));
+                sheet = Sub(Sub(ProtoMessage.Parse(await pipe.Next(Op.Kub)), 2), 9);
+                Assert.DoesNotContain(Sub(sheet, 3).Fields, f => f.FieldNumber == 2);
+                Assert.DoesNotContain(sheet.Fields, f => f.FieldNumber == 4);
+
+                // A neutral one has nothing to switch; swearing again starts with it off.
+                Alignments.SetPvp(me, true);
+                Alignments.Set(me, Alignments.Neutral, 0);
+                Assert.False(Alignments.Of(me).PvpOn);
+                await AlignmentHandler.PvpAsync(pipe.ToClient, ConnectionProtocol.Push("hnu", Pb.New().Var(1, 1).Build()));
+                Assert.False(Alignments.Of(me).Pvp);
+            }
+        }
+
+        [Fact]
         public void The_actor_carries_the_side()
         {
             const long me = 9_400_300_003;

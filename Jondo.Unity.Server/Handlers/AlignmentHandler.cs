@@ -149,6 +149,29 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
+        /// The alignment tab's PvP switch (hnu { 1 on }): the sheet with its new status, and the
+        /// character drawn again for the map, wings and all.
+        /// </summary>
+        /// <remarks>
+        /// The client's own: AlignmentUi.OnPvPChange raises zn with the switch's new state, which
+        /// the alignment frame (fhb) sends as hnu -- f1 true to switch it on, nothing to switch it
+        /// off. Neither the captures nor the client say what else the real server answers; the
+        /// tab reads the status back from the sheet (OnCharacterStatsList), so the sheet is sent.
+        /// A neutral one has no PvP to switch.
+        /// </remarks>
+        public static async Task PvpAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? hnu = ConnectionProtocol.ReadPayload(payload, "hnu");
+            if (hnu == null || !Alignments.Of(Me).Sworn) return;
+            bool on = ProtoMessage.Parse(hnu).Fields.Any(f => f.FieldNumber == 1 && f.WireType == 0 && f.VarIntValue != 0);
+
+            Alignments.SetPvp(Me, on);
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Kub, ConnectionProtocol.BuildCharacteristics()));
+            await SlotLookHandler.RedrawAsync(stream);
+            Console.WriteLine($"[Alignment] {SessionContext.State.CharacterName} switches PvP {(on ? "on" : "off")}.");
+        }
+
+        /// <summary>
         /// A quest finished: an alignment quest raises the level the sheet shows, an order's
         /// apprenticeship gives the rank its alignment tab shows (<see cref="Alignments.Progression"/>).
         /// </summary>

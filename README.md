@@ -1,4 +1,4 @@
-﻿High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** written in C# (**.NET 10**), with decoupled modular projects, a SQLite data layer, a combat engine driven entirely by client data — PvM, duels and Koliseo — a cross-platform launcher and a world editor.
+High-performance server emulator for **Dofus 3 Unity (Client 3.6.10.11)** written in C# (**.NET 10**), with decoupled modular projects, a SQLite data layer, a combat engine driven entirely by client data — PvM, duels and Koliseo — a cross-platform launcher and a world editor.
 
 > ⚠️ **Runs against Dofus 3 clients 3.6.10.11 and 3.6.10.10.** The live game is on 3.6.11.12, so the
 > official launcher does not provide a client that works here — [Step 2](#step-2--get-the-361011-client)
@@ -464,6 +464,7 @@ An alliance is made of characters, not guilds.
   sheet and to the others, and opens the cities' quests
 - ✅ Alignment level and order: each of your city's hundred alignment quests raises your level, and the
   orders' apprenticeships give their ranks, from Néophyte to Héros Légendaire; leaving the city loses them
+- ✅ PvP switch in the alignment tab: on, your wings show to everybody
 - ✅ **21,748 item templates** — spawning, equipping, bags, destruction, persistence
 - ✅ **929 item sets** with their bonuses
 - ✅ Boxes that open with a double click, by their own drop tables
