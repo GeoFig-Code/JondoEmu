@@ -218,7 +218,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
   (level 50) — five stages of five steps, flags, digs and four tries — that ends in a fight against
   the fissure and four of its dimension's monsters; whoever wins it gets the portal for good, and
   the hunter its divine chest; lost, the hunt is lost
-- 🟡 The hunts' steps say how many maps to walk, not which landmark to look for
+- ✅ The hunts' steps name the landmark to look for — 166 of them on 3,947 maps, as the players have mapped them
 - ✅ A nod to the old days: the portals to Anutropía, Sramvil, Xelorium and Zurcalia, gone from the game
   since version 3.2, stand for good in the Amakna village square by the vendors — anybody can talk to
   them or cross them, as often as they like

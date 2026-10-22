@@ -292,5 +292,81 @@ namespace Jondo.Unity.Tests.World
                     ? TravelersTower.LegendaryOf(l.Id).Name : null);
             }
         }
+
+        /// <summary>
+        /// The capture's hunt byte for byte: its first step «882 to the south», the «Champiñón
+        /// rayado» -- a landmark step, f10 { f1 { f1 882, f2 2 } }.
+        /// </summary>
+        [Fact]
+        public void A_landmark_step_goes_as_the_capture_has_it()
+        {
+            var hunt = new TreasureHunts.Hunt
+            {
+                CharacterId = 1,
+                Type = TreasureHunts.Legendary,
+                StartMap = TreasureHunts.MeasuredStart,
+                Steps = Enumerable.Range(0, 5).Select(i => new TreasureHunts.Step
+                {
+                    Direction = TreasureHunts.South, Maps = 10, Target = 88081161 + i, Poi = i == 0 ? 882 : 0,
+                }).ToList(),
+            };
+            Assert.Equal("20053004389386802a4005480252070a0508f2061002", Hex(TreasureHuntProtocol.BuildHunt(hunt)));
+
+            var kept = TreasureHunts.ReadSteps(TreasureHunts.WriteSteps(hunt.Steps));
+            Assert.Equal(882, kept[0].Poi);
+            Assert.Equal(0, kept[1].Poi);
+            Assert.Equal(hunt.Steps[0].Target, kept[0].Target);
+        }
+
+        /// <summary>
+        /// Where the maps show landmarks, a step is the first map that way showing one no map before
+        /// it shows, within ten.
+        /// </summary>
+        [Fact]
+        public void A_landmark_step_is_the_first_map_that_way_to_show_it()
+        {
+            var grid = Square();
+            IReadOnlyList<int> PoisOf(long map)
+            {
+                var (x, y) = grid.PositionOf(map)!.Value;
+                return new[] { 900 + ((x * 7 + y * 13) % 5 + 5) % 5 };
+            }
+
+            int landmarks = 0;
+            for (int seed = 0; seed < 30; seed++)
+            {
+                var steps = TreasureHunts.Route(grid, At(0, 0), new Random(seed), PoisOf);
+                Assert.NotNull(steps);
+                var (x, y) = (0, 0);
+                foreach (var step in steps!)
+                {
+                    var (dx, dy) = step.Direction switch
+                    {
+                        TreasureHunts.East => (1, 0), TreasureHunts.South => (0, 1), TreasureHunts.West => (-1, 0), _ => (0, -1),
+                    };
+                    Assert.Equal(At(x + dx * step.Maps, y + dy * step.Maps), step.Target);
+                    if (step.Poi > 0)
+                    {
+                        landmarks++;
+                        Assert.Contains(step.Poi, PoisOf(step.Target));
+                        for (int between = 1; between < step.Maps; between++)
+                            Assert.DoesNotContain(step.Poi, PoisOf(At(x + dx * between, y + dy * between)));
+                    }
+                    (x, y) = (x + dx * step.Maps, y + dy * step.Maps);
+                }
+            }
+            Assert.Equal(30 * TreasureHunts.StepsPerCheckpoint, landmarks);
+        }
+
+        /// <summary>The landmarks as the players have mapped them: the capture's 882, first south of [2,4] on [2,11].</summary>
+        [Fact]
+        public void The_landmarks_are_where_the_players_mapped_them()
+        {
+            if (TreasureHuntPois.Count == 0) return;   // no data
+            Assert.Contains(882, TreasureHuntPois.Of(88081164));
+            for (long between = 88081170; between > 88081164; between--)
+                Assert.DoesNotContain(882, TreasureHuntPois.Of(between));
+            Assert.Empty(TreasureHuntPois.Of(1));
+        }
     }
 }

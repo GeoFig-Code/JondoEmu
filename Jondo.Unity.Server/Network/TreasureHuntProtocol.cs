@@ -31,7 +31,11 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildRequestAnswer(int type, int result)
             => Pb.New().VarIfNotZero(1, type).VarIfNotZero(2, result).Build();
 
-        /// <summary>The hunt as its owner sees it: the stage's known steps, each a «follow the direction» one (hgx f3).</summary>
+        /// <summary>
+        /// The hunt as its owner sees it: the stage's known steps, a landmark one as f1 { f1 the
+        /// landmark, f2 the direction } -- the capture's «0a05 08f206 1002», 882 to the south --,
+        /// a «follow the direction» one as f3 (hgx).
+        /// </summary>
         public static byte[] BuildHunt(TreasureHunts.Hunt hunt)
         {
             var hhf = Pb.New()
@@ -44,7 +48,9 @@ namespace Jondo.Unity.Server.Network
                .VarIfNotZero(8, hunt.Steps.Count)
                .VarIfNotZero(9, hunt.Type);
             foreach (var step in hunt.Steps.Take(hunt.Known))
-                hhf.Msg(10, Pb.New().Msg(3, Pb.New().VarIfNotZero(2, step.Maps).VarIfNotZero(3, step.Direction)));
+                hhf.Msg(10, step.Poi > 0
+                    ? Pb.New().Msg(1, Pb.New().Var(1, step.Poi).VarIfNotZero(2, step.Direction))
+                    : Pb.New().Msg(3, Pb.New().VarIfNotZero(2, step.Maps).VarIfNotZero(3, step.Direction)));
             return hhf.Build();
         }
 

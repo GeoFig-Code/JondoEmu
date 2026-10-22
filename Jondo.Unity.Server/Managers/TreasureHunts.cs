@@ -21,11 +21,12 @@ namespace Jondo.Unity.Server.Managers
     /// stage's flags.
     /// </para>
     /// <para>
-    /// The steps are the client's «follow the direction for N maps» (hgr): its POI steps need to
-    /// know which map shows which point of interest, and neither the client data nor any capture
-    /// says. A step's map is the one so many squares away -- the hunts go by the world map's
-    /// squares, walking round whatever is in the way --, among the outdoor maps one can walk to
-    /// from the capture's start. A stage starts where the last one was dug.
+    /// A step is the capture's «find the landmark that way» -- «882 to the south» --: the first map
+    /// that way, within ten, that shows a landmark none before it shows, as the players' own
+    /// pairing of maps and landmarks has it (TreasureHuntPois). Where no landmark fits, it is the
+    /// client's «follow the direction for N maps» (hgr) instead. The hunts go by the world map's
+    /// squares, walking round whatever is in the way, among the outdoor maps one can walk to from
+    /// the capture's start. A stage starts where the last one was dug.
     /// </para>
     /// <para>
     /// Kept in world.db, in a table of its own created at first use:
@@ -87,6 +88,9 @@ namespace Jondo.Unity.Server.Managers
             public int Direction { get; init; }
             public int Maps { get; init; }
             public long Target { get; init; }
+
+            /// <summary>The landmark to look for, or 0 for a «follow the direction for N maps» step.</summary>
+            public int Poi { get; init; }
         }
 
         public sealed class Flag
@@ -227,6 +231,14 @@ namespace Jondo.Unity.Server.Managers
         /// the last came, never twice on the same map nor on the start. Null when none fits.
         /// </summary>
         public static List<Step>? Route(Grid grid, long from, Random dice, int length = StepsPerCheckpoint)
+            => Route(grid, from, dice, TreasureHuntPois.Of, length);
+
+        /// <summary>
+        /// The same, a step a landmark whenever one fits: the first map that way showing a landmark
+        /// no map before it shows (<paramref name="poisOf"/>).
+        /// </summary>
+        public static List<Step>? Route(Grid grid, long from, Random dice, Func<long, IReadOnlyList<int>> poisOf,
+                                        int length = StepsPerCheckpoint)
         {
             var start = grid.PositionOf(from);
             if (start == null) return null;
@@ -244,6 +256,8 @@ namespace Jondo.Unity.Server.Managers
                     {
                         int direction = Directions[dice.Next(Directions.Length)];
                         if (previous >= 0 && direction == (previous + 4) % 8) continue;
+                        found = LandmarkStep(grid, x, y, direction, used, poisOf, dice);
+                        if (found != null) break;
                         int maps = dice.Next(FewestMaps, MostMaps + 1);
                         var (dx, dy) = Delta(direction);
                         long target = grid.MapAt(x + dx * maps, y + dy * maps);
@@ -259,6 +273,29 @@ namespace Jondo.Unity.Server.Managers
                 if (steps.Count == length) return steps;
             }
             return null;
+        }
+
+        /// <summary>
+        /// A landmark step from a square one way: a landmark of a map within ten that no map before
+        /// it that way shows, drawn among all such; null when there is none.
+        /// </summary>
+        private static Step? LandmarkStep(Grid grid, int x, int y, int direction, HashSet<long> used,
+                                          Func<long, IReadOnlyList<int>> poisOf, Random dice)
+        {
+            var (dx, dy) = Delta(direction);
+            var seen = new HashSet<int>();
+            var fitting = new List<Step>();
+            for (int maps = FewestMaps; maps <= MostMaps; maps++)
+            {
+                long mapId = grid.MapAt(x + dx * maps, y + dy * maps);
+                if (mapId == 0) continue;
+                var pois = poisOf(mapId);
+                if (!used.Contains(mapId))
+                    foreach (int poi in pois.Where(p => !seen.Contains(p)).Distinct())
+                        fitting.Add(new Step { Direction = direction, Maps = maps, Target = mapId, Poi = poi });
+                seen.UnionWith(pois);
+            }
+            return fitting.Count == 0 ? null : fitting[dice.Next(fitting.Count)];
         }
 
         /// <summary>
@@ -426,12 +463,18 @@ namespace Jondo.Unity.Server.Managers
         internal static void Forget(long characterId) => _known.TryRemove(characterId, out _);
 
         internal static string WriteSteps(IEnumerable<Step> steps)
-            => string.Join(";", steps.Select(s => $"{s.Direction},{s.Maps},{s.Target}"));
+            => string.Join(";", steps.Select(s => s.Poi > 0
+                ? $"{s.Direction},{s.Maps},{s.Target},{s.Poi}"
+                : $"{s.Direction},{s.Maps},{s.Target}"));
 
         internal static List<Step> ReadSteps(string text)
             => text.Split(';', StringSplitOptions.RemoveEmptyEntries)
                    .Select(part => part.Split(','))
-                   .Select(p => new Step { Direction = int.Parse(p[0]), Maps = int.Parse(p[1]), Target = long.Parse(p[2]) })
+                   .Select(p => new Step
+                   {
+                       Direction = int.Parse(p[0]), Maps = int.Parse(p[1]), Target = long.Parse(p[2]),
+                       Poi = p.Length > 3 ? int.Parse(p[3]) : 0,
+                   })
                    .ToList();
 
         internal static string WriteFlags(IEnumerable<Flag> flags)
