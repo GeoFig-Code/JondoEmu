@@ -464,7 +464,8 @@ An alliance is made of characters, not guilds.
   sheet and to the others, and opens the cities' quests
 - ✅ Alignment level and order: each of your city's hundred alignment quests raises your level, and the
   orders' apprenticeships give their ranks, from Néophyte to Héros Légendaire; leaving the city loses them
-- ✅ PvP switch in the alignment tab: on, your wings show to everybody
+- ✅ PvP switch in the alignment tab: on, your wings show to everybody, and you may attack the other
+  city's winged players up to fifty levels above you
 - ✅ **21,748 item templates** — spawning, equipping, bags, destruction, persistence
 - ✅ **929 item sets** with their bonuses
 - ✅ Boxes that open with a double click, by their own drop tables

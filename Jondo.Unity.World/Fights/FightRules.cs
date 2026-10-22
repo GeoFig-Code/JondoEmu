@@ -121,8 +121,8 @@
         public static readonly FightRules ContraPrisma = new Prisma();
 
         /// <summary>
-        /// An aggression: a player attacking one of an enemy alliance in a conquest's zone, the
-        /// player menu's «Agredir» (the hph without its f2).
+        /// An aggression: a player attacking one of an enemy alliance in a conquest's zone, or one of
+        /// the other city with both their PvP on, the player menu's «Agredir» (the hph without its f2).
         /// </summary>
         public static readonly FightRules Agresion = new Asalto();
 

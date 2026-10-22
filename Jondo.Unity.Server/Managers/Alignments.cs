@@ -106,6 +106,20 @@ namespace Jondo.Unity.Server.Managers
             return alignment;
         }
 
+        /// <summary>
+        /// Whether one may attack another for their cities: the client's own rule for offering
+        /// «Agredir» (PlayerMenuMaker.AllowAggression) -- the attacker with PvP on, the target sworn
+        /// to the other city and showing a grade, which only PvP on gives, and no more than fifty
+        /// levels above him, both counted up to 200.
+        /// </summary>
+        public static bool MayAggress(long attacker, int attackerLevel, long target, int targetLevel)
+        {
+            var mine = Of(attacker);
+            var theirs = Of(target);
+            return mine.PvpOn && theirs.Sworn && theirs.ShownGrade > 0 && mine.Side != theirs.Side
+                   && Math.Min(attackerLevel, 200) + 50 >= Math.Min(targetLevel, 200);
+        }
+
         /// <summary>PvP switched on or off; a neutral one has none to switch.</summary>
         public static Alignment SetPvp(long characterId, bool on)
         {

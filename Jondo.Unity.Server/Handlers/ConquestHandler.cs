@@ -462,8 +462,9 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// «Agredir» on a player (the hph without its f2): in a conquest's zone, between fighters
-        /// of two alliances, the fight starts at once, an aggression. Whoever is not a fighter of
-        /// the zone hears so (421).
+        /// of two alliances, the fight starts at once, an aggression. Elsewhere it is the cities'
+        /// war: with PvP on, an enemy of the other city showing his wings (Alignments.MayAggress).
+        /// Whoever is neither hears so (421).
         /// </summary>
         public static async Task AggressAsync(NetworkStream stream, long targetId)
         {
@@ -476,6 +477,13 @@ namespace Jondo.Unity.Server.Handlers
             var mine = AllianceStore.AllianceOf(myId);
             if (mine == null || !AllianceStore.TakesPartInAva(myId) || !IsWarZone(SubAreaOf(me.State.MapId)) || !FightsInAWar(myId))
             {
+                if (Alignments.MayAggress(myId, me.State.CharacterLevel, targetId, target.State.CharacterLevel))
+                {
+                    Program.LogDebug($"[Alignment] {myId} attacks {targetId} of the other city.");
+                    await FightHandler.InitiatePvpAsync(new List<GameSession> { me }, new List<GameSession> { target },
+                                                        me.State.MapId, rules: FightRules.Agresion);
+                    return;
+                }
                 await SendAsync(stream, ConnectionProtocol.Push(Op.Lqn,
                     ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, NotAnAvaFighter)));
                 return;

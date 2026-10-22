@@ -145,6 +145,29 @@ namespace Jondo.Unity.Tests.World
         }
 
         [Fact]
+        public void Only_the_other_city_s_winged_may_be_attacked_and_not_fifty_levels_up()
+        {
+            const long angel = 9_400_300_005, demon = 9_400_300_006, other_angel = 9_400_300_007;
+            Alignments.Set(angel, Alignments.Bonta, 0);
+            Alignments.Set(demon, Alignments.Brakmar, 0);
+            Alignments.Set(other_angel, Alignments.Bonta, 0);
+
+            // Nobody's PvP on: nothing.
+            Assert.False(Alignments.MayAggress(angel, 100, demon, 100));
+
+            // His own on, the target's off: the target shows no grade, no wings.
+            Alignments.SetPvp(angel, true);
+            Assert.False(Alignments.MayAggress(angel, 100, demon, 100));
+
+            Alignments.SetPvp(demon, true);
+            Alignments.SetPvp(other_angel, true);
+            Assert.True(Alignments.MayAggress(angel, 100, demon, 150));
+            Assert.False(Alignments.MayAggress(angel, 100, demon, 151));     // more than fifty up
+            Assert.True(Alignments.MayAggress(angel, 160, demon, 230));      // both counted up to 200
+            Assert.False(Alignments.MayAggress(angel, 100, other_angel, 100)); // his own city
+        }
+
+        [Fact]
         public void The_actor_carries_the_side()
         {
             const long me = 9_400_300_003;
