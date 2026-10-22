@@ -258,8 +258,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ **67 public bins**, shared by everybody
 - ✅ Haven bags: entering and leaving, their own zaap, **four rooms** and **every theme** for every
   character, **4,083 furniture pieces** placed and saved, the chest, the lottery machine
-- ✅ Each haven bag is its owner's alone
-- ❌ Visiting another player's haven bag
+- ✅ Each haven bag is its owner's alone, from level 10
+- ✅ Sharing it with friends or the guild, who visit it from the friends and guild lists
+- ✅ Inviting a player into it, and putting a visitor out
 <img width="2560" height="1492" alt="image" src="https://github.com/user-attachments/assets/a81a3b24-8559-4ad5-8a27-e6913eef95a8" />
 
 > The client does not say which interior sits behind each door: each door leads to one of the

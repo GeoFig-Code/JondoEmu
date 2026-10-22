@@ -43,6 +43,14 @@ namespace Jondo.Unity.Server.Handlers
 
         public static async Task OpenAsync(NetworkStream? stream, int elementId, int skillId)
         {
+            // In another's bag the chest is not his: «Acción imposible. No puedes acceder a tu cofre
+            // de merkasako.», info message 1/710.
+            if (SessionContext.State.HavenBagOwnerId != 0)
+            {
+                await StorageHandler.SendAsync(stream, Op.Lqn, ConnectionProtocol.BuildInfoMessage(1, 710));
+                return;
+            }
+
             SessionContext.State.IsChestOpen = true;
 
             await StorageHandler.SendAsync(stream, Op.Iwn, ConnectionProtocol.BuildElementInUse(

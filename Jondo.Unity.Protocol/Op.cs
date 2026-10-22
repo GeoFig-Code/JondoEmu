@@ -1060,8 +1060,29 @@ public static class Op
     /// <summary>Server to client: jlq { f1: name }, the one who just opened the guild chest.</summary>
     public const string Jlq = "jlq";
 
-    /// <summary>It is sent with the furniture, between jss and lva; meaning not established.</summary>
+    /// <summary>
+    /// S→C (push): whom the haven bag is open to, f1 = friends (1) + guild (2). Sent with the
+    /// furniture, between jss and lva, and as the answer to the jau.
+    /// </summary>
     public const string Jaz = "jaz";
+
+    /// <summary>C→S: «Compartir» in the haven bag's menu. f1 = friends (1) + guild (2).</summary>
+    public const string Jau = "jau";
+
+    /// <summary>C→S: «Invitar a mi merkasako». f1 the guest.</summary>
+    public const string Jbb = "jbb";
+
+    /// <summary>S→C: the invitation into a haven bag. f1 lpg the host, f2 the seconds to answer.</summary>
+    public const string Jbh = "jbh";
+
+    /// <summary>C→S: the guest's answer to that invitation. f2 accepted.</summary>
+    public const string Jas = "jas";
+
+    /// <summary>S→C: to the host, the guest's answer. f1 lpg the guest, f2 accepted.</summary>
+    public const string Jat = "jat";
+
+    /// <summary>C→S: «Expulsar de mi merkasako». f2 the visitor.</summary>
+    public const string Jay = "jay";
 
     /// <summary>Placement mode closed.</summary>
     public const string Jba = "jba";

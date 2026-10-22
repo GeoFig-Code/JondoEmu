@@ -275,6 +275,13 @@ namespace Jondo.Unity.Server
 
         /// <summary>The world cell the haven bag was entered from.</summary>
         public int HavenBagEntryCell { get; set; }
+
+        /// <summary>
+        /// Whose haven bag the character is visiting, or 0 in his own (and out of every bag). Who
+        /// stands on a bag's map with him, its furniture and its owner's line on the map all go by
+        /// it (MerkasakoHandler.BagOwnerOf).
+        /// </summary>
+        public long HavenBagOwnerId { get; set; }
         public bool IsChestOpen { get; set; }
 
         /// <summary>

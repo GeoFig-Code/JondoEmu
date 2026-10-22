@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Jondo.Unity.Protocol;
 using Jondo.Unity.Server;
 using Jondo.Unity.Server.Handlers;
@@ -27,6 +27,7 @@ namespace Jondo.Unity.Tests.World
             const long street = 191105026;
             await using var leaving = await ClientPipe.OpenAsync(990_000_701, 990_000_701, street, "SeVa");
             await using var staying = await ClientPipe.OpenAsync(990_000_702, 990_000_702, street, "SeQueda");
+            leaving.Session.State.CharacterLevel = MerkasakoHandler.MinimumLevel;
 
             using (SessionContext.Push(leaving.Session))
                 await MerkasakoHandler.EnterFromOutsideAsync(leaving.ToClient, ConnectionProtocol.Push(Op.Jbn));

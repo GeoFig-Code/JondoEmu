@@ -294,6 +294,7 @@ namespace Jondo.Unity.Server.Network
                     .VarIfNotZero(1, achievementPoints)
                     .Msg(2, Pb.New().VarIfNotZero(1, contributed).VarIfNotZero(2, contributed))
                     .Var(3, 3)
+                    .VarIfNotZero(5, SharesHavenBagWithGuild(member.CharacterId) ? 1 : 0)
                     .Msg(8, Pb.New().StrIfNotEmpty(1, member.Note).VarIfNotZero(2, member.NoteMs)))
                 .Msg(8, status);
             if (!online) details.Var(9, 1);
@@ -303,6 +304,14 @@ namespace Jondo.Unity.Server.Network
                 .Msg(1, Pb.New().Str(2, name).Var(3, level).Msg(5, details))
                 .Var(2, member.CharacterId);
         }
+
+        /// <summary>
+        /// Whether the member's haven bag is open to his guild: f7 f5, the «Visitar» button of the
+        /// members' list (GuildMembersUI.BindMembersItem, cf +0x68). In «comprar una raid de gremio y
+        /// activarlo» the player's own line carries it while he stands in the world.
+        /// </summary>
+        private static bool SharesHavenBagWithGuild(long characterId)
+            => (Managers.HavenBagStore.SharedOf(characterId) & Managers.HavenBagStore.SharedWithGuild) != 0;
 
         /// <summary>
         /// A guild's directory sheet (jci), or the empty one of a freshly founded guild.

@@ -76,7 +76,8 @@ namespace Jondo.Unity.Server.Managers
                 // from: kept across sessions, or whoever logged in inside left to the starting point.
                 foreach (var (column, type) in new[] { ("RoomId", "INTEGER NOT NULL DEFAULT 0"),
                                                        ("EntryMapId", "INTEGER NOT NULL DEFAULT 0"),
-                                                       ("EntryCell", "INTEGER NOT NULL DEFAULT 0") })
+                                                       ("EntryCell", "INTEGER NOT NULL DEFAULT 0"),
+                                                       ("Shared", "INTEGER NOT NULL DEFAULT 0") })
                 {
                     var columns = connection.CreateCommand();
                     columns.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('HavenBag') WHERE name = '{column}';";
@@ -199,6 +200,41 @@ namespace Jondo.Unity.Server.Managers
             => Execute("INSERT INTO HavenBag (CharacterId, EntryMapId, EntryCell) VALUES ($id, $m, $c) " +
                        "ON CONFLICT(CharacterId) DO UPDATE SET EntryMapId = $m, EntryCell = $c;",
                        ("$id", characterId), ("$m", mapId), ("$c", cell));
+
+        // ─── Who may come in ────────────────────────────────────────────────────
+
+        /// <summary>The bag open to the owner's mutual friends: bit 1 of the jau/jaz.</summary>
+        public const int SharedWithFriends = 1;
+
+        /// <summary>The bag open to the owner's guild: bit 2.</summary>
+        public const int SharedWithGuild = 2;
+
+        /// <summary>
+        /// Whom the bag is open to (HavenbagManagerUI.ChangeShare: friends + 2 × guild), as the menu
+        /// last left it; 0, nobody, at first.
+        /// </summary>
+        public static int SharedOf(long characterId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT Shared FROM HavenBag WHERE CharacterId = $id;";
+                command.Parameters.AddWithValue("$id", characterId);
+                return command.ExecuteScalar() is long shared ? (int)shared : 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Merkasako] Could not read whom the bag is open to: {ex.Message}");
+                return 0;
+            }
+        }
+
+        public static void SetShared(long characterId, int shared)
+            => Execute("INSERT INTO HavenBag (CharacterId, Shared) VALUES ($id, $s) " +
+                       "ON CONFLICT(CharacterId) DO UPDATE SET Shared = $s;",
+                       ("$id", characterId), ("$s", shared & (SharedWithFriends | SharedWithGuild)));
 
         public static void SetCurrentRoom(long characterId, int room)
             => Execute("INSERT INTO HavenBag (CharacterId, RoomId) VALUES ($id, $r) " +

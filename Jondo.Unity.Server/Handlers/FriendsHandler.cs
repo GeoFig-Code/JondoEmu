@@ -283,11 +283,20 @@ namespace Jondo.Unity.Server.Handlers
                         .VarIfNotZero(9, state.Breed)
                         .Var(11, state.CharacterId)
                         .VarIfNotZero(13, state.Sex)
-                        .Str(14, state.CharacterName))
+                        .Str(14, state.CharacterName)
+                        .VarIfNotZero(12, SharesHavenBagWithFriends(state.CharacterId) ? 1 : 0))
                    .Var(6, state.IsInFight ? InFight : Roleplay);
             }
             return kqm.Msg(7, Tag(other));
         }
+
+        /// <summary>
+        /// Whether the friend's haven bag is open to his friends: kqk f12, which shows the line's
+        /// «Visitar el merkasako de este personaje» (FriendsUI.SetFriendsInfo, ic +200). In the real
+        /// server's lists it goes with whatever map the friend is on.
+        /// </summary>
+        private static bool SharesHavenBagWithFriends(long characterId)
+            => (HavenBagStore.SharedOf(characterId) & HavenBagStore.SharedWithFriends) != 0;
 
         private static Pb ContactEntry(long other)
             => Pb.New().Var(2, other).Msg(4, Tag(other)).Var(5, UnknownState);

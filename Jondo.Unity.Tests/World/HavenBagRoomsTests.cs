@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Jondo.Unity.Protocol;
@@ -81,6 +81,7 @@ namespace Jondo.Unity.Tests.World
             HavenBagStore.SetCurrentRoom(who, 0);
 
             await using var pipe = await ClientPipe.OpenAsync(who, who, 191105026, "Dueno");
+            pipe.Session.State.CharacterLevel = MerkasakoHandler.MinimumLevel;
             using (SessionContext.Push(pipe.Session))
             {
                 await MerkasakoHandler.EnterFromOutsideAsync(pipe.ToClient, ConnectionProtocol.Push(Op.Jbn));
@@ -161,6 +162,7 @@ namespace Jondo.Unity.Tests.World
             await using (var first = await ClientPipe.OpenAsync(who, who, street, "Vuelve"))
             using (SessionContext.Push(first.Session))
             {
+                first.Session.State.CharacterLevel = MerkasakoHandler.MinimumLevel;
                 await MerkasakoHandler.EnterFromOutsideAsync(first.ToClient, ConnectionProtocol.Push(Op.Jbn));
                 Assert.True(Merkasako.IsHavenBag(first.Session.State.MapId));
             }
@@ -198,6 +200,7 @@ namespace Jondo.Unity.Tests.World
 
             await using var a = await ClientPipe.OpenAsync(first, first, 191105026, "Uno");
             await using var b = await ClientPipe.OpenAsync(second, second, 191105026, "Dos");
+            a.Session.State.CharacterLevel = b.Session.State.CharacterLevel = MerkasakoHandler.MinimumLevel;
             using (SessionContext.Push(a.Session))
                 await MerkasakoHandler.EnterFromOutsideAsync(a.ToClient, ConnectionProtocol.Push(Op.Jbn));
             using (SessionContext.Push(b.Session))

@@ -211,8 +211,12 @@ namespace Jondo.Unity.Server.Network
         public static IReadOnlyList<GameSession> OnMap(long mapId)
         {
             var here = _sessions.Values.Where(s => s.IsInWorld && s.MapId == mapId);
+            // A haven bag is its owner's: who stands in it is who came into that one bag.
             if (Managers.Merkasako.IsHavenBag(mapId) && SessionContext.Actual is { } viewer)
-                here = here.Where(s => s.CharacterId == viewer.CharacterId);
+            {
+                long bag = Handlers.MerkasakoHandler.BagOwnerOf(viewer.State);
+                here = here.Where(s => Handlers.MerkasakoHandler.BagOwnerOf(s.State) == bag);
+            }
 
             // And a house's interior is that house's: several doors lead to one interior map, and
             // each house is its own copy of it -- who came in through another door is not there.

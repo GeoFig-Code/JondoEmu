@@ -1359,6 +1359,14 @@ namespace Jondo.Unity.Server.Network
                     // Another tab of the guild chest.
                     await GuildChestHandler.SelectTabAsync(stream, payload);
                 }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jau)))
+                    await MerkasakoHandler.ShareAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jbb)))
+                    await MerkasakoHandler.InviteAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jas)))
+                    await MerkasakoHandler.AnswerInvitationAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jay)))
+                    await MerkasakoHandler.KickAsync(stream, payload);
                 else if (payloadStr.Contains(Op.Uri(Op.Jbn)))
                 {
                     // The haven bag button, and the H key.

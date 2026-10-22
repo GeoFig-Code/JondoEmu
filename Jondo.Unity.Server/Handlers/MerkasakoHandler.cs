@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -27,6 +28,33 @@ namespace Jondo.Unity.Server.Handlers
     /// </summary>
     public static class MerkasakoHandler
     {
+        /// <summary>«No puedes entrar en tu merkasako antes del nivel 10»: info message 1/468.</summary>
+        public const int MinimumLevel = 10;
+
+        private const int TooLowType = 1, TooLow = 468;
+
+        /// <summary>Whose bag a character stands in: the one he visits, or his own.</summary>
+        public static long BagOwnerOf(SessionState state)
+            => state.HavenBagOwnerId != 0 ? state.HavenBagOwnerId : state.CharacterId;
+
+        /// <summary>
+        /// Why a character may not come into another's bag, or null when he may: the owner opened it
+        /// to his friends and they are mutual friends, or to his guild and they share one
+        /// (HavenBagStore.SharedOf, the bag's menu «Compartir»). The friends and guild lists show
+        /// the «Visitar el merkasako de este personaje» button on those terms.
+        /// </summary>
+        public static string? WhyNotVisit(long visitor, long visitorAccount, long owner)
+        {
+            var host = DatabaseManager.GetCharacterById(owner);
+            if (host == null) return "no such character";
+            int shared = HavenBagStore.SharedOf(owner);
+            if ((shared & HavenBagStore.SharedWithFriends) != 0 && Contacts.AreMutual(visitorAccount, host.AccountId))
+                return null;
+            var guild = GuildStore.GuildOf(visitor);
+            if ((shared & HavenBagStore.SharedWithGuild) != 0 && guild != null && GuildStore.GuildOf(owner)?.Id == guild.Id)
+                return null;
+            return "the bag is not open to him";
+        }
         /// <summary>
         /// The button and the H key, which is a different message from changing the decor:
         ///
@@ -47,23 +75,211 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         public static async Task EnterFromOutsideAsync(NetworkStream stream, byte[] payload)
         {
-            if (ConnectionProtocol.ReadPayload(payload, Op.Jbn) == null) return;
+            byte[]? jbn = ConnectionProtocol.ReadPayload(payload, Op.Jbn);
+            if (jbn == null) return;
             if (await Managers.Jail.KeepsInAsync(stream)) return;
 
-            var state = Jondo.Unity.Server.Network.SessionContext.State;
+            long owner = 0;
+            foreach (var field in ProtoMessage.Parse(jbn).Fields)
+                if (field.FieldNumber == 2 && field.WireType == 0) owner = (long)field.VarIntValue;
+            await EnterBagAsync(stream, owner, invited: false);
+        }
+
+        /// <summary>
+        /// Into a bag, one's own (owner 0 or oneself) or another's -- open to him, or he was invited
+        /// -- or out of the one he stands in. See <see cref="EnterFromOutsideAsync"/>.
+        /// </summary>
+        private static async Task EnterBagAsync(NetworkStream stream, long owner, bool invited)
+        {
+            var state = SessionContext.State;
+            bool visiting = owner != 0 && owner != state.CharacterId;
 
             if (Merkasako.IsHavenBag(state.MapId))
             {
-                await LeaveAsync(stream);
+                // The button again, or the bag one is in: out. Another's from a bag: straight there,
+                // the way back the first one's.
+                if (!visiting || owner == BagOwnerOf(state))
+                {
+                    await LeaveAsync(stream);
+                    return;
+                }
+            }
+            else
+            {
+                if (await ConquestHandler.HoldsInAsync(stream, ConquestHandler.NoHavenBagInAWar)) return;
+                if (state.CharacterLevel < MinimumLevel)
+                {
+                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                        ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(TooLowType, TooLow)));
+                    return;
+                }
+            }
+
+            if (visiting && !invited)
+            {
+                string? why = WhyNotVisit(state.CharacterId, SessionContext.Current.AccountId, owner);
+                if (why != null)
+                {
+                    Console.WriteLine($"[Merkasako] {state.CharacterName} may not visit {owner}'s bag: {why}.");
+                    return;
+                }
+            }
+
+            if (!Merkasako.IsHavenBag(state.MapId))
+            {
+                state.HavenBagEntryMapId = state.MapId;
+                state.HavenBagEntryCell = state.CellId;
+                HavenBagStore.SetEntry(state.CharacterId, state.MapId, state.CellId);
+            }
+            else
+            {
+                // From one bag to another: the first one's people see him go before he changes bag.
+                await SessionRegistry.RemoveFromMapAsync(state.MapId, state.CharacterId, SessionContext.Current.Id);
+            }
+
+            state.HavenBagOwnerId = visiting ? owner : 0;
+            await GoToRoomAsync(stream, HavenBagStore.CurrentRoom(BagOwnerOf(state)), entering: true);
+        }
+
+        // ─── Invitations and kicks ───────────────────────────────────────────────
+
+        /// <summary>
+        /// The seconds an invitation waits for its answer: jbh f2, the popup's countdown (fyo.bjcv).
+        /// INFERRED: no capture invites.
+        /// </summary>
+        public const int InvitationSeconds = 30;
+
+        /// <summary>An invitation waiting for its answer: who invites, until when.</summary>
+        private sealed record Invitation(long Host, DateTime Until);
+
+        private static readonly ConcurrentDictionary<long, Invitation> _invitations = new();
+
+        /// <summary>The info messages of the invitations (InfoMessagesDataRoot).</summary>
+        private const int Warning = 1, AlreadyInvited = 477, CannotCome = 473, TooBusy = 554, GuestTooLow = 555,
+                          Kicked = 627, KickedOut = 628;
+
+        /// <summary>A character as the invitation's lines name him (lpg { f1 lpe { f2 name, f3 level }, f2 id }).</summary>
+        public static Pb Person(long id, string name, int level)
+            => Pb.New().Msg(1, Pb.New().Str(2, name ?? "").Var(3, level)).Var(2, id);
+
+        /// <summary>
+        /// «Invitar a mi merkasako» (jbb { f1 the guest }; PlayerMenuMaker.OnHavenbagInvite): the guest
+        /// gets «{0} te invita a entrar en su merkasako.» (jbh { f1 the host, f2 the seconds to
+        /// answer }), unless he has an invitation waiting (the host is told, 1/477), is fighting
+        /// (1/554) or is under level 10 (1/555), each told as the client's own sentence.
+        /// </summary>
+        public static async Task InviteAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? jbb = ConnectionProtocol.ReadPayload(payload, Op.Jbb);
+            var host = SessionContext.State;
+            if (jbb == null) return;
+            long target = 0;
+            foreach (var field in ProtoMessage.Parse(jbb).Fields)
+                if (field.FieldNumber == 1 && field.WireType == 0) target = (long)field.VarIntValue;
+            var guest = target == host.CharacterId ? null : SessionRegistry.FindByCharacter(target);
+            if (guest == null) return;
+
+            var now = DateTime.UtcNow;
+            if (_invitations.TryGetValue(target, out var waiting) && waiting.Until > now)
+            {
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                    ConnectionProtocol.BuildInfoMessage(Warning, AlreadyInvited, guest.State.CharacterName, target.ToString())));
                 return;
             }
-            if (await ConquestHandler.HoldsInAsync(stream, ConquestHandler.NoHavenBagInAWar)) return;
+            if (guest.State.IsInFight || guest.State.CharacterLevel < MinimumLevel)
+            {
+                await guest.SendAsync(ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(Warning,
+                    guest.State.IsInFight ? TooBusy : GuestTooLow, host.CharacterName)));
+                return;
+            }
 
-            state.HavenBagEntryMapId = state.MapId;
-            state.HavenBagEntryCell = state.CellId;
-            HavenBagStore.SetEntry(state.CharacterId, state.MapId, state.CellId);
+            _invitations[target] = new Invitation(host.CharacterId, now.AddSeconds(InvitationSeconds));
+            await guest.SendAsync(ConnectionProtocol.Push(Op.Jbh, Pb.New()
+                .Msg(1, Person(host.CharacterId, host.CharacterName, host.CharacterLevel))
+                .Var(2, InvitationSeconds).Build()));
+            Console.WriteLine($"[Merkasako] {host.CharacterName} invites {guest.State.CharacterName} into his bag.");
+        }
 
-            await GoToRoomAsync(stream, HavenBagStore.CurrentRoom(state.CharacterId), entering: true);
+        /// <summary>
+        /// The guest's answer (jas { f2 accepts }): the host learns it (jat { f1 the guest, f2 accepted },
+        /// «{0} ha aceptado la invitación al merkasako.» or «se ha negado»), and an accepting guest goes
+        /// into the host's bag -- unless he cannot from where he is (the host is told, 1/473).
+        /// </summary>
+        public static async Task AnswerInvitationAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? jas = ConnectionProtocol.ReadPayload(payload, Op.Jas);
+            var guest = SessionContext.State;
+            if (jas == null || !_invitations.TryRemove(guest.CharacterId, out var invitation) || invitation.Until < DateTime.UtcNow)
+                return;
+            bool accepted = false;
+            foreach (var field in ProtoMessage.Parse(jas).Fields)
+                if (field.FieldNumber == 2 && field.WireType == 0) accepted = field.VarIntValue != 0;
+
+            var host = SessionRegistry.FindByCharacter(invitation.Host);
+            if (host != null)
+                await host.SendAsync(ConnectionProtocol.Push(Op.Jat, Pb.New()
+                    .Msg(1, Person(guest.CharacterId, guest.CharacterName, guest.CharacterLevel))
+                    .VarIfNotZero(2, accepted ? 1 : 0).Build()));
+            if (!accepted) return;
+
+            if (guest.IsInFight)
+            {
+                if (host != null)
+                    await host.SendAsync(ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(Warning, CannotCome,
+                        guest.CharacterName, guest.CharacterId.ToString())));
+                return;
+            }
+            await EnterBagAsync(stream, invitation.Host, invited: true);
+        }
+
+        /// <summary>
+        /// «Expulsar de mi merkasako» (jay { f2 the visitor }; PlayerMenuMaker.OnHavenbagKick): a
+        /// visitor of one's bag goes back where he came from, told «{{player}} te ha expulsado de su
+        /// merkasako.» (0/627), and the host «... ha sido expulsado de tu merkasako.» (0/628).
+        /// </summary>
+        public static async Task KickAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? jay = ConnectionProtocol.ReadPayload(payload, Op.Jay);
+            var host = SessionContext.State;
+            if (jay == null) return;
+            long target = 0;
+            foreach (var field in ProtoMessage.Parse(jay).Fields)
+                if (field.FieldNumber == 2 && field.WireType == 0) target = (long)field.VarIntValue;
+            var guest = SessionRegistry.FindByCharacter(target);
+            if (guest?.Stream == null || guest.State.HavenBagOwnerId != host.CharacterId || !Merkasako.IsHavenBag(guest.State.MapId))
+                return;
+
+            using (SessionContext.Push(guest)) await LeaveAsync(guest.Stream);
+            await guest.SendAsync(ConnectionProtocol.Push(Op.Lqn,
+                ConnectionProtocol.BuildSystemMessage(Kicked, host.CharacterName, host.CharacterId.ToString())));
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Lqn,
+                ConnectionProtocol.BuildSystemMessage(KickedOut, guest.State.CharacterName, target.ToString())));
+            Console.WriteLine($"[Merkasako] {host.CharacterName} puts {guest.State.CharacterName} out of his bag.");
+        }
+
+        /// <summary>For tests: the invitations forgotten.</summary>
+        internal static void ForgetInvitations() => _invitations.Clear();
+
+        /// <summary>
+        /// «Compartir» in the bag's menu (jau { f1 friends + 2 × guild }; HavenbagManagerUI.ChangeShare):
+        /// kept, and told back (jaz { f1 }, a push), as in «hacer accesible merkasako a amigos y gente
+        /// del gremio»: 2 for the guild, then 3 for both. Only in one's own bag.
+        /// </summary>
+        public static async Task ShareAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? jau = ConnectionProtocol.ReadPayload(payload, Op.Jau);
+            var state = SessionContext.State;
+            if (jau == null || state.HavenBagOwnerId != 0) return;
+
+            int shared = 0;
+            foreach (var field in ProtoMessage.Parse(jau).Fields)
+                if (field.FieldNumber == 1 && field.WireType == 0) shared = (int)field.VarIntValue;
+
+            HavenBagStore.SetShared(state.CharacterId, shared);
+            shared = HavenBagStore.SharedOf(state.CharacterId);
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Jaz, Pb.New().VarIfNotZero(1, shared).Build()));
+            Console.WriteLine($"[Merkasako] {state.CharacterName}'s bag is open to {shared} (1 friends, 2 guild).");
         }
 
         /// <summary>
@@ -113,7 +329,9 @@ namespace Jondo.Unity.Server.Handlers
             state.HavenBagEntryCell = 0;
             DatabaseManager.SaveCurrentCharacter();
 
+            // Told while he still belongs to the bag he leaves: its people see him go.
             await SessionRegistry.AnunciarMudanzaAsync(SessionContext.Current, dentro);
+            state.HavenBagOwnerId = 0;
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.BuildActorLeft(state.CharacterId));
@@ -140,7 +358,7 @@ namespace Jondo.Unity.Server.Handlers
         public static async Task ChangeRoomAsync(NetworkStream stream, byte[] payload)
         {
             byte[]? jbl = ConnectionProtocol.ReadPayload(payload, Op.Jbl);
-            if (jbl == null || !Merkasako.IsHavenBag(SessionContext.State.MapId)) return;
+            if (jbl == null || !Merkasako.IsHavenBag(SessionContext.State.MapId) || SessionContext.State.HavenBagOwnerId != 0) return;
 
             int room = 0;
             foreach (var field in ProtoMessage.Parse(jbl).Fields)
@@ -159,7 +377,7 @@ namespace Jondo.Unity.Server.Handlers
         public static async Task ChangeThemeAsync(NetworkStream stream, byte[] payload)
         {
             byte[]? jbt = ConnectionProtocol.ReadPayload(payload, Op.Jbt);
-            if (jbt == null || !Merkasako.IsHavenBag(SessionContext.State.MapId)) return;
+            if (jbt == null || !Merkasako.IsHavenBag(SessionContext.State.MapId) || SessionContext.State.HavenBagOwnerId != 0) return;
 
             int theme = 0;
             foreach (var field in ProtoMessage.Parse(jbt).Fields)
@@ -180,7 +398,8 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static async Task GoToRoomAsync(NetworkStream stream, int room, bool entering)
         {
-            long who = SessionContext.State.CharacterId;
+            long who = BagOwnerOf(SessionContext.State);
+            bool own = who == SessionContext.State.CharacterId;
             int theme = HavenBagStore.ThemeOfRoom(who, room);
             long target = Merkasako.MapOfTheme(theme);
             if (target == 0)
@@ -195,7 +414,7 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
-            HavenBagStore.SaveTheme(who, Merkasako.ThemeOfMap(target));
+            if (own) HavenBagStore.SaveTheme(who, Merkasako.ThemeOfMap(target));
 
             long left = SessionContext.State.MapId;
             SessionContext.State.MapId = target;
@@ -207,9 +426,9 @@ namespace Jondo.Unity.Server.Handlers
 
             // Whoever stays on the map he left stops seeing him there. This was missing: going
             // into the haven bag left him standing on the street, drawn, for everybody on it.
-            // Only the leaving is told -- a haven bag is nobody else's to be told about.
-            if (left != target)
-                await SessionRegistry.RemoveFromMapAsync(left, SessionContext.Current.CharacterId, SessionContext.Current.Id);
+            // And whoever is in this bag -- its owner and his visitors, nobody else's -- sees him
+            // come (SessionRegistry.OnMap keeps each bag apart).
+            await SessionRegistry.AnunciarMudanzaAsync(SessionContext.Current, left);
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.BuildActorLeft(SessionContext.State.CharacterId));
@@ -237,6 +456,8 @@ namespace Jondo.Unity.Server.Handlers
         public static void AddToMap(Pb jss, long mapId, DatabaseManager.DbCharacter owner)
         {
             if (owner == null || !Merkasako.IsHavenBag(mapId)) return;
+            long visited = SessionContext.Actual?.State.HavenBagOwnerId ?? 0;
+            if (visited != 0 && visited != owner.Id) owner = DatabaseManager.GetCharacterById(visited) ?? owner;
             jss.Msg(8, ConnectionProtocol.HavenBagInfo(HavenBagStore.CurrentRoom(owner.Id), Merkasako.ThemeOfMap(mapId),
                                                        Merkasako.Rooms, owner.Id, owner.Name, owner.Level));
         }
@@ -246,6 +467,7 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>The client opens the management menu. An empty jbm is answered and it lets him place.</summary>
         public static async Task OpenEditorAsync(NetworkStream stream)
         {
+            if (SessionContext.State.HavenBagOwnerId != 0) return;   // another's bag is not his to furnish
             SessionContext.State.IsHavenBagEditing = true;
             SessionContext.State.PendingHavenBagFurniture.Clear();
 
@@ -261,6 +483,7 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         public static void UploadStarts()
         {
+            if (SessionContext.State.HavenBagOwnerId != 0) return;
             SessionContext.State.IsHavenBagEditing = true;
             SessionContext.State.PendingHavenBagFurniture.Clear();
         }
@@ -275,7 +498,7 @@ namespace Jondo.Unity.Server.Handlers
         public static void CollectFurniture(byte[] payload)
         {
             byte[]? jbg = ConnectionProtocol.ReadPayload(payload, Op.Jbg);
-            if (jbg == null || !Merkasako.IsHavenBag(SessionContext.State.MapId)) return;
+            if (jbg == null || !Merkasako.IsHavenBag(SessionContext.State.MapId) || SessionContext.State.HavenBagOwnerId != 0) return;
 
             foreach (var field in ProtoMessage.Parse(jbg).Fields)
             {
@@ -324,18 +547,18 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// The furniture and the permissions, which the client expects after the map. The permissions go
-        /// empty: there is nobody here to invite.
+        /// The furniture and the permissions, which the client expects after the map: the bag's owner's
+        /// pieces for the room's theme, and whom he opened it to (jaz { f1 }).
         /// </summary>
         public static async Task SendFurnitureAsync(NetworkStream stream)
         {
-            var pieces = HavenBagStore.FurnitureOf(Jondo.Unity.Server.Network.SessionContext.State.CharacterId,
-                                                   Merkasako.ThemeOfMap(Jondo.Unity.Server.Network.SessionContext.State.MapId));
+            long owner = BagOwnerOf(SessionContext.State);
+            var pieces = HavenBagStore.FurnitureOf(owner, Merkasako.ThemeOfMap(SessionContext.State.MapId));
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Jbu, ConnectionProtocol.BuildHavenBagFurniture(pieces)));
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.Push(Op.Jaz));
+                ConnectionProtocol.Push(Op.Jaz, Pb.New().VarIfNotZero(1, HavenBagStore.SharedOf(owner)).Build()));
         }
     }
 }
