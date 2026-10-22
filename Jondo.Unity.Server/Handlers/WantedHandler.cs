@@ -40,14 +40,22 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         public static async Task FightEndedAsync(NetworkStream stream, FightInstance fight, bool won)
         {
-            if (!won || Quests.Log is not { } log) return;
+            if (!won) return;
             if (fight.Buscar(SessionContext.State.CharacterId) == null) return;
 
             var beaten = fight.Rojo.Where(m => !m.EsInvocado && m.MonsterId > 0).Select(m => m.MonsterId).Distinct();
             foreach (int monster in beaten.ToList())
             {
                 var criminal = WantedPosters.ByMonster(monster);
-                if (criminal == null || !Wants(log, criminal)) continue;
+                if (criminal == null) continue;
+
+                // A bounty no quest wants goes away for whoever beats it.
+                if (criminal.Quest == 0)
+                {
+                    WantedPosters.Captured(monster, fight.RoleplayMapId, fight.DefenderLeaderId, Now, _dice);
+                    continue;
+                }
+                if (Quests.Log is not { } log || !Wants(log, criminal)) continue;
 
                 await Quests.TickAsync(stream, criminal.Quest, criminal.Catch);
                 if (criminal.Follower != 0 && Equipment.HowMany(criminal.Follower) == 0)

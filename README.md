@@ -545,10 +545,12 @@ An alliance is made of characters, not guilds.
 
 - ✅ **6,468 NPC templates** with their looks and dialogue trees
 - ✅ **422 NPCs** placed across **202 maps**
-- ✅ **5,134 monsters**, quest monsters and archmonsters included
+- ✅ **5,134 monsters**, quest monsters and archmonsters included — one archmonster of each per zone, back
+  two hours after it is beaten
 - ✅ Soul capture: wear an empty soul stone, cast Captura de Almas, win with its state still on —
   the group's souls go into full stones, each archmonster and guardian in its own, up to the stone's level
-- ✅ Wanted criminals: 81 of them, each in one group of his zone and gone for hours once caught;
+- ✅ Wanted criminals: 81 of them, and the two bounties no quest wants, each in one group of his zone and
+  gone three hours once caught;
   beat him with his quest to take him, hand him to his jailer, who also sells news of him for 500 kamas
 - 🟡 Only Srambad's three wanted posters can be read so far (other posters' places are unknown)
 <img width="1700" height="930" alt="image" src="https://github.com/user-attachments/assets/02254e58-ec87-4839-82ac-f142ec5ef9cd" />

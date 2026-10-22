@@ -26,9 +26,15 @@ namespace Jondo.Unity.Server.Managers
     /// already --, and then «il réapparaît immédiatement». Whoever has the quest leaves the fight
     /// with him, and the jailer's «Livrer» ends it. The jailer, for 500 kamas, says whether he has
     /// been seen. The world's groups ship with the criminals in 6,352 of 38,744 of them: they are
-    /// taken out as the groups are read, and each one is put back in ONE group of its zone.
-    /// INFERRED: «several hours» is two to six, drawn; a beaten criminal nobody took comes back two
-    /// minutes later, time enough for every fighter's end of fight to say whether he took him.
+    /// taken out as the groups are read, and each one is put back in ONE group of its zone. Taken,
+    /// he is away 3 h ± 15 min, as on the official servers since 3.1 (DofusPourLesNoobs,
+    /// DofusPourLesPros; brought in pull request #67). INFERRED: a beaten criminal nobody took comes
+    /// back two minutes later, time enough for every fighter's end of fight to say whether he took him.
+    /// </para>
+    /// <para>
+    /// The client's other bounties, isBounty with no quest wanting them -- the «Jabalí agresivo»
+    /// (366), in 315 groups of its zone, and the «Colmillo blando rabioso» (397), in 97 -- follow the
+    /// same rule, one group of their zone, and whoever beats one sends it away the same three hours.
     /// </para>
     /// </remarks>
     public static class WantedPosters
@@ -37,7 +43,7 @@ namespace Jondo.Unity.Server.Managers
         public const int InformationPrice = 500;
 
         /// <summary>How long a criminal stays away once somebody has taken him.</summary>
-        public static readonly TimeSpan ShortestAbsence = TimeSpan.FromHours(2), LongestAbsence = TimeSpan.FromHours(6);
+        public static readonly TimeSpan Absence = TimeSpan.FromHours(3), AbsenceSpread = TimeSpan.FromMinutes(15);
 
         /// <summary>How long a criminal beaten by nobody who wanted him takes to come back.</summary>
         public static readonly TimeSpan Grace = TimeSpan.FromMinutes(2);
@@ -98,6 +104,7 @@ namespace Jondo.Unity.Server.Managers
                 {
                     using var json = JsonDocument.Parse(File.ReadAllText(path));
                     Read(json.RootElement);
+                    AddUnwantedBounties();
                 }
                 catch (Exception ex)
                 {
@@ -153,6 +160,63 @@ namespace Jondo.Unity.Server.Managers
 
         private static int Int(JsonElement row, string name)
             => row.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
+
+        /// <summary>
+        /// The client's bounties no quest wants (isBounty, and in no wanted poster): criminals with no
+        /// quest nor jailer, their zone the subareas their template names.
+        /// </summary>
+        private static void AddUnwantedBounties()
+        {
+            var byMonster = new Dictionary<int, Criminal>(_byMonster);
+            foreach (var bounty in UnwantedBounties(byMonster.Keys)) byMonster[bounty.Monster] = bounty;
+            _byMonster = byMonster;
+        }
+
+        /// <summary>The bounties no quest wants: the isBounty templates not in <paramref name="wanted"/> that stand somewhere.</summary>
+        internal static List<Criminal> UnwantedBounties(ICollection<int> wanted)
+        {
+            var found = new List<Criminal>();
+            try
+            {
+                using var connection = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT Id, Data FROM MonsterTemplates;";
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    int monster = reader.GetInt32(0);
+                    if (wanted.Contains(monster) || reader.IsDBNull(1)) continue;
+                    using var data = JsonDocument.Parse(reader.GetString(1));
+                    if (!IsBounty(data.RootElement)) continue;
+                    var zones = data.RootElement.TryGetProperty("subareas", out var subareas)
+                        ? (subareas.ValueKind == JsonValueKind.Object && subareas.TryGetProperty("Array", out var inner) ? inner : subareas)
+                        : default;
+                    var list = zones.ValueKind == JsonValueKind.Array
+                        ? zones.EnumerateArray().Where(z => z.ValueKind == JsonValueKind.Number).Select(z => z.GetInt32()).ToList()
+                        : new List<int>();
+                    if (list.Count == 0) continue;   // standing nowhere in the world
+                    found.Add(new Criminal(0, monster, list, 0, 0, 0, Array.Empty<Report>()));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Wanted] Could not read the bounties no quest wants: {ex.Message}");
+            }
+            return found;
+        }
+
+        private static bool IsBounty(JsonElement data)
+        {
+            if (!data.TryGetProperty("isBounty", out var flag)) return false;
+            return flag.ValueKind switch
+            {
+                JsonValueKind.Number => flag.TryGetInt32(out int n) && n != 0,
+                JsonValueKind.String => flag.GetString() is "1" or "true" or "True",
+                JsonValueKind.True => true,
+                _ => false,
+            };
+        }
 
         /// <summary>Whether a monster is a wanted criminal.</summary>
         public static bool Is(int monster) => _byMonster.ContainsKey(monster);
@@ -234,9 +298,9 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
-        /// Somebody took him out of that group: he is away for two to six hours, whether the group
-        /// is still standing or has just gone -- each fighter's end of fight says it, before or after
-        /// the group is taken off. Null when he was not standing there: the criminal a legendary
+        /// Somebody took him out of that group: he is away for <see cref="Absence"/>, whether the
+        /// group is still standing or has just gone -- each fighter's end of fight says it, before or
+        /// after the group is taken off. Null when he was not standing there: the criminal a legendary
         /// hunt digs up is his own, and the one roaming the zone stays.
         /// </summary>
         public static TimeSpan? Captured(int monster, long map, long group, long nowMs, Random dice)
@@ -247,7 +311,8 @@ namespace Jondo.Unity.Server.Managers
                              || (_lastStood.TryGetValue(monster, out var was) && was == (map, group));
                 if (!there) return null;
 
-                var away = ShortestAbsence + TimeSpan.FromMinutes(dice.Next((int)(LongestAbsence - ShortestAbsence).TotalMinutes + 1));
+                var away = Absence + TimeSpan.FromMinutes(dice.Next(-(int)AbsenceSpread.TotalMinutes,
+                                                                     (int)AbsenceSpread.TotalMinutes + 1));
 
                 // Today's Almanax may bring him back sooner: «La velocidad de aparición de los
                 // monstruos de Se busca aumenta un 200%» (day 51, type 3, by race).

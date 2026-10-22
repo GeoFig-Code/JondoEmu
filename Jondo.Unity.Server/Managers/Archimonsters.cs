@@ -32,11 +32,24 @@ namespace Jondo.Unity.Server.Managers
     ///
     /// An archmonster that loses its place is not deleted but demoted: it is swapped for the
     /// ordinary monster it is the rare version of, so the group keeps its size and its level.
+    ///
+    /// Beaten, one stays away 2 h ± 15 min before it can stand anywhere again, as on the official
+    /// servers since 3.1 (DofusPourLesNoobs, DofusPourLesPros; brought in pull request #67).
     /// </summary>
     public static class Archimonsters
     {
         /// <summary>One group in ten gets to keep its archmonster.</summary>
         private const int OneInHowMany = 10;
+
+        /// <summary>How long a beaten archmonster stays away: 2 h, give or take a quarter of an hour.</summary>
+        public static readonly TimeSpan Respawn = TimeSpan.FromHours(2), RespawnSpread = TimeSpan.FromMinutes(15);
+
+        /// <summary>When each beaten archmonster may stand again, in Unix milliseconds.</summary>
+        private static readonly Dictionary<int, long> _awayUntil = new Dictionary<int, long>();
+
+        private static readonly Random _dice = new Random();
+
+        private static long Now => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
         /// <summary>archmonster id -> the ordinary monster it is the rare version of.</summary>
         private static readonly Dictionary<int, int> _ordinary = new Dictionary<int, int>();
@@ -67,6 +80,7 @@ namespace Jondo.Unity.Server.Managers
                 _zones.Clear();
                 _placed.Clear();
                 _busyMaps.Clear();
+                _awayUntil.Clear();
             }
 
             var raw = new Dictionary<int, string>();
@@ -159,6 +173,7 @@ namespace Jondo.Unity.Server.Managers
         {
             if (_busyMaps.Contains(mapId)) return false;          // one per map
             if (_placed.ContainsKey(rare)) return false;          // one of each, anywhere
+            if (IsAway(rare)) return false;                       // beaten not long ago
 
             // One in ten -- three on the Almanax's day 292, «la velocidad de aparición de los
             // archimonstruos aumenta un 200%». Mixing the group and the monster keeps two groups on
@@ -175,9 +190,11 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>
         /// Lets go of the archmonster a beaten group was holding, so its zone can have it again
-        /// somewhere else: "one of each per zone" lasts until something kills it.
+        /// somewhere else once it is back (<see cref="Respawn"/>) -- sooner on the Almanax's day
+        /// 292, «la velocidad de aparición de los archimonstruos aumenta un 200%».
+        /// <paramref name="nowMs"/> is when it was beaten; now when left out.
         /// </summary>
-        public static void Release(long mapId, IEnumerable<int> members)
+        public static void Release(long mapId, IEnumerable<int> members, long? nowMs = null)
         {
             lock (_gate)
             {
@@ -186,8 +203,20 @@ namespace Jondo.Unity.Server.Managers
                     if (!_placed.TryGetValue(rare, out long where) || where != mapId) continue;
                     _placed.Remove(rare);
                     _busyMaps.Remove(mapId);
+
+                    var away = Respawn + TimeSpan.FromMinutes(_dice.Next(-(int)RespawnSpread.TotalMinutes,
+                                                                          (int)RespawnSpread.TotalMinutes + 1));
+                    long faster = Almanax.WithBonus(Almanax.BonusType.Archmonsters, 100);
+                    if (faster > 100) away = TimeSpan.FromTicks(away.Ticks * 100 / faster);
+                    _awayUntil[rare] = (nowMs ?? Now) + (long)away.TotalMilliseconds;
                 }
             }
+        }
+
+        /// <summary>Whether a beaten archmonster is still away.</summary>
+        public static bool IsAway(int rare)
+        {
+            lock (_gate) return _awayUntil.TryGetValue(rare, out long until) && until > Now;
         }
 
         /// <summary>
@@ -201,7 +230,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 foreach (var pair in _ordinary)
                 {
-                    if (_placed.ContainsKey(pair.Key)) continue;
+                    if (_placed.ContainsKey(pair.Key) || IsAway(pair.Key)) continue;
                     if (!_zones.TryGetValue(pair.Key, out var zones) || !zones.Contains(subAreaId)) continue;
                     int i = ids.IndexOf(pair.Value);
                     if (i < 0) continue;

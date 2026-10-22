@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Jondo.Unity.Server;
 using Jondo.Unity.Server.Managers;
@@ -47,10 +48,28 @@ namespace Jondo.Unity.Tests.World
                 Archimonsters.MayComeBack(SubArea, again);
                 Assert.Equal(new[] { Ordinary }, again);
 
-                // Beaten on another map, it is not let go; beaten on its own, it is.
+                // Beaten on another map, it is not let go; beaten on its own, it is, and stays away
+                // 2 h ± 15 min before it stands anywhere again.
                 Archimonsters.Release(2, new[] { Rare });
                 Assert.Equal(0, Archimonsters.Thin(3, first, new List<int> { Rare }));
                 Archimonsters.Release(1, new[] { Ordinary, Rare });
+                Assert.True(Archimonsters.IsAway(Rare));
+                Assert.Equal(0, Stand(mapId: 3));
+                var away = new List<int> { Ordinary };
+                Archimonsters.MayComeBack(SubArea, away);
+                Assert.Equal(new[] { Ordinary }, away);
+
+                // Beaten three hours ago, it is back.
+                Assert.Equal(0, Stand(mapId: 4));
+                using (var connection = new SqliteConnection(DatabaseManager.WorldConnectionString))
+                {
+                    connection.Open();
+                    Archimonsters.Initialize(connection);
+                }
+                Assert.NotEqual(0, Stand(mapId: 1));
+                long threeHoursAgo = DateTimeOffset.UtcNow.AddHours(-3).ToUnixTimeMilliseconds();
+                Archimonsters.Release(1, new[] { Rare }, threeHoursAgo);
+                Assert.False(Archimonsters.IsAway(Rare));
                 Assert.NotEqual(0, Stand(mapId: 3));
             }
             finally

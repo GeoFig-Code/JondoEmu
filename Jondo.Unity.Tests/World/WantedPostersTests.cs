@@ -118,7 +118,8 @@ namespace Jondo.Unity.Tests.World
             // legendary hunt's own --: nothing.
             Assert.Null(WantedPosters.Captured(900500, 77, -6, now, new Random(3)));
             var away = WantedPosters.Captured(900500, 77, -5, now, new Random(3))!.Value;
-            Assert.InRange(away, WantedPosters.ShortestAbsence, WantedPosters.LongestAbsence);
+            Assert.InRange(away, WantedPosters.Absence - WantedPosters.AbsenceSpread,
+                           WantedPosters.Absence + WantedPosters.AbsenceSpread);
             Assert.DoesNotContain(900500, WantedPosters.Due(now + (long)away.TotalMilliseconds - 1).Select(c => c.Monster));
             Assert.Contains(900500, WantedPosters.Due(now + (long)away.TotalMilliseconds).Select(c => c.Monster));
         }
@@ -150,6 +151,24 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(new[] { 900500, 900501 }, WantedPosters.HandedTo(9).Select(c => c.Monster));
             Assert.Empty(WantedPosters.HandedTo(8));
             Assert.Null(WantedPosters.JailerOf(8));
+        }
+
+        /// <summary>
+        /// The bounties no quest wants follow the criminals' rule: the «Jabalí agresivo» (366) and the
+        /// «Colmillo blando rabioso» (397), shipped in 315 and 97 groups, stand in one of their zone.
+        /// </summary>
+        [Fact]
+        public void The_bounties_no_quest_wants_are_criminals_too()
+        {
+            var bounties = WantedPosters.UnwantedBounties(new HashSet<int>()).ToDictionary(c => c.Monster);
+            if (bounties.Count == 0) return;   // no world data
+            Assert.Equal(new[] { 68 }, bounties[366].Subareas);
+            Assert.Equal(new[] { 280 }, bounties[397].Subareas);
+            Assert.Equal(0, bounties[366].Quest);
+            Assert.DoesNotContain(3773, bounties.Keys);   // a bounty that stands nowhere
+
+            var wanted = WantedPosters.UnwantedBounties(new HashSet<int> { 366 });
+            Assert.DoesNotContain(wanted, c => c.Monster == 366);
         }
     }
 }
