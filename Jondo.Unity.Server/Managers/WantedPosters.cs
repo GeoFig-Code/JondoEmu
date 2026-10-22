@@ -248,6 +248,12 @@ namespace Jondo.Unity.Server.Managers
                 if (!there) return null;
 
                 var away = ShortestAbsence + TimeSpan.FromMinutes(dice.Next((int)(LongestAbsence - ShortestAbsence).TotalMinutes + 1));
+
+                // Today's Almanax may bring him back sooner: «La velocidad de aparición de los
+                // monstruos de Se busca aumenta un 200%» (day 51, type 3, by race).
+                int faster = Almanax.BonusPercent(Almanax.BonusType.WantedSpawn,
+                    Almanax.Where.Anywhere with { Monsters = new[] { monster }, Races = new[] { Almanax.RaceOf(monster) } });
+                if (faster > 0) away = TimeSpan.FromTicks(away.Ticks * 100 / (100 + faster));
                 long until = nowMs + (long)away.TotalMilliseconds;
                 _awayUntil[monster] = _awayUntil.TryGetValue(monster, out long already) ? Math.Max(already, until) : until;
                 return away;

@@ -599,8 +599,8 @@ Full workings in **`docs/achievements.md`**.
 - ✅ The day's bonuses to fights (experience, drops, challenges and an extra one, a second loot in dungeons — by zone,
   dungeon, monster family or item worn), the Koliseo, quests, jobs, harvests, crafting (ingredients
   saved, a second item, runes kept), tax collectors, breeding and paddock items, resources' respawn, life
-  regeneration and healing consumables, resource protectors, archmonsters and the quality of what a city crafts
-- 🟡 The bonus to wanted monsters is not applied yet
+  regeneration and healing consumables, resource protectors, archmonsters, the quality of what a city crafts,
+  pets and wanted criminals
 
 ### 🏰 Dungeons
 <img width="2550" height="1498" alt="image" src="https://github.com/user-attachments/assets/f79f7881-c68e-45b5-ae29-b4aaba928a1d" />
