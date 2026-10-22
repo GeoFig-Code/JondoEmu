@@ -1652,11 +1652,24 @@ namespace Jondo.Unity.Server.Handlers
         /// the character's, on foot. Mounted, the root is the mount: a JondoBot Zobal putting on a mask
         /// got the mask's bones on its dragoturkey, and the client drew nothing at all.
         /// </summary>
-        private static async Task AnnounceAppearanceAsync(NetworkStream stream, Fighter fighter,
-                                                          int appearance)
+        internal static async Task AnnounceAppearanceAsync(NetworkStream stream, Fighter fighter,
+                                                          int appearance, FightInstance appearanceFight = null)
         {
-            byte[] look = NormalFightLook(fighter, onFoot: appearance != 0);
+            byte[] look = NormalFightLook(fighter, onFoot: appearance != 0 || Managers.ForgelanceCombat.Is(fighter));
             if (look.Length == 0) return;
+
+            if (Managers.ForgelanceCombat.Is(fighter) && appearance is 0 or 2061 or 2062)
+            {
+                look = Network.ForgelanceProtocol.Look(look, fighter, appearance);
+                var fight = appearanceFight ?? GetCurrentFight();
+                if (fight != null)
+                    await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
+                        Network.FightProtocol.BuildLookChanged(fighter.Id, look)));
+                else
+                    await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jwe,
+                        Network.FightProtocol.BuildLookChanged(fighter.Id, look)));
+                return;
+            }
 
             if (appearance != 0)
             {
@@ -3257,7 +3270,7 @@ namespace Jondo.Unity.Server.Handlers
                     if (caido.Apariencia != 0)
                     {
                         await AnnounceAppearanceAsync(stream, quien,
-                            quien.Buffs.AparienciaEn(fight.RoundNumber));
+                            quien.Buffs.AparienciaEn(fight.RoundNumber), fight);
                     }
 
                     // A vitality percentage moved the maximum when it went on; it moves back.
@@ -3894,7 +3907,8 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static async Task SalirDeLasAurasAsync(NetworkStream stream, FightInstance fight, Fighter quien)
         {
-            foreach (var aura in fight.Glifos.Where(g => EsAuraDeMonstruo(g) && g.Dentro.Contains(quien.Id)
+            foreach (var aura in fight.Glifos.Where(g => (EsAuraDeMonstruo(g) || Managers.ForgelanceCombat.IsAura(fight, g))
+                                                         && g.Dentro.Contains(quien.Id)
                                                          && !g.Cubre(quien.CellId)).ToList())
             {
                 aura.Dentro.Remove(quien.Id);
@@ -3932,6 +3946,7 @@ namespace Jondo.Unity.Server.Handlers
                                                          bool byDisplacement = false,
                                                          bool skipWalls = false)
         {
+            if (alPisar) await SyncForgelanceProximityAsync(stream, fight);
             if (quien == null || !quien.IsAlive || fight.Glifos.Count == 0) return;
 
             // A monster's aura gives while one stands in it: whoever has walked, been pushed or
@@ -4078,7 +4093,8 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             if (glifo.SeGastaAlDispararse) glifo.Gastado = true;
-            if (EsAuraDeMonstruo(glifo) && quien.IsAlive) glifo.Dentro.Add(quien.Id);
+            if ((EsAuraDeMonstruo(glifo) || Managers.ForgelanceCombat.IsAura(fight, glifo)) && quien.IsAlive)
+                glifo.Dentro.Add(quien.Id);
         }
 
         /// <summary>
@@ -4532,7 +4548,7 @@ namespace Jondo.Unity.Server.Handlers
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                 Network.FightProtocol.BuildSequenceStart(caster.Id,
-                                                         Network.FightProtocol.ActionSequence)));
+                                                         Managers.ForgelanceCombat.ActionSequence(caster))));
 
             // A weapon's blow always counts its hits this turn (f4 f2, 1 or 2 in every capture); a
             // punch counts nothing.
@@ -4584,13 +4600,22 @@ namespace Jondo.Unity.Server.Handlers
             fight.CastLanded = spell != 0 ? new FightInstance.CastSnapshot(caster.Id, spell, CellsOfEverybody(fight)) : null;
             try
             {
-                tirada = await BoostsFirstAsync(stream, fight, caster, spell, grade, victim, cell, critico, tirada);
-                await HurtAsync(stream, fight, caster, spell, grade, victim, cell, critico, tirada);
+                if (Managers.ForgelanceCombat.Is(caster) && spell != 0)
+                {
+                    // The Forgelance's retrieval and script actions precede its damage in the captures.
+                    await AplicarEfectosAsync(stream, fight, caster, spell, grade, victim,
+                        Managers.EffectEngine.AlLanzar, cell, critico, tirada, orderedForgelance: true);
+                }
+                else
+                {
+                    tirada = await BoostsFirstAsync(stream, fight, caster, spell, grade, victim, cell, critico, tirada);
+                    await HurtAsync(stream, fight, caster, spell, grade, victim, cell, critico, tirada);
 
-                // And what the spell leaves behind, which is not only damage: the AP Flecha Helada steals,
-                // its three turns of basic damage, Disparos Lejanos's range...
-                await AplicarEfectosAsync(stream, fight, caster, spell, grade, victim,
-                                          Managers.EffectEngine.AlLanzar, cell, critico, tirada);
+                    // And what the spell leaves behind, which is not only damage: the AP Flecha Helada steals,
+                    // its three turns of basic damage, Disparos Lejanos's range...
+                    await AplicarEfectosAsync(stream, fight, caster, spell, grade, victim,
+                                              Managers.EffectEngine.AlLanzar, cell, critico, tirada);
+                }
             }
             finally
             {
@@ -4616,7 +4641,7 @@ namespace Jondo.Unity.Server.Handlers
             int cierre = fight.SiguienteAccion();
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                 Network.FightProtocol.BuildSequenceEnd(cierre, caster.Id,
-                                                       Network.FightProtocol.ActionSequence)));
+                                                       Managers.ForgelanceCombat.ActionSequence(caster))));
 
             Program.LogDebug($"[Fight] Casts spell {spell} (grade {spellLevel}) at cell " +
                              $"{cell} for {cost} AP; {caster.CurrentAP} left.");
@@ -4854,7 +4879,10 @@ namespace Jondo.Unity.Server.Handlers
             else if (receta.HechizoPropio != 0)
             {
                 // From this round: what it waits on with a delay counts its turns from here.
-                invocado.Buffs.PonerActitud(receta.HechizoPropio, givenInRound: fight.RoundNumber);
+                invocado.Buffs.PonerActitud(receta.HechizoPropio,
+                    grado: plantilla == Managers.ForgelanceCombat.Lance && Managers.ForgelanceCombat.Is(quienInvoca)
+                        ? receta.GradoDelHechizoPropio : 1,
+                    givenInRound: fight.RoundNumber);
                 await AplicarEfectosAsync(stream, fight, invocado, receta.HechizoPropio,
                                           receta.GradoDelHechizoPropio,
                                           invocado, Managers.EffectEngine.AlLanzar, celda, armar: false);
@@ -4880,6 +4908,8 @@ namespace Jondo.Unity.Server.Handlers
 
             // And if a wall went up with it, let it be seen.
             await ReconciliarLosMurosAsync(stream, fight);
+            if (plantilla == Managers.ForgelanceCombat.Lance && Managers.ForgelanceCombat.Is(quienInvoca))
+                await SyncForgelanceProximityAsync(stream, fight);
             return invocado;
         }
 
@@ -6182,7 +6212,8 @@ namespace Jondo.Unity.Server.Handlers
                                                       IReadOnlyList<Managers.SpellEffect> tirada = null,
                                                       int rondaDelEnganche = -1,
                                                       bool armar = true, bool soloAlObjetivo = false,
-                                                      bool conducta = false, bool delayHoldsBackOnly = false)
+                                                      bool conducta = false, bool delayHoldsBackOnly = false,
+                                                      bool orderedForgelance = false)
         {
             if (hechizo == 0) return;
 
@@ -6208,7 +6239,8 @@ namespace Jondo.Unity.Server.Handlers
                                                                  efectosSorteados: tirada,
                                                                  rondaDelEnganche: rondaDelEnganche,
                                                                  armar: armar, soloAlObjetivo: soloAlObjetivo,
-                                                                 delayHoldsBackOnly: delayHoldsBackOnly);
+                                                                 delayHoldsBackOnly: delayHoldsBackOnly,
+                                                                 orderedForgelance: orderedForgelance);
             }
             catch (Exception ex)
             {
@@ -6267,6 +6299,7 @@ namespace Jondo.Unity.Server.Handlers
                     conDano.Add((c.HechizoOrigen, c.NivelOrigen, (c.Caster ?? quienLanza).Id));
             }
             var anunciados = new HashSet<(int, int, long)>();
+            var forgelanceRolls = new Dictionary<Managers.SpellEffect, int>();
 
             // Whoever this cast has moved, so that his ground is stepped on once they are all
             // in place. Not during the walk: a glyph can move whoever steps on it again,
@@ -6275,7 +6308,13 @@ namespace Jondo.Unity.Server.Handlers
 
             foreach (var c in consecuencias)
             {
-                if (c.HechizoOrigen != 0 && (c.HechizoOrigen, c.NivelOrigen) != (hechizo, grado))
+                if (c.ForgelanceCast)
+                {
+                    await AnnounceForgelanceChildAsync(fight, c);
+                    continue;
+                }
+                if (!Managers.ForgelanceCombat.IsActor(fight, c.Caster ?? quienLanza)
+                    && c.HechizoOrigen != 0 && (c.HechizoOrigen, c.NivelOrigen) != (hechizo, grado))
                 {
                     var quienEncadena = c.Caster ?? quienLanza;
                     var clave = (c.HechizoOrigen, c.NivelOrigen, quienEncadena.Id);
@@ -6382,8 +6421,13 @@ namespace Jondo.Unity.Server.Handlers
                 if (c.Marcador)
                 {
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
-                        Network.FightProtocol.BuildScriptMarker(quienLanza.Id, c.NivelOrigen, c.Sobre.CellId,
-                                                                c.HechizoOrigen, c.Efecto.Value)));
+                        c.Efecto.EffectId == 3792 && Managers.ForgelanceCombat.IsActor(fight, c.Caster ?? quienLanza)
+                            ? Network.ForgelanceProtocol.Script((c.Caster ?? quienLanza).Id,
+                                c.HechizoOrigen, c.NivelOrigen,
+                                c.CeldaDelLanzamiento >= 0 ? c.CeldaDelLanzamiento : c.Sobre.CellId,
+                                c.Efecto.Value, c.Critico)
+                            : Network.FightProtocol.BuildScriptMarker(quienLanza.Id, c.NivelOrigen, c.Sobre.CellId,
+                                                                      c.HechizoOrigen, c.Efecto.Value)));
                     continue;
                 }
 
@@ -6449,7 +6493,8 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     Fighter animationCaster = c.AnimationCaster ?? c.Caster ?? quienLanza;
                     var animationGrade = LimitesDeGrado(c.HechizoOrigen, c.NivelOrigen);
-                    if (animationGrade.LevelId > 0)
+                    bool forgelance = Managers.ForgelanceCombat.IsActor(fight, c.Caster ?? quienLanza);
+                    if (animationGrade.LevelId > 0 && !forgelance)
                     {
                         // To EVERYBODY, not to the socket being served. Both sides have to see the
                         // bounce animation: against monsters it made no difference because there is only
@@ -6470,9 +6515,16 @@ namespace Jondo.Unity.Server.Handlers
                     }
 
                     int lifeBefore = c.Sobre.CurrentHP;
+                    int damageRoll;
+                    if (forgelance)
+                    {
+                        if (!forgelanceRolls.TryGetValue(c.Efecto, out damageRoll))
+                            forgelanceRolls[c.Efecto] = damageRoll = TirarElDado(c.Efecto);
+                    }
+                    else damageRoll = TirarElDado(c.Efecto);
                     await UnGolpeAsync(
                         stream, fight, c.Caster ?? quienLanza, c.HechizoOrigen, c.Efecto,
-                        c.DamageElement, c.Sobre, TirarElDado(c.Efecto), c.DamageDistance,
+                        c.DamageElement, c.Sobre, damageRoll, c.DamageDistance,
                         c.CriticalDamage, c.DamageSpellBonus,
                         fromTurnTrigger: disparador != Managers.EffectEngine.AlLanzar);
                     if (c.Sobre.IsAlive && c.Sobre.CurrentHP != lifeBefore)
@@ -6850,7 +6902,7 @@ namespace Jondo.Unity.Server.Handlers
                 if (quitaApariencia)
                 {
                     await AnnounceAppearanceAsync(stream, c.Sobre,
-                        c.Sobre.Buffs.AparienciaEn(fight.RoundNumber));
+                        c.Sobre.Buffs.AparienciaEn(fight.RoundNumber), fight);
                 }
                 // Invisible no more -- a 202 revealed him, a 406 or a dispel took the row -- and
                 // everybody is told so behind the jya, as when the row runs out. The author is
@@ -6979,13 +7031,18 @@ namespace Jondo.Unity.Server.Handlers
                                                        && b.EffectId == Jondo.Unity.World.Combat.EffectSupport.AddState) == 1)
                     Disparo(c.Sobre, Managers.EffectEngine.AlPonerseElEstado(c.Buff.Estado), quienLanza);
 
+                if (Managers.ForgelanceCombat.Is(c.Sobre)
+                    && c.Buff.Estado == Managers.ForgelanceCombat.Disarmed
+                    && c.Efecto.EffectId == Jondo.Unity.World.Combat.EffectSupport.AddState)
+                    await AnnounceAppearanceAsync(stream, c.Sobre, 0, fight);
+
                 // A jail's marker on a player: into that jail (GuildRaidReina).
                 if (c.Buff.Estado != 0 && c.Efecto.EffectId == Jondo.Unity.World.Combat.EffectSupport.AddState)
                     await Managers.GuildRaidReina.OnStateAsync(fight, c.Sobre, c.Buff.Estado);
 
                 if (c.Apariencia != 0)
                 {
-                    await AnnounceAppearanceAsync(stream, c.Sobre, c.Apariencia);
+                    await AnnounceAppearanceAsync(stream, c.Sobre, c.Apariencia, fight);
                 }
 
                 Program.LogDebug($"[Fight] Buff {c.Buff.Numero} on {c.Sobre.Id}: effect " +
@@ -7211,7 +7268,7 @@ namespace Jondo.Unity.Server.Handlers
 
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                         Network.FightProtocol.BuildSequenceStart(quien.Id,
-                                                                 Network.FightProtocol.ActionSequence)));
+                                                                 Managers.ForgelanceCombat.ActionSequence(quien))));
 
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                         Network.FightProtocol.BuildAction(
@@ -7225,7 +7282,7 @@ namespace Jondo.Unity.Server.Handlers
 
                     await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                         Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), quien.Id,
-                                                               Network.FightProtocol.ActionSequence)));
+                                                               Managers.ForgelanceCombat.ActionSequence(quien))));
                 }
 
                 if (quien.Buffs.Actitudes.Count > 0)
@@ -8473,6 +8530,10 @@ namespace Jondo.Unity.Server.Handlers
 
             if (muerto != null) await DispararLosDeUnaMuerteAsync(stream, fight, muerto);
 
+            if (muerto is { MonsterId: Managers.ForgelanceCombat.Lance, EsInvocado: true }
+                && Managers.ForgelanceCombat.Is(fight.Buscar(muerto.Invocador)))
+                await SyncForgelanceProximityAsync(stream, fight);
+
             // The last of the Reina's jail monsters opens her jails.
             await Managers.GuildRaidReina.OnDeathAsync(stream, fight, muerto);
 
@@ -8861,7 +8922,7 @@ namespace Jondo.Unity.Server.Handlers
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jto,
                 Network.FightProtocol.BuildSequenceStart(monster.Id,
-                                                         Network.FightProtocol.ActionSequence)));
+                                                         Managers.ForgelanceCombat.ActionSequence(monster))));
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildAction(
                     monster.Id, Network.FightProtocol.Cast,
@@ -8891,18 +8952,26 @@ namespace Jondo.Unity.Server.Handlers
                 fight.ProjectedFrom = proyeccion is { } throughThePortals ? throughThePortals.Chain[throughThePortals.Chain.Count - 1].Cell : -1;
                 try
                 {
-                    tirada = await BoostsFirstAsync(stream, fight, monster, spell, monsterGrade, objetivo,
-                                                    aim, critico, tirada);
-                    await HurtAsync(stream, fight, monster, spell, monsterGrade, objetivo,
-                                    aim, critico, tirada: tirada);
+                    if (Managers.ForgelanceCombat.Is(monster))
+                    {
+                        await AplicarEfectosAsync(stream, fight, monster, spell, monsterGrade, objetivo,
+                            Managers.EffectEngine.AlLanzar, aim, critico, tirada: tirada, orderedForgelance: true);
+                    }
+                    else
+                    {
+                        tirada = await BoostsFirstAsync(stream, fight, monster, spell, monsterGrade, objetivo,
+                                                        aim, critico, tirada);
+                        await HurtAsync(stream, fight, monster, spell, monsterGrade, objetivo,
+                                        aim, critico, tirada: tirada);
 
-                    // And its effects, the same as when the player casts. This was missing: the monster's
-                    // turn only worked out damage, so the penalties its spells leave -- the range Picoteo
-                    // takes, for instance -- were neither applied nor announced, and nothing put by a
-                    // creature ever appeared on the player's panel.
-                    await AplicarEfectosAsync(stream, fight, monster, spell, monsterGrade, objetivo,
-                                              Managers.EffectEngine.AlLanzar, aim, critico,
-                                              tirada: tirada);
+                        // And its effects, the same as when the player casts. This was missing: the monster's
+                        // turn only worked out damage, so the penalties its spells leave -- the range Picoteo
+                        // takes, for instance -- were neither applied nor announced, and nothing put by a
+                        // creature ever appeared on the player's panel.
+                        await AplicarEfectosAsync(stream, fight, monster, spell, monsterGrade, objetivo,
+                                                  Managers.EffectEngine.AlLanzar, aim, critico,
+                                                  tirada: tirada);
+                    }
                 }
                 finally
                 {
@@ -8918,7 +8987,7 @@ namespace Jondo.Unity.Server.Handlers
 
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwi,
                 Network.FightProtocol.BuildSequenceEnd(fight.SiguienteAccion(), monster.Id,
-                                                       Network.FightProtocol.ActionSequence)));
+                                                       Managers.ForgelanceCombat.ActionSequence(monster))));
 
             monster.LanzadosEsteTurno.TryGetValue(spell, out int esteTurno);
             monster.LanzadosEsteTurno[spell] = esteTurno + 1;

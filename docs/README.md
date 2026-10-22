@@ -47,6 +47,12 @@ skin on the character for hats, capes and shields, a sub-entity for pets, the ro
 mounts and petmounts — and why appearance weapons carry no look but do occupy a slot.
 *Go there* when a garment does not show, shows in the wrong colour, or pushes another one out.
 
+**`forgelance.md`** — Forgelance combat visuals and its Immortal Lance.
+The class-specific sequence types, immediate script actions, armed/disarmed/guard looks,
+blue/green lance indicators and retrieval lifecycle, measured from the spell-by-spell
+3.6.10.10 captures. It also describes the rank-1 behaviour for a low-level character and
+the scope guards that leave other classes unchanged.
+
 **`world.md`** — The map and what lives on it.
 The **15,360** maps in `world.db`, the walkable-cell data covering **17,211** map ids, the
 neighbours, the **62** zaaps, the **187** dungeons with their **763** rooms, the **5,134** monsters

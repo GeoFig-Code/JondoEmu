@@ -447,9 +447,14 @@ they belong to ordinary sessions rather than to one feature.
 | `hpm` | S→C | 103 | 35 | Nothing established. |
 | `izz` | S→C | 635 | 29 | Nothing established. |
 
-### 4.2 Combat — the largest hole
+### 4.2 Combat — historical capture counts
 
-Fights are not implemented against this client at all. `jtn`, `jwe` and `jxw` appear in **exactly
+The counts below describe the original capture snapshot, not the current implementation status.
+Combat is now handled by `FightHandler` and `FightProtocol`. The class-scoped Forgelance
+updates (action sequence 0, visual `jwe 3792`, lance appearances and state icons) are documented
+in [forgelance.md](forgelance.md).
+
+`jtn`, `jwe` and `jxw` appear in **exactly
 the same 23 capture files, and every one of those 23 is a recording that contains a fight** — 12
 `Combate` files, Hipermago, Zurkarak (2), Steamer, the jalatós dungeon, two Sueños Infinitos, the
 tax-collector attack under Gremio, two Movimiento files that end in a fight, and the tutorial.

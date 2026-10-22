@@ -752,3 +752,12 @@ redo it on a newer client version:
 
 `py tools/pcap.py <capture.pcapng>` prints the raw opcode timeline if the extractor's pairing check
 fails and you need to see why.
+
+## Forgelance combat appearances
+
+Combat appearances 2061/2062 have a class-scoped implementation; see
+[forgelance.md](forgelance.md) for the official spell-capture evidence. Armed uses bones 1
+and skin 3650, disarmed removes that skin, and guard uses bones 7156 until the next turn.
+The on-foot character keeps its colours, equipment, scale and followers. These changes
+travel as fight action 149 to all participants. They do not change cosmetic look resolution
+or appearance handling for other classes.
