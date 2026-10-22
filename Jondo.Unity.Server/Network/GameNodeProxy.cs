@@ -545,6 +545,8 @@ namespace Jondo.Unity.Server.Network
                         await Handlers.OsavoraSeasonHandler.OnMapLoadedAsync(stream, GameState.MapId);
                         // And in a temporal anomaly's zone, the anomaly; on its zaap, the vestige.
                         await Handlers.AnomalyHandler.OnMapLoadedAsync(stream, GameState.MapId);
+                        // And in Gargandias's room, the fight of whoever the grate let through.
+                        await Handlers.GargandiasHandler.OnMapLoadedAsync(stream, GameState.MapId);
                         // And in a guild hall, its banners: the guild's own, or the neutral ones.
                         await Handlers.GuildHallHandler.OnMapLoadedAsync(stream, GameState.CharacterId, GameState.MapId);
 

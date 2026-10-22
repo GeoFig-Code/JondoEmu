@@ -1112,7 +1112,8 @@ namespace Jondo.Unity.Server.Network
 
                 if (npc.Variants.Count > 1)
                 {
-                    quien ??= Managers.GuildRaidManager.ResolverFor(GameState.CharacterId);
+                    quien ??= Managers.WorldEvents.Answering(Managers.GuildRaidManager.ResolverFor(GameState.CharacterId),
+                                                             DateTimeOffset.UtcNow);
                     var otro = Managers.Npcs.VariantFor(npc, quien);
                     if (otro != null)
                     {

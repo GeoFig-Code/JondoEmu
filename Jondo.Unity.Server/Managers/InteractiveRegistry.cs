@@ -22,6 +22,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A way of the Almanax's temple, which leads to today's hall or room (AlmanaxTemple).</summary>
         AlmanaxWay,
 
+        /// <summary>A way of Gargandias's temple: its door, the grate, the stairs (GargandiasHandler).</summary>
+        GargandiasWay,
+
         /// <summary>A kart of route 666: its network's stops in the zaapi's window (Transports).</summary>
         Transport,
 
@@ -439,6 +442,7 @@ namespace Jondo.Unity.Server.Managers
             RegisterTravelersTower();
             RegisterAnomalyPlaces();
             RegisterAlmanaxTemple();
+            RegisterGargandiasTemple();
 
             // The passages between maps. Houses have already gone through above with their jqw protocol;
             // only the generic ones TeleportManager has validated and left active come in here.
@@ -757,6 +761,20 @@ namespace Jondo.Unity.Server.Managers
                 ways++;
             }
             if (ways > 0) Console.WriteLine($"[Almanax] {ways} ways of the temple declared.");
+        }
+
+        /// <summary>Gargandias's temple's door, grate and stairs, skill 114 (GargandiasHandler).</summary>
+        private static void RegisterGargandiasTemple()
+        {
+            foreach (var (map, cell) in Handlers.GargandiasHandler.Ways())
+            {
+                foreach (var element in Interactives.ElementsOf(map))
+                {
+                    if (element.Cell != cell || _byElement.ContainsKey((map, element.Id))) continue;
+                    Register(map, element, TeleportManager.GenericTeleportType,
+                             InteractiveActionKind.GargandiasWay, TeleportManager.UseSkill);
+                }
+            }
         }
 
         private static void RegisterTravelersTower()

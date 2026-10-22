@@ -229,6 +229,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
   event and the quest's marker says when you last did it
 - ✅ The seasons change Osavora's monsters: +1 MP in the Naissance, more damage in the Chasse, more life in
   the Repos, and every fifth blow they take, the season's own reaction
+- ✅ The titan Gargandias, every weekend from Friday 19:00 to Monday 8:00: his temple in Osabana, the altar
+  that takes the season's offering (1, 2, then 3 of it, five tries a week), the grate it opens and the
+  fight in his room, four players at most
 - ✅ **16 temporal anomalies** with their 120-minute countdown
 - ✅ Their guardians: each anomaly opens on one of eleven places — Noximilian's workshop, Kelba's
   market, Bonta's palace, Brâkmar… — where its guardian waits with his brutoforme, cublaforme and

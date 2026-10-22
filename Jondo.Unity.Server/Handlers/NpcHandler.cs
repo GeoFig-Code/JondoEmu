@@ -209,6 +209,19 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // Gargandias's altar and the titan himself (GargandiasHandler).
+            if (GargandiasHandler.Owns(npc.NpcId))
+            {
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Ioc, ConnectionProtocol.BuildNpcDialog(mapId, npc.ContextualId)));
+                var (opening, choices) = GargandiasHandler.Opening(npc.NpcId);
+                SessionContext.State.OpenDialogueNpcId = npc.NpcId;
+                SessionContext.State.OpenDialogueMapId = mapId;
+                SessionContext.State.OpenDialogueMessage = opening;
+                await PreguntarAsync(stream, opening, choices);
+                return;
+            }
+
             // Chantal Inea's oath and Morry Gann's way back to neutral: what they offer is the
             // character's side, fee and last change (AlignmentHandler).
             if (AlignmentHandler.Owns(npc.NpcId))
@@ -907,6 +920,24 @@ namespace Jondo.Unity.Server.Handlers
             if (SessionContext.State.OpenDialogueNpcId == Kanojedo.MasterNpc && Kanojedo.Owns(reply))
             {
                 await MasterReplyAsync(stream, reply);
+                return;
+            }
+
+            // Gargandias's altar and the titan (GargandiasHandler): a reply that moves the player
+            // closes first, as every teleporting reply does.
+            if (GargandiasHandler.Owns(SessionContext.State.OpenDialogueNpcId))
+            {
+                var (sentence, choices, then) = await GargandiasHandler.ReplyAsync(stream, SessionContext.State.OpenDialogueNpcId, reply);
+                if (sentence == 0)
+                {
+                    CerrarConversacion();
+                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                        ConnectionProtocol.Push(Op.Kld, ConnectionProtocol.BuildDialogClosed(ConnectionProtocol.NpcDialogCloseReason)));
+                    if (then is { } where) await TeleportHandler.ToMapAsync(stream, where.Map, where.Cell);
+                    return;
+                }
+                SessionContext.State.OpenDialogueMessage = sentence;
+                await PreguntarAsync(stream, sentence, choices);
                 return;
             }
 

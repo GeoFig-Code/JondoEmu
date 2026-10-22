@@ -148,6 +148,7 @@ namespace Jondo.Unity.Server.Handlers
             Managers.GuildRaidReina.OnFightCreated(fight);
             Managers.GuildRaidPrincesa.OnFightCreated(fight);
             Managers.GuildRaidSanctuary.OnFightCreated(fight);
+            Managers.Gargandias.OnFightCreated(fight);
 
             // A tax collector or a prism attacked: the fight learns whose it is, and its fighter
             // what it is.

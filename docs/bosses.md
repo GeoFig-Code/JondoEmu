@@ -111,6 +111,13 @@ The kind letters `m`/`M` do not include the caster.
   spell the client lacks, which here takes off those the scene does not carry -- what its client
   rows say the spell does. Then their own rows: +1 MP in the Naissance, +20 % final damage in the
   Chasse, +20 % vitality in the Repos (31293), and each fifth blow taken the season's reaction.
+- **Gargandias** (`Managers.Gargandias`, `Handlers.GargandiasHandler`): his temple's door in Osabana
+  (539214) leads to the Offering Room, whose altar (NPC 7752) takes the season's offering -- 31666,
+  31623 or 31523, 1, 2, then 3 of it, five tries an Osavora week -- and gives the alteration 777; the
+  grate (539273) takes it and leads to the Graogarm Room, where the fight against 8062 begins on the
+  arena 237241609, four people at most; the titan's NPC (7751) waits there with the way out. Open
+  from Friday 19:00 to Monday 8:00 in Paris (world event 250, 3660 minutes). INFERRED: the altar's
+  tree, the rooms' chaining and the cells; his phases are his starting spell's (31097).
 
 ## Zones
 

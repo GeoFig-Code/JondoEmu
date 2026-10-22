@@ -640,6 +640,20 @@
       "cell": 319,
       "orientation": 3,
       "why": "Morry Gann, who makes one neutral again for a fee (AlignmentHandler). The Guardia de Amakna (2849) sends one to him: «¿Has jurado lealtad a Bonta o Brakmar y has cambiado de idea? Ve a ver a Morry Gann.», and the guides put him in Amakna's militia, behind the castle's door at [5,-6] (hint «Milicia», 68551681) -- the hall 95685125 the door leads into. INFERRED: the cell, by the hall's desk."
+    },
+    {
+      "map": 237240320,
+      "npc": 7752,
+      "cell": 368,
+      "orientation": 1,
+      "why": "Gargandias's altar, «Ofrendas para Gargandias» (GargandiasHandler), on the pedestal in the middle of the Offering Room. INFERRED: no capture enters the temple; the room is the one the client names «Offering Room», the cell the pedestal's."
+    },
+    {
+      "map": 237241344,
+      "npc": 7751,
+      "cell": 188,
+      "orientation": 3,
+      "why": "Gargandias himself, «¡GRRRAAAAARRR!», whose replies lead out of the temple or back to the offerings (GargandiasHandler). INFERRED: the cell, at the top of the titan's room, facing its stairs."
     }
   ]
 }

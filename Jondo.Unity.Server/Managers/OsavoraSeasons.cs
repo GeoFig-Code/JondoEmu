@@ -56,10 +56,13 @@ namespace Jondo.Unity.Server.Managers
             return local < start ? start.AddDays(-7) : start;
         }
 
+        /// <summary>The week a moment falls in, counted from the first Naissance.</summary>
+        public static long WeekOf(DateTimeOffset moment) => (long)Math.Round((WeekStart(moment) - Anchor).TotalDays / 7);
+
         /// <summary>The season at a moment.</summary>
         public static Season At(DateTimeOffset moment)
         {
-            long weeks = (long)Math.Round((WeekStart(moment) - Anchor).TotalDays / 7);
+            long weeks = WeekOf(moment);
             return (Season)(int)(((weeks % 3) + 3) % 3);
         }
 
