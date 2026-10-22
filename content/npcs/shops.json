@@ -20,7 +20,8 @@
     "found an alliance.",
     "",
     "And the alliance's two potions, 14291 to change its name and tag and 14292 to change its",
-    "emblem, for one kama each: no vendor in the client's data sells them either.",
+    "emblem, for one kama each: no vendor in the client's data sells them either. The same for the",
+    "guild's two, 13273 to change its name and 13270 its emblem.",
     "",
     "And the alliances' tax collectors and prisms, which no vendor in the client's data sells: the ten",
     "tax collector potions (27635, 27905-27912 and 14553, one per band of subarea levels) at the 100",
@@ -79,6 +80,14 @@
         },
         {
           "gid": 14292,
+          "price": 1
+        },
+        {
+          "gid": 13273,
+          "price": 1
+        },
+        {
+          "gid": 13270,
           "price": 1
         },
         {

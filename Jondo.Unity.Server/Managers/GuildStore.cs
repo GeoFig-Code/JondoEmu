@@ -387,6 +387,34 @@ namespace Jondo.Unity.Server.Managers
             };
         }
 
+        /// <summary>A guild's new name, with a potion of the guild's. Returns it as it stands now.</summary>
+        public static Guild Rename(long guildId, string name)
+        {
+            using var conexion = Open();
+            var update = conexion.CreateCommand();
+            update.CommandText = "UPDATE Guilds SET Name = $n WHERE Id = $g;";
+            update.Parameters.AddWithValue("$n", name);
+            update.Parameters.AddWithValue("$g", guildId);
+            update.ExecuteNonQuery();
+            return ById(guildId);
+        }
+
+        /// <summary>A guild's new emblem, the four numbers of the jjg's. Returns it as it stands now.</summary>
+        public static Guild SetEmblem(long guildId, int symbol, int symbolColor, int background, int symbolRgb)
+        {
+            using var conexion = Open();
+            var update = conexion.CreateCommand();
+            update.CommandText = @"UPDATE Guilds SET EmblemSymbol = $sym, EmblemSymbolColor = $symc,
+                                   EmblemBackground = $bg, EmblemSymbolRgb = $symrgb WHERE Id = $g;";
+            update.Parameters.AddWithValue("$sym", symbol);
+            update.Parameters.AddWithValue("$symc", symbolColor);
+            update.Parameters.AddWithValue("$bg", background);
+            update.Parameters.AddWithValue("$symrgb", symbolRgb);
+            update.Parameters.AddWithValue("$g", guildId);
+            update.ExecuteNonQuery();
+            return ById(guildId);
+        }
+
         /// <summary>A character's guild, or null if he has none.</summary>
         public static Guild GuildOf(long characterId)
         {

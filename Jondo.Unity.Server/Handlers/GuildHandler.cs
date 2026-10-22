@@ -71,6 +71,15 @@ namespace Jondo.Unity.Server.Handlers
             byte[] jjg = ConnectionProtocol.ReadPayload(frame, Op.Jjg);
             if (jjg == null) return;
 
+            // The editor's «both» mode of a potion sends the founding's own jjg (fgc builds it for
+            // dml as for dln): with a potion in use it is the guild's new name and emblem.
+            if (_potions.ContainsKey(SessionContext.State.CharacterId))
+            {
+                var (newName, newEmblem) = ReadNameAndEmblem(jjg);
+                await ModifyAsync(stream, newName, newEmblem);
+                return;
+            }
+
             string name = "";
             int symbol = 0, symbolColor = 0, background = 0, symbolRgb = 0;
             foreach (var field in ProtoMessage.Parse(jjg).Fields)
@@ -96,12 +105,181 @@ namespace Jondo.Unity.Server.Handlers
                                             symbol, symbolColor, background, symbolRgb);
             if (fallo != null)
             {
-                // There is no measured frame to tell the editor no: the capture only has the good case.
-                // It is told as an information line, which only they see.
+                // The editor is told no in the capture's own jhq, its f1 the reason: the client's
+                // guild frame (fft) words each with its own text and leaves the editor open.
                 Console.WriteLine($"[Guild] Founding of «{name}» rejected: {fallo}.");
-                await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
-                    ConnectionProtocol.BuildNotice(CommandTexts.Get(fallo, name))));
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Jhq, BuildResult(fallo switch
+                {
+                    "guild.create.invalidname" => ResultInvalidName,
+                    "guild.create.hasguild" => ResultAlreadyInGuild,
+                    "guild.create.exists" => ResultNameUsed,
+                    "guild.create.nogem" => ResultRequirementUnmet,
+                    _ => ResultUnknownFail,
+                })));
             }
+        }
+
+        // ─── Name and emblem, with a potion ─────────────────────────────────────
+
+        /// <summary>«Pócima de cambio de nombre de gremio» and «…de emblema de gremio», sold by Gremia.</summary>
+        public const int RenamePotionTemplate = 13273;
+        public const int ReEmblemPotionTemplate = 13270;
+
+        /// <summary>
+        /// The potions' effects: «Cambiar el nombre del gremio» (and 725, its moderation twin on
+        /// 9903), «Cambiar el emblema del gremio».
+        /// </summary>
+        public const int RenameEffect = 1107;
+        public const int RenameByModerationEffect = 725;
+        public const int ReEmblemEffect = 1108;
+
+        /// <summary>«Tienes que pertenecer a un gremio para aprovechar esta posibilidad.» / «No dispones de los derechos de gremio requeridos.»</summary>
+        public const int NeedsGuild = 135;
+        public const int NoGuildRights = 352;
+
+        /// <summary>«El emblema de tu gremio ha sido modificado.» / «El nombre de tu gremio ha sido modificado.»</summary>
+        public const int EmblemChanged = 382;
+        public const int NameChanged = 383;
+
+        /// <summary>
+        /// The founding's and the modification's result (jhq f1), read off the client's switch on
+        /// it (fft, its jump table): 0 done, 1 «ui.guild.invalidName», 2 «ui.guild.alreadyInGuild»,
+        /// 3 «ui.guild.alreadyUsedName», 6 «ui.social.requirementUnmet», 7
+        /// «ui.guild.emblemAlreadyExists», 10 «ui.common.unknownFail», 11 «ui.social.guildOnCooldown».
+        /// </summary>
+        public const int ResultOk = 0, ResultInvalidName = 1, ResultAlreadyInGuild = 2, ResultNameUsed = 3,
+                         ResultRequirementUnmet = 6, ResultUnknownFail = 10;
+
+        public static byte[] BuildResult(int result) => Pb.New().VarIfNotZero(1, result).Build();
+
+        /// <summary>The potion the leader is changing his guild with, until the editor answers.</summary>
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, (long Uid, bool Name, bool Emblem)> _potions = new();
+
+        /// <summary>
+        /// Using a potion of the guild's (13273, 13270, 9903 the moderation's): the leader -- its
+        /// «GM=1» -- gets the founding editor in its mode, jje { 1 the emblem, 3 the name }, read
+        /// off the client's guild frame: fft hands f3 and f1 to SocialGroupCreatorUi as its
+        /// OpenSocialGroupCreator(modifyName, modifyEmblem). The potion goes only once the change
+        /// is made. False if the item is not one of them.
+        /// </summary>
+        public static async Task<bool> TryUsePotionAsync(NetworkStream stream, Equipment.Item item)
+        {
+            bool name = false, emblem = false;
+            foreach (var effect in DatabaseManager.GetItemEffectsData(DatabaseManager.GetItemTemplatePossibleEffects(item.Template)))
+            {
+                if (effect.EffectId is RenameEffect or RenameByModerationEffect) name = true;
+                else if (effect.EffectId == ReEmblemEffect) emblem = true;
+            }
+            if (!name && !emblem) return false;
+
+            long who = SessionContext.State.CharacterId;
+            if (GuildStore.GuildOf(who) == null)
+            {
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, NeedsGuild)));
+                return true;
+            }
+            if (GuildStore.RankOf(who) != GuildStore.RankLeader)
+            {
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, NoGuildRights)));
+                return true;
+            }
+
+            _potions[who] = (item.Uid, name, emblem);
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jje,
+                Pb.New().VarIfNotZero(1, emblem ? 1 : 0).VarIfNotZero(3, name ? 1 : 0).Build()));
+            return true;
+        }
+
+        /// <summary>The new name (jhv): f1 the name.</summary>
+        public static async Task RenameAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jhv = ConnectionProtocol.ReadPayload(frame, Op.Jhv);
+            if (jhv == null) return;
+            var field = ProtoMessage.Parse(jhv).Fields.Find(f => f.FieldNumber == 1 && f.WireType == 2);
+            await ModifyAsync(stream, field == null ? "" : System.Text.Encoding.UTF8.GetString(field.BytesValue), null);
+        }
+
+        /// <summary>The new emblem (jhz): f1 the lld, as the founding's jjg carries it.</summary>
+        public static async Task ReEmblemAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jhz = ConnectionProtocol.ReadPayload(frame, Op.Jhz);
+            if (jhz == null) return;
+            var lld = ProtoMessage.Parse(jhz).Fields.Find(f => f.FieldNumber == 1 && f.WireType == 2);
+            await ModifyAsync(stream, null, ReadEmblem(lld?.BytesValue ?? System.Array.Empty<byte>()));
+        }
+
+        private static (string Name, int[] Emblem) ReadNameAndEmblem(byte[] jjg)
+        {
+            string name = "";
+            int[] emblem = new int[4];
+            foreach (var field in ProtoMessage.Parse(jjg).Fields)
+            {
+                if (field.FieldNumber == 2 && field.WireType == 2) name = System.Text.Encoding.UTF8.GetString(field.BytesValue);
+                else if (field.FieldNumber == 1 && field.WireType == 2) emblem = ReadEmblem(field.BytesValue);
+            }
+            return (name, emblem);
+        }
+
+        /// <summary>The lld's symbol (f1), symbol colour (f2), background (f3) and symbol RGB (f5).</summary>
+        private static int[] ReadEmblem(byte[] lld)
+        {
+            var emblem = new int[4];
+            foreach (var e in ProtoMessage.Parse(lld).Fields)
+            {
+                if (e.WireType != 0) continue;
+                if (e.FieldNumber == 1) emblem[0] = (int)e.VarIntValue;
+                else if (e.FieldNumber == 2) emblem[1] = (int)e.VarIntValue;
+                else if (e.FieldNumber == 3) emblem[2] = (int)e.VarIntValue;
+                else if (e.FieldNumber == 5) emblem[3] = (int)e.VarIntValue;
+            }
+            return emblem;
+        }
+
+        /// <summary>
+        /// The modification, checked as founding is and against the potion in use: a name needs the
+        /// name potion, an emblem the emblem one. Done, the potion goes, the editor hears success
+        /// (jhq, which closes it), and every member connected gets the guild anew -- belonging, the
+        /// header, his character redrawn -- with «El nombre / El emblema de tu gremio ha sido modificado».
+        /// </summary>
+        private static async Task ModifyAsync(NetworkStream stream, string name, int[] emblem)
+        {
+            long who = SessionContext.State.CharacterId;
+            var guild = GuildStore.GuildOf(who);
+            if (guild == null || !_potions.TryGetValue(who, out var potion)) return;
+
+            int result = ResultOk;
+            if (name != null)
+            {
+                name = name.Trim();
+                var byName = GuildStore.ByName(name);
+                if (!potion.Name || GuildStore.RankOf(who) != GuildStore.RankLeader) result = ResultRequirementUnmet;
+                else if (!IsValidGuildName(name)) result = ResultInvalidName;
+                else if (byName != null && byName.Id != guild.Id) result = ResultNameUsed;
+            }
+            if (result == ResultOk && emblem != null && !potion.Emblem) result = ResultRequirementUnmet;
+            if (result == ResultOk && !await ItemUseHandler.SpendOneAsync(stream, potion.Uid)) result = ResultRequirementUnmet;
+
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jhq, BuildResult(result)));
+            if (result != ResultOk) return;
+
+            _potions.TryRemove(who, out _);
+            if (name != null) guild = GuildStore.Rename(guild.Id, name);
+            if (emblem != null) guild = GuildStore.SetEmblem(guild.Id, emblem[0], emblem[1], emblem[2], emblem[3]);
+
+            var members = GuildStore.Members(guild.Id);
+            byte[] header = ConnectionProtocol.Push(Op.Jhh, GuildProtocol.BuildGuildInfo(guild, members.Count));
+            byte[] said = ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildSystemMessage(name != null ? NameChanged : EmblemChanged));
+            foreach (var member in members)
+            {
+                var session = SessionRegistry.FindByCharacter(member.CharacterId);
+                if (session?.Stream == null) continue;
+                await session.SendAsync(ConnectionProtocol.Push(Op.Jhe,
+                    GuildProtocol.BuildMembership(guild, member.Rank, GuildStore.ContributedBy(member.CharacterId))));
+                await session.SendAsync(header);
+                await session.SendAsync(said);
+                await RedrawAsync(member.CharacterId == who ? stream : null, member.CharacterId);
+            }
+            Console.WriteLine($"[Guild] «{guild.Name}» changed by {SessionContext.State.CharacterName}.");
         }
 
         /// <summary>

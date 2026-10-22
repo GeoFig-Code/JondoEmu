@@ -333,6 +333,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 
 - ✅ Founding at the Guild Temple's altar with the client's own editor, or with `.gremio crear`
 - ✅ Gremia, outside the temple, sells the guildalogem, the guild book and the guild shield
+- ✅ The guild's name and emblem changed by its leader with the renaming and emblem potions, which Gremia
+  sells too
 - ✅ The guild shows under every member's name
 - ✅ The guild window: header, levels 1 to 20, ranks and rights, members, notes, log, directory profile
   and directory search

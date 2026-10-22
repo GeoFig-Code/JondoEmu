@@ -43,8 +43,9 @@ namespace Jondo.Unity.Server.Handlers
             var item = Equipment.ByUid(uid);
             if (item == null || item.Quantity <= 0) return;
 
-            // The alliance's potions: changing its name or its emblem opens the editor.
+            // The alliance's potions and the guild's: changing its name or its emblem opens the editor.
             if (await AllianceHandler.TryUsePotionAsync(stream, item)) return;
+            if (await GuildHandler.TryUsePotionAsync(stream, item)) return;
 
             // A tax collector potion: one of the alliance's tax collectors where the user stands.
             if (await TaxCollectorHandler.TryPlaceAsync(stream, item)) return;

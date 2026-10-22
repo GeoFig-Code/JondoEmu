@@ -1201,6 +1201,18 @@ public static class Op
     /// </summary>
     public const string Jjc = "jjc";
 
+    /// <summary>
+    /// Server to client: the founding editor opened to change the guild, { f1 the emblem, f3 the
+    /// name } (GuildHandler.TryUsePotionAsync).
+    /// </summary>
+    public const string Jje = "jje";
+
+    /// <summary>Client to server: the guild's new name, { f1 the name }.</summary>
+    public const string Jhv = "jhv";
+
+    /// <summary>Client to server: the guild's new emblem, { f1 the emblem }.</summary>
+    public const string Jhz = "jhz";
+
     /// <summary>C→S: creating a guild. f1 the emblem {symbol, symbol colour, background, background colour}, f2 the name.</summary>
     public const string Jjg = "jjg";
 
