@@ -11,6 +11,7 @@ namespace Jondo.Unity.Tests.World
     /// The temporal anomalies' places: where a travel lands, the guardian's group, the exit and the
     /// clocks (measured in the two anomaly captures; content/anomalies/places.json).
     /// </summary>
+    [Collection("MapManager")]
     public class AnomalyPlaceTests
     {
         private const int AnomaliesSubArea = 916;

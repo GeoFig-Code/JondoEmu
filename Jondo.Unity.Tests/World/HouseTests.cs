@@ -546,7 +546,8 @@ namespace Jondo.Unity.Tests.World
         public void Doors_lead_to_the_client_s_own_houses()
         {
             if (MapManager.GetMapInfo(212601864) == null) MapManager.Initialize();   // Bonta's street
-            Interactives.Initialize();
+            // Read once: reloading it empties the table the MapManager collection's tests read.
+            if (Interactives.ElementsOf(Street).Count == 0) Interactives.Initialize();
             Houses.Initialize();
             Assert.True(Houses.TryGetDoor(Street, DoorElement, out var bonta));
             Assert.Equal(213124106, bonta.InteriorMapId);                   // "entrar en mi casa"
