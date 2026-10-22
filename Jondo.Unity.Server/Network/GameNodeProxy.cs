@@ -681,6 +681,8 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr == Op.Uri(Op.Kav)) await FightHandler.RefuseSwapAsync(stream, payload);
                 // A player's card («Mostrar perfil»).
                 else if (payloadStr == Op.Uri("kxh")) await PlayerCardHandler.ShowAsync(stream, payload);
+                // «Informaciones» on a player's menu: the date and who he is, in the chat.
+                else if (payloadStr == Op.Uri("lqw")) await WhoisHandler.AskAsync(stream, payload);
                 // A ping on somebody standing on the map.
                 else if (payloadStr == Op.Uri(Op.Ijg)) await EntityPingHandler.PingAsync(stream, payload);
                 // Its background, picked in the card's own window.

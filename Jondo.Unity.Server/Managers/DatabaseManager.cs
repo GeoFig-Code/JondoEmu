@@ -2387,6 +2387,26 @@ namespace Jondo.Unity.Server
             }
         }
 
+        /// <summary>The character so named, connected or not; zero if nobody bears it.</summary>
+        public static long CharacterIdOfName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return 0;
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT Id FROM Characters WHERE Name = $n COLLATE NOCASE LIMIT 1;";
+                command.Parameters.AddWithValue("$n", name.Trim());
+                return command.ExecuteScalar() is long id ? id : 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DatabaseManager] Could not look up the character «{name}»: {ex.Message}");
+                return 0;
+            }
+        }
+
         /// <summary>The account of the character so named, connected or not; zero if nobody bears it.</summary>
         public static long AccountIdOfCharacterName(string name)
         {
