@@ -109,17 +109,33 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The appearance shop, which on the wire behaves just like the normal one.</summary>
         public const int TradeCosmetics = 11;
 
-        private static readonly Dictionary<long, List<Spawn>> _byMap = new();
-        private static readonly Dictionary<int, Template> _templates = new();
+        /// <summary>
+        /// The NPCs as one set: <see cref="Initialize"/> fills a new one on its own thread and
+        /// publishes it whole, so whoever reads meanwhile -- a map being sent, the temple's saint,
+        /// a test running beside -- sees the old NPCs or the new ones, never a dictionary half
+        /// cleared and half filled, which throws as soon as it is read.
+        /// </summary>
+        private sealed class Tables
+        {
+            public readonly Dictionary<long, List<Spawn>> ByMap = new();
+            public readonly Dictionary<int, Template> Templates = new();
+        }
+
+        private static volatile Tables _published = new();
+        [ThreadStatic] private static Tables? _building;
+        private static Tables Current => _building ?? _published;
+
+        private static Dictionary<long, List<Spawn>> _byMap => Current.ByMap;
+        private static Dictionary<int, Template> _templates => Current.Templates;
 
         public static int Count { get; private set; }
 
         public static void Initialize()
         {
-            _byMap.Clear();
-            _templates.Clear();
             AlmanaxTemple.Forget();
 
+            var fresh = new Tables();
+            _building = fresh;
             try
             {
                 using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
@@ -130,6 +146,11 @@ namespace Jondo.Unity.Server.Managers
             {
                 Console.WriteLine($"[NPCs] Could not be read: {ex.Message}");
             }
+            finally
+            {
+                _building = null;
+            }
+            _published = fresh;
         }
 
         private static void Read(SqliteConnection connection)
