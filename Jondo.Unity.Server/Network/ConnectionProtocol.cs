@@ -1987,36 +1987,66 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildDraftOutfit(DatabaseManager.DbCharacter character, string draftId)
             => Pb.New().Bytes(1, AppearanceBody(character, draftId)).Build();
 
-        /// <summary>
-        /// A wardrobe OUTFIT: the same block that goes inside the lxo, and that is why it is here
-        /// apart. The lyt repeats it —one per outfit stored in f1, and in f2 the one that is
-        /// on— and it is what the appearance panel needs to be able to open.
-        /// </summary>
+        /// <summary>The worn outfit as the window drafts it, under the draft's own uuid.</summary>
         private static byte[] AppearanceBody(DatabaseManager.DbCharacter character, string draftId)
-        {
-            var (title, ornament) = Managers.Wardrobe.Of(character.Id);
+            => OutfitBody(character, draftId, Managers.Outfits.Of(character.Id)[0], Managers.Outfits.Worn(character),
+                          BreedLookTable.BuildLook(character, paraLaVentana: true));
 
+        /// <summary>One of the character's outfits: the worn one from the live tables, the others as kept.</summary>
+        public static byte[] BuildOutfit(DatabaseManager.DbCharacter character, Managers.Outfits.Outfit outfit)
+        {
+            if (outfit.Kept is not { } kept)
+                return OutfitBody(character, outfit.Uuid, outfit, Managers.Outfits.Worn(character),
+                                  BreedLookTable.BuildLook(character, paraLaVentana: true));
+
+            int head = kept.Head > 0 ? kept.Head : character.HeadId;
+            return OutfitBody(character, outfit.Uuid, outfit, kept,
+                              BreedLookTable.OutfitLook(character, head, kept.Body, kept.Colors, kept.Garments));
+        }
+
+        /// <summary>
+        /// A wardrobe OUTFIT (lzc): the block the lyt repeats, the lxo answers an outfit put on
+        /// with, the lwq drafts and the lxb hands back a new one in. Read off lk::bno, which makes
+        /// the client's outfit of it:
+        ///
+        ///   f1 lvd { f2: colours }   f3: when made         f5: body        f6: favourite
+        ///   f7: uuid                 f8: idle              f10: title      f11: its number
+        ///   f12: the look            f13: name             f14: slots hidden (packed lwh)
+        ///   f15: icon                f16: ornament         f17 (map) { f1: slot, f2 { f2: garment } }
+        ///
+        /// The capture's lyt agrees: its worn outfit carries body 26 and idle 3 -- the Sacrier's
+        /// base body and the plain idle -- and the kept one body 66, idle 25, a name and icon 1.
+        /// An empty name is drawn as the window's own default. f9 is the aura, not kept yet.
+        /// </summary>
+        private static byte[] OutfitBody(DatabaseManager.DbCharacter character, string uuid,
+                                         Managers.Outfits.Outfit outfit, Managers.Outfits.Look look, byte[] drawn)
+        {
             var body = Pb.New();
 
             // The outfit's colours, bare and without an index. Without this the client blows up on opening
             // the cosmetics window: its own log says so, ColorSet..ctor with the null
             // list, inside the lyt handler.
-            var colores = BreedLookTable.PlainColors(character.Breed, character.Sex,
-                                                    BreedLookTable.SavedColors(character));
+            var colores = BreedLookTable.PlainColors(character.Breed, character.Sex, look.Colors);
             if (colores.Count > 0) body.Msg(1, Pb.New().Packed(2, colores));
 
             body
-                .Str(3, DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ"))
-                .VarIfNotZero(5, character.Breed)
-                .Str(7, draftId)
-                .Var(8, AppearanceStateKind)
-                .VarIfNotZero(10, title)
-                .VarIfNotZero(11, character.Level)
-                .Bytes(12, BreedLookTable.BuildLook(character, paraLaVentana: true))
-                .Var(15, -1)
-                .VarIfNotZero(16, ornament);
+                .Str(3, outfit.Created.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ"))
+                .VarIfNotZero(5, look.Body > 0 ? look.Body : BodyTable.BaseOf(character.Breed, character.Sex))
+                .VarIfNotZero(6, outfit.Favorite ? 1 : 0)
+                .Str(7, uuid)
+                .Var(8, look.Idle > 0 ? look.Idle : IdleTable.Plain)
+                .VarIfNotZero(10, look.Title)
+                .VarIfNotZero(11, outfit.Number)
+                .Bytes(12, drawn);
+            if (outfit.Name.Length > 0) body.Str(13, outfit.Name);
 
-            foreach (var worn in Managers.Wardrobe.AppearanceOf(character.Id))
+            var hidden = new List<long>();
+            foreach (var worn in look.Garments) if (worn.Hidden) hidden.Add(worn.Slot);
+            if (hidden.Count > 0) body.Packed(14, hidden);
+
+            body.Var(15, outfit.Icon).VarIfNotZero(16, look.Ornament);
+
+            foreach (var worn in look.Garments)
             {
                 if (worn.Gid == 0) continue;   // a hidden empty slot: no garment to show
                 body.Msg(17, Pb.New()
@@ -2030,26 +2060,22 @@ namespace Jondo.Unity.Server.Network
         /// <summary>
         /// The wardrobe outfits (lyt), which arrive on entering the world.
         ///
-        ///   f1 (repeated): each stored outfit     f2: the one being worn
+        ///   f1 (repeated): each outfit, the worn one included     f2: the one being worn
         ///
         /// IT HAS TO BE SENT NO MATTER WHAT. Without it, the client opens the cosmetics window, makes its sound, and is
         /// left undrawn: it blows up in CosmeticUi.DisplayOutfit with a null reference because it does not
         /// have any outfit to show. It was seen in its own Player.log.
-        ///
-        /// Only one goes here, that of the character playing, with his real look and garments. The
-        /// capture brought two, but they were the recorded account's and that is why it stopped being resent.
         /// </summary>
         public static byte[] BuildOutfits(DatabaseManager.DbCharacter character)
         {
-            byte[] conjunto = AppearanceBody(character, OutfitIdOf(character.Id));
-            return Pb.New().Bytes(1, conjunto).Bytes(2, conjunto).Build();
+            var outfits = Managers.Outfits.Of(character.Id);
+            var pb = Pb.New();
+            foreach (var outfit in outfits) pb.Bytes(1, BuildOutfit(character, outfit));
+            return pb.Bytes(2, BuildOutfit(character, outfits[0])).Build();
         }
 
-        /// <summary>The outfit's own uuid, different from the preview's.</summary>
+        /// <summary>The character's first outfit's uuid, different from the preview's.</summary>
         internal static string OutfitIdOf(long characterId) => LookIdOf(characterId * 17 + 3);
-
-        /// <summary>The state's f8, constant in the twenty captures where it appears.</summary>
-        private const int AppearanceStateKind = 3;
 
         /// <summary>A stable UUID from the character's id.</summary>
         public static string LookIdOf(long characterId)

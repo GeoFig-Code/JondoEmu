@@ -66,6 +66,20 @@ namespace Jondo.Unity.Server.Managers
             => _bodies.Value.TryGetValue(bodyId, out var body) && body.Creation
                && body.Breed == breedId && body.Gender == (sex == 1 ? 1 : 0);
 
+        /// <summary>
+        /// The body a breed and sex wear with nothing picked: the creation one whose skin is the
+        /// breed look's first (the Sacrier's male 26, skin 110); 0 if none is.
+        /// </summary>
+        public static int BaseOf(int breedId, int sex)
+        {
+            var skins = BreedLookTable.Get(breedId, sex)?.Skins;
+            if (skins == null || skins.Count == 0) return 0;
+            foreach (var (id, body) in _bodies.Value)
+                if (body.Creation && body.Skin == skins[0] && body.Breed == breedId && body.Gender == (sex == 1 ? 1 : 0))
+                    return id;
+            return 0;
+        }
+
         /// <summary>The skin of a body of that breed and sex; 0 for none, or one of another breed.</summary>
         public static int SkinFor(int bodyId, int breedId, int sex)
             => bodyId > 0 && _bodies.Value.TryGetValue(bodyId, out var body)

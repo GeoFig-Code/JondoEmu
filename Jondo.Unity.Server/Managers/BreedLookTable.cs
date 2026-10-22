@@ -359,7 +359,8 @@ namespace Jondo.Unity.Server.Managers
                                         IReadOnlyList<long>? customColors, bool riding,
                                         IReadOnlyList<Wardrobe.Worn>? appearance = null,
                                         long quien = 0,
-                                        IReadOnlyList<(int Slot, int Template)>? worn = null)
+                                        IReadOnlyList<(int Slot, int Template)>? worn = null,
+                                        int? bodyId = null)
         {
             var baseLook = Get(breedId, sex);
             var pb = Pb.New();
@@ -377,10 +378,23 @@ namespace Jondo.Unity.Server.Managers
                 pb.Packed(5, CharacterSize.Applied(baseLook.Scales, quien));
             }
 
-            var skins = SkinsWornBy(breedId, sex, headId, quien, appearance, worn);
+            var skins = SkinsWornBy(breedId, sex, headId, quien, appearance, worn, bodyId);
             if (skins.Count > 0) pb.Packed(6, skins);
 
             return pb;
+        }
+
+        /// <summary>
+        /// A saved outfit's look, the one its tile in the outfits list draws: its body, head,
+        /// colours and garments over the character's real equipment, on foot.
+        /// </summary>
+        public static byte[] OutfitLook(DatabaseManager.DbCharacter character, int headId, int bodyId,
+                                        IReadOnlyList<long> colors, IReadOnlyList<Wardrobe.Worn> garments)
+        {
+            var body = BuildBodyLook(character.Breed, character.Sex, headId, colors, riding: false,
+                                     garments, character.Id, bodyId: bodyId);
+            AddPets(body, garments, ColorsFor(character.Breed, character.Sex, colors));
+            return body.Build();
         }
 
         /// <summary>
@@ -438,7 +452,8 @@ namespace Jondo.Unity.Server.Managers
         /// </remarks>
         private static List<long> SkinsWornBy(int breedId, int sex, int headId, long quien,
                                               IReadOnlyList<Wardrobe.Worn>? appearance,
-                                              IReadOnlyList<(int Slot, int Template)>? worn = null)
+                                              IReadOnlyList<(int Slot, int Template)>? worn = null,
+                                              int? bodyId = null)
         {
             var baseLook = Get(breedId, sex);
 
@@ -446,7 +461,8 @@ namespace Jondo.Unity.Server.Managers
             if (baseLook != null) skins.AddRange(baseLook.Skins);
 
             // The body picked in the appearance window takes the breed's own place, first.
-            int bodySkin = quien > 0 ? BodyTable.SkinFor(Wardrobe.BodyOf(quien), breedId, sex) : 0;
+            int bodySkin = bodyId is int picked ? BodyTable.SkinFor(picked, breedId, sex)
+                         : quien > 0 ? BodyTable.SkinFor(Wardrobe.BodyOf(quien), breedId, sex) : 0;
             if (bodySkin > 0)
             {
                 if (skins.Count > 0) skins[0] = bodySkin;

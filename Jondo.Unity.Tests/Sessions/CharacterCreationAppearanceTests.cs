@@ -75,6 +75,18 @@ namespace Jondo.Unity.Tests.Sessions
             {
                 using var db = new SqliteConnection(DatabaseManager.WorldConnectionString);
                 db.Open();
+                try
+                {
+                    using var outfits = db.CreateCommand();
+                    outfits.CommandText = "DELETE FROM CharacterOutfits WHERE CharacterId IN " +
+                                          "(SELECT Id FROM Characters WHERE AccountId = $a);";
+                    outfits.Parameters.AddWithValue("$a", account);
+                    outfits.ExecuteNonQuery();
+                }
+                catch (SqliteException)
+                {
+                    // a base the outfits never reached
+                }
                 using var delete = db.CreateCommand();
                 delete.CommandText = @"
                     DELETE FROM CharacterItems WHERE CharacterId IN (SELECT Id FROM Characters WHERE AccountId = $a);

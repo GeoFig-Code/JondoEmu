@@ -3233,6 +3233,30 @@ public static class Op
     /// <summary>C→S: the appearance window's colours tab { f1 lvd { f2: the colours } } (AppearanceColorsTab).</summary>
     public const string Lyl = "lyl";
 
+    /// <summary>C→S: putting on an outfit { f1: its uuid, f2 }, a tile of the outfits list clicked (OutfitListUi.OnTileClicked, action dct).</summary>
+    public const string Lyy = "lyy";
+
+    /// <summary>C→S: a new outfit from the drafted one { f1: its number, f2: icon, f4: name, f6 lvd: colours } (action dcx).</summary>
+    public const string Lwk = "lwk";
+
+    /// <summary>C→S: a copy of an outfit { f1: icon, f2: its uuid, f3: name } (OutfitListUi.OnDuplicate and OnDuplicateCurrent, action dcw).</summary>
+    public const string Lzd = "lzd";
+
+    /// <summary>S→C: the answer to a new or copied outfit { f1: done, f2: uuid, f3 lzc: the outfit }; eqq::bbgk adds it to the list.</summary>
+    public const string Lxb = "lxb";
+
+    /// <summary>C→S: an outfit's name, icon and favourite mark { f1: name, f2: favourite, f3: uuid, f5: icon } (action dcy).</summary>
+    public const string Lxt = "lxt";
+
+    /// <summary>S→C: the answer to an outfit changed { f1: done, f2 lxp }; eqq::bbgg copies the pending name, icon and mark.</summary>
+    public const string Lxr = "lxr";
+
+    /// <summary>C→S: throwing an outfit away { f1 lyp, f2: its uuid } (OutfitListUi.OnDelete, action dcu).</summary>
+    public const string Lyr = "lyr";
+
+    /// <summary>S→C: the answer to an outfit thrown away { f1: done }; eqq::bbgl takes it out of the list.</summary>
+    public const string Lxl = "lxl";
+
     /// <summary>C→S: a room clicked on the Infinite Dream's map { f1: the room id, as text }.</summary>
     public const string Ixn = "ixn";
 

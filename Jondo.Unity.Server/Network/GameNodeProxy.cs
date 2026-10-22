@@ -1632,10 +1632,30 @@ namespace Jondo.Unity.Server.Network
                     // Opening the appearance window.
                     await AppearanceHandler.OpenAsync(stream, sessionAccountId);
                 }
-                else if (payloadStr.Contains("type.ankama.com/lyy"))
+                else if (payloadStr.Contains(Op.Uri(Op.Lyy)))
                 {
-                    // That window's state.
-                    await AppearanceHandler.SendStateAsync(stream, payload);
+                    // Putting on an outfit; the worn one's is the window's state.
+                    await AppearanceHandler.EquipAsync(stream, payload, sessionAccountId);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Lwk)))
+                {
+                    // A new outfit from the drafted one.
+                    await AppearanceHandler.CreateOutfitAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Lzd)))
+                {
+                    // A copy of an outfit.
+                    await AppearanceHandler.DuplicateOutfitAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Lxt)))
+                {
+                    // An outfit's name, icon or favourite mark.
+                    await AppearanceHandler.UpdateOutfitAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Lyr)))
+                {
+                    // Throwing an outfit away.
+                    await AppearanceHandler.DeleteOutfitAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Lys)))
                 {

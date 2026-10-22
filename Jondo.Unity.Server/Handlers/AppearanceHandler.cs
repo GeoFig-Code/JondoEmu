@@ -26,6 +26,8 @@ namespace Jondo.Unity.Server.Handlers
     ///   client  lwu { f1: idle }        an idle animation        → server lwn { f2: 1 }
     ///   client  lyl { f1 { f2: colours } } the colours           → server lxc + lxd { f1: 1 }
     ///
+    /// The outfits list -- putting one on, keeping, copying, renaming, throwing away -- is further down.
+    ///
     /// The difference between the two ways of putting on: `lys` lets the server choose the slot --
     /// and gives it back in the `lwz` -- and accepts a variant, which is what the "living items" use
     /// to imitate one garment or another. `lyf` names the slot directly and has no variant.
@@ -327,6 +329,160 @@ namespace Jondo.Unity.Server.Handlers
 
             Console.WriteLine($"[Appearances] Aura {aura}.");
         }
+
+        // ─── Outfits ────────────────────────────────────────────────────────────
+        //
+        // The outfits list (OutfitListUi) and the frame's pending state each request leaves for its
+        // answer, read off eql and eqq:
+        //
+        //   client  lyy { f1: uuid }                      a tile clicked   → server lxc + lxo { f1: 1, f3 }
+        //   client  lwk { f1, f2: icon, f4: name, f6 lvd } a new one       → server lxb { f1: 1, f2: uuid, f3 }
+        //   client  lzd { f1: icon, f2: uuid, f3: name }  a copy           → server lxb (eqq::bbgk clears +408)
+        //   client  lxt { f1: name, f2: favourite, f3: uuid, f5: icon }    → server lxr { f1: 1 }
+        //   client  lyr { f2: uuid }                      thrown away      → server lxl { f1: 1 }
+        //
+        // INFERRED from the client: the one capture with two outfits only lists them.
+
+        /// <summary>
+        /// Putting on an outfit (lyy { f1: uuid }), its tile clicked; the window sends the worn one's
+        /// too. The lxo's handler (eqq::bbgm) looks the uuid up in its list -- «Invalid outfit to
+        /// equip id» otherwise -- and marks it worn; without f1 it shows ui.cosmetic.error.outfitEquipped.
+        /// </summary>
+        public static async Task EquipAsync(NetworkStream stream, byte[] frame, long accountId)
+        {
+            var character = DatabaseManager.GetCharacterById(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
+            if (character == null) return;
+
+            byte[]? lyy = ConnectionProtocol.ReadPayload(frame, Op.Lyy);
+            string uuid = lyy == null ? "" : TextOf(lyy, 1);
+            if (uuid.Length > 0 && uuid != Outfits.EquippedOf(character.Id))
+            {
+                if (!Outfits.Equip(character, uuid, Owns))
+                {
+                    await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                        ConnectionProtocol.Answer(Op.Lxo, Array.Empty<byte>(), ConnectionProtocol.RequestId(frame)));
+                    Console.WriteLine($"[Appearances] Outfit {uuid} cannot be put on.");
+                    return;
+                }
+
+                // The title and ornament the window drafts are the new outfit's now.
+                Jondo.Unity.Server.Network.SessionContext.State.IsWardrobeDraftLoaded = false;
+                await WardrobeHandler.AnnounceAsync(stream, accountId);
+                await SlotLookHandler.RedrawAsync(stream);
+                Console.WriteLine($"[Appearances] Outfit {uuid} put on.");
+            }
+            await SendStateAsync(stream, frame);
+        }
+
+        /// <summary>
+        /// A new outfit from the one being drafted (lwk { f1: its number, f2: icon, f4: name,
+        /// f6 lvd { f2: colours } }), kept and not put on. The answer is lxb { f1: 1, f2: uuid,
+        /// f3: the outfit }, which the client adds to its list; without f1 it shows
+        /// ui.cosmetic.error.outfitCreation.
+        /// </summary>
+        public static async Task CreateOutfitAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[]? lwk = ConnectionProtocol.ReadPayload(frame, Op.Lwk);
+            if (lwk == null) return;
+            var character = DatabaseManager.GetCharacterById(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
+
+            Outfits.Outfit? outfit = null;
+            if (character != null)
+            {
+                var look = Drafted(character);
+                var lvd = ProtoMessage.Parse(lwk).Fields.FirstOrDefault(f => f.FieldNumber == 6 && f.WireType == 2);
+                var colors = lvd == null ? new List<long>()
+                    : BankHandler.PackedOrSingle(ProtoMessage.Parse(lvd.BytesValue).Fields, 2).Select(c => (long)(int)c).ToList();
+                if (colors.Count > 0 && colors.Count <= BreedLookTable.IndexedColors(character.Breed, character.Sex).Count
+                    && colors.TrueForAll(c => c >= -1 && c <= 0xFFFFFF))
+                    look = look with { Colors = BreedLookTable.CreationColors(character.Breed, character.Sex, colors) };
+
+                outfit = Outfits.Create(character.Id, TextOf(lwk, 4), (int)NumberOf(lwk, 2), look);
+            }
+            await AnswerNewOutfitAsync(stream, frame, character, outfit);
+        }
+
+        /// <summary>
+        /// A copy of an outfit (lzd { f1: icon, f2: the outfit's uuid, f3: name }), from its tile or
+        /// from the worn one's. Answered like a new one, lxb.
+        /// </summary>
+        public static async Task DuplicateOutfitAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[]? lzd = ConnectionProtocol.ReadPayload(frame, Op.Lzd);
+            if (lzd == null) return;
+            var character = DatabaseManager.GetCharacterById(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
+
+            Outfits.Outfit? outfit = null;
+            if (character != null)
+            {
+                string source = TextOf(lzd, 2);
+                var original = Outfits.Of(character.Id).FirstOrDefault(o => o.Uuid == source);
+                var look = original == null ? null : original.Kept ?? Outfits.Worn(character);
+                if (look != null) outfit = Outfits.Create(character.Id, TextOf(lzd, 3), (int)NumberOf(lzd, 1), look);
+            }
+            await AnswerNewOutfitAsync(stream, frame, character, outfit);
+        }
+
+        private static async Task AnswerNewOutfitAsync(NetworkStream stream, byte[] frame,
+                                                       DatabaseManager.DbCharacter? character, Outfits.Outfit? outfit)
+        {
+            var lxb = Pb.New();
+            if (character != null && outfit != null)
+                lxb.Var(1, 1).Str(2, outfit.Uuid).Bytes(3, ConnectionProtocol.BuildOutfit(character, outfit));
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Answer(Op.Lxb, lxb.Build(), ConnectionProtocol.RequestId(frame)));
+            Console.WriteLine(outfit != null ? $"[Appearances] Outfit «{outfit.Name}» kept." : "[Appearances] Outfit not kept.");
+        }
+
+        /// <summary>
+        /// An outfit's name, icon and favourite mark (lxt { f1: name, f2: favourite, f3: uuid,
+        /// f5: icon }), from its edition, its star or its icon picker. eqq::bbgg copies them into
+        /// the client's outfit on lxr { f1: 1 }.
+        /// </summary>
+        public static async Task UpdateOutfitAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[]? lxt = ConnectionProtocol.ReadPayload(frame, Op.Lxt);
+            if (lxt == null) return;
+            long who = Jondo.Unity.Server.Network.SessionContext.State.CharacterId;
+
+            bool done = Outfits.Update(who, TextOf(lxt, 3), TextOf(lxt, 1), (int)NumberOf(lxt, 5), NumberOf(lxt, 2) != 0);
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Answer(Op.Lxr, Pb.New().VarIfNotZero(1, done ? 1 : 0).Build(),
+                                          ConnectionProtocol.RequestId(frame)));
+        }
+
+        /// <summary>
+        /// Throwing an outfit away (lyr { f2: uuid }); the worn one stays. eqq::bbgl takes it out of
+        /// the list on lxl { f1: 1 }, and shows ui.cosmetic.error.outfitDeletion without it.
+        /// </summary>
+        public static async Task DeleteOutfitAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[]? lyr = ConnectionProtocol.ReadPayload(frame, Op.Lyr);
+            if (lyr == null) return;
+            long who = Jondo.Unity.Server.Network.SessionContext.State.CharacterId;
+
+            bool done = Outfits.Delete(who, TextOf(lyr, 2));
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Answer(Op.Lxl, Pb.New().VarIfNotZero(1, done ? 1 : 0).Build(),
+                                          ConnectionProtocol.RequestId(frame)));
+        }
+
+        /// <summary>The outfit being drafted: what is worn, with the title and ornament the window has picked.</summary>
+        private static Outfits.Look Drafted(DatabaseManager.DbCharacter character)
+        {
+            var look = Outfits.Worn(character);
+            var state = Jondo.Unity.Server.Network.SessionContext.State;
+            return state.IsWardrobeDraftLoaded
+                ? look with { Title = state.WardrobeDraftTitle, Ornament = state.WardrobeDraftOrnament }
+                : look;
+        }
+
+        private static string TextOf(byte[] message, int field)
+            => ProtoMessage.Parse(message).Fields.FirstOrDefault(f => f.FieldNumber == field && f.WireType == 2) is { } f
+                ? Encoding.UTF8.GetString(f.BytesValue) : "";
+
+        private static long NumberOf(byte[] message, int field)
+            => ProtoMessage.Parse(message).Fields.FirstOrDefault(f => f.FieldNumber == field && f.WireType == 0)?.VarIntValue ?? 0;
 
         /// <summary>
         /// The preview: only the lxc, which is what the panel sees. Nobody else finds out until it is

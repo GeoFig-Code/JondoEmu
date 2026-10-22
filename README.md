@@ -553,6 +553,7 @@ An alliance is made of characters, not guilds.
 - ✅ The bodies tab: your class's «base» or «retro» body
 - ✅ The colours tab: recolour your character, slot by slot
 - 🟡 The idles tab: your class's idle is kept, but the others do not see it yet
+- ✅ Saved outfits: keep a look under a name and an icon, star it, copy it, put it on with one click or throw it away
 
 ### ⛏️ Professions
 

@@ -2253,7 +2253,7 @@ namespace Jondo.Unity.Server
         {
             "CharacterItems", "CharacterSpellChoices", "CharacterSpellBar",
             "HavenBag", "HavenBagFurniture", "HavenBagChest",
-            "CharacterWardrobe", "CharacterAppearance", "CharacterJobs", "CharacterCrafterSettings",
+            "CharacterWardrobe", "CharacterAppearance", "CharacterOutfits", "CharacterJobs", "CharacterCrafterSettings",
             "CharacterDreams",
             "CharacterChallenges", "CharacterQuests", "CharacterAchievements",
             "CharacterKeyring", "CharacterElements",

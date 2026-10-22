@@ -112,6 +112,7 @@ namespace Jondo.Unity.Server
             Managers.Bank.Initialize();
             Managers.CosmeticCollection.Initialize();
             Managers.Wardrobe.Initialize();
+            Managers.Outfits.Initialize();
             Managers.Titles.Initialize();
             Managers.Cosmetics.Initialize();
             Managers.EquipmentSkins.Initialize();
