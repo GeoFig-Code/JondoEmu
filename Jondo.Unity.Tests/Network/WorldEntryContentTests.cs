@@ -9,18 +9,15 @@ using Xunit;
 namespace Jondo.Unity.Tests.Network
 {
     /// <summary>
-    /// The world-entry sequence, checked against the capture it was decoded from.
+    /// The world-entry sequence: what the manifest must carry and what it must never carry.
     /// </summary>
     /// <remarks>
     /// Entering the world stopped being a replay of three .bin files and became
     /// <c>content/world/entry.json</c>, one row per frame with the protobuf fields written out. The
     /// point of that change is reviewability — the quest journal and the achievements of the
-    /// recorded account travelled for months because nobody can diff a blob — and the risk of it is
-    /// that a decoder or a builder gets one field wrong and the client silently stops working.
-    ///
-    /// So the test is not "it loads". It is that every frame the server will send is byte for byte
-    /// the frame the capture holds, in the same order. If that holds, nothing downstream can behave
-    /// differently, because nothing downstream can tell the difference.
+    /// recorded account travelled for months because nobody can diff a blob. The .bin files
+    /// themselves are no longer in the repository: they were a recorded account's own session, and
+    /// nothing reads them any more.
     /// </remarks>
     // WorldEntryContent.Load empties the blocks and fills them again: whoever reads them meanwhile
     // finds them half there. Every test class that loads the manifest goes in this collection.
@@ -29,11 +26,9 @@ namespace Jondo.Unity.Tests.Network
     {
         private const string Manifest = "world/entry.json";
 
-        private static readonly (string Block, string File)[] Blocks =
+        private static readonly string[] Blocks =
         {
-            (WorldEntry.BlockAfterCharacter, "world_etapa1_tras_elegir_personaje.bin"),
-            (WorldEntry.BlockAfterConfirm, "world_etapa2_tras_confirmar.bin"),
-            (WorldEntry.BlockMap, "world_etapa3_mapa.bin"),
+            WorldEntry.BlockAfterCharacter, WorldEntry.BlockAfterConfirm, WorldEntry.BlockMap,
         };
 
         /// <summary>
@@ -73,58 +68,13 @@ namespace Jondo.Unity.Tests.Network
         /// <remarks>
         /// The body is deliberately empty here and replaced in <c>WorldEntry.Rebuilt</c> with one
         /// built from the database — the character, its jobs, its spells, its inventory, its
-        /// shortcut bars. Comparing those against the capture would be comparing this character
-        /// with the recorded one, which is the very thing the rebuild exists to stop. What IS
-        /// compared is that they are still there and still in the same place: a frame silently
-        /// missing from the sequence is how the spell bar came up empty once already.
+        /// shortcut bars. A body left in one of them would be the recorded character's, which is the
+        /// very thing the rebuild exists to stop.
         /// </remarks>
         private static readonly HashSet<string> Rebuilt = new HashSet<string>
         {
             "kva", "hms", "ivx", "itg",
         };
-
-        private static IEnumerable<byte[]> RawFrames(byte[] block)
-        {
-            int at = 0;
-            while (at < block.Length)
-            {
-                int length = 0, shift = 0;
-                while (at < block.Length)
-                {
-                    byte b = block[at++];
-                    length |= (b & 0x7F) << shift;
-                    if ((b & 0x80) == 0) break;
-                    shift += 7;
-                }
-
-                if (length <= 0 || at + length > block.Length) yield break;
-                yield return block[at..(at + length)];
-                at += length;
-            }
-        }
-
-        private static string OpcodeOf(byte[] frame)
-        {
-            // The type url is plain ASCII inside the frame, so finding it does not need the whole
-            // envelope taken apart — and not taking it apart is the point: this test must not share
-            // the parser it is checking, or a bug in that parser would agree with itself.
-            byte[] needle = System.Text.Encoding.ASCII.GetBytes("type.ankama.com/");
-            for (int i = 0; i + needle.Length + 3 <= frame.Length; i++)
-            {
-                bool hit = true;
-                for (int j = 0; j < needle.Length; j++)
-                {
-                    if (frame[i + j] != needle[j]) { hit = false; break; }
-                }
-
-                if (hit)
-                {
-                    return System.Text.Encoding.ASCII.GetString(frame, i + needle.Length, 3);
-                }
-            }
-
-            return "";
-        }
 
         private static bool Available(out string reason)
         {
@@ -135,58 +85,7 @@ namespace Jondo.Unity.Tests.Network
                 return false;
             }
 
-            foreach (var (_, file) in Blocks)
-            {
-                if (!File.Exists(Paths.Resolve(file))) { reason = "no " + file; return false; }
-            }
-
             return true;
-        }
-
-        [Fact]
-        public void Every_frame_is_the_captured_frame_byte_for_byte()
-        {
-            if (!Available(out _)) return;
-
-            WorldEntryContent.Load(Paths.ContentFile(Manifest));
-            Assert.True(WorldEntryContent.Ready, "the manifest was not read");
-
-            var wrong = new List<string>();
-            foreach (var (block, file) in Blocks)
-            {
-                var expected = RawFrames(File.ReadAllBytes(Paths.Resolve(file)))
-                    .Where(frame => !Dropped.Contains(OpcodeOf(frame)))
-                    .ToList();
-                var actual = WorldEntryContent.Rows(block);
-
-                if (expected.Count != actual.Count)
-                {
-                    wrong.Add($"{block}: the capture has {expected.Count} frames that are sent and " +
-                              $"the manifest {actual.Count}");
-                    continue;
-                }
-
-                for (int i = 0; i < expected.Count; i++)
-                {
-                    string opcode = OpcodeOf(expected[i]);
-                    if (OpcodeOf(actual[i].Frame) != opcode)
-                    {
-                        wrong.Add($"{block}[{i}]: the capture carries {opcode} and the manifest " +
-                                  $"{OpcodeOf(actual[i].Frame)}; the order has changed");
-                        continue;
-                    }
-
-                    // The ones the server rebuilds carry the envelope and an empty body on purpose.
-                    if (Rebuilt.Contains(opcode)) continue;
-
-                    if (expected[i].AsSpan().SequenceEqual(actual[i].Frame)) continue;
-
-                    wrong.Add($"{block}[{i}] ({opcode}): " +
-                              $"{expected[i].Length} bytes in the capture, {actual[i].Frame.Length} built");
-                }
-            }
-
-            Assert.True(wrong.Count == 0, string.Join("\n", wrong.Take(12)));
         }
 
         [Fact]
@@ -200,7 +99,7 @@ namespace Jondo.Unity.Tests.Network
             // true and useless, but "is anything at all left carrying that journal". A frame is
             // named by its opcode, so the whole list is asked rather than the one that was noticed.
             var found = new List<string>();
-            foreach (var (block, _) in Blocks)
+            foreach (string block in Blocks)
             {
                 foreach (var row in WorldEntryContent.Rows(block))
                 {
@@ -222,7 +121,7 @@ namespace Jondo.Unity.Tests.Network
             // A block that reads as empty is the failure mode with no symptom until a client tries
             // to connect: the server sends nothing, the client waits, and the log says nothing was
             // wrong. Worth one assertion.
-            foreach (var (block, _) in Blocks)
+            foreach (string block in Blocks)
             {
                 Assert.True(WorldEntryContent.Count(block) > 0, $"block {block} is empty");
             }
@@ -241,7 +140,7 @@ namespace Jondo.Unity.Tests.Network
             // BOTH bars come out as the item bar and the spell bar is empty. That has happened once
             // already by another route, and it is invisible until a client connects.
             var bars = new List<string>();
-            foreach (var (block, _) in Blocks)
+            foreach (string block in Blocks)
             {
                 foreach (var row in WorldEntryContent.Rows(block))
                 {
@@ -255,131 +154,41 @@ namespace Jondo.Unity.Tests.Network
             // And the RIGHT one of the two, which the count alone does not say. The label was
             // written backwards once, from a comment in the source that claimed "f6 for items and
             // f9 for spells" while the code three methods below it did the opposite and was right.
-            // So this is measured from the capture instead of read from anybody's prose: the slots
-            // of the spell bar carry field 6, and its 44 values are real spell ids.
-            byte[] mapBlock = File.ReadAllBytes(Paths.Resolve("world_etapa3_mapa.bin"));
-            var captured = RawFrames(mapBlock).Where(f => OpcodeOf(f) == "itg").ToList();
+            // Measured on the capture instead of read from anybody's prose: the first itg of the map
+            // block is the one whose slots carry field 6, and its values are real spell ids.
             var rows = WorldEntryContent.Rows(WorldEntry.BlockMap)
                 .Where(r => r.Opcode == "itg").ToList();
 
-            Assert.Equal(captured.Count, rows.Count);
-            for (int i = 0; i < captured.Count; i++)
-            {
-                bool spells = CarriesField6(captured[i]);
-                bool labelled = rows[i].Built == WorldEntry.SpellBarLabel;
-                Assert.True(spells == labelled,
-                    $"the itg[{i}] bar carries f6={spells} and the manifest labels it as " +
-                    $"«{rows[i].Built}»: one of the two is the wrong way round");
-            }
+            Assert.Equal(2, rows.Count);
+            Assert.Equal(WorldEntry.SpellBarLabel, rows[0].Built);
+            Assert.NotEqual(WorldEntry.SpellBarLabel, rows[1].Built);
         }
-
-        /// <summary>Whether any slot of this itg carries field 6, which is the spell bar.</summary>
-        private static bool CarriesField6(byte[] frame)
-        {
-            byte[]? payload = ConnectionProtocol.ReadPayload(frame, "itg");
-            if (payload == null) return false;
-
-            foreach (var entry in ProtoMessage.Parse(payload).Fields)
-            {
-                if (entry.FieldNumber != 1 || entry.WireType != 2) continue;
-                foreach (var slot in ProtoMessage.Parse(entry.BytesValue).Fields)
-                {
-                    if (slot.FieldNumber == 6) return true;
-                }
-            }
-
-            return false;
-        }
-
 
         [Fact]
-        public void Nothing_in_the_manifest_carries_the_recorded_character()
+        public void The_frames_the_server_rebuilds_carry_no_body_in_the_manifest()
         {
             if (!Available(out _)) return;
 
             // The guard that matters, and the one that would have caught every leak this file has
             // had. Not "is opcode X gone" — that question has been answered yes while the same data
-            // walked out through opcode Y twice — but "is the recorded character's id or name
-            // anywhere in what we are about to send".
-            //
-            // The id and the name are read out of the capture at run time rather than written here:
-            // they belong to a real player and have no business in source. That also means this
-            // test keeps working if the blocks are ever regenerated from a different session.
-            byte[] block = File.ReadAllBytes(Paths.Resolve("world_etapa1_tras_elegir_personaje.bin"));
-            byte[]? kva = RawFrames(block)
-                .Select(frame => ConnectionProtocol.ReadPayload(frame, "kva"))
-                .FirstOrDefault(payload => payload != null && payload.Length > 0);
-
-            Assert.NotNull(kva);
-
-            long id = BiggestNumberIn(kva!);
-            Assert.True(id > 0, "the captured character's id could not be read");
-
+            // walked out through opcode Y twice — but "is there any body left in the frames that
+            // describe the character". Whatever such a body held would be the recorded one's.
             WorldEntryContent.Load(Paths.ContentFile(Manifest));
 
             var carrying = new List<string>();
-            foreach (var (name, _) in Blocks)
+            foreach (string block in Blocks)
             {
-                foreach (var row in WorldEntryContent.Rows(name))
+                foreach (var row in WorldEntryContent.Rows(block))
                 {
-                    if (Contains(row.Frame, id)) carrying.Add($"{name}: {row.Opcode}");
+                    if (!Rebuilt.Contains(row.Opcode)) continue;
+                    byte[]? payload = ConnectionProtocol.ReadPayload(row.Frame, row.Opcode);
+                    if (payload is { Length: > 0 }) carrying.Add($"{block}: {row.Opcode}");
                 }
             }
 
             Assert.True(carrying.Count == 0,
-                "the manifest still carries the recorded character's id in: " +
-                string.Join(", ", carrying.Distinct()));
+                "the manifest still carries a body in: " + string.Join(", ", carrying.Distinct()));
         }
-
-        /// <summary>The largest varint anywhere in a message. The character id is the big one.</summary>
-        private static long BiggestNumberIn(byte[] payload)
-        {
-            long biggest = 0;
-            foreach (var field in ProtoMessage.Parse(payload).Fields)
-            {
-                if (field.WireType == 0) biggest = Math.Max(biggest, field.VarIntValue);
-                else if (field.WireType == 2 && field.BytesValue is { Length: > 0 })
-                {
-                    try { biggest = Math.Max(biggest, BiggestNumberIn(field.BytesValue)); }
-                    catch (Exception) { /* not a message; nothing to read */ }
-                }
-            }
-
-            return biggest;
-        }
-
-        /// <summary>Whether the frame carries that number as a varint, at any depth.</summary>
-        /// <remarks>
-        /// Searched as bytes rather than by walking the tree, because the tree walk would have to
-        /// agree with the very parser under test. A varint is a unique byte sequence, so finding it
-        /// is enough to say the number is in there.
-        /// </remarks>
-        private static bool Contains(byte[] frame, long number)
-        {
-            var needle = new List<byte>();
-            ulong left = (ulong)number;
-            do
-            {
-                byte b = (byte)(left & 0x7F);
-                left >>= 7;
-                needle.Add(left != 0 ? (byte)(b | 0x80) : b);
-            }
-            while (left != 0);
-
-            for (int i = 0; i + needle.Count <= frame.Length; i++)
-            {
-                bool hit = true;
-                for (int j = 0; j < needle.Count; j++)
-                {
-                    if (frame[i + j] != needle[j]) { hit = false; break; }
-                }
-
-                if (hit) return true;
-            }
-
-            return false;
-        }
-
 
         [Fact]
         public void The_jobs_frame_keeps_the_body_the_server_reads_from_it()

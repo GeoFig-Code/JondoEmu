@@ -238,7 +238,8 @@ Not implemented yet.
 ### How
 
 The real messages from the capture are replayed, extracted with `extraer_world.py` into three
-files (`world_etapa*.bin`). They do not go back to back: the real server sends a block, waits for
+files (`world_etapa*.bin`, since replaced by `content/world/entry.json` and no longer in the
+repository). They do not go back to back: the real server sends a block, waits for
 the client's confirmation and carries on.
 
 ```
@@ -951,7 +952,7 @@ Empty `logs/` before packaging anything.
 
 **Pending**, in order:
 
-1. Remove the replay. Everything that comes out of `world_etapa*.bin` is another account's data:
+1. Remove the replay (done: the files are gone and the manifest is read instead). Everything that came out of them was another account's data:
    it serves as a reference for what the client expects, not as an answer. What is already built
    from the database is `kva`, `kub`, `jru`, `jss`, `irq`, `hms` and `itg`.
 2. **Inventory from the database**, and with it **everything the equipment adds to the sheet**: the

@@ -50,7 +50,10 @@ logs/
 *.log
 *.csv
 *.pcapng
+*.pcap
 *.hex
+# Blocks carved out of a capture are the recorded session too.
+*.bin
 
 # ─── Data the emulator does not read ────────────────────────────────────────
 # They are on disk for reference, but Paths does not resolve them.

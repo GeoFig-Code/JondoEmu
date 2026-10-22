@@ -224,7 +224,7 @@ Measured sizes:
 | What | Bytes | Share of the cap |
 |---|---|---|
 | Largest frame in any capture (a fight capture) | 88,022 | 67 % |
-| `ivi` in the world-entry capture (also the largest frame in `world_etapa3_mapa.bin`) | 87,878 | 67 % |
+| `ivi` in the world-entry capture (also the largest frame of the map block) | 87,878 | 67 % |
 | Largest `ivx` the emulator has logged (1,722 items) | 96,713 | 74 % |
 | Largest `ivx` in the captures (616 items) | 20,691 | 16 % |
 
@@ -476,9 +476,9 @@ else.
 
 ## 9. The three world blocks
 
-`datos/world_etapa1_tras_elegir_personaje.bin`, `..._etapa2_tras_confirmar.bin` and
-`..._etapa3_mapa.bin` are the burst the official server sends on entering the world, recorded from a
-real session and replayed by `Network/WorldEntry.cs`.
+The burst the official server sends on entering the world, recorded from a real session. It used
+to ship as three `datos/world_etapa*.bin` files replayed by `Network/WorldEntry.cs`; today it is
+`content/world/entry.json`, one row per frame, and the .bin files are no longer in the repository.
 
 **Why they exist.** Entering the world is 368 messages of which we have a schema for a handful. The
 blocks are the only way to get a client fully into the world today. They are the recording that the

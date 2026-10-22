@@ -774,7 +774,7 @@ limit is not applied.
 ### 4.6 What entering the world actually does
 
 Worth knowing before reading anything above too literally: the world entry is **replayed from a real
-capture** (`Network/WorldEntry.cs`, `datos/world_etapa*.bin`), in three blocks the client
+capture** (`Network/WorldEntry.cs`, `content/world/entry.json`), in three blocks the client
 acknowledges one at a time. What is rebuilt from the database is the identity — `kva`, `kub`
 (the sheet), `hms` (the spells), `ivx` (the inventory), `jru` (the map). Everything else still
 describes the recorded account. Messages that would leak real names are dropped outright, and

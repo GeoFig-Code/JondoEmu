@@ -39,10 +39,8 @@ nothing — they are working references, and `.gitignore` keeps them local.
 | `havenbag.json` | 146,718 | 48 haven bag themes with their map ids, and 4,083 pieces of furniture | `Merkasako` via `Paths.HavenBagJson` (*merkasako* is the Spanish name for the haven bag; the class and the script kept it) | `extract_merkasako.py` |
 | `world_entering_3_6_10_10.bin` | 133,185 | The raw world-entry burst as captured: 363 frames, 69 distinct opcodes | nothing | raw capture, kept for reference |
 | `spell_variants.json` | 102,089 | The client's `SpellVariantsDataRoot`: base/variant spell pairs per breed | `SpellTable` via `Paths.SpellVariantsJson` | copied from `dofus3_data/` |
-| `world_etapa3_mapa.bin` | 90,935 | World entry block 3, the map: 31 frames, 17 opcodes | `WorldEntry` via `Paths.WorldStageMap` | carved from the capture, then `sanear_world.py` |
 | `cosmetic_skins.json` | 84,322 | The look of each cosmetic, measured on the wire: 1,603 skins, 55 variants, 194 weapon slots, 61 variant slots, 242 pets, plus mounts, auras, titles and ornaments | `Cosmetics` via `Paths.CosmeticSkinsJson` | `extraer_apariencias.py --guardar` |
 | `cosmetics.json` | 80,437 | The cosmetic catalogue: 12 item types, 2,420 items, 182 appearance entries | `Cosmetics` via `Paths.CosmeticsJson` | from the client dump; `completar_cosmeticos.py` patches the gaps |
-| `world_etapa1_tras_elegir_personaje.bin` | 64,510 | World entry block 1, after the character is picked: 322 frames, 42 opcodes | `WorldEntry` via `Paths.WorldStageAfterCharacter` | carved from the capture, then `sanear_world.py` |
 | `heads.json` | 56,345 | 638 character heads (id → skin, breed, gender) and the 38 defaults, one per breed and sex | `HeadTable` via `Paths.HeadsJson` | `extract_heads.py` |
 | `equipment_skins.json` | 11,079 | The look of **real** gear, not cosmetics: 286 skins (116 hats, 90 capes, 79 shields), 98 pets, 22 mounts. Measured by equipping items one at a time, not through the appearance window. Nothing reads it yet — it is what a cosmetic would have to *replace* instead of append. See `appearances.md` §17 | nothing yet | `extraer_equipo_real.py --guardar` |
 | `dungeons.json` | 51,371 | 187 dungeons: rooms, entrance map, exit map, level bands | `DungeonManager` via `Paths.DungeonsJson` | `extract_dungeons.py` |
@@ -58,7 +56,6 @@ nothing — they are working references, and `.gitignore` keeps them local.
 | `breed_looks.json` | 4,314 | 19 breeds × male/female → bones, skins, scales, six default colors | `BreedLookTable` via `Paths.BreedLooksJson` | `extract_breed_looks.py` |
 | `waypoints.json` | 3,553 | The 62 zaaps with their map and sub-area | `Interactives` via `Paths.WaypointsJson` | `extract_interactivos.py` |
 | `titles_ornaments.json` | 2,660 | 539 title ids and 167 ornament ids | `Titles` via `Paths.TitlesOrnamentsJson` | `extract_titulos.py` |
-| `world_etapa2_tras_confirmar.bin` | 2,348 | World entry block 2: 2 frames, `jby` (40 B, meaning not established) and `jtg` (2,306 B), the account's gift-item catalogue | `WorldEntry` via `Paths.WorldStageAfterConfirm` | carved from the capture, then `sanear_world.py` |
 | `item_effect_fields.json` | 1,226 | 121 effect ids → which protobuf field of the `ivx` entry carries the value | `EffectFields` via `Paths.EffectFieldsJson` | measured from a capture; no script |
 | `zaap_overrides.json` | 1,016 | Maps the client's waypoint table calls a zaap but whose element cannot be recognised by its graphic. One entry today: map `115083777` → element `481520`, picked by elimination among four elements, none of which carries a zaap graphic. The file writes down why, so the next person can change one number instead of redoing the work | `Interactives` via `Paths.ZaapOverridesJson` | written by hand |
 
@@ -96,11 +93,11 @@ items out of a real inventory message, so it lives as data and is stated as meas
 Entering the world is not one burst. The real server sends a block, waits for the client, and only
 then continues:
 
-| Cue | Server sends | File | Frames |
+| Cue | Server sends | Block in `content/world/entry.json` | Frames |
 |---|---|---|---:|
-| `kvw`, the client picks a character | character, stats, quests, almanax… | `world_etapa1_tras_elegir_personaje.bin` | 322 |
-| nothing — it follows block 1 | `jby`, then the gift-item catalogue `jtg` | `world_etapa2_tras_confirmar.bin` | 2 |
-| `lqc`, "block 1 digested" | the map | `world_etapa3_mapa.bin` | 31 |
+| `kvw`, the client picks a character | character, stats, quests, almanax… | `afterCharacter` | 322 |
+| nothing — it follows block 1 | `jby`, then the gift-item catalogue `jtg` | `afterConfirm` | 2 |
+| `lqc`, "block 1 digested" | the map | `map` | 31 |
 
 Two of those differ from the recorded session, and both differences are deliberate.
 
@@ -115,8 +112,8 @@ standing in a world it did not know the map of, and sending the block twice made
 loop, because the block carries `jru` and `jru` means "load this map". The `kqo` path survives only
 as a fallback for clients that never send `lqc`; `tools/cliente_falso.py` is one.
 
-That is why block 3 is its own file: it has to go out exactly once, on its own cue. Blocks 1 and 2
-are two files because that is how the capture was cut.
+That is why block 3 is its own block: it has to go out exactly once, on its own cue. Blocks 1 and 2
+are two because that is how the capture was cut.
 
 The bytes are the real ones. Without a schema for every message that is the only way to get this
 far. `WorldEntry.Rebuilt` is the list of frames the emulator builds from the database instead of
@@ -144,10 +141,10 @@ Measured on the files as they stand:
 | File | Frames with a sensitive opcode |
 |---|---|
 | `world_entering_3_6_10_10.bin` (raw, not published) | 13, across 11 families: `kub`×2, `jhh`×2, `jhe`, `jhk`, `ife`, `jgu`, `jaa`, `lyt`, `hhy`, `ihb`, `jjs` |
-| `world_etapa1` / `world_etapa2` / `world_etapa3` | none |
 
-`py tools/sanear_world.py --ver` re-runs the check and reports nothing to remove, which is the
-result you want.
+The carved blocks are gone from the repository as well. Nothing read them once the world entry
+moved to `content/world/entry.json`, and a recorded session has no business being published, so
+`.gitignore` now keeps every `*.bin` out.
 
 `kub` is the one exception in that list: it is not dropped, it is replaced. The captured `kub` is a
 level-154 character sheet, and the emulator builds its own from the database.
@@ -258,12 +255,12 @@ Some `tools/` scripts read `dofus3_data/`; the rest open the `.bundle` files dir
 
 **The captures.** 242 `.pcapng` files. Only three things in `datos/` come from them, because they
 are the three things the client does not know: the item-to-look table (`cosmetic_skins.json`), the
-effect field map (`item_effect_fields.json`) and the world entry blocks.
+effect field map (`item_effect_fields.json`) and the world entry manifest
+(`content/world/entry.json`).
 
-Splitting a capture into the three `world_etapa*.bin` blocks is done by `extraer_world.py`, which
-`Paths.cs` names but which is not in `tools/`. `sanear_world.py` is the second half of that job: it
-takes the blocks and strips the frames that carry account data. If you re-cut the blocks from a new
-capture, run it before anything else touches them.
+The manifest was decoded from three blocks carved out of a capture by `extraer_world.py` and
+cleaned by `sanear_world.py`. Those blocks are not in the repository: they are a recorded session.
+If you re-cut them from a new capture, keep them out of git.
 
 ### The order
 
@@ -297,7 +294,7 @@ py tools/completar_cosmeticos.py               -> ItemTemplates + cosmetics.json
 # 4. From the captures
 py tools/extraer_apariencias.py <capture.pcapng> --guardar   -> cosmetic_skins.json
 py tools/sanear_world.py --ver                               -> what would still be stripped
-py tools/sanear_world.py --salida datos                      -> rewrite the world_etapa*.bin clean
+py tools/sanear_world.py --salida <folder>                   -> rewrite the carved blocks clean
 py tools/extract_workshops.py                                -> talleres_3.6.10.10.json (also reads
                                                                 the client's HintsDataRoot)
 
