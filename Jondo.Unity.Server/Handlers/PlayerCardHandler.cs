@@ -21,8 +21,9 @@ namespace Jondo.Unity.Server.Handlers
     ///   9 the card's background   10 gender, 0 male   11 name   14 the look with its outfit
     /// </code>
     /// The capture's own card: { 1 18, 2 60000001, 3 11, 4 300000000001, 6 1, 7 354, 8 look, 9 5,
-    /// 11 "Hero-Example", 14 look }. The background is left out: no card here is customised, and the
-    /// client draws its default.
+    /// 11 "Hero-Example", 14 look }. The background (f9) is the one the player picks in the card's
+    /// background window, kye { 2 background } (fhf::beyt copies dkv's only field there); with none
+    /// picked it is left out and the client draws its default.
     /// </remarks>
     public static class PlayerCardHandler
     {
@@ -43,6 +44,24 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, ConnectionProtocol.Push("lad", Build(character)));
         }
 
+        /// <summary>The highest background number taken; the client's window offers a handful.</summary>
+        public const int MaxBackground = 999;
+
+        /// <summary>kye { 2 background }: the player's own card gets that background. Nothing is answered.</summary>
+        public static Task SetBackgroundAsync(byte[] payload)
+        {
+            byte[]? kye = ConnectionProtocol.ReadPayload(payload, "kye");
+            if (kye == null) return Task.CompletedTask;
+            long background = ProtoMessage.Parse(kye).Fields
+                .FirstOrDefault(f => f.FieldNumber == 2 && f.WireType == 0)?.VarIntValue ?? 0;
+            if (background < 0 || background > MaxBackground) return Task.CompletedTask;
+
+            var state = SessionContext.State;
+            Wardrobe.SaveCardBackground(state.CharacterId, (int)background);
+            Console.WriteLine($"[Player card] {state.CharacterName} takes background {background}.");
+            return Task.CompletedTask;
+        }
+
         /// <summary>lad { 2 { 3 when, 4 the character } }.</summary>
         internal static byte[] Build(DatabaseManager.DbCharacter character)
         {
@@ -55,6 +74,7 @@ namespace Jondo.Unity.Server.Handlers
                 .VarIfNotZero(6, SessionRegistry.FindByCharacter(character.Id) != null ? 1 : 0)
                 .Var(7, character.Level)
                 .Bytes(8, BreedLookTable.BareLook(character))
+                .VarIfNotZero(9, Wardrobe.CardBackgroundOf(character.Id))
                 .VarIfNotZero(10, character.Sex)
                 .Str(11, character.Name)
                 .Bytes(14, BreedLookTable.BuildLook(character, paraLaVentana: true));

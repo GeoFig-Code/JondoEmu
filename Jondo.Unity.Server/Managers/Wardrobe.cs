@@ -60,6 +60,19 @@ namespace Jondo.Unity.Server.Managers
                 {
                     // it was already there
                 }
+
+                // The background of the player card, picked in its own window (kye).
+                try
+                {
+                    var fondo = connection.CreateCommand();
+                    fondo.CommandText =
+                        "ALTER TABLE CharacterWardrobe ADD COLUMN CardBackground INTEGER NOT NULL DEFAULT 0;";
+                    fondo.ExecuteNonQuery();
+                }
+                catch (Microsoft.Data.Sqlite.SqliteException)
+                {
+                    // it was already there
+                }
             }
             catch (Exception ex)
             {
@@ -90,6 +103,29 @@ namespace Jondo.Unity.Server.Managers
             }
             return (None, None);
         }
+
+        /// <summary>The player card's background; 0 is none chosen, which the client draws as its default.</summary>
+        public static int CardBackgroundOf(long characterId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT CardBackground FROM CharacterWardrobe WHERE CharacterId = $id;";
+                command.Parameters.AddWithValue("$id", characterId);
+                return command.ExecuteScalar() is long background ? (int)background : None;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Appearances] Could not read the card's background: {ex.Message}");
+                return None;
+            }
+        }
+
+        public static void SaveCardBackground(long characterId, int background)
+            => Save(characterId, "CardBackground", background);
 
         public static void SaveTitle(long characterId, int titleId)
             => Save(characterId, "TitleId", titleId);

@@ -305,7 +305,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 <img width="2560" height="1514" alt="image" src="https://github.com/user-attachments/assets/490997fc-1300-4a29-9963-32077efdf0dd" />
 
 - ✅ Private messages
-- ✅ Player cards («Mostrar perfil»): class, level, looks and whether they are playing
+- ✅ Player cards («Mostrar perfil»): class, level, looks, whether they are playing and the background you pick for yours
 - ✅ Friends window: contacts, mutual friends seen playing (character, level, class, in a fight), blocked and ignored players
 - ✅ Ankama friends: invite by nickname and tag, accept or refuse, see them connected
 - ✅ Blocked and ignored players cannot whisper to you, and you do not hear them on the map
