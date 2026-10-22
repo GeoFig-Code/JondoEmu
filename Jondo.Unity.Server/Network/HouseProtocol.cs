@@ -58,7 +58,7 @@ namespace Jondo.Unity.Server.Network
         ///   f7  price                                    only while on sale
         ///   f8  { f1: nickname, f2: tag }                the owning account
         ///   f9  1                                        720 of 728
-        ///   f10 chests, f11 [workshop skills]           full only: 2 and [339] in the captures
+        ///   f10 chests, f11 [339, workshop skills]      full only: 2 and [339] in the captures
         ///   f12 instance
         /// </code>
         /// f5 is read as "has an access code": the one house in the captures that answered a knock

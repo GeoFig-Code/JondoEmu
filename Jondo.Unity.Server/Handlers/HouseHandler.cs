@@ -536,7 +536,7 @@ namespace Jondo.Unity.Server.Handlers
                 Locked = house.Owned && house.Locked,
                 Rooms = door.Rooms,
                 Chests = Houses.ChestCountOf(door.InteriorMapId),
-                Skills = Houses.WorkshopSkillsOf(door.InteriorMapId),
+                Skills = Houses.PlaqueSkillsOf(door.InteriorMapId),
                 GuildBlock = GuildBlockOf(house),
             };
         }

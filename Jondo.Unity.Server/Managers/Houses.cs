@@ -466,11 +466,27 @@ namespace Jondo.Unity.Server.Managers
         public static int ChestCountOf(long hall)
             => ChestsIn(hall).Count + RoomsOf(hall).Sum(room => ChestsIn(room).Count);
 
-        /// <summary>The skills of the workshops standing in every room of a house, as its plaque lists them.</summary>
-        public static List<long> WorkshopSkillsOf(long hall)
-            => RoomsOf(hall).Prepend(hall).Where(IsInterior)
-                .SelectMany(room => Workshops.On(room)).SelectMany(w => w.Station.Skills)
-                .Distinct().Select(skill => (long)skill).ToList();
+        /// <summary>
+        /// The skills a house's plaque lists (f11): «Indicar una salida» (339), which the way out of
+        /// every house offers beside its own 184, and then the skills of the workshops standing in
+        /// its rooms. Measured on «entrar en mi casa»: the exit 522411 offers 339 and 184, the chest
+        /// 104 and 105, the other two doors 184, and that house's plaque says [339] and nothing else.
+        /// </summary>
+        public static List<long> PlaqueSkillsOf(long hall)
+        {
+            var skills = new List<long> { TeleportManager.ExitSkill };
+            foreach (long room in RoomsOf(hall).Prepend(hall).Where(IsInterior))
+            {
+                foreach (var (_, station) in Workshops.On(room))
+                {
+                    foreach (int skill in station.Skills)
+                    {
+                        if (!skills.Contains(skill)) skills.Add(skill);
+                    }
+                }
+            }
+            return skills;
+        }
 
         /// <summary>The chests standing in an interior: the elements with a chest's graphic.</summary>
         public static List<Interactives.Element> ChestsIn(long interiorMapId)

@@ -557,6 +557,26 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(Houses.ChestCountOf(palace.InteriorMapId), plaque.Chests);
             Assert.True(plaque.Chests > 2, $"{plaque.Chests} chests");
             Assert.True(plaque.Skills.Count > 1, $"{plaque.Skills.Count} workshop skills");
+            Assert.Equal(TeleportManager.ExitSkill, plaque.Skills[0]);
+        }
+
+        /// <summary>
+        /// The house of the sale captures, from the data: its three rooms hold two chests and no
+        /// workshop, so its plaque is 2 and [339] -- what the izr of «poner casa en venta» carries.
+        /// </summary>
+        [Fact]
+        public void The_measured_house_plaque_comes_out_of_the_data()
+        {
+            if (MapManager.GetMapInfo(Street) == null) MapManager.Initialize();
+            Interactives.Initialize();
+            Workshops.Initialize();
+            Houses.Initialize();
+            Assert.True(Houses.TryGetDoor(Street, DoorElement, out var door));
+
+            var plaque = HouseHandler.PlaqueOf(new HouseStore.House(), door);
+            Assert.Equal(3, plaque.Rooms);
+            Assert.Equal(2, plaque.Chests);
+            Assert.Equal(new long[] { 339 }, plaque.Skills);
         }
 
         /// <summary>

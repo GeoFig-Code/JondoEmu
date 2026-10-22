@@ -34,22 +34,51 @@ namespace Jondo.Unity.Server.Managers
             public string Source { get; init; } = "";
         }
 
-        private static readonly Dictionary<int, Station> _byGfx = new Dictionary<int, Station>();
+        /// <summary>
+        /// The stations as one set: <see cref="Initialize"/> fills a new one on its own thread and
+        /// publishes it whole, so whoever reads meanwhile -- a house plaque, a map being sent, a test
+        /// running beside -- sees the old stations or the new ones, never a half.
+        /// </summary>
+        private sealed class Tables
+        {
+            public readonly Dictionary<int, Station> ByGfx = new();
 
-        /// <summary>The artisans' book: graphic -> (type, skill). "Consultar", skill 170.</summary>
-        private static readonly Dictionary<int, (int Type, int Skill)> _books = new Dictionary<int, (int, int)>();
+            /// <summary>The artisans' book: graphic -> (type, skill). "Consultar", skill 170.</summary>
+            public readonly Dictionary<int, (int Type, int Skill)> Books = new();
 
-        /// <summary>Which jobs the book of each map opens.</summary>
-        private static readonly Dictionary<long, IReadOnlyList<int>> _bookJobs = new Dictionary<long, IReadOnlyList<int>>();
+            /// <summary>Which jobs the book of each map opens.</summary>
+            public readonly Dictionary<long, IReadOnlyList<int>> BookJobs = new();
+        }
+
+        private static volatile Tables _published = new();
+        [ThreadStatic] private static Tables? _building;
+        private static Tables Current => _building ?? _published;
+
+        private static Dictionary<int, Station> _byGfx => Current.ByGfx;
+        private static Dictionary<int, (int Type, int Skill)> _books => Current.Books;
+        private static Dictionary<long, IReadOnlyList<int>> _bookJobs => Current.BookJobs;
 
         /// <summary>"Consultar": the skill of every artisans' book.</summary>
         public const int BookSkill = 170;
 
         public static void Initialize()
         {
-            _byGfx.Clear();
-            _books.Clear();
-            _bookJobs.Clear();
+            var fresh = new Tables();
+            _building = fresh;
+            try
+            {
+                Fill();
+            }
+            finally
+            {
+                _building = null;
+            }
+            _published = fresh;
+        }
+
+        /// <summary>The loading proper, into the set being built (<see cref="Tables"/>).</summary>
+        private static void Fill()
+        {
             string path = Paths.WorkshopsJson;
             if (!File.Exists(path))
             {
@@ -105,19 +134,21 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The stations standing on a map, with the element each one is.</summary>
         public static IEnumerable<(Interactives.Element Element, Station Station)> On(long mapId)
         {
+            var stations = _byGfx;
             foreach (var element in Interactives.ElementsOf(mapId))
             {
-                if (_byGfx.TryGetValue(element.Gfx, out var station)) yield return (element, station);
+                if (stations.TryGetValue(element.Gfx, out var station)) yield return (element, station);
             }
         }
 
         /// <summary>The artisans' books standing on a map, with their type and skill.</summary>
         public static IEnumerable<(Interactives.Element Element, int Type, int Skill)> BooksOn(long mapId)
         {
-            if (!_bookJobs.ContainsKey(mapId)) yield break;
+            var tables = Current;
+            if (!tables.BookJobs.ContainsKey(mapId)) yield break;
             foreach (var element in Interactives.ElementsOf(mapId))
             {
-                if (_books.TryGetValue(element.Gfx, out var book)) yield return (element, book.Type, book.Skill);
+                if (tables.Books.TryGetValue(element.Gfx, out var book)) yield return (element, book.Type, book.Skill);
             }
         }
 
