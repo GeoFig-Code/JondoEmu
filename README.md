@@ -570,7 +570,8 @@ An alliance is made of characters, not guilds.
 - ✅ Wanted criminals: 81 of them, and the two bounties no quest wants, each in one group of his zone and
   gone three hours once caught;
   beat him with his quest to take him, hand him to his jailer, who also sells news of him for 500 kamas
-- 🟡 Only Srambad's three wanted posters can be read so far (other posters' places are unknown)
+- ✅ Every wanted poster can be read on its board — the militias of Astrub, Amakna castle, Frigost, Bonta and
+  Brâkmar, the Justiciers' base, Sufokia, Saharach and the divine dimensions' outposts — and starts its quest
 <img width="1700" height="930" alt="image" src="https://github.com/user-attachments/assets/02254e58-ec87-4839-82ac-f142ec5ef9cd" />
 
 - ✅ **38,744 monster groups**, respawned and kept populated, across **562 sub-areas**

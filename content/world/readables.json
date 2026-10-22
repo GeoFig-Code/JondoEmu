@@ -81,6 +81,594 @@
       "element": 518155,
       "document": 625,
       "why": "«Notas de Pandora», the same temple and capture: element 518155, document 625."
+    },
+    {
+      "map": 192413706,
+      "element": 516014,
+      "document": 61,
+      "why": "Wanted poster of quest 29: Astrub's militia [5,-19], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 63846, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 192413706,
+      "element": 516013,
+      "document": 63,
+      "why": "Wanted poster of quest 30: Astrub's militia [5,-19], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 63847, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 192413706,
+      "element": 516012,
+      "document": 67,
+      "why": "Wanted poster of quest 32: Astrub's militia [5,-19], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 63848, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 192413706,
+      "element": 516015,
+      "document": 68,
+      "why": "Wanted poster of quest 33: Astrub's militia [5,-19], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 63849, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 192413706,
+      "element": 516009,
+      "document": 70,
+      "why": "Wanted poster of quest 34: Astrub's militia [5,-19], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 63850, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 192413706,
+      "element": 516010,
+      "document": 69,
+      "why": "Wanted poster of quest 35: Astrub's militia [5,-19], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 63851, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 192413706,
+      "element": 516011,
+      "document": 93,
+      "why": "Wanted poster of quest 115: Astrub's militia [5,-19], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 63852, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 192413706,
+      "element": 516005,
+      "document": 94,
+      "why": "Wanted poster of quest 116: Astrub's militia [5,-19], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 63853, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 192413706,
+      "element": 516006,
+      "document": 96,
+      "why": "Wanted poster of quest 117: Astrub's militia [5,-19], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 63854, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 192413706,
+      "element": 516007,
+      "document": 98,
+      "why": "Wanted poster of quest 118: Astrub's militia [5,-19], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 63855, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 192413706,
+      "element": 516008,
+      "document": 100,
+      "why": "Wanted poster of quest 119: Astrub's militia [5,-19], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 63856, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 95686149,
+      "element": 484126,
+      "document": 365,
+      "why": "Wanted poster of quest 1430: Amakna castle's militia [5,-6], first room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 44142, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 95686149,
+      "element": 500394,
+      "document": 448,
+      "why": "Wanted poster of quest 1674: Amakna castle's militia [5,-6], first room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 51816, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 95686149,
+      "element": 510954,
+      "document": 496,
+      "why": "Wanted poster of quest 1852: Amakna castle's militia [5,-6], first room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59125, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 95686149,
+      "element": 510955,
+      "document": 497,
+      "why": "Wanted poster of quest 1855: Amakna castle's militia [5,-6], first room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59126, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 95686149,
+      "element": 510952,
+      "document": 498,
+      "why": "Wanted poster of quest 1856: Amakna castle's militia [5,-6], first room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59129, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 95686149,
+      "element": 510953,
+      "document": 499,
+      "why": "Wanted poster of quest 1857: Amakna castle's militia [5,-6], first room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59130, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 95687173,
+      "element": 488238,
+      "document": 410,
+      "why": "Wanted poster of quest 1622: Amakna castle's militia [5,-6], second room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 49044, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 95687173,
+      "element": 488239,
+      "document": 411,
+      "why": "Wanted poster of quest 1623: Amakna castle's militia [5,-6], second room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 49045, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 95687173,
+      "element": 488240,
+      "document": 412,
+      "why": "Wanted poster of quest 1624: Amakna castle's militia [5,-6], second room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 49046, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 95687173,
+      "element": 488241,
+      "document": 413,
+      "why": "Wanted poster of quest 1625: Amakna castle's militia [5,-6], second room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 49047, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 95687173,
+      "element": 488235,
+      "document": 414,
+      "why": "Wanted poster of quest 1626: Amakna castle's militia [5,-6], second room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 49048, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 95687173,
+      "element": 488236,
+      "document": 415,
+      "why": "Wanted poster of quest 1627: Amakna castle's militia [5,-6], second room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 49049, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 95687173,
+      "element": 488237,
+      "document": 416,
+      "why": "Wanted poster of quest 1628: Amakna castle's militia [5,-6], second room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 49050, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 121899010,
+      "element": 483922,
+      "document": 368,
+      "why": "Wanted poster of quest 1436: the Justiciers' base [4,4], «la pancarte en haut à gauche avec Amy en photo» (cell 273)."
+    },
+    {
+      "map": 121899010,
+      "element": 483923,
+      "document": 369,
+      "why": "Wanted poster of quest 1437: the Justiciers' base [4,4], «la pancarte en haut à droite avec la tête de l'Hyperscampe» (cell 360)."
+    },
+    {
+      "map": 121899010,
+      "element": 483920,
+      "document": 366,
+      "why": "Wanted poster of quest 1434: the Justiciers' base [4,4], «la pancarte en bas à gauche avec les deux Gumans dessinés» (cell 327)."
+    },
+    {
+      "map": 121899010,
+      "element": 483921,
+      "document": 367,
+      "why": "Wanted poster of quest 1435: the Justiciers' base [4,4], «la pancarte en bas à droite avec la tête de Gadoo» (cell 414)."
+    },
+    {
+      "map": 54536209,
+      "element": 457616,
+      "document": 166,
+      "why": "Wanted poster of quest 544: Frigost's Bourgade militia [-76,-42], «la pancarte la plus à gauche à côté des armes» (cell 297)."
+    },
+    {
+      "map": 54536209,
+      "element": 457617,
+      "document": 176,
+      "why": "Wanted poster of quest 545: Frigost's Bourgade militia [-76,-42], «la deuxième pancarte en partant de la gauche» (cell 230)."
+    },
+    {
+      "map": 54536209,
+      "element": 457618,
+      "document": 168,
+      "why": "Wanted poster of quest 546: Frigost's Bourgade militia [-76,-42], «la troisième pancarte en partant de la gauche» (cell 216)."
+    },
+    {
+      "map": 54536209,
+      "element": 457730,
+      "document": 169,
+      "why": "Wanted poster of quest 547: Frigost's Bourgade militia [-76,-42], «la grosse pancarte dans le coin du haut» (cell 217)."
+    },
+    {
+      "map": 54536209,
+      "element": 480614,
+      "document": 170,
+      "why": "Wanted poster of quest 548: Frigost's Bourgade militia [-76,-42], «la petite pancarte entre les deux grosses pancartes du pan de mur droite» (cell 246)."
+    },
+    {
+      "map": 54536209,
+      "element": 457731,
+      "document": 352,
+      "why": "Wanted poster of quest 1332: Frigost's Bourgade militia [-76,-42], «la petite pancarte cachée dans le coin le plus à droite» (cell 348)."
+    },
+    {
+      "map": 54536209,
+      "element": 457979,
+      "document": 171,
+      "why": "Wanted poster of quest 549: Frigost's Bourgade militia [-76,-42], one of the two big boards left (cell 275); DPLN does not say which (INFERRED)."
+    },
+    {
+      "map": 54171466,
+      "element": 458396,
+      "document": 173,
+      "why": "Wanted poster of quest 550: Frigost's buried village militia [-75,-74], «la pancarte la plus à gauche, au-dessus de Baka Laïve» (cell 297)."
+    },
+    {
+      "map": 54171466,
+      "element": 458397,
+      "document": 174,
+      "why": "Wanted poster of quest 551: Frigost's buried village militia [-75,-74], «la pancarte juste derrière Baka Laïve» (cell 355)."
+    },
+    {
+      "map": 54171466,
+      "element": 458398,
+      "document": 175,
+      "why": "Wanted poster of quest 552: Frigost's buried village militia [-75,-74], «la pancarte la plus en bas de la map» (cell 456)."
+    },
+    {
+      "map": 54171466,
+      "element": 458399,
+      "document": 167,
+      "why": "Wanted poster of quest 553: Frigost's buried village militia [-75,-74], «la pancarte la plus à droite» (cell 265)."
+    },
+    {
+      "map": 111411713,
+      "element": 480605,
+      "document": 353,
+      "why": "Wanted poster of quest 1289: Harebourg castle's militia, Frigost III [-68,-76], «l'affiche sur le pilier de gauche» (cell 369)."
+    },
+    {
+      "map": 111411713,
+      "element": 480606,
+      "document": 354,
+      "why": "Wanted poster of quest 1290: Harebourg castle's militia, Frigost III [-68,-76], «la petite pancarte à gauche» (cell 327)."
+    },
+    {
+      "map": 111411713,
+      "element": 480607,
+      "document": 355,
+      "why": "Wanted poster of quest 1291: Harebourg castle's militia, Frigost III [-68,-76], «la grosse pancarte à gauche» (cell 314)."
+    },
+    {
+      "map": 111411713,
+      "element": 480608,
+      "document": 356,
+      "why": "Wanted poster of quest 1292: Harebourg castle's militia, Frigost III [-68,-76], «la grosse pancarte à droite» (cell 345)."
+    },
+    {
+      "map": 111411713,
+      "element": 480609,
+      "document": 357,
+      "why": "Wanted poster of quest 1293: Harebourg castle's militia, Frigost III [-68,-76], «la petite pancarte la plus à droite» (cell 387)."
+    },
+    {
+      "map": 111411713,
+      "element": 480610,
+      "document": 172,
+      "why": "Wanted poster of quest 630: Harebourg castle's militia, Frigost III [-68,-76], the sixth poster, the count himself (cell 373): «On recherche le Comte Harebourg !»."
+    },
+    {
+      "map": 131597312,
+      "element": 485009,
+      "document": 382,
+      "why": "Wanted poster of quest 1518: Enutrosor's travellers' outpost [-1,-1], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 45648, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 131597312,
+      "element": 485007,
+      "document": 383,
+      "why": "Wanted poster of quest 1519: Enutrosor's travellers' outpost [-1,-1], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 45649, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 131597312,
+      "element": 485008,
+      "document": 384,
+      "why": "Wanted poster of quest 1520: Enutrosor's travellers' outpost [-1,-1], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 45650, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 145229319,
+      "element": 486779,
+      "document": 391,
+      "why": "Wanted poster of quest 1604: Xélorium's travellers' outpost [1,6], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 48676, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 145229319,
+      "element": 486778,
+      "document": 390,
+      "why": "Wanted poster of quest 1605: Xélorium's travellers' outpost [1,6], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 48677, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 145229319,
+      "element": 486777,
+      "document": 392,
+      "why": "Wanted poster of quest 1606: Xélorium's travellers' outpost [1,6], where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 48678, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 161218564,
+      "element": 503193,
+      "document": 465,
+      "why": "Wanted poster of quest 1714: Ecaflipus's travellers' outpost [-1,-6], «un seul avis de recherche, celui d'Atcham»."
+    },
+    {
+      "map": 234751491,
+      "element": 539149,
+      "document": 686,
+      "why": "Wanted poster of quest 2524: Osavora's travellers' outpost [1,17], «un seul avis de recherche dans la dimension divine Osavora»."
+    },
+    {
+      "map": 170133504,
+      "element": 509179,
+      "document": 473,
+      "why": "Wanted poster of quest 1767: the entrance of Sufokia's depths [23,26], «la pancarte tout en haut, Medali est représenté dessus» (cell 248)."
+    },
+    {
+      "map": 170133504,
+      "element": 508392,
+      "document": 471,
+      "why": "Wanted poster of quest 1762: the entrance of Sufokia's depths [23,26], «la pancarte en bas à gauche, Takomako est représenté dessus» (cell 414)."
+    },
+    {
+      "map": 170133504,
+      "element": 508393,
+      "document": 470,
+      "why": "Wanted poster of quest 1761: the entrance of Sufokia's depths [23,26], «la pancarte en bas à droite, Buldalazred est représenté dessus» (cell 443)."
+    },
+    {
+      "map": 173938178,
+      "element": 509670,
+      "document": 482,
+      "why": "Wanted poster of quest 1837: Saharach's Sabloon [15,-57], «l'affiche la plus à gauche sur le pan de mur de gauche» (cell 281)."
+    },
+    {
+      "map": 173938178,
+      "element": 509523,
+      "document": 478,
+      "why": "Wanted poster of quest 1808: Saharach's Sabloon [15,-57], «l'affiche entre les deux autres sur le pan de mur gauche» (cell 254)."
+    },
+    {
+      "map": 173938178,
+      "element": 509522,
+      "document": 479,
+      "why": "Wanted poster of quest 1783: Saharach's Sabloon [15,-57], the left wall's third, «l'affiche à côté du piano» (cell 227)."
+    },
+    {
+      "map": 173938178,
+      "element": 509666,
+      "document": 481,
+      "why": "Wanted poster of quest 1834: Saharach's Sabloon [15,-57], «l'affiche tout en bas des escaliers sur le pan de mur de droite» (cell 278)."
+    },
+    {
+      "map": 217449476,
+      "element": 522395,
+      "document": 452,
+      "why": "Wanted poster of quest 1680: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52883, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 523696,
+      "document": 453,
+      "why": "Wanted poster of quest 1681: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52884, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 522397,
+      "document": 454,
+      "why": "Wanted poster of quest 1682: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52885, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 522398,
+      "document": 455,
+      "why": "Wanted poster of quest 1683: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52886, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 522391,
+      "document": 456,
+      "why": "Wanted poster of quest 1684: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52887, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 522388,
+      "document": 457,
+      "why": "Wanted poster of quest 1685: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52888, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 522389,
+      "document": 458,
+      "why": "Wanted poster of quest 1686: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52889, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 522399,
+      "document": 459,
+      "why": "Wanted poster of quest 1687: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52890, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 523695,
+      "document": 460,
+      "why": "Wanted poster of quest 1688: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59680, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 522349,
+      "document": 507,
+      "why": "Wanted poster of quest 1922: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59681, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 522348,
+      "document": 508,
+      "why": "Wanted poster of quest 1923: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59682, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 522353,
+      "document": 505,
+      "why": "Wanted poster of quest 1924: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59683, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 523694,
+      "document": 510,
+      "why": "Wanted poster of quest 1926: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59684, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 522356,
+      "document": 511,
+      "why": "Wanted poster of quest 1927: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59690, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 522358,
+      "document": 512,
+      "why": "Wanted poster of quest 1928: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59691, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 522369,
+      "document": 513,
+      "why": "Wanted poster of quest 1929: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59692, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 523690,
+      "document": 514,
+      "why": "Wanted poster of quest 1930: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 304627, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 523692,
+      "document": 509,
+      "why": "Wanted poster of quest 1932: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 304629, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 217449476,
+      "element": 523691,
+      "document": 506,
+      "why": "Wanted poster of quest 1933: Bonta's militia [-32,-57], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 304631, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522373,
+      "document": 452,
+      "why": "Wanted poster of quest 1680: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52669, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522362,
+      "document": 453,
+      "why": "Wanted poster of quest 1681: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52883, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522363,
+      "document": 454,
+      "why": "Wanted poster of quest 1682: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52884, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522357,
+      "document": 455,
+      "why": "Wanted poster of quest 1683: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52887, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522351,
+      "document": 456,
+      "why": "Wanted poster of quest 1684: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52888, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522355,
+      "document": 457,
+      "why": "Wanted poster of quest 1685: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52889, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522359,
+      "document": 458,
+      "why": "Wanted poster of quest 1686: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 52890, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522379,
+      "document": 459,
+      "why": "Wanted poster of quest 1687: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59680, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522380,
+      "document": 460,
+      "why": "Wanted poster of quest 1688: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59681, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522377,
+      "document": 507,
+      "why": "Wanted poster of quest 1922: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59682, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522375,
+      "document": 508,
+      "why": "Wanted poster of quest 1923: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59683, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522378,
+      "document": 505,
+      "why": "Wanted poster of quest 1924: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59690, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522376,
+      "document": 510,
+      "why": "Wanted poster of quest 1926: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59691, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 522374,
+      "document": 511,
+      "why": "Wanted poster of quest 1927: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 59692, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 523663,
+      "document": 512,
+      "why": "Wanted poster of quest 1928: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 304627, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 523665,
+      "document": 513,
+      "why": "Wanted poster of quest 1929: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 304628, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 523664,
+      "document": 514,
+      "why": "Wanted poster of quest 1930: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 304629, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 523662,
+      "document": 509,
+      "why": "Wanted poster of quest 1932: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 304630, its place among the board's by order (INFERRED)."
+    },
+    {
+      "map": 216663298,
+      "element": 523666,
+      "document": 506,
+      "why": "Wanted poster of quest 1933: Brâkmar's militia [-25,33], the wanted room, where Dofus pour les noobs' «On recherche» page puts it; the poster's gfx 304631, its place among the board's by order (INFERRED)."
     }
   ]
 }
