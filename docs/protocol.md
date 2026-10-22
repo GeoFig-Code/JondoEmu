@@ -516,7 +516,7 @@ removed**:
 | Block | In the capture | Shipped | Removed |
 |---|---|---|---|
 | 1 | 330 | 322 | `kub` the character sheet, `jhe` `jhh` `jhk` the guild, `ife` the alliances by name and tag, `jgu` the spouse with its look, `jaa` a player's stall with the account behind it, `lyt` that account's saved outfits |
-| 2 | 4 | 2 | `hhy` that account's titles and ornaments, `ihb` its fourteen saved outfits, each carrying a full look |
+| 2 | 4 | 2 | `hhy` that account's titles and ornaments, `ihb` its fourteen saved builds, each carrying a full look (replaced by the character's own) |
 | 3 | 34 | 31 | `kub` again, `jhh` the guild again, `jjs` a stall |
 
 `WorldEntry.NotReplayed` holds a longer list than that — `kqg` the contact list, `koj` twenty Ankama

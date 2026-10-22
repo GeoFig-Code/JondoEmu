@@ -63,6 +63,33 @@ namespace Jondo.Unity.Tests.Sessions
         }
 
         /// <summary>
+        /// What the characteristics give counts the equipment's: the capture's 100 scrolled and 254
+        /// worn wisdom are 35 dodge in the kub's base, and its elements make the initiative.
+        /// </summary>
+        [Fact]
+        public void The_sheet_gives_what_the_characteristics_give_with_the_equipment()
+        {
+            var session = GameSession.SinSocket();
+            using (SessionContext.Push(session))
+            {
+                session.State.CharacterLevel = 200;
+                session.State.ScrolledWisdom = 100;
+                session.State.ScrolledChance = 100;
+                session.State.StatStrength = 50;
+                Equipment.Add(9_000_000_123, 17626, 1, 0, "[[124,254,0,0]]");
+
+                var kub = ProtoMessage.Parse(ConnectionProtocol.BuildCharacteristics());
+                var body = ProtoMessage.Parse(kub.Fields.Single(f => f.FieldNumber == 2).BytesValue);
+
+                Assert.Equal(35, Value(Detail(body, ConnectionProtocol.Stat.DodgeActionPoints), 2));
+                Assert.Equal(35, Value(Detail(body, ConnectionProtocol.Stat.WithdrawMovementPoints), 2));
+                Assert.Equal(50 + 100, Value(Detail(body, ConnectionProtocol.Stat.Initiative), 2));
+                Assert.Equal(100 + 10, Value(Detail(body, ConnectionProtocol.Stat.Prospecting), 2));
+                Assert.Equal(1000 + 5 * 50, Value(Detail(body, ConnectionProtocol.Stat.Pods), 2));
+            }
+        }
+
+        /// <summary>
         /// The migration: those born with 101 in the six of the base lose them, keep
         /// the scrolls in their column and get all their capital back. The rest are not touched.
         /// </summary>

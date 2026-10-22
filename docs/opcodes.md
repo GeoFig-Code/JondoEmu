@@ -269,6 +269,39 @@ Spells come in pairs and the character holds one half. Measured on four real var
 | `ivr` | S→C | proto shape | ShortcutBarRemovedEvent — the only answer that clears the client's icon. Emptied `ivk` leaves a ghost. | `BuildShortcutRemoved` | `f1: bar, f2: slot` |
 | `ivk` | S→C | 40 / 7 files | The echo of a set / filled swap slot (`itz` / half of `iuv`). | `GameNodeProxy` | same shape as `itz` |
 
+The item bar (bar 0, left out of every message as proto3 leaves zeros out) takes the same three
+requests. Its slots hold `f9 { f2: template, f3: uid }` an item, `f1 { f2: emote }` an emote or
+`f4 { f2: uuid }` a build; the server keeps each shortcut as the client built it
+(`ItemShortcuts`, `ItemBarHandler`) and sends them back in the entry's item `itg`. Measured with a
+build dragged to slot 18 and back: `itz` → `ivk` the same bytes, `iul { f2: 18 }` → `ivr { f2: 18 }`.
+
+### 2.8.1 Builds («Conjuntos»)
+
+The `CharacterPresetUi` window, through the `eql` frame. Measured in
+`Conjuntos/crear nuevo conjunto…` and `Conjuntos/eliminar conjunto`; `igp`'s other two sources,
+`iid` and `igo` are read from the client. Edits go to a draft; only `ihs` keeps them.
+
+| Opcode | Dir | What it does | Handler | Payload → answer |
+|---|---|---|---|---|
+| `ifg` | C→S | The window's first card, the character as he is. | `PresetHandler.PlayerStateAsync` | empty → `ifz { f1: build named PLAYER_STATE }` |
+| `igp` | C→S | A new build: empty, a copy, or the character's state. | `PresetHandler.CreateAsync` | `f1 { f1 { f1: uuid } \| f2 {} \| f3 {} }, f2: icon, f4: name` → `igk { f1 { f1: build } }` |
+| `ihf` | C→S | Rename. | `PresetHandler.RenameAsync` | `f3: uuid, f4: name` → `igc {}` |
+| `iid` | C→S | Change the icon. | `PresetHandler.IconAsync` | `f2: uuid, f4: icon` → `iir { f1: true }` |
+| `igy` | C→S | The spells and their slots, whole. | `PresetHandler.SpellsAsync` | `f2 { f2 (rep) { f1: spell, f2 { f1: slots } } }, f3: uuid` → `ija { f1: true }` |
+| `iha` | C→S | The points spent, all six. | `PresetHandler.PointsAsync` | `f1: uuid, f2 (rep) { f1: characteristic, f2: points }` → `ijd { f1: sheet, f3: true }` |
+| `ify` | C→S | An item into a slot of the build. | `PresetHandler.PlaceItemAsync` | `f1: uuid, f3 { f1: slot, f2: uid }` → `iic { f2 { f2: sheet, f3: looks }, f4: true }` |
+| `ihs` | C→S | «Guardar». | `PresetHandler.SaveAsync` | `f2: uuid` → `iim { f2: true }` |
+| `igo` | C→S | The edits thrown away. | `PresetHandler.DiscardAsync` | `f1: uuid` → `ign { f1: true, f2: build }` |
+| `iin` | C→S | The build becomes what is worn now. | `PresetHandler.UpdateAsync` | `f1: uuid` → `ihz { f1: true, f4: build }` |
+| `iiy` | C→S | Delete. | `PresetHandler.DeleteAsync` | `f1: uuid` → `ihc { f1: true }` |
+| `iio` | C→S | Put the build on (window or item bar). | `PresetHandler.EquipAsync` | `f1: uuid` → `kub`, `hng` per variant, `itg`, `ivq` per item, `kub`, `ihq { f2: 0 }` |
+| `ihb` | S→C | The builds, on entering the world. | `PresetHandler.SendListAsync` | `f1 (rep) { f1: uuid, f2: build }` |
+
+A build is `ihr { f1 { f1: equipment look, f3: appearance look }, f2: icon, f3: sheet, f4: name,
+f5 (rep) { f1: slot, f2 { f1: template, f2: uid, f3: effects } }, f6: ISO date, f7: spells, f10: uuid }`.
+Its sheet splits the `kub`'s base in three columns — `f2` points spent, `f3` what the characteristics
+give, `f4` the fixed base — beside `f1` scrolls and `f6` equipment (`PresetProtocol`).
+
 ### 2.9 Zaaps
 
 Read from three real captures — opening the list, one long trip, and a zaapi.
@@ -580,7 +613,7 @@ these messages carry the recorded account's data. They are matched by opcode and
 | `jhk` | 2 | The guild name, spelled out. |
 | `hol` | 4 | Spouse and guild. |
 | `jgu` | 13 | The spouse, with its look. |
-| `ihb` | 7 | Fourteen saved outfits, each with a look. |
+| `ihb` | 7 | Fourteen saved builds, each with a look. Replaced: the emulator sends the character's own (`PresetHandler.SendListAsync`). |
 | `koj` | 28 | Twenty Ankama accounts with id, nickname and tag: `f2 { f2: account id, f4 { f1: nickname, f2: tag }, f5: 3 }`. |
 | `ife` | 9 | Alliances, by name and tag. |
 | `jjs` | 10 | A player stall on the map, with the account behind it. |

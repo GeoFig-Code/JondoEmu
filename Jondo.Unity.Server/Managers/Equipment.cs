@@ -476,14 +476,21 @@ namespace Jondo.Unity.Server.Managers
         /// came out at 575 against the 745 the real server sends.
         /// </summary>
         public static Dictionary<int, long> Bonuses()
+            => BonusesOf(Items.Values.Select(i => (i.Position, i)));
+
+        /// <summary>
+        /// The same for items placed in slots of somebody's choosing: a build's (CharacterPresets),
+        /// which wears them where it says and not where they are.
+        /// </summary>
+        public static Dictionary<int, long> BonusesOf(IEnumerable<(int Position, Item Item)> placed)
         {
             var total = new Dictionary<int, long>();
             var wornTemplates = new List<int>();
 
-            foreach (var item in Items.Values)
+            foreach (var (position, item) in placed)
             {
-                if (!CountsOnSheet(item.Position)) continue;
-                if (IsWorn(item.Position)) wornTemplates.Add(item.Template);
+                if (!CountsOnSheet(position)) continue;
+                if (IsWorn(position)) wornTemplates.Add(item.Template);
 
                 foreach (var entry in item.Effects)
                 {

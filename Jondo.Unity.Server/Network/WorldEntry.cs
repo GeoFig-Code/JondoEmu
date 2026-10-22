@@ -92,7 +92,8 @@ namespace Jondo.Unity.Server.Network
             //   jhk  the guild's name, spelled out
             //   hol  the spouse and the guild of the character
             //   jgu  the spouse again, with its look
-            //   ihb  the fourteen saved outfits, each one carrying the looks of that account
+            //   ihb  the fourteen saved builds («Conjuntos»), each one carrying the looks of that
+            //        account; the character's own go out instead (PresetHandler.SendListAsync)
             //   koj  twenty Ankama accounts, each with its id, its nickname and its tag:
             //        f2 { f2: account id, f4 { f1: nickname, f2: tag }, f5: 3 }
             //   ife  the alliances, by name and by tag
@@ -523,9 +524,9 @@ namespace Jondo.Unity.Server.Network
                 }
 
                 // The other bar, the item one. It went as is and pointed at 72 uids of the
-                // captured account: items that do not exist in this inventory. It goes out empty, which is what
-                // a character who has not yet put anything in it has.
-                return ConnectionProtocol.Push(Op.Itg, Array.Empty<byte>());
+                // captured account: items that do not exist in this inventory. It goes out with
+                // what this character put in it (ItemShortcuts), empty for one who put nothing.
+                return ConnectionProtocol.Push(Op.Itg, Managers.ItemShortcuts.BuildBar(character.Id));
             }
 
             return null;

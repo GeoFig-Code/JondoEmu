@@ -99,6 +99,18 @@ namespace Jondo.Unity.Server.Handlers
             // Food dropped on the worn pet: a legendary pet's status or its power (LegendaryPets).
             if (position == Managers.LegendaryPets.PetSlot && await FeedLegendaryPetAsync(stream, uid)) return;
 
+            await MoveItemAsync(stream, uid, position, accountId);
+        }
+
+        /// <summary>
+        /// One item to a slot or to the bag, with every frame that tells the client. Without
+        /// <paramref name="sheet"/> the kub is left for the caller, which moves several and sends
+        /// one at the end (a build put on, PresetHandler). False when the item could not go there.
+        /// </summary>
+        public static async Task<bool> MoveItemAsync(NetworkStream stream, long uid, int position, long accountId = 0,
+                                                     bool sheet = true)
+        {
+
             // WHAT CANNOT BE WORN IS NOT PUT ON. The server did not look at the item's level, so a
             // level 1 character equipped a level 110 weapon and kept its bonuses: the client draws it
             // grey and does not let it be dragged, but a tampered client sends the iuk anyway and here
@@ -118,7 +130,7 @@ namespace Jondo.Unity.Server.Handlers
                     Console.WriteLine($"[Equipment] Item {uid} is a tax collector's piece. It is not put on.");
                     await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                         ConnectionProtocol.Push(Op.Ivq, Pb.New().Var(1, uid).Var(2, loSuyo.Position).Build()));
-                    return;
+                    return false;
                 }
 
                 int pide = loSuyo != null ? DatabaseManager.ItemLevelRequirement(loSuyo.Template) : 0;
@@ -137,7 +149,7 @@ namespace Jondo.Unity.Server.Handlers
                     await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                         ConnectionProtocol.Push(Op.Ivq,
                             Pb.New().Var(1, uid).Var(2, loSuyo!.Position).Build()));
-                    return;
+                    return false;
                 }
             }
 
@@ -206,7 +218,7 @@ namespace Jondo.Unity.Server.Handlers
 
             // And the sheet, because what the item gives goes with it. Without this the numbers
             // only caught up on the next entry into the world.
-            if (known)
+            if (known && sheet)
             {
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Kub, ConnectionProtocol.BuildCharacteristics()));
@@ -219,6 +231,7 @@ namespace Jondo.Unity.Server.Handlers
                 accountId > 0 ? accountId : SessionContext.Current.AccountId,
                 SessionContext.State.CharacterId,
                 new { uid, position, known, evicted = evictedUids });
+            return known;
         }
     }
 }

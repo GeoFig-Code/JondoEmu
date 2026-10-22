@@ -358,7 +358,8 @@ namespace Jondo.Unity.Server.Managers
         private static Pb BuildBodyLook(int breedId, int sex, int headId,
                                         IReadOnlyList<long>? customColors, bool riding,
                                         IReadOnlyList<Wardrobe.Worn>? appearance = null,
-                                        long quien = 0)
+                                        long quien = 0,
+                                        IReadOnlyList<(int Slot, int Template)>? worn = null)
         {
             var baseLook = Get(breedId, sex);
             var pb = Pb.New();
@@ -376,10 +377,39 @@ namespace Jondo.Unity.Server.Managers
                 pb.Packed(5, CharacterSize.Applied(baseLook.Scales, quien));
             }
 
-            var skins = SkinsWornBy(breedId, sex, headId, quien, appearance);
+            var skins = SkinsWornBy(breedId, sex, headId, quien, appearance, worn);
             if (skins.Count > 0) pb.Packed(6, skins);
 
             return pb;
+        }
+
+        /// <summary>
+        /// A build's two looks (CharacterPresets, the igs of the «Conjuntos» window): f1 the body
+        /// with its equipment and nothing else, and f3 the same with the character's appearance
+        /// garments over it -- the one the window draws.
+        /// </summary>
+        /// <remarks>
+        /// MEASURED in «Conjuntos/crear nuevo conjunto…»: f1 carries no f2, and f3 carries the 3
+        /// every look of ours carries; both on foot, without mount or pet. The skins of f1 are the
+        /// breed's, the head and the build's equipment; those of f3 replace what a garment covers.
+        /// </remarks>
+        public static (byte[] Equipment, byte[] Appearance) PresetLooks(DatabaseManager.DbCharacter character,
+                                                                        IReadOnlyList<(int Slot, int Template)> worn)
+        {
+            var baseLook = Get(character.Breed, character.Sex);
+            var colors = ColorsFor(character.Breed, character.Sex, SavedColors(character));
+
+            var equipment = Pb.New();
+            if (colors.Count > 0) equipment.Packed(1, colors);
+            equipment.Var(3, baseLook?.Bones ?? 1);
+            if (baseLook != null && baseLook.Scales.Count > 0)
+                equipment.Packed(5, CharacterSize.Applied(baseLook.Scales, character.Id));
+            var skins = SkinsWornBy(character.Breed, character.Sex, character.HeadId, character.Id, null, worn);
+            if (skins.Count > 0) equipment.Packed(6, skins);
+
+            var appearance = BuildBodyLook(character.Breed, character.Sex, character.HeadId, SavedColors(character),
+                                           riding: false, Wardrobe.AppearanceOf(character.Id), character.Id, worn);
+            return (equipment.Build(), appearance.Build());
         }
 
         /// <summary>
@@ -398,7 +428,8 @@ namespace Jondo.Unity.Server.Managers
         /// nothing is drawn.
         /// </remarks>
         private static List<long> SkinsWornBy(int breedId, int sex, int headId, long quien,
-                                              IReadOnlyList<Wardrobe.Worn>? appearance)
+                                              IReadOnlyList<Wardrobe.Worn>? appearance,
+                                              IReadOnlyList<(int Slot, int Template)>? worn = null)
         {
             var baseLook = Get(breedId, sex);
 
@@ -433,7 +464,7 @@ namespace Jondo.Unity.Server.Managers
             // the map, the rival in a fight -- with nothing on.
             //
             // Only the skin of what is measured in equipment_skins.json is known; the rest does not dress.
-            foreach (var (hueco, plantilla) in Equipment.WornOf(quien))
+            foreach (var (hueco, plantilla) in worn ?? Equipment.WornOf(quien))
             {
                 if (tapados.Contains(hueco)) continue;   // a cosmetic covers it
 

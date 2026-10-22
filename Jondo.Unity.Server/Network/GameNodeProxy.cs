@@ -661,6 +661,19 @@ namespace Jondo.Unity.Server.Network
                 // The guidebook's suggestions: the cards asked for, and a card locked.
                 else if (payloadStr == Op.Uri("hmo")) await ActivitySuggestionHandler.SuggestAsync(stream, payload);
                 else if (payloadStr == Op.Uri("hmp")) await ActivitySuggestionHandler.LockAsync(stream, payload);
+                // The «Conjuntos» window: the character's builds.
+                else if (payloadStr == Op.Uri("ifg")) await PresetHandler.PlayerStateAsync(stream);
+                else if (payloadStr == Op.Uri("igp")) await PresetHandler.CreateAsync(stream, payload);
+                else if (payloadStr == Op.Uri("ihf")) await PresetHandler.RenameAsync(stream, payload);
+                else if (payloadStr == Op.Uri("iid")) await PresetHandler.IconAsync(stream, payload);
+                else if (payloadStr == Op.Uri("igy")) await PresetHandler.SpellsAsync(stream, payload);
+                else if (payloadStr == Op.Uri("iha")) await PresetHandler.PointsAsync(stream, payload);
+                else if (payloadStr == Op.Uri("ify")) await PresetHandler.PlaceItemAsync(stream, payload);
+                else if (payloadStr == Op.Uri("ihs")) await PresetHandler.SaveAsync(stream, payload);
+                else if (payloadStr == Op.Uri("igo")) await PresetHandler.DiscardAsync(stream, payload);
+                else if (payloadStr == Op.Uri("iin")) await PresetHandler.UpdateAsync(stream, payload);
+                else if (payloadStr == Op.Uri("iiy")) await PresetHandler.DeleteAsync(stream, payload);
+                else if (payloadStr == Op.Uri("iio")) await PresetHandler.EquipAsync(stream, payload, sessionAccountId);
                 else if (payloadStr == Op.Uri("hom"))
                 {
                     // The spouse's information, asked with the contact lists: nobody here is
@@ -1693,7 +1706,13 @@ namespace Jondo.Unity.Server.Network
                     //   itz: f2 { f2: slot, f6 { f2: spell } }, f3: which bar
                     // Without f6 the slot is being emptied — answer with ivr, not an emptied ivk.
                     byte[]? itz = ConnectionProtocol.ReadPayload(payload, Op.Itz);
-                    if (itz != null)
+                    // The item bar's: an item, an emote or a build, kept as it came (ItemShortcuts).
+                    if (itz != null && (ProtoMessage.Parse(itz).Fields
+                            .FirstOrDefault(f => f.FieldNumber == 3 && f.WireType == 0)?.VarIntValue ?? 0) == Managers.ItemShortcuts.Bar)
+                    {
+                        await ItemBarHandler.SetAsync(stream, itz);
+                    }
+                    else if (itz != null)
                     {
                         int clearedSlot = RememberShortcut(itz);
                         if (clearedSlot >= 0)
@@ -2222,6 +2241,9 @@ namespace Jondo.Unity.Server.Network
             await Managers.Emotes.SendListAsync(stream);
             await Managers.Achievements.SendListAsync(stream);
 
+            // And his builds, for the same reason: the replayed block carried that account's fourteen.
+            await PresetHandler.SendListAsync(stream);
+
             // And the green mark over whoever has something to offer on this map.
             await Managers.Quests.SendMarksAsync(stream, GameState.MapId);
             return true;
@@ -2341,6 +2363,11 @@ namespace Jondo.Unity.Server.Network
                     else if (field.FieldNumber == 2 && field.WireType == 0) slot = (int)field.VarIntValue;
                 }
 
+                if (bar == Managers.ItemShortcuts.Bar)
+                {
+                    await ItemBarHandler.RemoveAsync(stream, slot);
+                    return;
+                }
                 if (bar != ConnectionProtocol.SpellBar) return;
 
                 Managers.SpellChoices.PutInBar(slot, 0);
@@ -2371,6 +2398,11 @@ namespace Jondo.Unity.Server.Network
                     else if (field.FieldNumber == 3 && field.WireType == 0) bar = (int)field.VarIntValue;
                 }
 
+                if (bar == Managers.ItemShortcuts.Bar)
+                {
+                    await ItemBarHandler.SwapAsync(stream, first, second);
+                    return;
+                }
                 if (bar != ConnectionProtocol.SpellBar) return;
 
                 Managers.SpellChoices.SwapBarSlots(first, second);

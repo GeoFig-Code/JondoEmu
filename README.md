@@ -492,6 +492,10 @@ An alliance is made of characters, not guilds.
 - ✅ Mating with its preview, mákinas and genetichas; cloning and extraction
 - ✅ Catching wild rides with nets: the net in the consumables slot gives its spell, once a fight
 - ✅ Characteristic points, with scrolled characteristics kept apart
+- ✅ Dodge, withdrawal, escape, lock, initiative, prospecting and pods count what your equipment gives
+- ✅ Builds («Conjuntos»): made empty, from what you wear or as a copy, with their own items, points,
+  spells, name and icon; saved or thrown away, updated, deleted, and put on in one click
+- ✅ The item bar keeps what you drag onto it — items, emotes and builds — between sessions
 <img width="708" height="1048" alt="image" src="https://github.com/user-attachments/assets/b07f0ac2-f701-4f3a-82e2-c04f884d696d" />
 
 - ✅ **17,113 spells**; **638 character heads**

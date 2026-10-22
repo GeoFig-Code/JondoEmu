@@ -499,20 +499,43 @@ namespace Jondo.Unity.Server.Network
         /// escape and 79 lock. The same table is what showed 46 is the alignment rank and not
         /// prospecting, which is 48.
         /// </summary>
-        private static readonly Dictionary<int, Func<long>> Derived = new Dictionary<int, Func<long>>
+        /// <remarks>
+        /// And three more, with the rule each follows, MEASURED in «Conjuntos/crear nuevo
+        /// conjunto…», whose builds carry this in a column of its own (PresetProtocol): five pods
+        /// a point of strength, the four elements to initiative and a tenth of chance to
+        /// prospecting -- 1,128 strength give 5,640 pods, 354 wisdom 35 dodge, 257 chance 25
+        /// prospecting and the elements 1,834 initiative. Those are the TOTALS, the equipment's
+        /// share included, and the kub of that same session carries each of them in its base:
+        /// 35 dodge, 1,834 initiative, 125 prospecting. The equipment was left out here and
+        /// initiative and prospecting were not given at all.
+        /// </remarks>
+        internal static long GivenByCharacteristics(int id, Func<int, long> total)
         {
-            { Stat.DodgeActionPoints,    () => Jondo.Unity.Server.Network.SessionContext.State.TotalWisdom / 10 },
-            { Stat.DodgeMovementPoints,  () => Jondo.Unity.Server.Network.SessionContext.State.TotalWisdom / 10 },
-            { Stat.WithdrawActionPoints, () => Jondo.Unity.Server.Network.SessionContext.State.TotalWisdom / 10 },
-            { Stat.WithdrawMovementPoints, () => Jondo.Unity.Server.Network.SessionContext.State.TotalWisdom / 10 },
-            { Stat.Escape,               () => Jondo.Unity.Server.Network.SessionContext.State.TotalAgility / 10 },
-            { Stat.Lock,                 () => Jondo.Unity.Server.Network.SessionContext.State.TotalAgility / 10 },
-        };
+            switch (id)
+            {
+                case Stat.DodgeActionPoints:
+                case Stat.DodgeMovementPoints:
+                case Stat.WithdrawActionPoints:
+                case Stat.WithdrawMovementPoints:
+                    return total(Stat.Wisdom) / 10;
+                case Stat.Escape:
+                case Stat.Lock:
+                    return total(Stat.Agility) / 10;
+                case Stat.Pods:
+                    return 5 * total(Stat.Strength);
+                case Stat.Initiative:
+                    return total(Stat.Strength) + total(Stat.Intelligence) + total(Stat.Chance) + total(Stat.Agility);
+                case Stat.Prospecting:
+                    return total(Stat.Chance) / 10;
+                default:
+                    return 0;
+            }
+        }
 
         /// <summary>Points a character starts with, before anything is spent or equipped.</summary>
         private const int BaseActionPoints = 6;
         private const int BaseMovementPoints = 3;
-        private const int BasePods = 1000;
+        internal const int BasePods = 1000;
 
         /// <summary>
         /// What every characteristic is worth on a character that has just been created, taken
@@ -635,7 +658,9 @@ namespace Jondo.Unity.Server.Network
                 var fallback = new List<int>
                 {
                     Stat.LifePoints, Stat.ActionPoints, Stat.RemainingPoints,
-                    Stat.MovementPoints, Stat.EnergyPoints, Stat.MaxEnergyPoints, Stat.Pods
+                    Stat.MovementPoints, Stat.EnergyPoints, Stat.MaxEnergyPoints, Stat.Pods,
+                    Stat.Initiative, Stat.DodgeActionPoints, Stat.DodgeMovementPoints,
+                    Stat.WithdrawActionPoints, Stat.WithdrawMovementPoints, Stat.Escape, Stat.Lock
                 };
                 fallback.AddRange(primary.Keys);
                 fallback.AddRange(FreshCharacter.Keys);
@@ -668,9 +693,15 @@ namespace Jondo.Unity.Server.Network
                 primary[Stat.MovementPoints] = monster.MovementPoints;
             }
 
+            long Total(int stat) => (primary.TryGetValue(stat, out long p) ? p : 0)
+                                    + (scrolled.TryGetValue(stat, out long s) ? s : 0)
+                                    + (fromEquipment.TryGetValue(stat, out long e) ? e : 0)
+                                    + (fromAlterations.TryGetValue(stat, out long a) ? a : 0);
+
             foreach (int id in ids)
             {
                 long value = primary.TryGetValue(id, out long spent) ? spent : ValueOf(id, level);
+                if (monster == null && !primary.ContainsKey(id)) value += GivenByCharacteristics(id, Total);
                 fromEquipment.TryGetValue(id, out long equipped);
                 scrolled.TryGetValue(id, out long fromScrolls);
                 fromAlterations.TryGetValue(id, out long altered);
@@ -697,7 +728,10 @@ namespace Jondo.Unity.Server.Network
             return Pb.New().Msg(2, body).Build();
         }
 
-        /// <summary>Value of a characteristic that the player does not spend points on.</summary>
+        /// <summary>
+        /// Value of a characteristic that the player does not spend points on, before what the
+        /// characteristics give it (<see cref="GivenByCharacteristics"/>).
+        /// </summary>
         internal static long ValueOf(int id, int level)
         {
             if (id == Stat.LifePoints) return BaseLife(level);
@@ -714,11 +748,10 @@ namespace Jondo.Unity.Server.Network
                 DateTime since = state.RegenerationStartedUtc == default ? DateTime.UtcNow : state.RegenerationStartedUtc;
                 return -Managers.RestingLife.MissingAt(state.CharacterId, since);
             }
-            // Five pods a point of strength on top of the base, which is what the capture shows:
-            // five points of strength moved this characteristic by twenty-five.
-            if (id == Stat.Pods) return BasePods + 5L * Jondo.Unity.Server.Network.SessionContext.State.TotalStrength;
+            // The base; strength's five pods a point go on top (GivenByCharacteristics), which is
+            // what the capture shows: five points of strength moved this characteristic by twenty-five.
+            if (id == Stat.Pods) return BasePods;
             if (id == Stat.RemainingPoints) return Jondo.Unity.Server.Network.SessionContext.State.CharacterRemainingPoints;
-            if (Derived.TryGetValue(id, out var from)) return from();
             return FreshCharacter.TryGetValue(id, out long value) ? value : 0;
         }
 
@@ -1713,6 +1746,13 @@ namespace Jondo.Unity.Server.Network
                 .VarIfNotZero(2, slot)
                 .Build();
 
+        /// <summary>The same on either bar: the item bar's 0 is left out (ivr { 2 18 } in the capture).</summary>
+        public static byte[] BuildShortcutRemoved(int slot, int bar)
+            => Pb.New()
+                .VarIfNotZero(1, bar)
+                .VarIfNotZero(2, slot)
+                .Build();
+
         /// <summary>How many slots of the bar we fill. The captured one runs from 0 to 48.</summary>
 
         // ─── World: weight carried ──────────────────────────────────────────────
@@ -1996,7 +2036,7 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>The outfit's own uuid, different from the preview's.</summary>
-        private static string OutfitIdOf(long characterId) => LookIdOf(characterId * 17 + 3);
+        internal static string OutfitIdOf(long characterId) => LookIdOf(characterId * 17 + 3);
 
         /// <summary>The state's f8, constant in the twenty captures where it appears.</summary>
         private const int AppearanceStateKind = 3;
@@ -2524,7 +2564,7 @@ namespace Jondo.Unity.Server.Network
         /// type that does not match: the client does not find the parameters and draws the weapon without damage
         /// and the dofus with "{spellNoLvl,,}" instead of the spell's name.
         /// </summary>
-        private static Pb? EffectEntry(Managers.Equipment.ItemEffect effect)
+        internal static Pb? EffectEntry(Managers.Equipment.ItemEffect effect)
         {
             // The smithmagic pool and any other line of ours that is no effect of the client's:
             // it lives with the item and never goes on the wire.
