@@ -529,7 +529,7 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void A_door_on_three_maps_is_one_house()
         {
-            MapManager.Initialize();
+            if (MapManager.GetMapInfo(212601864) == null) MapManager.Initialize();   // Bonta's street
             Houses.Initialize();
             var maps = Houses.MapsOfDoor(DoorElement);
             if (maps.Count < 2) return;
@@ -545,7 +545,7 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void Doors_lead_to_the_client_s_own_houses()
         {
-            MapManager.Initialize();
+            if (MapManager.GetMapInfo(212601864) == null) MapManager.Initialize();   // Bonta's street
             Interactives.Initialize();
             Houses.Initialize();
             Assert.True(Houses.TryGetDoor(Street, DoorElement, out var bonta));
@@ -565,7 +565,7 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public async Task An_owner_sells_and_locks_and_a_stranger_knocks_and_buys()
         {
-            MapManager.Initialize();
+            if (MapManager.GetMapInfo(212601864) == null) MapManager.Initialize();   // Bonta's street
             Houses.Initialize();
             Assert.True(Houses.TryGetDoor(Street, DoorElement, out var door));
             Assert.True(door.IsOwnable);
@@ -723,7 +723,7 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public async Task Two_accounts_own_two_copies_of_one_building()
         {
-            MapManager.Initialize();
+            if (MapManager.GetMapInfo(212601864) == null) MapManager.Initialize();   // Bonta's street
             Houses.Initialize();
             Assert.True(Houses.TryGetDoor(Street, DoorElement, out var door));
 

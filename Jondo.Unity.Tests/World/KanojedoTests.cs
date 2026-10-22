@@ -284,26 +284,19 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_measured_arena_wins_over_the_rule()
         {
-            var antes = MapManager.Maps;
-            try
+            // A world of its own, not the shared one swapped under the tests running beside this one.
+            var maps = new Dictionary<long, MapInfo>
             {
-                MapManager.Maps = new Dictionary<long, MapInfo>
-                {
-                    [99090957] = new MapInfo { MapId = 99090957, SubAreaId = 10, Outdoor = false, Name = "The Kanojedo", Flags = 72467485 },
-                    [99222029] = new MapInfo { MapId = 99222029, SubAreaId = 10, Outdoor = true, Name = "", Flags = 69262589 },
-                    [99098121] = new MapInfo { MapId = 99098121, SubAreaId = 10, Outdoor = true, Name = "", Flags = 69262589 },
-                };
+                [99090957] = new MapInfo { MapId = 99090957, SubAreaId = 10, Outdoor = false, Name = "The Kanojedo", Flags = 72467485 },
+                [99222029] = new MapInfo { MapId = 99222029, SubAreaId = 10, Outdoor = true, Name = "", Flags = 69262589 },
+                [99098121] = new MapInfo { MapId = 99098121, SubAreaId = 10, Outdoor = true, Name = "", Flags = 69262589 },
+            };
 
-                Assert.Equal(99222029, MapManager.ResolveArenaMapId(99090957));
+            Assert.Equal(99222029, MapManager.ResolveArenaMapId(99090957, maps));
 
-                // Without the measured arena in the world, the usual rule.
-                MapManager.Maps.Remove(99222029);
-                Assert.NotEqual(99222029, MapManager.ResolveArenaMapId(99090957));
-            }
-            finally
-            {
-                MapManager.Maps = antes;
-            }
+            // Without the measured arena in the world, the usual rule.
+            maps.Remove(99222029);
+            Assert.NotEqual(99222029, MapManager.ResolveArenaMapId(99090957, maps));
         }
     }
 }

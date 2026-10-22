@@ -80,15 +80,51 @@ namespace Jondo.Unity.Server
             }
         }
 
+        private static readonly object _loadLock = new object();
+
+        /// <summary>The tables as they were read, once.</summary>
+        private static (Dictionary<long, MapInfo> Maps, Dictionary<long, MapScrollAction> Scrolls,
+                        Dictionary<long, List<int>> Walkable, Dictionary<long, HashSet<int>> Fight,
+                        Dictionary<long, HashSet<int>> Sight)? _read;
+
+        /// <summary>
+        /// Reads the maps, once, into tables of their own; called again, it only puts back the
+        /// tables as read wherever something has swapped one for another.
+        /// </summary>
+        /// <remarks>
+        /// It used to empty the world's tables and fill them again, in place. With the tests'
+        /// collections running side by side, one doing so left the others reading half a world --
+        /// a raid's arena with no cell blocking sight, a dream's room with no map --, which is what
+        /// made the CI fail now and then. Swapping a table for a new one never empties the one
+        /// somebody else is still reading.
+        /// </remarks>
         public static void Initialize()
+        {
+            lock (_loadLock)
+            {
+                if (_read is { } read)
+                {
+                    Maps = read.Maps;
+                    ScrollActions = read.Scrolls;
+                    WalkableCells = read.Walkable;
+                    FightWalkableCells = read.Fight;
+                    LosBlockingCells = read.Sight;
+                    return;
+                }
+                Load();
+                if (Maps.Count > 0) _read = (Maps, ScrollActions, WalkableCells, FightWalkableCells, LosBlockingCells);
+            }
+        }
+
+        private static void Load()
         {
             try
             {
-                Maps.Clear();
-                ScrollActions.Clear();
-                WalkableCells.Clear();
-                FightWalkableCells.Clear();
-                LosBlockingCells.Clear();
+                Maps = new Dictionary<long, MapInfo>();
+                ScrollActions = new Dictionary<long, MapScrollAction>();
+                WalkableCells = new Dictionary<long, List<int>>();
+                FightWalkableCells = new Dictionary<long, HashSet<int>>();
+                LosBlockingCells = new Dictionary<long, HashSet<int>>();
 
                 // Fight data. map_walkable_cells.json is no use here: it trims the map borders on
                 // purpose so that mobs can be placed in roleplay, and on top of that it says
@@ -255,19 +291,22 @@ namespace Jondo.Unity.Server
         /// <summary>A raid floor's arenas: <see cref="ArenaFlags"/> plus bit 17.</summary>
         public const int RaidArenaFlags = 69393661;
 
-        public static long ResolveArenaMapId(long roleplayMapId)
+        public static long ResolveArenaMapId(long roleplayMapId) => ResolveArenaMapId(roleplayMapId, Maps);
+
+        /// <summary>The same, over a given set of maps: the tests' own, never the world's swapped under the others.</summary>
+        internal static long ResolveArenaMapId(long roleplayMapId, IReadOnlyDictionary<long, MapInfo> maps)
         {
             // What is measured rules over the rule. The kanojedos fight on a map 131,072 ids from
             // theirs, which no small difference finds, and the rule fell into «any one of the
             // subarea» chosen by hash. See content/fights/arenas.json.
             long medida = Managers.MeasuredArenas.Of(roleplayMapId);
-            if (medida != 0 && Maps.ContainsKey(medida)) return medida;
+            if (medida != 0 && maps.ContainsKey(medida)) return medida;
 
             // A temporal anomaly's room fights on its place's arena (AnomalyPlaces).
             long anomaly = Managers.AnomalyPlaces.ArenaOf(roleplayMapId);
-            if (anomaly != 0 && Maps.ContainsKey(anomaly)) return anomaly;
+            if (anomaly != 0 && maps.ContainsKey(anomaly)) return anomaly;
 
-            if (!Maps.TryGetValue(roleplayMapId, out var info)) return roleplayMapId;
+            if (!maps.TryGetValue(roleplayMapId, out var info)) return roleplayMapId;
 
             // A map that is an arena already is fought on as it is.
             if (info.PosX == 0 && info.PosY == 0 && (info.Flags == ArenaFlags || info.Flags == RaidArenaFlags))
@@ -277,7 +316,7 @@ namespace Jondo.Unity.Server
             // bit 17 -- five on each of the Gigalodón's floors, fight layouts drawn for it. The plain
             // rule below took the floor's other two arena-flagged maps instead, one of them a bare
             // test grid on grey (239077654): the fight showed no scenery and the map as Amakna's.
-            var raidArenas = Maps.Values
+            var raidArenas = maps.Values
                 .Where(m => m.SubAreaId == info.SubAreaId && m.PosX == 0 && m.PosY == 0 && m.Flags == RaidArenaFlags)
                 .Select(m => m.MapId)
                 .OrderBy(id => id)
@@ -293,7 +332,7 @@ namespace Jondo.Unity.Server
             // the measured rule below already places.
             if (Jondo.Unity.World.Content.Raids.BySubArea(info.SubAreaId) != null)
             {
-                var positioned = Maps.Values
+                var positioned = maps.Values
                     .Where(m => m.SubAreaId == info.SubAreaId && m.MapId != roleplayMapId
                              && !(m.PosX == 0 && m.PosY == 0) && string.IsNullOrEmpty(m.Name) && m.Flags == ArenaFlags)
                     .OrderBy(m => m.MapId)
@@ -301,7 +340,7 @@ namespace Jondo.Unity.Server
                 var twins = positioned.Where(m => m.PosX == info.PosX && m.PosY == info.PosY).Select(m => m.MapId).ToList();
                 if (twins.Count > 0) return twins[(int)(Math.Abs(roleplayMapId) % twins.Count)];
 
-                var named = Maps.Values.Where(m => m.SubAreaId == info.SubAreaId && !string.IsNullOrEmpty(m.Name))
+                var named = maps.Values.Where(m => m.SubAreaId == info.SubAreaId && !string.IsNullOrEmpty(m.Name))
                                        .Select(m => (m.PosX, m.PosY)).ToHashSet();
                 var loose = positioned.Where(m => !named.Contains((m.PosX, m.PosY))).Select(m => m.MapId).ToList();
                 if (loose.Count > 0) return loose[(int)(Math.Abs(roleplayMapId) % loose.Count)];
@@ -314,7 +353,7 @@ namespace Jondo.Unity.Server
             // every open-air fight stayed on the roleplay map: no arena and therefore no scene
             // change and no music.
 
-            var arenas = Maps.Values
+            var arenas = maps.Values
                 .Where(m => m.SubAreaId == info.SubAreaId
                          && m.PosX == 0 && m.PosY == 0
                          && m.Outdoor == true
@@ -327,7 +366,7 @@ namespace Jondo.Unity.Server
 
             if (arenas.Count == 0)
             {
-                arenas = Maps.Values
+                arenas = maps.Values
                     .Where(m => m.SubAreaId == info.SubAreaId
                              && m.PosX == 0 && m.PosY == 0
                              && m.Flags == 69262589)
