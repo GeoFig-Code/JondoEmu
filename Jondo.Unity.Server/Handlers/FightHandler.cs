@@ -788,6 +788,11 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     playerFighter.Buffs.PonerActitud(hechizo);
                 }
+                // And his alterations' (an uchronic elixir's state for the anomalies).
+                foreach (int hechizo in Managers.Alterations.FightAttitudes(GameState.CharacterId))
+                {
+                    playerFighter.Buffs.PonerActitud(hechizo);
+                }
                 if (pasivo != 0) playerFighter.Buffs.PonerActitud(pasivo);
             }
 
@@ -10631,7 +10636,7 @@ namespace Jondo.Unity.Server.Handlers
                 // seven gems --, so without this a raid is a place where nothing drops.
                 foreach (var drop in Enumerable.Repeat(DatabaseManager.GetMonsterGlobalDrops(monster.MonsterId), passes).SelectMany(t => t))
                 {
-                    if (!SeLoLleva(drop.ReceiverCriterion)) continue;
+                    if (!SeLoLleva(fight, drop.ReceiverCriterion)) continue;
 
                     double probabilidad = extra > 0
                         ? Math.Min(100.0, drop.PercentDrop * (100.0 + extra) / 100.0)
@@ -10671,11 +10676,36 @@ namespace Jondo.Unity.Server.Handlers
         /// comes out Unknown, it does not drop, and the whole world stays as it was. The raid ones carry
         /// no criterion at all, so they drop.
         /// </remarks>
-        private static bool SeLoLleva(string criterion)
+        /// <remarks>
+        /// The raid's letters first (its variables), then the character's (PlayerCriteria: level,
+        /// map, items, quests, alterations...), then what only the fight knows: <c>HS</c>, a state the
+        /// winner carries in it -- an uchronic elixir's 3383 to 3385 --, and <c>Az</c>, the fight
+        /// standing in an anomaly's zone (Anomalies). The anomaly fragments every monster may drop
+        /// are «(HA=50|HS=3383)&amp;Az=1&amp;Pm!28049666»: none fell outside a raid, where every
+        /// letter was unknown.
+        /// </remarks>
+        internal static bool SeLoLleva(FightInstance fight, string criterion)
         {
             if (string.IsNullOrWhiteSpace(criterion)) return true;
-            return Jondo.Unity.World.Content.Criterion.Met(criterion,
-                Managers.GuildRaidManager.ResolverFor(GameState.CharacterId));
+            var raid = Managers.GuildRaidManager.ResolverFor(GameState.CharacterId);
+            long mapId = fight.RoleplayMapId != 0 ? fight.RoleplayMapId : GameState.MapId;
+            var player = Managers.PlayerCriteria.ResolverFor(mapId);
+            var me = fight.Buscar(GameState.CharacterId);
+            return Jondo.Unity.World.Content.Criterion.Met(criterion, condition =>
+            {
+                var answer = raid(condition);
+                if (answer != Jondo.Unity.World.Content.Answer.Unknown) return answer;
+                answer = player(condition);
+                if (answer != Jondo.Unity.World.Content.Answer.Unknown) return answer;
+                bool? met = condition.Code switch
+                {
+                    "HS" when me != null => me.Buffs.TieneEstado((int)condition.Value),
+                    "Az" => Managers.Anomalies.TryGet(DatabaseManager.SubAreaOfMap(mapId), out _) == (condition.Value != 0),
+                    _ => null,
+                };
+                if (met == null || condition.Operator is not ('=' or '!')) return Jondo.Unity.World.Content.Answer.Unknown;
+                return (met.Value == (condition.Operator == '=')) ? Jondo.Unity.World.Content.Answer.True : Jondo.Unity.World.Content.Answer.False;
+            });
         }
 
         /// <summary>

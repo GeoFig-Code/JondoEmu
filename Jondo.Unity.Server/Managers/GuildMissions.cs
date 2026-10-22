@@ -60,6 +60,8 @@ namespace Jondo.Unity.Server.Managers
             public int Stage { get; init; }
             public int SeedId { get; init; }
             public int ObjectId { get; init; }
+            public int MinLevel { get; init; }
+            public int SuperCategoryId { get; init; }
         }
 
         /// <summary>A mission of a guild's week: where it is, which, its uuid and its first objective.</summary>

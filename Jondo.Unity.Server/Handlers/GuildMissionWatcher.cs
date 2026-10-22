@@ -30,7 +30,12 @@ namespace Jondo.Unity.Server.Handlers
     ///     intensity is the dream's difficulty (DreamData keys both alike);
     ///   - the dream trials: «Terminar la prueba de sueños FONSOCAC», the objective's seedId the
     ///     trial's id (DreamTrials), done with the trial's Fin du rêve.
-    /// The anomalies -- which this server has none of -- and the live events' kinds are not counted.
+    ///   - the anomalies (an anomaly's zone, Anomalies): «Vencer a {0} monstruos en un territorio {1} o
+    ///     superior con anomalía con un elixir ucrónico» -- the zone's level at least the objective's
+    ///     minLevel, an uchronic elixir's state (3383 to 3385) on the member --, «Vencer a un guardián
+    ///     de mazmorra con anomalía de nivel {0} o superior» the same with a dungeon's guardian, and
+    ///     «Obtener {0} {1} en una anomalía» the items the fight gave him there.
+    /// The anomalies' own guardians (no data says where they stand) and the live events' kinds are not counted.
     /// </para>
     /// <para>
     /// THE WIRE, read off the client: the mission changed goes as a jdc with the member's standing
@@ -78,6 +83,8 @@ namespace Jondo.Unity.Server.Handlers
                 if (dream.Trial > 0) await MoveAsync(stream, guild, who, objective => TrialWorth(objective, dream.Trial), DateTimeOffset.UtcNow);
             }
             if (!won) return;
+
+            await CountAnomalyAsync(stream, guild, who, fight);
 
             var beaten = new Dictionary<int, int>();
             foreach (var monster in fight.Rojo)
@@ -142,6 +149,41 @@ namespace Jondo.Unity.Server.Handlers
             {
                 Console.WriteLine($"[Guild] The missions could not count band {band} of a dream: {ex.Message}");
             }
+        }
+
+        /// <summary>The anomalies' super category.</summary>
+        public const int AnomaliesSuperCategory = 3;
+
+        /// <summary>An uchronic elixir's states: «mineur», «amélioré», «majeur» (their spells 23438 to 23440).</summary>
+        public static readonly int[] ElixirStates = { 3383, 3384, 3385 };
+
+        /// <summary>
+        /// What a won fight in an anomaly's zone is worth to one anomaly objective: see the class
+        /// remarks. <paramref name="loot"/> is what the fight gave the member.
+        /// </summary>
+        public static int AnomalyWorth(GuildMissions.Objective objective, int zoneLevel, bool elixir, int monsters,
+                                       bool dungeonGuardian, IReadOnlyDictionary<int, int> loot)
+        {
+            if (objective == null || objective.SuperCategoryId != AnomaliesSuperCategory) return 0;
+            if (objective.ObjectId > 0) return loot.TryGetValue(objective.ObjectId, out int got) ? got : 0;
+            if (objective.MinLevel <= 0 || !elixir || zoneLevel < objective.MinLevel) return 0;
+            if (objective.Quantity > 0) return monsters;
+            return dungeonGuardian ? 1 : 0;
+        }
+
+        private static async Task CountAnomalyAsync(NetworkStream stream, GuildStore.Guild guild, long who, FightInstance fight)
+        {
+            long mapId = fight.RoleplayMapId != 0 ? fight.RoleplayMapId : SessionContext.State.MapId;
+            if (!Anomalies.TryGet(DatabaseManager.SubAreaOfMap(mapId), out var anomaly)) return;
+
+            var me = fight.Buscar(who);
+            bool elixir = me != null && ElixirStates.Any(me.Buffs.TieneEstado);
+            var monsters = fight.Rojo.Where(m => !m.EsInvocado && m.MonsterId > 0).ToList();
+            bool guardian = monsters.Any(m => DungeonManager.IsBoss(m.MonsterId));
+            var loot = FightHandler.RewardOf(fight, who)?.Loot ?? new Dictionary<int, int>();
+            await MoveAsync(stream, guild, who,
+                objective => AnomalyWorth(objective, anomaly.Level, elixir, monsters.Count, guardian, loot),
+                DateTimeOffset.UtcNow);
         }
 
         /// <summary>One for the objective of this trial (its seedId), nothing for any other.</summary>

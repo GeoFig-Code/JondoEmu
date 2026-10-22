@@ -250,6 +250,28 @@ namespace Jondo.Unity.Server.Managers
             return total;
         }
 
+        /// <summary>
+        /// The spells the character's alterations lend him in a fight (1175, the spell in its dice),
+        /// held as attitudes: an uchronic elixir's «[!] Élixir uchronique mineur», which puts state
+        /// 3383 on the allies.
+        /// </summary>
+        public static List<int> FightAttitudes(long characterId)
+        {
+            var spells = new List<int>();
+            foreach (var active in Of(characterId))
+            {
+                var definition = AlterationCatalogue.Of(active.Id);
+                if (definition == null) continue;
+                foreach (var effect in definition.Effects)
+                    if (effect.Effect == FightSpell && effect.DiceNum > 0 && !spells.Contains((int)effect.DiceNum))
+                        spells.Add((int)effect.DiceNum);
+            }
+            return spells;
+        }
+
+        /// <summary>«Da el hechizo»: the spell an alteration or an item lends for the fight.</summary>
+        public const int FightSpell = 1175;
+
         /// <summary>What they add to one characteristic.</summary>
         public static long BonusOf(long characterId, int characteristic)
             => Bonuses(characterId).TryGetValue(characteristic, out long value) ? value : 0;

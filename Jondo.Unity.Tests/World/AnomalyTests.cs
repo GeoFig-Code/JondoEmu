@@ -1,0 +1,65 @@
+using System.Collections.Generic;
+using System.Linq;
+using Jondo.Unity.Server;
+using Jondo.Unity.Server.Handlers;
+using Jondo.Unity.Server.Managers;
+using Jondo.Unity.Server.Network;
+using Jondo.Unity.World.Fights;
+using Xunit;
+
+namespace Jondo.Unity.Tests.World
+{
+    /// <summary>
+    /// The anomalies' loot and missions: the fragments every monster may drop in an anomaly's zone
+    /// to whoever carries the minor uchronic elixir's state, and the guild missions they count for.
+    /// </summary>
+    public class AnomalyTests
+    {
+        private const string FragmentCriterion = "(HA=50|HS=3383)&Az=1&Pm!28049666";
+
+        [Fact]
+        public void A_fragment_falls_in_an_anomaly_to_whoever_carries_the_elixir()
+        {
+            if (Anomalies.All.Count == 0) return;   // no anomalies data
+            var anomaly = Anomalies.All[0];
+            // A map of the anomaly's zone: its vestige's may stand in another.
+            long zoneMap = DatabaseManager.MapsOfSubArea(anomaly.SubAreaId).DefaultIfEmpty(0).Min();
+            if (zoneMap == 0) return;
+            var session = GameSession.SinSocket();
+            session.State.CharacterId = 9_400_000_001;
+            session.State.MapId = zoneMap;
+            using (SessionContext.Push(session))
+            {
+                var fight = new FightInstance(9_400_001, zoneMap);
+                var me = new Fighter { Id = session.State.CharacterId, MaxHP = 100, CurrentHP = 100 };
+                fight.AddPlayer(me);
+
+                Assert.False(FightHandler.SeLoLleva(fight, FragmentCriterion));   // no elixir
+                me.Buffs.PonerEstado(3383);
+                Assert.True(FightHandler.SeLoLleva(fight, FragmentCriterion));
+
+                var elsewhere = new FightInstance(9_400_002, 191105026);
+                elsewhere.AddPlayer(me);
+                Assert.False(FightHandler.SeLoLleva(elsewhere, FragmentCriterion));   // not an anomaly
+                Assert.True(FightHandler.SeLoLleva(elsewhere, "Az=0"));
+            }
+        }
+
+        [Fact]
+        public void The_anomaly_missions_count_what_their_text_says()
+        {
+            var monsters = new GuildMissions.Objective(158, 158, 1) { SuperCategoryId = 3, MinLevel = 120, Quantity = 50 };
+            var guardian = new GuildMissions.Objective(262, 262, 1) { SuperCategoryId = 3, MinLevel = 130 };
+            var fragments = new GuildMissions.Objective(413, 412, 1) { SuperCategoryId = 3, ObjectId = 26870, Quantity = 5 };
+            var loot = new Dictionary<int, int> { [26870] = 2 };
+
+            Assert.Equal(4, GuildMissionWatcher.AnomalyWorth(monsters, 130, true, 4, false, loot));
+            Assert.Equal(0, GuildMissionWatcher.AnomalyWorth(monsters, 110, true, 4, false, loot));   // too low a zone
+            Assert.Equal(0, GuildMissionWatcher.AnomalyWorth(monsters, 130, false, 4, false, loot));  // no elixir
+            Assert.Equal(1, GuildMissionWatcher.AnomalyWorth(guardian, 150, true, 1, true, loot));
+            Assert.Equal(0, GuildMissionWatcher.AnomalyWorth(guardian, 150, true, 3, false, loot));
+            Assert.Equal(2, GuildMissionWatcher.AnomalyWorth(fragments, 15, false, 3, false, loot));
+            Assert.Equal(0, GuildMissionWatcher.AnomalyWorth(monsters with { SuperCategoryId = 4 }, 130, true, 4, false, loot));
+        }
+    }
+}

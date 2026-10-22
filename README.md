@@ -341,7 +341,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
   and chest tabs reached, weekly milestones, the tier and missions changed, missions done and
   rerolled, raids bought, captained, described, left and finished
 - ✅ Dream-trial missions, done by finishing the trial
-- ❌ Anomaly missions: the uchronic elixirs and the anomalies' guardians are not there yet
+- ✅ Anomaly missions: monsters and dungeon guardians beaten in an anomaly with an uchronic elixir on,
+  and the anomaly fragments and loops it drops there
+- ❌ The anomalies' own guardians: no data says where each one stands
 
 **Raids** — the Eternal Gardens Sanctuary and the Gigalodón Abyss — run on the client's own screens.
 
