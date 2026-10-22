@@ -104,6 +104,14 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // In «private» only his contacts reach him.
+            if (!ChatStatusHandler.HearsWhisperFrom(destino, SessionContext.Current.AccountId))
+            {
+                await RefuseAsync(stream);
+                Console.WriteLine($"[Private] {from} whispers to «{target}», who is in private mode.");
+                return;
+            }
+
             string cuando = DateTimeOffset.Now.ToString("yyyy-MM-ddTHH:mm:sszzz");
 
             // To the receiver: the other is whoever writes to him.

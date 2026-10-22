@@ -14,6 +14,12 @@ namespace Jondo.Unity.Server
         public int Breed { get; set; }
         public int Sex { get; set; }
         public string Language { get; set; } = "es";
+
+        /// <summary>The chat status the player picked (kus), as the client numbers it: 1 available on entering.</summary>
+        public int ChatStatus { get; set; } = Handlers.ChatStatusHandler.Available;
+
+        /// <summary>The message that goes with «away», empty otherwise.</summary>
+        public string ChatStatusMessage { get; set; } = "";
         public byte[]? PlayerActorDetails { get; set; }
         public byte[]? LookBytes { get; set; }
 

@@ -45,12 +45,16 @@ namespace Jondo.Unity.Server.Network
                 .Var(3, characterId)
                 .VarIfNotZero(5, ficha?.Breed ?? 0)
                 .Str(6, KeyOf(characterId))
-                .Msg(7, Status(online))
+                .Msg(7, Status(characterId, online))
                 .StrIfNotEmpty(8, ficha?.Name);
         }
 
-        /// <summary>A connection state (lcf): f1 0 offline, 1 online, 3 away, 4 private, 5 solo.</summary>
-        public static Pb Status(bool online) => Pb.New().VarIfNotZero(1, online ? Online : Offline);
+        /// <summary>
+        /// A connection state (lcf): offline is the empty block; connected, the chat status the
+        /// player picked -- 1 available, 2 away, 3 idle, 4 private, 5 solo.
+        /// </summary>
+        public static Pb Status(long characterId, bool online)
+            => online ? Handlers.ChatStatusHandler.Online(characterId) : Pb.New().VarIfNotZero(1, Offline);
 
         /// <summary>A player as an OptionalPlayerInformation (hxd): its oneof case 1, the card.</summary>
         public static Pb OptionalPlayer(long characterId) => Pb.New().Msg(1, PlayerCard(characterId));
@@ -253,7 +257,7 @@ namespace Jondo.Unity.Server.Network
             => Pb.New()
                 .Str(1, uuid)
                 .Str(2, characterId.ToString(CultureInfo.InvariantCulture))
-                .Msg(3, Status(online))
+                .Msg(3, Status(characterId, online))
                 .Build();
 
         // ─── The running raid (its tracking panel, RaidTrackingUI) ──────────────

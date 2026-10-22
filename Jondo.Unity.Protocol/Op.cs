@@ -2863,11 +2863,27 @@ public static class Op
     /// <summary>Unidentified. 2 uses in the emulator.</summary>
     public const string Ktw = "ktw";
 
+    /// <summary>
+    /// S→C: a player's chat status changed { f1 lcf { f1 status, f2 message }, f2 the character }.
+    /// Three frames listen to it: the chat says the player's own change, and the member lists
+    /// redraw the line whose character it names. f3 and f4 are not read by the chat's handler.
+    /// </summary>
+    public const string Ktx = "ktx";
+
+    /// <summary>S→C, empty: the «away» message could not be set (ui.chat.status.awaymessageerror).</summary>
+    public const string Kty = "kty";
+
     /// <summary>The character sheet; the container field is not the same for each characteristic and getting it wrong kills the whole sheet with a NullReferenceException. It is sent twice (with the character and with the map) and the client keeps the second.</summary>
     public const string Kub = "kub";
 
     /// <summary>Unidentified. 1 use in the emulator.</summary>
     public const string Kuf = "kuf";
+
+    /// <summary>
+    /// C→S: the chat status the player picks, from the chat's status menu or its commands. Built by
+    /// eak::usm as { f2 lcf { f1 status } }; the commands that carry a message build f1 instead.
+    /// </summary>
+    public const string Kus = "kus";
 
     /// <summary>
     /// Life regeneration is over: f1 the life it has, f2 the half-seconds it had been

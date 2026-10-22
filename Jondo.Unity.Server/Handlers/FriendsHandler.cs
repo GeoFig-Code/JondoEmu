@@ -70,9 +70,6 @@ namespace Jondo.Unity.Server.Handlers
 
         private const int Offline = 0, Roleplay = 1, InFight = 2;
 
-        /// <summary>lcf's f1 for someone playing: online.</summary>
-        private const int StatusOnline = 1;
-
         // ─── the lists ───────────────────────────────────────────────────────────────────────
 
         public static Task SendMutualAsync(NetworkStream stream)
@@ -278,7 +275,7 @@ namespace Jondo.Unity.Server.Handlers
             {
                 var state = session.State;
                 kqm.Msg(5, Pb.New()
-                        .Msg(1, Pb.New().Var(1, StatusOnline))
+                        .Msg(1, ChatStatusHandler.Of(state))
                         .Var(5, Math.Max(1, state.CharacterLevel))
                         .VarIfNotZero(9, state.Breed)
                         .Var(11, state.CharacterId)

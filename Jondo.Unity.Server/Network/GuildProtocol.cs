@@ -284,7 +284,7 @@ namespace Jondo.Unity.Server.Network
         private static Pb MemberEntry(GuildStore.Member member, string name, int level, long accountId,
                                       int breed, int achievementPoints, int contributed, bool online)
         {
-            var status = online ? Pb.New().Var(1, 1) : Pb.New();
+            var status = online ? Handlers.ChatStatusHandler.Online(member.CharacterId) : Pb.New();
             var details = Pb.New()
                 .Var(2, member.Rank)
                 .Var(3, 1)                                   // measured constant, meaning unknown
@@ -641,7 +641,7 @@ namespace Jondo.Unity.Server.Network
                     .Str(6, tag)
                     .Var(7, application.CharacterId)
                     .Str(8, accountNick)
-                    .Msg(9, Pb.New().Var(1, 1))
+                    .Msg(9, Handlers.ChatStatusHandler.Online(application.CharacterId))
                     .Var(10, level));
 
         /// <summary>

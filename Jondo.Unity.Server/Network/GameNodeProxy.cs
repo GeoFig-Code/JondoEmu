@@ -849,6 +849,10 @@ namespace Jondo.Unity.Server.Network
                 {
                     await Handlers.PrivateMessageHandler.WhisperAsync(stream, payload);
                 }
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Kus)))
+                {
+                    await Handlers.ChatStatusHandler.SetAsync(stream, payload);
+                }
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jjg)))
                 {
                     // Creating a guild.

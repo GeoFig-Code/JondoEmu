@@ -81,6 +81,12 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            if (!ChatStatusHandler.TakesInvitations(guest))
+            {
+                Console.WriteLine($"[Party] {guest.State.CharacterName} is in solo mode.");
+                return;
+            }
+
             // The party is created on inviting, not on accepting: it is what the real server does.
             var party = Parties.Of(meId);
             bool nuevo = party == null;
@@ -674,7 +680,7 @@ namespace Jondo.Unity.Server.Handlers
                 .Str(2, character.Name)
                 .Var(3, guestId)
                 .Var(5, hostId)
-                .Msg(6, Pb.New().Var(1, 1))
+                .Msg(6, ChatStatusHandler.Online(guestId))
                 .VarIfNotZero(8, character.Breed);
         }
 
@@ -714,7 +720,7 @@ namespace Jondo.Unity.Server.Handlers
                 prospecting = BaseProspecting + state.TotalChance / 10 + (int)delEquipo;
             }
 
-            var info = Pb.New().Msg(2, Pb.New().Var(1, 1));
+            var info = Pb.New().Msg(2, ChatStatusHandler.Of(state));
 
             // The same block the ikv carries when the party follows its leader.
             if (map != null) info.Msg(4, PartyFollowProtocol.MapPosition(state.MapId, map));
