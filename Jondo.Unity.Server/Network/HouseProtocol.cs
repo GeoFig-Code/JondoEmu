@@ -32,6 +32,10 @@ namespace Jondo.Unity.Server.Network
             /// <summary>The model's rooms: f6 of the full plaque.</summary>
             public int Rooms { get; init; }
 
+            /// <summary>The chests in every room (f10) and the workshops' skills (f11) of the full plaque.</summary>
+            public int Chests { get; init; }
+            public IReadOnlyList<long> Skills { get; init; } = System.Array.Empty<long>();
+
             /// <summary>
             /// The guild block of a house shared with a guild (f3), as it is to travel; null for
             /// none. See <see cref="Handlers.HouseHandler.GuildBlockOf"/>.
@@ -40,15 +44,6 @@ namespace Jondo.Unity.Server.Network
 
             public bool HasOwner => OwnerName.Length > 0;
         }
-
-        /// <summary>
-        /// f10 and f11 of the full plaque: 2 and packed [339] in the five full plaques there are
-        /// (izr frame 5 of the sale and of the withdrawal, jaa frames 18 and 22, and jaa at the
-        /// 9 August login). 339 is "Indicar una salida", a skill of the interior's door; what the
-        /// 2 counts is not known. Constants copied from the only house measured.
-        /// </summary>
-        private const int FullF10 = 2;
-        private static readonly long[] FullF11 = { 339 };
 
         /// <summary>
         /// A house's plaque (lnx). The short one travels on the map -- jss f9 and f7, izz -- and
@@ -63,7 +58,7 @@ namespace Jondo.Unity.Server.Network
         ///   f7  price                                    only while on sale
         ///   f8  { f1: nickname, f2: tag }                the owning account
         ///   f9  1                                        720 of 728
-        ///   f10 2, f11 [339]                             full only, see FullF10
+        ///   f10 chests, f11 [workshop skills]           full only: 2 and [339] in the captures
         ///   f12 instance
         /// </code>
         /// f5 is read as "has an access code": the one house in the captures that answered a knock
@@ -97,8 +92,8 @@ namespace Jondo.Unity.Server.Network
             }
             if (full)
             {
-                lnx.Var(10, FullF10);
-                lnx.Packed(11, FullF11);
+                lnx.VarIfNotZero(10, plaque.Chests);
+                if (plaque.Skills.Count > 0) lnx.Packed(11, plaque.Skills);
             }
             lnx.VarIfNotZero(12, plaque.Instance);
             return lnx;

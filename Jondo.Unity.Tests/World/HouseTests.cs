@@ -29,7 +29,7 @@ namespace Jondo.Unity.Tests.World
             => new HouseProtocol.Plaque
             {
                 Instance = Instance, OwnerName = "Sacrogrito69", OwnerTag = "4234",
-                Price = price, Locked = locked, Rooms = 3, GuildBlock = guild,
+                Price = price, Locked = locked, Rooms = 3, Chests = 2, Skills = new long[] { 339 }, GuildBlock = guild,
             };
 
         // ─── The sale, "poner casa en venta por 20.500.000" ─────────────────────
@@ -109,7 +109,7 @@ namespace Jondo.Unity.Tests.World
                 GuildRights = 505,
                 Plaque = new HouseProtocol.Plaque
                 {
-                    Instance = 16, OwnerName = "harmoo", OwnerTag = "4742", Locked = true, Rooms = 3, GuildBlock = new byte[] { 0x08, 0x01 },
+                    Instance = 16, OwnerName = "harmoo", OwnerTag = "4742", Locked = true, Rooms = 3, Chests = 2, Skills = new long[] { 339 }, GuildBlock = new byte[] { 0x08, 0x01 },
                 },
             };
             Assert.Equal(Hex("124510b1db1f20a8032a3c1220200128013003420e0a066861726d6f6f120434373432480150025a02d302601018f9032a15088084d06810e7ffffffffffffffff0120d1072822"),
@@ -535,6 +535,28 @@ namespace Jondo.Unity.Tests.World
             if (maps.Count < 2) return;
             Assert.All(maps, m => Assert.Equal(maps.Min(), Houses.CanonicalMapOf(m, DoorElement)));
             Assert.Single(maps.Select(m => Houses.HouseIdOf(m, DoorElement)).Distinct());
+        }
+
+        /// <summary>
+        /// The Lacs enchantés' palace is its model, 314, and its plaque counts the chests of its
+        /// fifteen rooms and the skills of their workshops: it said one room, 2 chests and none.
+        /// </summary>
+        [Fact]
+        public void The_palace_plaque_is_its_fifteen_rooms()
+        {
+            if (MapManager.GetMapInfo(75629314) == null) MapManager.Initialize();
+            Interactives.Initialize();
+            Workshops.Initialize();
+            Houses.Initialize();
+            Assert.True(Houses.TryGetDoor(75629314, 475545, out var palace));
+            Assert.Equal(314, palace.Model);
+
+            var plaque = HouseHandler.PlaqueOf(new HouseStore.House(), palace);
+            Assert.Equal(15, plaque.Rooms);
+            Assert.Equal(60_000_000, plaque.Price);
+            Assert.Equal(Houses.ChestCountOf(palace.InteriorMapId), plaque.Chests);
+            Assert.True(plaque.Chests > 2, $"{plaque.Chests} chests");
+            Assert.True(plaque.Skills.Count > 1, $"{plaque.Skills.Count} workshop skills");
         }
 
         /// <summary>
