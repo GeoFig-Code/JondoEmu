@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using Jondo.Unity.Launcher;
 using Jondo.Unity.Server.Handlers;
@@ -73,8 +73,10 @@ namespace Jondo.Unity.Tests.Content
             if (!Available) return;
             Load();
 
-            // 124 "Manos limpias" (Sd!0), 296 "Místico" (Tc=0,0), 983 a boss's own mechanic (Ma=1).
-            Assert.False(Challenges.Get(124)!.Judged);
+            // 296 "Místico" (Tc=0,0), 983 a boss's own mechanic (Ma=1). 124 "Manos limpias" (Sd!0)
+            // is judged now, as the generic 19 it copies.
+            Assert.True(Challenges.Get(124)!.Judged);
+            Assert.Equal(ChallengeWatcher.ManosLimpias, Challenges.KindOf(124));
             Assert.False(Challenges.Get(296)!.Judged);
             Assert.False(Challenges.Get(983)!.Judged);
 

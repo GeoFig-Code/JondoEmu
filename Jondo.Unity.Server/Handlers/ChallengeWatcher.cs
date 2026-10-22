@@ -36,11 +36,10 @@ namespace Jondo.Unity.Server.Handlers
     ///
     /// ─── What is NOT watched here ───────────────────────────────────────────────────────────
     ///
-    /// Challenge 35, «Asesino a sueldo» (Hitman), which requires killing in an order the server
-    /// points out as it goes. That needs sending the target through the <c>kwm</c> and pointing it
-    /// out again every time one falls, and the target pointed out has never been measured in
-    /// placement -- it travels with the cell at minus one --. It is left out, and that is why it is
-    /// not even offered.
+    /// Of the 43 general challenges, the four whose activation is <c>BV=0</c> -- «Dúo», «Trío»,
+    /// «Cuarteto» and «Crono» of the general list, a breach's -- which a classic server never
+    /// offers. «Asesino a sueldo» (35) is watched: its target goes through the <c>kwm</c> and a new
+    /// one is pointed out as each falls.
     /// </summary>
     public static class ChallengeWatcher
     {
@@ -80,6 +79,10 @@ namespace Jondo.Unity.Server.Handlers
         public const int LineaDeMira = 969;
         public const int MerecidoPin = 970;
         public const int EntreLasSombras = 971;
+        public const int ManosLimpias = 19;
+        public const int DosPorUno = 42;
+        public const int CadaUnoConSuMonstruo = 46;
+        public const int Espejo = 966;
 
         /// <summary>
         /// The ones that can be watched, and the percentage they are given IF theirs has never come
@@ -120,6 +123,9 @@ namespace Jondo.Unity.Server.Handlers
             [Primero] = 50, [Ultimo] = 50, [Imprevisible] = 50, [AsesinoAOjo] = 50,
             [LosPequenosAntes] = 50, [Duelo] = 50, [Conquistador] = 50, [Dum] = 50,
             [SinCorazon] = 50,
+
+            // Who strikes, who finishes off and from where: the floor too.
+            [ManosLimpias] = 50, [DosPorUno] = 50, [CadaUnoConSuMonstruo] = 50, [Espejo] = 50,
         };
 
         /// <summary>
@@ -171,6 +177,7 @@ namespace Jondo.Unity.Server.Handlers
             fight.TurnStartMp = quien.CurrentMP;
             fight.TurnTackledMp = 0;
             fight.KillCells.Clear();
+            Notes(fight).TurnKills = 0;
 
             // "Hay gente por aquí" lets one choose: begin OR end the turn in line with an enemy.
             if (quien.TeamId == 0 && fight.ChallengesFixed.Count > 0)
@@ -275,6 +282,11 @@ namespace Jondo.Unity.Server.Handlers
             if (Vivo(fight, EntreLasSombras) && !JuntoAObstaculo(fight, quien.CellId))
                 await BreakAsync(stream, fight, EntreLasSombras, $"{quien.Name} ends in the open");
 
+            // Two for one: whoever finishes one off in his turn finishes «un (y solo un) segundo».
+            int kills = Notes(fight).TurnKills;
+            if (Vivo(fight, DosPorUno) && (kills == 1 || kills > 2))
+                await BreakAsync(stream, fight, DosPorUno, $"{quien.Name} finishes off {kills} in his turn");
+
             bool leVen = LoVeAlgunEnemigo(fight, quien);
 
             if (Vivo(fight, LineaDeMira) && !leVen)
@@ -366,7 +378,8 @@ namespace Jondo.Unity.Server.Handlers
         /// Elemental, which looks at what the hit is made with.
         /// </summary>
         public static async Task DamagedAsync(NetworkStream stream, FightInstance fight,
-                                              Fighter quien, int cuanto, Fighter quienPega, int elemento)
+                                              Fighter quien, int cuanto, Fighter quienPega, int elemento,
+                                              bool direct = false)
         {
             if (!Alguno(fight) || cuanto <= 0) return;
 
@@ -390,7 +403,29 @@ namespace Jondo.Unity.Server.Handlers
                                      $"with {fight.DamageElement}");
                 }
             }
+
+            if (quienPega == null || quienPega.TeamId != 0) return;
+
+            // Clean hands: «sin causarles daños directos». Traps, glyphs, poisons, pushes, reflected
+            // damage and summons are allowed; an ally's own spell or weapon is not.
+            if (direct && !quienPega.EsInvocado && Vivo(fight, ManosLimpias))
+                await BreakAsync(stream, fight, ManosLimpias, $"{quienPega.Name} hits {quien.Name} directly");
+
+            // Each his own monster: «Cuando un luchador aliado ataca a un enemigo, ningún otro luchador
+            // aliado debe atacar a dicho enemigo». A summon's blows are its master's.
+            if (Vivo(fight, CadaUnoConSuMonstruo))
+            {
+                long owner = OwnerOf(quienPega);
+                var claims = Notes(fight).Claims;
+                if (claims.TryGetValue(quien.Id, out long had) && had != owner)
+                    await BreakAsync(stream, fight, CadaUnoConSuMonstruo, $"{quienPega.Name} hits {quien.Name}, somebody else's");
+                else
+                    claims[quien.Id] = owner;
+            }
         }
+
+        /// <summary>Whose a blow or a kill is: a summon's are its master's.</summary>
+        private static long OwnerOf(Fighter fighter) => fighter.EsInvocado && fighter.Invocador != 0 ? fighter.Invocador : fighter.Id;
 
         /// <summary>Push damage travels with no element: that is how the fight sends it.</summary>
         private const int PushElement = -1;
@@ -589,6 +624,21 @@ namespace Jondo.Unity.Server.Handlers
             {
                 fight.Killers.Add(quienRemata.Id);
                 fight.KillCells.Add(victima.CellId);
+
+                var notes = Notes(fight);
+                notes.KillOwners.Add(OwnerOf(quienRemata));
+                var playing = fight.CurrentFighter;
+                if (playing != null && playing.TeamId == 0 && OwnerOf(playing) == OwnerOf(quienRemata)) notes.TurnKills++;
+
+                // Mirror: «otro aliado debe estar colocado en simetría detrás de este luchador
+                // enemigo» -- the killer's cell reflected through the one who falls.
+                if (Vivo(fight, Espejo))
+                {
+                    int behind = Jondo.Unity.World.Maps.MapGeometry.Reflejar(quienRemata.CellId, victima.CellId);
+                    bool mirrored = behind >= 0 && fight.Azul.Any(a => a.IsAlive && a.Id != quienRemata.Id && a.CellId == behind);
+                    if (!mirrored)
+                        await BreakAsync(stream, fight, Espejo, $"{quienRemata.Name} finishes {victima.Name} off with nobody behind it");
+                }
             }
 
             bool quedanEnemigos = false;
@@ -760,6 +810,19 @@ namespace Jondo.Unity.Server.Handlers
                 }
             }
 
+            // Each his own monster: every ally character finished one off, himself or by a summon.
+            if (won && Vivo(fight, CadaUnoConSuMonstruo))
+            {
+                var owners = Notes(fight).KillOwners;
+                var idle = fight.Azul.FirstOrDefault(a => !a.EsInvocado && !owners.Contains(a.Id));
+                if (idle != null)
+                    await BreakAsync(stream, fight, CadaUnoConSuMonstruo, $"{idle.Name} has not finished anybody off", record: end.Frames);
+            }
+
+            // Two for one: the last kill, in a turn the fight did not let end, needed its second.
+            if (won && Vivo(fight, DosPorUno) && Notes(fight).TurnKills == 1)
+                await BreakAsync(stream, fight, DosPorUno, "the last enemy fell alone in its turn", record: end.Frames);
+
             // Dum: all of them have to fall in the same round.
             if (won && Vivo(fight, Dum))
             {
@@ -847,6 +910,15 @@ namespace Jondo.Unity.Server.Handlers
 
             /// <summary>Whether the one playing began his turn in line with an enemy.</summary>
             public bool BeganInLineWithEnemy { get; set; }
+
+            /// <summary>Enemy → the ally (a summon's master) who first hit him: Each his own monster.</summary>
+            public Dictionary<long, long> Claims { get; } = new Dictionary<long, long>();
+
+            /// <summary>The allies (summons' masters) who finished somebody off.</summary>
+            public HashSet<long> KillOwners { get; } = new HashSet<long>();
+
+            /// <summary>The kills of whoever plays, in this turn: Two for one.</summary>
+            public int TurnKills { get; set; }
         }
 
         private static readonly ConcurrentDictionary<long, FightNotes> _notes = new ConcurrentDictionary<long, FightNotes>();
@@ -917,8 +989,9 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// The bonus a won fight's challenges will give, worked out without judging anything aloud:
-        /// the ones not broken, less "Reparto" when an ally finished nobody and "Dum" when they fell
-        /// on different rounds -- the two <see cref="FightEndedAsync"/> can only judge at the end.
+        /// the ones not broken, less "Reparto" when an ally finished nobody, "Dum" when they fell
+        /// on different rounds, "Cada uno con su monstruo" and "El dos por uno" likewise -- the ones
+        /// <see cref="FightEndedAsync"/> can only judge at the end.
         /// </summary>
         public static int EndBonus(FightInstance fight, bool won)
         {
@@ -928,6 +1001,8 @@ namespace Jondo.Unity.Server.Handlers
             {
                 if (fight.ChallengesBroken.Contains(id)) continue;
                 if (id == Reparto && fight.Azul.Any(a => !fight.Killers.Contains(a.Id))) continue;
+                if (id == CadaUnoConSuMonstruo && fight.Azul.Any(a => !a.EsInvocado && !Notes(fight).KillOwners.Contains(a.Id))) continue;
+                if (id == DosPorUno && Notes(fight).TurnKills == 1) continue;
                 if (id == Dum && fight.KilledOnRound.Values.Distinct().Count() > 1) continue;
                 extra += percent;
             }

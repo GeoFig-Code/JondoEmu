@@ -7993,7 +7993,9 @@ namespace Jondo.Unity.Server.Handlers
             AnotarElGolpe(fight, caster, target, aplicado, fromTurnTrigger);
 
             // This is where Untouchable breaks -- if the one losing life is an ally -- and Elemental.
-            await ChallengeWatcher.DamagedAsync(stream, fight, target, aplicado, caster, elemento);
+            // A hit of one's own cast, not a glyph's, a trap's nor a poison's, is direct (Clean hands).
+            await ChallengeWatcher.DamagedAsync(stream, fight, target, aplicado, caster, elemento,
+                direct: !fromTurnTrigger && fight.CurrentDamageSource == Jondo.Unity.World.Fights.DamageSource.Direct);
 
             // And EROSION: besides the life of now, each hit takes a pinch off the cap.
             //
