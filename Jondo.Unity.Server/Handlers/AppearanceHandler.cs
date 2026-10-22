@@ -73,6 +73,14 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Push(Op.Lwq, ConnectionProtocol.BuildDraftOutfit(character, DraftIdOf(character.Id))));
         }
 
+        /// <summary>
+        /// Whether the account may wear that look: what its cosmetics collection holds -- the
+        /// appearance window lists nothing else, and what is taken out of it while worn turns grey
+        /// with its red mark. A mimisymbic's look is kept there too, under the real item's template.
+        /// </summary>
+        private static bool Owns(int gid)
+            => CosmeticCollection.Has(Jondo.Unity.Server.Network.SessionContext.Current.AccountId, gid);
+
         /// <summary>Putting on a garment and letting the server work out the slot.</summary>
         public static async Task WearAsync(NetworkStream stream, byte[] frame)
         {
@@ -91,6 +99,11 @@ namespace Jondo.Unity.Server.Handlers
             if (gid == 0 || slot < 0)
             {
                 Console.WriteLine($"[Appearances] Garment {gid} is not in the catalogue.");
+                return;
+            }
+            if (!Owns(gid))
+            {
+                Console.WriteLine($"[Appearances] Garment {gid} is not in the account's collection.");
                 return;
             }
 
@@ -123,6 +136,11 @@ namespace Jondo.Unity.Server.Handlers
             {
                 Wardrobe.TakeOff(who, slot);
                 Console.WriteLine($"[Appearances] Slot {slot} emptied.");
+            }
+            else if (!Owns(gid))
+            {
+                Console.WriteLine($"[Appearances] Garment {gid} is not in the account's collection.");
+                return;
             }
             else
             {

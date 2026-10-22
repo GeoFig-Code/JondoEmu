@@ -547,6 +547,8 @@ An alliance is made of characters, not guilds.
 - ✅ Per-character colours: the ones chosen at creation are kept in the look
 - ✅ The cosmetics collection: each account keeps its own, filled from the bag and emptied back into it
 - ✅ The appearance window's draft switch
+- ✅ Mimisymbics: a real item spent into an appearance, kept in the collection for good
+- ✅ Hiding an empty slot hides the real piece under it
 
 ### ⛏️ Professions
 
