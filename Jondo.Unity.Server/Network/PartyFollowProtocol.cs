@@ -7,7 +7,7 @@ namespace Jondo.Unity.Server.Network
     /// </summary>
     /// <remarks>
     /// Measured in "Grupos/con grupo seguir desplazamiento del lider en mapas cercanos y a traves
-    /// de un zaap", recorded from the member's client (Harmoo leads, 293213045026; the member is
+    /// de un zaap", recorded from the member's client (Leader leads, 293213045026; the member is
     /// 302677754146), and in "Combate/entrar a combate ... siguiendo a lider de grupo", same pair:
     ///
     /// <code>

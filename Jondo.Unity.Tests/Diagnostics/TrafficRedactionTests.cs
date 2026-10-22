@@ -84,7 +84,7 @@ namespace Jondo.Unity.Tests.Diagnostics
         {
             // Runs twice per frame on the hot path. Allocating a copy of every combat packet so it
             // can come out identical is the kind of cost that gets a good idea reverted.
-            byte[] frame = Frame("Sacri-Master entra en el mapa");
+            byte[] frame = Frame("Hero-Example entra en el mapa");
 
             Assert.Same(frame, TrafficRedaction.Scrub(frame, frame.Length));
         }

@@ -6,7 +6,7 @@ namespace Jondo.Unity.Server.Network
     /// The frames of a house: its plaque, its sale, its codes.
     /// </summary>
     /// <remarks>
-    /// Measured on the nine captures of "Casas/", Sacrogrito69's house 522652 behind door 522653 of
+    /// Measured on the nine captures of "Casas/", OwnerAccount's house 522652 behind door 522653 of
     /// map 212601864, instance 22; frame numbers are positions in <c>hilo.tramas</c> of each file.
     /// The pandala capture ("Movimiento/ruta muy larga zonas pandala-sidimote-muchos
     /// interactivos", frames 3882-3890) is the only one where somebody knocks at a locked door
@@ -63,7 +63,7 @@ namespace Jondo.Unity.Server.Network
         /// </code>
         /// f5 is read as "has an access code": the one house in the captures that answered a knock
         /// with the code keypad (pandala, frames 3882-3884) carries it, and so do 582 of the 728
-        /// plaques. INFERENCE, and not a clean one: Sacrogrito69's own house has f5 before its code
+        /// plaques. INFERENCE, and not a clean one: OwnerAccount's own house has f5 before its code
         /// is changed ("desde dentro de casa salir a fuera", frame 13) and never after, even with a
         /// code set and at the next login (jaa of "Gremio/comprar una raid", 2 September).
         ///

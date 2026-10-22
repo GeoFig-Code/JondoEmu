@@ -104,7 +104,7 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>
         /// The first copy of every building, the only one of most. The real server numbers the
-        /// owners of a building -- 22 is Sacrogrito69's in "Casas/" -- and the client sends the
+        /// owners of a building -- 22 is OwnerAccount's in "Casas/" -- and the client sends the
         /// number back in iwo f3, izv f1, jan f2, jai f4 and jao f3.
         /// </summary>
         public const int FirstInstance = 1;

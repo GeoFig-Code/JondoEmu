@@ -47,9 +47,9 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void Back_in_the_fight_is_text_184_of_type_1()
         {
-            byte[] lqn = ConnectionProtocol.BuildBackInTheFight("Sacri-Master");
+            byte[] lqn = ConnectionProtocol.BuildBackInTheFight("Hero-Example");
 
-            Assert.Equal("080110b801220c53616372692d4d6173746572", Hex(lqn));
+            Assert.Equal("080110b801220c4865726f2d4578616d706c65", Hex(lqn));
         }
 
         /// <summary>

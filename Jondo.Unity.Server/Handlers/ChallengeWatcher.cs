@@ -1099,7 +1099,7 @@ namespace Jondo.Unity.Server.Handlers
         /// once and blew the order challenge, the server sent
         ///
         ///   kwl 0823
-        ///   lqn 10bc01 220c "Sacri-Master" 2202 "35"
+        ///   lqn 10bc01 220c "Hero-Example" 2202 "35"
         ///
         /// that is message 188 with the culprit's name and the challenge number. Both in the same
         /// millisecond, and the kwl AHEAD of the three deaths: the server considers the challenge broken

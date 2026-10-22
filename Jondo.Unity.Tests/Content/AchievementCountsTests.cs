@@ -143,9 +143,9 @@ namespace Jondo.Unity.Tests.Content
         [Fact]
         public void Another_s_achievement_names_him_and_it()
         {
-            var mgc = ProtoMessage.Parse(AchievementProtocol.BuildUnlockedBy(4618496, "Sacri-Master", 200, 37));
+            var mgc = ProtoMessage.Parse(AchievementProtocol.BuildUnlockedBy(4618496, "Hero-Example", 200, 37));
             Assert.Equal(4618496, mgc.Fields.Single(f => f.FieldNumber == 1).VarIntValue);
-            Assert.Equal("Sacri-Master", System.Text.Encoding.UTF8.GetString(mgc.Fields.Single(f => f.FieldNumber == 2).BytesValue));
+            Assert.Equal("Hero-Example", System.Text.Encoding.UTF8.GetString(mgc.Fields.Single(f => f.FieldNumber == 2).BytesValue));
             var entry = ProtoMessage.Parse(mgc.Fields.Single(f => f.FieldNumber == 3).BytesValue);
             Assert.Equal(37, entry.Fields.Single(f => f.FieldNumber == 3).VarIntValue);
         }

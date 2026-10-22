@@ -156,7 +156,7 @@ namespace Jondo.Unity.Tests.World
 
         /// <summary>
         /// «You are invited to a guild» (jiq), byte for byte against the capture of receiving an
-        /// invitation to the guild «Hezbola» from «Harmoo».
+        /// invitation to the guild «Hezbola» from «Leader».
         /// </summary>
         [Fact]
         public void The_invitation_is_the_capture()
@@ -168,8 +168,8 @@ namespace Jondo.Unity.Tests.World
                 EmblemBackground = 16511237, EmblemSymbolRgb = 2140438,
             };
 
-            Assert.Equal("0a210a111a0f08ce0210221885e2ef072896d2820110be351a0748657a626f6c61200512064861726d6f6f",
-                         Hex(GuildProtocol.BuildInvitation(hezbola, "Harmoo")));
+            Assert.Equal("0a210a111a0f08ce0210221885e2ef072896d2820110be351a0748657a626f6c61200512064c6561646572",
+                         Hex(GuildProtocol.BuildInvitation(hezbola, "Leader")));
         }
 
         /// <summary>

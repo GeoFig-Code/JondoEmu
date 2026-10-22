@@ -12,8 +12,8 @@ namespace Jondo.Unity.Server.Network
     /// Measured in five captures, read with tools/hilo.py (both directions merged by clock):
     ///
     ///   F  «Combate/entrar a combate con listo automatico y entrada automatica siguiendo a lider
-    ///      de grupo-combate-victoria»: the recorder, Sacri-Master, stands on the map in Harmoo's
-    ///      party; Harmoo attacks twice (fights 487 and 488) and Sacri is pulled in behind him.
+    ///      de grupo-combate-victoria»: the recorder, Hero-Example, stands on the map in Leader's
+    ///      party; the leader attacks twice (fights 487 and 488) and the recorder is pulled in behind him.
     ///   S  «Combate/meterse en combate de otra persona haciendo click en la espadita y luego
     ///      abandonar para salirse»: KTAS5625 clicks the swords of a challenge (fight 4923) and
     ///      then leaves it from the placement.
@@ -105,9 +105,9 @@ namespace Jondo.Unity.Server.Network
         ///
         ///   f1 { f1: level, f2: name }   f2: id
         ///
-        /// The level is the one the party sheet carries -- 447 for Harmoo in both. Some entries
+        /// The level is the one the party sheet carries -- 447 for Leader in both. Some entries
         /// carry an f3 { f1: account uuid, f2: nickname } inside f1 (Ocrazy's in B, "WABIT");
-        /// most do not (Harmoo, Sacri-Master, KTAS5625, Uvok, Venom-Vi, Riyuga) and it is not
+        /// most do not (Leader, Hero-Example, KTAS5625, Uvok, Venom-Vi, Riyuga) and it is not
         /// sent.
         /// </summary>
         public static Pb PersonOnTeam(long id, int level, string name)
@@ -328,7 +328,7 @@ namespace Jondo.Unity.Server.Network
         ///   f8 { f1: map, f2: x, f4: subarea, f5: y }   where the fight is
         ///
         /// Measured three times: B 95 (Ocrazy, 449 tenths left, f7 = 1) and the two challenge
-        /// captures (Harmoo, no f2, f7 = 4). f3 is 63000188 for Harmoo in both challenges and a
+        /// captures (Leader, no f2, f7 = 4). f3 is 63000188 for Leader in both challenges and a
         /// different eight-digit number for Ocrazy: read as the account (inference). f8 is the
         /// party sheet's position block; its numbers are the MapPositions row of the map, to
         /// the last digit, in both.

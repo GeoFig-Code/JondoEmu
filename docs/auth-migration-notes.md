@@ -531,7 +531,7 @@ It now sweeps all the readable text of everything the server sends and groups it
 ```
 py tools/leak.py                  everything that has gone out, per message
 py tools/leak.py --op koj ife     only those, with all their strings
-py tools/leak.py --buscar Harmoo  also warns if something specific appears
+py tools/leak.py --buscar Leader  also warns if something specific appears
 ```
 
 The list **has to be really looked at**: a new opcode with proper names inside is a leak. That is how

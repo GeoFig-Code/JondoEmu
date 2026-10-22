@@ -67,7 +67,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>"Fabricado por: #4", the crafter's signature.</summary>
         public const int CraftedBy = 988;
 
-        /// <summary>"Modificado por: #4", the magus' signature ('Sacri-Master' in the captures).</summary>
+        /// <summary>"Modificado por: #4", the magus' signature ('Hero-Example' in the captures).</summary>
         public const int ModifiedBy = 985;
 
         public const int ActionPoints = 111;

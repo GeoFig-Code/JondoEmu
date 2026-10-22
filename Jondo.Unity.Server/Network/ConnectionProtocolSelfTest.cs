@@ -179,8 +179,8 @@ namespace Jondo.Unity.Server.Network
             // The notice accompanying the failure, from the dungeon: it arrives in the same millisecond as the
             // kwl and says whose fault it was.
             Same(failures, "lqn (challenge failed because of somebody)",
-                 "10bc01220c53616372692d4d6173746572" + "22023335",
-                 ConnectionProtocol.BuildSystemMessage(188, "Sacri-Master", "35"));
+                 "10bc01220c4865726f2d4578616d706c65" + "22023335",
+                 ConnectionProtocol.BuildSystemMessage(188, "Hero-Example", "35"));
 
             // The marked target (kwm), with its cell and its fighter inside.
             Same(failures, Op.Kwm,
@@ -308,11 +308,11 @@ namespace Jondo.Unity.Server.Network
                  }, Managers.Zaapis.Teleporter));
 
             // The parties, with the bytes of the "recibir invitacion de grupo y aceptar" capture:
-            // Harmoo (293213045026) invites Sacri-Master (302677754146) to party 71272.
+            // Leader (293213045026) invites Hero-Example (302677754146) to party 71272.
             Same(failures, "ijz (te invitan)",
-                 "08a28280c8e70810a282f0a6c408180828e8ac0430013a064861726d6f6f",
+                 "08a28280c8e70810a282f0a6c408180828e8ac0430013a064c6561646572",
                  ConnectionProtocol.BuildPartyInvitation(
-                     302677754146, 293213045026, "Harmoo", 71272, 8));
+                     302677754146, 293213045026, "Leader", 71272, 8));
 
             // And the decline ones, from the koliseo capture and the inviter's.
             Same(failures, "ilo (invitation closed)", "08d8af0410a28280c8e708",

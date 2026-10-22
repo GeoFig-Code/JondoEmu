@@ -19,7 +19,7 @@ namespace Jondo.Unity.Tests.Network
     /// <remarks>
     /// Every hex string here is a whole frame copied out of "Grupos/con grupo seguir
     /// desplazamiento del lider en mapas cercanos y a traves de un zaap", recorded from the
-    /// member's client: Harmoo (293213045026) leads, the member is 302677754146. The frame numbers
+    /// member's client: Leader (293213045026) leads, the member is 302677754146. The frame numbers
     /// are those of <c>hilo.tramas</c> on that file. The one 1663 comes from the leader's side, in
     /// "Grupos/invitar otro jugador a mi grupo y que acepte invitacion".
     ///
@@ -92,10 +92,10 @@ namespace Jondo.Unity.Tests.Network
         public void The_notices_are_the_captured_lqn_and_ika()
         {
             // frame 1 (1662), frame 248 (1661), frame 249 (ika with the member's own id)
-            Assert.Equal("0a240a220a13747970652e616e6b616d612e636f6d2f6c716e120b10fe0c22064861726d6f6f",
-                         Hex(PartyFollowProtocol.BuildFollowing("Harmoo")));
-            Assert.Equal("0a240a220a13747970652e616e6b616d612e636f6d2f6c716e120b10fd0c22064861726d6f6f",
-                         Hex(PartyFollowProtocol.BuildStoppedFollowing("Harmoo")));
+            Assert.Equal("0a240a220a13747970652e616e6b616d612e636f6d2f6c716e120b10fe0c22064c6561646572",
+                         Hex(PartyFollowProtocol.BuildFollowing("Leader")));
+            Assert.Equal("0a240a220a13747970652e616e6b616d612e636f6d2f6c716e120b10fd0c22064c6561646572",
+                         Hex(PartyFollowProtocol.BuildStoppedFollowing("Leader")));
             Assert.Equal("0a200a1e0a13747970652e616e6b616d612e636f6d2f696b61120708a28280c8e708",
                          Hex(PartyFollowProtocol.BuildFollowEnded(Member)));
 
@@ -183,14 +183,14 @@ namespace Jondo.Unity.Tests.Network
         {
             const long leader = 8_100_000_000_001, member = 8_100_000_000_002;
             using var party = new Party(leader, member);
-            var where = View(leader, "Harmoo", 120063491, 406, 2, -32, 30);
+            var where = View(leader, "Leader", 120063491, 406, 2, -32, 30);
 
             var plan = PartyFollowHandler.PlanFollow(member, "Uber-Black", -1,
                 id => id == leader ? where : null);
 
             // frames 11, 12, 13 -- 1662, ikv, iln, in that order -- and then the 1663.
             Assert.Equal(new[] { member, member, member, leader }, plan.Select(d => d.To).ToArray());
-            Assert.Equal("0a240a220a13747970652e616e6b616d612e636f6d2f6c716e120b10fe0c22064861726d6f6f",
+            Assert.Equal("0a240a220a13747970652e616e6b616d612e636f6d2f6c716e120b10fe0c22064c6561646572",
                          Hex(plan[0].Frame));
             Assert.Equal("0a390a370a13747970652e616e6b616d612e636f6d2f696b76122008a282f0a6c4081a1408838ca0391002201e28e0ffffffffffffffff01209603",
                          Hex(PartyFollowProtocol.BuildLeaderPosition(Leader, 120063491, where.Map, 406)));
@@ -229,7 +229,7 @@ namespace Jondo.Unity.Tests.Network
         {
             const long leader = 8_100_000_000_011, member = 8_100_000_000_012;
             using var party = new Party(leader, member);
-            var where = View(leader, "Harmoo", 120063491, 406, 2, -32, 30);
+            var where = View(leader, "Leader", 120063491, 406, 2, -32, 30);
 
             PartyFollowHandler.PlanFollow(member, "m", -1, _ => where);
             var again = PartyFollowHandler.PlanFollow(member, "m", -1, _ => where);
@@ -307,9 +307,9 @@ namespace Jondo.Unity.Tests.Network
             // ...and the imo the member's client answers with still gets 1661, ika and inb
             // (frames 248-250), then the inferred 1664 to the leader.
             var plan = PartyFollowHandler.PlanUnfollow(follower, "Uber-Black", -1,
-                id => id == leader ? View(leader, "Harmoo", 191105026, 260, 5, -18, 95) : null);
+                id => id == leader ? View(leader, "Leader", 191105026, 260, 5, -18, 95) : null);
             Assert.Equal(new[] { follower, follower, follower, leader }, plan.Select(d => d.To).ToArray());
-            Assert.Equal(Hex(PartyFollowProtocol.BuildStoppedFollowing("Harmoo")), Hex(plan[0].Frame));
+            Assert.Equal(Hex(PartyFollowProtocol.BuildStoppedFollowing("Leader")), Hex(plan[0].Frame));
             Assert.Equal(Hex(PartyFollowProtocol.BuildFollowEnded(follower)), Hex(plan[1].Frame));
             Assert.Equal(Hex(PartyFollowProtocol.BuildUnfollowAnswer(-1)), Hex(plan[2].Frame));
             Assert.Equal(Hex(PartyFollowProtocol.BuildStoppedFollowingYou("Uber-Black")), Hex(plan[3].Frame));

@@ -21,7 +21,7 @@ namespace Jondo.Unity.Server.Handlers
     ///   9 the card's background   10 gender, 0 male   11 name   14 the look with its outfit
     /// </code>
     /// The capture's own card: { 1 18, 2 65924386, 3 11, 4 302677754146, 6 1, 7 354, 8 look, 9 5,
-    /// 11 "Sacri-Master", 14 look }. The background is left out: no card here is customised, and the
+    /// 11 "Hero-Example", 14 look }. The background is left out: no card here is customised, and the
     /// client draws its default.
     /// </remarks>
     public static class PlayerCardHandler

@@ -19,8 +19,8 @@ namespace Jondo.Unity.Server.Handlers
     ///
     /// Measured in three captures, with this exact shape:
     ///
-    ///   0a04 686f6c61  2200  2a0c 53616372692d4d6173746572
-    ///   f1 = "hola"    f4 = ""    f5 = "Sacri-Master"
+    ///   0a04 686f6c61  2200  2a0c 4865726f2d4578616d706c65
+    ///   f1 = "hola"    f4 = ""    f5 = "Hero-Example"
     ///
     /// The private channel is 9. That was not deduced: it is in the client's own table,
     /// ChatChannelsDataRoot, where 9 is called «Privado», carries <c>isPrivate</c> and its shortcut is

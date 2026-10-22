@@ -315,13 +315,13 @@ namespace Jondo.Unity.Tests.World
         public void What_happened_while_away_is_told_once()
         {
             TaxCollectorStore.RecordAbsence(55, new TaxCollectorStore.Absence(
-                TaxCollectorStore.AbsenceCollected, 35, 109, 88081167, 25, 77, "Sacri-Master"));
+                TaxCollectorStore.AbsenceCollected, 35, 109, 88081167, 25, 77, "Hero-Example"));
             TaxCollectorStore.RecordAbsence(55, new TaxCollectorStore.Absence(
                 TaxCollectorStore.AbsenceDefeated, 74, 154, 88081168, 25, 0, ""));
 
             var absences = TaxCollectorStore.TakeAbsences(55);
             Assert.Equal(2, absences.Count);
-            Assert.Equal("Sacri-Master", absences[0].WhoName);
+            Assert.Equal("Hero-Example", absences[0].WhoName);
             Assert.Empty(TaxCollectorStore.TakeAbsences(55));
 
             var hkx = Fields(TaxCollectorProtocol.BuildAbsences(absences));

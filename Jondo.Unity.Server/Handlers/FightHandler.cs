@@ -943,7 +943,7 @@ namespace Jondo.Unity.Server.Handlers
                 ? fight.Rojo.ConvertAll(f => (long)f.MonsterId)
                 : new List<long>();
             // The f6 is who OPENED the fight, whoever receives it: the follower of the follow
-            // capture gets Harmoo there (frame 162), the joiner of the sword capture Uvok (17),
+            // capture gets Leader there (frame 162), the joiner of the sword capture Uvok (17),
             // and in the challenge both views name the challenger. It was the receiver, which was
             // right only for the one who attacked.
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kam,

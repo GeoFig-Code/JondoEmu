@@ -240,11 +240,11 @@ namespace Jondo.Unity.Tests.Economy
                 E(Strength, 12), new Effect(Forgemagic.PoolEffect, 180, 0, 0),
                 new Effect(Forgemagic.ModifiedBy, 0, 0, 0, "Otro"),
             };
-            var signed = Forgemagic.Signed(effects, Forgemagic.ModifiedBy, "Sacri-Master");
+            var signed = Forgemagic.Signed(effects, Forgemagic.ModifiedBy, "Hero-Example");
             Assert.Single(signed, e => e.Effect == Forgemagic.ModifiedBy);
 
             var read = Equipment.ParseEffects(Forgemagic.Serialize(signed));
-            Assert.Equal("Sacri-Master", read.Single(e => e.Effect == Forgemagic.ModifiedBy).Text);
+            Assert.Equal("Hero-Example", read.Single(e => e.Effect == Forgemagic.ModifiedBy).Text);
             Assert.Equal(1.8, Forgemagic.PoolOf(read), 6);
             Assert.Equal(12, read.Single(e => e.Effect == Strength).Value);
         }

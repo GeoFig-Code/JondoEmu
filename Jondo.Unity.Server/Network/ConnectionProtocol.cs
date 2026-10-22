@@ -2755,7 +2755,7 @@ namespace Jondo.Unity.Server.Network
 
         /// <summary>
         /// Whose bag a map is (the jss's f8, jqd): f1 the room, f2 its theme, f3 how many rooms,
-        /// f5 the owner { f1 { f2 name, f3 level }, f2 id }. The capture's: {32, 4, «Sacri-Master» 354}.
+        /// f5 the owner { f1 { f2 name, f3 level }, f2 id }. The capture's: {32, 4, «Hero-Example» 354}.
         /// </summary>
         public static Pb HavenBagInfo(int room, int theme, int rooms, long ownerId, string ownerName, int ownerLevel)
             => Pb.New()
@@ -2898,8 +2898,8 @@ namespace Jondo.Unity.Server.Network
         ///   f1: who is invited    f2: who invites   f3: places
         ///   f5: the party         f6: ?             f7: the inviter's name
         ///
-        /// Measured: 08a28280c8e708 10a282f0a6c408 1808 28e8ac04 3001 3a064861726d6f6f, that is
-        /// invitee 302677754146, host 293213045026, eight places, party 71272, and «Harmoo».
+        /// Measured: 08a28280c8e708 10a282f0a6c408 1808 28e8ac04 3001 3a064c6561646572, that is
+        /// invitee 302677754146, host 293213045026, eight places, party 71272, and «Leader».
         /// f6 is 1 in one capture and 2 in another and what distinguishes them has not been worked out; 1 is sent,
         /// which is that of the invitation that gets accepted.
         /// </summary>

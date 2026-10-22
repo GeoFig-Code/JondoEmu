@@ -18,7 +18,7 @@ namespace Jondo.Unity.Tests.Combat
     /// The frames are the captures', byte for byte:
     ///
     ///   F  Combate/entrar a combate con listo automatico y entrada automatica siguiendo a lider
-    ///      de grupo-combate-victoria (Harmoo 293213045026 leads, Sacri-Master 302677754146
+    ///      de grupo-combate-victoria (PartyLeader 293213045026 leads, Hero-Example 302677754146
     ///      follows him into fight 487 against the group -20002)
     ///   S  Combate/meterse en combate de otra persona haciendo click en la espadita y luego
     ///      abandonar para salirse (KTAS5625 into Inu-no-Kami's side of challenge 4923)
@@ -28,8 +28,8 @@ namespace Jondo.Unity.Tests.Combat
     /// </remarks>
     public class FightJoinTests
     {
-        private const long Harmoo = 293213045026;
-        private const long Sacri = 302677754146;
+        private const long PartyLeader = 293213045026;
+        private const long Recorder = 302677754146;
         private const long Group = -20002;
         private const long Fight487 = 487;
 
@@ -86,10 +86,10 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void The_map_gets_each_side_as_a_kae()
         {
-            var harmoo = FightJoinProtocol.Team(0, Harmoo, false,
-                new[] { FightJoinProtocol.PersonOnTeam(Harmoo, 447, "Harmoo") });
-            Assert.Equal("0a2118a282f0a6c40820012a160a140a0b08bf0312064861726d6f6f10a282f0a6c40810e703",
-                         Hex(FightJoinProtocol.BuildTeamUpdate(harmoo, Fight487)));
+            var leaderTeam = FightJoinProtocol.Team(0, PartyLeader, false,
+                new[] { FightJoinProtocol.PersonOnTeam(PartyLeader, 447, "Leader") });
+            Assert.Equal("0a2118a282f0a6c40820012a160a140a0b08bf0312064c656164657210a282f0a6c40810e703",
+                         Hex(FightJoinProtocol.BuildTeamUpdate(leaderTeam, Fight487)));
 
             var empty = FightJoinProtocol.Team(1, Group, true, Array.Empty<Pb>());
             Assert.Equal("0a13100118dee3feffffffffffff0120012a00300110e703",
@@ -108,7 +108,7 @@ namespace Jondo.Unity.Tests.Combat
         public void The_board_carries_one_kae_for_the_receivers_own_side()
         {
             Assert.Equal("0a0b18a282f0a6c40820012a0010e703",
-                         Hex(FightJoinProtocol.BuildTeamUpdate(FightJoinProtocol.Team(0, Harmoo, false, null), Fight487)));
+                         Hex(FightJoinProtocol.BuildTeamUpdate(FightJoinProtocol.Team(0, PartyLeader, false, null), Fight487)));
             Assert.Equal("0a0d18e380ecc4d40120012a00300110bb26",
                          Hex(FightJoinProtocol.BuildTeamUpdate(
                              FightJoinProtocol.Team(1, 57052692579, false, null), 4923)));
@@ -145,9 +145,9 @@ namespace Jondo.Unity.Tests.Combat
                          + "102020840828c0ffffffffffffffff01", Hex(dungeon));
 
             byte[] challenge = FightJoinProtocol.BuildPartyMemberInFight(
-                Harmoo, 0, 63000188, "Harmoo", 492, 71272,
+                PartyLeader, 0, 63000188, "Leader", 492, 71272,
                 FightJoinProtocol.PartyFightChallenge, 188744196, 2, -18, 95);
-            Assert.Equal("08a282f0a6c40818fc9c851e22064861726d6f6f28ec0330e8ac0438044214088484805a1002205f"
+            Assert.Equal("08a282f0a6c40818fc9c851e22064c656164657228ec0330e8ac0438044214088484805a1002205f"
                          + "28eeffffffffffffffff01", Hex(challenge));
         }
 
@@ -159,10 +159,10 @@ namespace Jondo.Unity.Tests.Combat
         public void The_joiners_board_names_the_opener_and_what_is_left()
         {
             Assert.Equal("100418dee3feffffffffffff012202ec0328e70330a282f0a6c408",
-                         Hex(FightProtocol.BuildFightAnnounced(4, Group, new long[] { 492 }, Fight487, Harmoo)));
+                         Hex(FightProtocol.BuildFightAnnounced(4, Group, new long[] { 492 }, Fight487, PartyLeader)));
             Assert.Equal("1801200128ba033004", Hex(FightProtocol.BuildFightSummary(4, 442)));
             Assert.Equal("121008bb01100118ffffffffffffffffff01120c08e502100518a28280c8e708",
-                         Hex(FightProtocol.BuildFightersPlaced(new[] { (187, 1, -1L), (357, 5, Sacri) })));
+                         Hex(FightProtocol.BuildFightersPlaced(new[] { (187, 1, -1L), (357, 5, Recorder) })));
         }
 
         // ════════════════════════════════════════════════════════════════════
@@ -183,21 +183,21 @@ namespace Jondo.Unity.Tests.Combat
             fight.SetPlacementCells(
                 new[] { 317, 357, 359, 399, 318, 386, 330, 344, 346, 371, 373, 400 },
                 new[] { 187, 203, 228, 270, 231, 271, 188, 202, 216, 242, 256, 257 });
-            fight.AddPlayer(Person(Harmoo, "Harmoo", 447));
+            fight.AddPlayer(Person(PartyLeader, "Leader", 447));
             fight.AddMonster(Monster(-1, 492, 0));
             return fight;
         }
 
-        /// <summary>F frames 153, 140 and 141, built from the fight itself after Sacri came in.</summary>
+        /// <summary>F frames 153, 140 and 141, built from the fight itself after Recorder came in.</summary>
         [Fact]
         public void A_fights_sides_come_out_as_the_capture_draws_them()
         {
             var fight = FollowFight();
-            Assert.True(fight.JoinTeam(Person(Sacri, "Sacri-Master", 354), FightInstance.Azules,
+            Assert.True(fight.JoinTeam(Person(Recorder, "Hero-Example", 354), FightInstance.Azules,
                                        FightHandler.MaxPeoplePerTeam));
 
-            Assert.Equal("0a3d18a282f0a6c40820012a320a140a0b08bf0312064861726d6f6f10a282f0a6c4080a1a0a1108e2"
-                         + "02120c53616372692d4d617374657210a28280c8e70810e703",
+            Assert.Equal("0a3d18a282f0a6c40820012a320a140a0b08bf0312064c656164657210a282f0a6c4080a1a0a1108e2"
+                         + "02120c4865726f2d4578616d706c6510a28280c8e70810e703",
                          Hex(FightJoinProtocol.BuildTeamUpdate(
                              FightHandler.TeamOnMap(fight, FightInstance.Azules, withMembers: true), Fight487)));
             Assert.Equal("0a13100118dee3feffffffffffff0120012a00300110e703",
@@ -217,17 +217,17 @@ namespace Jondo.Unity.Tests.Combat
         public void A_joiner_takes_the_first_free_cell_of_his_side()
         {
             var fight = FollowFight();
-            var sacri = Person(Sacri, "Sacri-Master", 354);
+            var recorder = Person(Recorder, "Hero-Example", 354);
 
-            Assert.True(fight.JoinTeam(sacri, FightInstance.Azules, FightHandler.MaxPeoplePerTeam));
-            Assert.Equal(FightInstance.Azules, sacri.TeamId);
-            Assert.Equal(357, sacri.CellId);
+            Assert.True(fight.JoinTeam(recorder, FightInstance.Azules, FightHandler.MaxPeoplePerTeam));
+            Assert.Equal(FightInstance.Azules, recorder.TeamId);
+            Assert.Equal(357, recorder.CellId);
             Assert.Equal(2, fight.PeopleIn(FightInstance.Azules));
-            Assert.Contains(sacri, fight.TurnOrder);
+            Assert.Contains(recorder, fight.TurnOrder);
 
             // And nobody is moved on top of anybody during the placement.
-            fight.ChangePlacementCell(Sacri, 317);
-            Assert.Equal(357, sacri.CellId);
+            fight.ChangePlacementCell(Recorder, 317);
+            Assert.Equal(357, recorder.CellId);
         }
 
         [Fact]
@@ -238,13 +238,13 @@ namespace Jondo.Unity.Tests.Combat
 
             Assert.Equal(FightInstance.JoinRefusal.NotInPlacement,
                          fight.CanJoin(FightInstance.Azules, FightHandler.MaxPeoplePerTeam));
-            Assert.False(fight.JoinTeam(Person(Sacri, "Sacri-Master", 354), FightInstance.Azules,
+            Assert.False(fight.JoinTeam(Person(Recorder, "Hero-Example", 354), FightInstance.Azules,
                                         FightHandler.MaxPeoplePerTeam));
             Assert.Equal(1, fight.PeopleIn(FightInstance.Azules));
 
             // The same answer through the kay's door, for somebody standing on the map.
-            var sacri = new SessionState { CharacterId = Sacri, MapId = 188744196 };
-            Assert.Equal("NotInPlacement", FightHandler.WhyNotJoin(fight, Harmoo, sacri, out _));
+            var recorder = new SessionState { CharacterId = Recorder, MapId = 188744196 };
+            Assert.Equal("NotInPlacement", FightHandler.WhyNotJoin(fight, PartyLeader, recorder, out _));
         }
 
         [Fact]
@@ -260,11 +260,11 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Equal(8, fight.PeopleIn(FightInstance.Azules));
             Assert.Equal(FightInstance.JoinRefusal.TeamFull,
                          fight.CanJoin(FightInstance.Azules, FightHandler.MaxPeoplePerTeam));
-            Assert.False(fight.JoinTeam(Person(Sacri, "Sacri-Master", 354), FightInstance.Azules,
+            Assert.False(fight.JoinTeam(Person(Recorder, "Hero-Example", 354), FightInstance.Azules,
                                         FightHandler.MaxPeoplePerTeam));
 
-            var sacri = new SessionState { CharacterId = Sacri, MapId = 188744196 };
-            Assert.Equal("TeamFull", FightHandler.WhyNotJoin(fight, Harmoo, sacri, out _));
+            var recorder = new SessionState { CharacterId = Recorder, MapId = 188744196 };
+            Assert.Equal("TeamFull", FightHandler.WhyNotJoin(fight, PartyLeader, recorder, out _));
         }
 
         [Fact]
@@ -284,11 +284,11 @@ namespace Jondo.Unity.Tests.Combat
         public void Nobody_joins_the_monsters()
         {
             var fight = FollowFight();
-            var sacri = new SessionState { CharacterId = Sacri, MapId = 188744196 };
+            var recorder = new SessionState { CharacterId = Recorder, MapId = 188744196 };
 
             Assert.Equal(FightInstance.JoinRefusal.MonsterTeam,
                          fight.CanJoin(FightInstance.Rojos, FightHandler.MaxPeoplePerTeam));
-            Assert.Equal("MonsterTeam", FightHandler.WhyNotJoin(fight, Group, sacri, out int team));
+            Assert.Equal("MonsterTeam", FightHandler.WhyNotJoin(fight, Group, recorder, out int team));
             Assert.Equal(FightInstance.Rojos, team);
         }
 
@@ -297,18 +297,18 @@ namespace Jondo.Unity.Tests.Combat
         {
             var fight = FollowFight();
 
-            var onTheMap = new SessionState { CharacterId = Sacri, MapId = 188744196 };
-            Assert.Null(FightHandler.WhyNotJoin(fight, Harmoo, onTheMap, out int team));
+            var onTheMap = new SessionState { CharacterId = Recorder, MapId = 188744196 };
+            Assert.Null(FightHandler.WhyNotJoin(fight, PartyLeader, onTheMap, out int team));
             Assert.Equal(FightInstance.Azules, team);
 
-            var elsewhere = new SessionState { CharacterId = Sacri, MapId = 188744197 };
-            Assert.NotNull(FightHandler.WhyNotJoin(fight, Harmoo, elsewhere, out _));
+            var elsewhere = new SessionState { CharacterId = Recorder, MapId = 188744197 };
+            Assert.NotNull(FightHandler.WhyNotJoin(fight, PartyLeader, elsewhere, out _));
 
-            var fighting = new SessionState { CharacterId = Sacri, MapId = 188744196, IsInFight = true };
-            Assert.NotNull(FightHandler.WhyNotJoin(fight, Harmoo, fighting, out _));
+            var fighting = new SessionState { CharacterId = Recorder, MapId = 188744196, IsInFight = true };
+            Assert.NotNull(FightHandler.WhyNotJoin(fight, PartyLeader, fighting, out _));
 
             Assert.NotNull(FightHandler.WhyNotJoin(fight, 42, onTheMap, out _));
-            Assert.NotNull(FightHandler.WhyNotJoin(null, Harmoo, onTheMap, out _));
+            Assert.NotNull(FightHandler.WhyNotJoin(null, PartyLeader, onTheMap, out _));
         }
 
         /// <summary>What is left of the placement, in tenths, never below zero.</summary>
@@ -328,10 +328,10 @@ namespace Jondo.Unity.Tests.Combat
         public void Leaving_the_placement_frees_the_place()
         {
             var fight = FollowFight();
-            fight.JoinTeam(Person(Sacri, "Sacri-Master", 354), FightInstance.Azules, FightHandler.MaxPeoplePerTeam);
+            fight.JoinTeam(Person(Recorder, "Hero-Example", 354), FightInstance.Azules, FightHandler.MaxPeoplePerTeam);
 
-            Assert.True(fight.LeavePlacement(Sacri));
-            Assert.Equal(-1, fight.EquipoDe(Sacri));
+            Assert.True(fight.LeavePlacement(Recorder));
+            Assert.Equal(-1, fight.EquipoDe(Recorder));
             Assert.Equal(357, fight.FreePlacementCell(FightInstance.Azules));
             Assert.False(fight.LeavePlacement(-1));
         }
@@ -421,7 +421,7 @@ namespace Jondo.Unity.Tests.Combat
                 Members = MobSpawnManager.ComposeRoom(Jalatos, Array.Empty<int>(), 0, 5, 121373185).Take(1).ToList(),
             };
             var fight = FollowFight();
-            fight.JoinTeam(Person(Sacri, "Sacri-Master", 354), FightInstance.Azules, FightHandler.MaxPeoplePerTeam);
+            fight.JoinTeam(Person(Recorder, "Hero-Example", 354), FightInstance.Azules, FightHandler.MaxPeoplePerTeam);
 
             var (removed, added) = FightHandler.RegrowMonsters(fight, room);
 

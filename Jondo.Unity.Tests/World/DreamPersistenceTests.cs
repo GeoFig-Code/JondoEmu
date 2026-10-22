@@ -75,7 +75,7 @@ namespace Jondo.Unity.Tests.World
         public void The_well_offers_the_player_s_dream()
         {
             var dream = New(difficulty: 7);
-            var named = new Dreams.Sueno { CharacterId = 1, Nombre = "Sacri-Master", Nivel = 200, Dificultad = 7 };
+            var named = new Dreams.Sueno { CharacterId = 1, Nombre = "Hero-Example", Nivel = 200, Dificultad = 7 };
             foreach (var s in dream.Salas) named.Salas.Add(s);
             named.Ganados.Add(new Dreams.Bono(2844, 20));
             named.DreamPoints = 10;
@@ -85,7 +85,7 @@ namespace Jondo.Unity.Tests.World
             byte[] iyj = DreamProtocol.BuildDreamMap(named);
             var header = ProtoMessage.Parse(iyj).Fields.Single(f => f.FieldNumber == 1).BytesValue;
             string hex = Convert.ToHexString(header).ToLowerInvariant();
-            Assert.StartsWith("100a1a0c53616372692d4d61737465723a090a052014589c16100140c80168077001780182010132", hex);
+            Assert.StartsWith("100a1a0c4865726f2d4578616d706c653a090a052014589c16100140c80168077001780182010132", hex);
         }
 
         /// <summary>

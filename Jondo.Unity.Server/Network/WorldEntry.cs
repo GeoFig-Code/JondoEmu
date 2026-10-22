@@ -98,8 +98,8 @@ namespace Jondo.Unity.Server.Network
             //        f2 { f2: account id, f4 { f1: nickname, f2: tag }, f5: 3 }
             //   ife  the alliances, by name and by tag
             //   jjs  a player's stall standing on the map, with the account behind it:
-            //        f5 { f2 { f8 { f1: nickname, f2: tag } } }, harmoo#4742
-            //   jaa  the same thing in its own message, Sacrogrito69#4234
+            //        f5 { f2 { f8 { f1: nickname, f2: tag } } }, owner2#0002
+            //   jaa  the same thing in its own message, OwnerAccount#0001
             //
             // The last four went unnoticed for a while because the check that was supposed to
             // catch them looked for names it had to be told in advance, and nobody had told it

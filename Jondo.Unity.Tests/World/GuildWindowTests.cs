@@ -45,7 +45,7 @@ namespace Jondo.Unity.Tests.World
         };
 
         /// <summary>The founder as he comes out in the founding jgu: sacrier, 8,094 points, no guild coins nor note.</summary>
-        private static GuildStore.Member SacriMaster(string note = "", long noteMs = 0) => new()
+        private static GuildStore.Member Recorder(string note = "", long noteMs = 0) => new()
         {
             CharacterId = 302677754146, GuildId = 42043, Rank = 1, JoinedUtcMs = 1786567982202, Note = note, NoteMs = noteMs,
         };
@@ -53,8 +53,8 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_founders_row_is_the_capture()
         {
-            Assert.Equal("0a3d0a34120c53616372692d4d617374657218e2022a211001180120faf8ffbdff33300b3a09089e3f1200180342004202080150a2dab71f10a28280c8e708",
-                         Hex(GuildProtocol.BuildMember(SacriMaster(), "Sacri-Master", 354, 65924386, breed: 11, achievementPoints: 8094)));
+            Assert.Equal("0a3d0a34120c4865726f2d4578616d706c6518e2022a211001180120faf8ffbdff33300b3a09089e3f1200180342004202080150a2dab71f10a28280c8e708",
+                         Hex(GuildProtocol.BuildMember(Recorder(), "Hero-Example", 354, 65924386, breed: 11, achievementPoints: 8094)));
         }
 
         /// <summary>
@@ -67,12 +67,12 @@ namespace Jondo.Unity.Tests.World
             var second = new GuildStore.Member { CharacterId = 302677754147, GuildId = 42043, Rank = 4, JoinedUtcMs = 1786567999999 };
             byte[] list = GuildProtocol.BuildMembers(new[]
             {
-                new GuildProtocol.MemberRow(SacriMaster(), "Sacri-Master", 354, 65924386, 11, 8094, 0, true),
+                new GuildProtocol.MemberRow(Recorder(), "Hero-Example", 354, 65924386, 11, 8094, 0, true),
                 new GuildProtocol.MemberRow(second, "Hiierbita-Xx", 200, 65924387, 10, 55, 0, false),
             });
             var entries = ProtoMessage.Parse(list).Fields.Where(f => f.FieldNumber == 1).ToList();
             Assert.Equal(2, entries.Count);
-            Assert.StartsWith(Hex(GuildProtocol.BuildMember(SacriMaster(), "Sacri-Master", 354, 65924386, breed: 11,
+            Assert.StartsWith(Hex(GuildProtocol.BuildMember(Recorder(), "Hero-Example", 354, 65924386, breed: 11,
                                                             achievementPoints: 8094)), Hex(list));
         }
 
@@ -83,8 +83,8 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_updated_row_carries_the_note_and_the_contributions()
         {
-            Assert.Equal("124e0a45120c53616372692d4d617374657218e2022a321001180120faf8ffbdff33300b3a1a089e3f1204080a100a1803420d0a04686f6c6110808b88bfff334202080150a2dab71f10a28280c8e708",
-                         Hex(GuildProtocol.BuildMemberUpdated(SacriMaster("hola", 1786570212736), "Sacri-Master", 354, 65924386,
+            Assert.Equal("124e0a45120c4865726f2d4578616d706c6518e2022a321001180120faf8ffbdff33300b3a1a089e3f1204080a100a1803420d0a04686f6c6110808b88bfff334202080150a2dab71f10a28280c8e708",
+                         Hex(GuildProtocol.BuildMemberUpdated(Recorder("hola", 1786570212736), "Hero-Example", 354, 65924386,
                                                               breed: 11, achievementPoints: 8094, contributed: 10)));
         }
 
@@ -266,7 +266,7 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_profile_is_the_capture()
         {
-            Assert.Equal(Hex(GuildProtocol.BuildEmptyGuildMessage(42043)), Hex(GuildProtocol.BuildProfile(Jondo, null, "Sacri-Master")));
+            Assert.Equal(Hex(GuildProtocol.BuildEmptyGuildMessage(42043)), Hex(GuildProtocol.BuildProfile(Jondo, null, "Hero-Example")));
             Assert.Equal("120b1801280232010150bbc802", Hex(GuildProtocol.BuildProfile(Jondo, null, "")));
 
             var written = new GuildStore.Profile
@@ -275,8 +275,8 @@ namespace Jondo.Unity.Tests.World
                 Tags = new byte[] { 0x1d, 0x13, 0x08, 0x0e, 0x1a, 0x12, 0x0b, 0x09, 0x10 },
                 F5 = 2, F6 = new byte[] { 0x03 }, Title = "Dragon Ball",
             };
-            Assert.Equal("1241089da782beff331205486f6c6121181422091d13080e1a120b09102802320103420c53616372692d4d6173746572486450bbc8026a0b447261676f6e2042616c6c",
-                         Hex(GuildProtocol.BuildProfile(Jondo, written, "Sacri-Master")));
+            Assert.Equal("1241089da782beff331205486f6c6121181422091d13080e1a120b09102802320103420c4865726f2d4578616d706c65486450bbc8026a0b447261676f6e2042616c6c",
+                         Hex(GuildProtocol.BuildProfile(Jondo, written, "Hero-Example")));
 
             // And the store keeps it whole.
             GuildStore.SaveProfile(written);

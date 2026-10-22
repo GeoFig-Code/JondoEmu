@@ -15,7 +15,7 @@ namespace Jondo.Unity.Tests.Social
     [Collection("MapManager")]
     public class LadderTests : IDisposable
     {
-        private static readonly Ladders.Person SacriMaster = new(4618496, 290, 11, 0, "Sacri-Master", 354);
+        private static readonly Ladders.Person Recorder = new(4618496, 290, 11, 0, "Hero-Example", 354);
         private readonly List<long> _koliseo = new();
         private readonly List<long> _dreams = new();
         private readonly int _seasons = KoliseoLadder.LastSeasonNumber();
@@ -38,16 +38,16 @@ namespace Jondo.Unity.Tests.Social
         [Fact]
         public void The_player_s_own_experience_line_is_the_capture_s()
         {
-            var line = new Ladders.ExperienceLine(13353, SacriMaster, 23793536711);
-            Assert.Equal("0a2608c79dd2d1581a1b10a202180b220c53616372692d4d617374657230e2023880f2990220a968",
+            var line = new Ladders.ExperienceLine(13353, Recorder, 23793536711);
+            Assert.Equal("0a2608c79dd2d1581a1b10a202180b220c4865726f2d4578616d706c6530e2023880f2990220a968",
                          Hex(LadderProtocol.BuildOwn(1, LadderProtocol.ExperienceLine(line))));
         }
 
         [Fact]
         public void The_player_s_own_achievements_line_is_the_capture_s()
         {
-            var line = new Ladders.AchievementLine(20973, SacriMaster, 8093);
-            Assert.Equal("0a2408eda301109d3f1a1b10a202180b220c53616372692d4d617374657230e2023880f29902",
+            var line = new Ladders.AchievementLine(20973, Recorder, 8093);
+            Assert.Equal("0a2408eda301109d3f1a1b10a202180b220c4865726f2d4578616d706c6530e2023880f29902",
                          Hex(LadderProtocol.BuildOwn(1, LadderProtocol.AchievementLine(line))));
         }
 
@@ -68,7 +68,7 @@ namespace Jondo.Unity.Tests.Social
         public void A_dream_line_carries_intensity_waves_turn_and_day()
         {
             var done = new DateTime(2026, 7, 5, 23, 25, 49, DateTimeKind.Utc).AddTicks(3426245);
-            var line = new Ladders.DreamLine(11223, SacriMaster, false, 4, 6, 20, done);
+            var line = new Ladders.DreamLine(11223, Recorder, false, 4, 6, 20, done);
             var iqn = ProtoMessage.Parse(LadderProtocol.DreamLine(line).Build());
             Assert.DoesNotContain(iqn.Fields, f => f.FieldNumber == 1);
             Assert.Equal(4, iqn.Fields.Single(f => f.FieldNumber == 2).VarIntValue);

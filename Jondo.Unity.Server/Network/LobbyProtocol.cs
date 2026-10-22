@@ -21,7 +21,7 @@ namespace Jondo.Unity.Server.Network
 
         /// <summary>
         /// A player (joa): f1 character, f2 since when, f3 breed, f4 level, f5 his uid on the board,
-        /// f6 sex, f7 name -- the capture's «302677754146, …, 11, 354, "6917336a-…", "Sacri-Master"».
+        /// f6 sex, f7 name -- the capture's «302677754146, …, 11, 354, "6917336a-…", "Hero-Example"».
         /// </summary>
         public static Pb PlayerBlock(Lobbies.Player player)
             => Pb.New()

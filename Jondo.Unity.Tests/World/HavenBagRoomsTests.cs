@@ -39,12 +39,12 @@ namespace Jondo.Unity.Tests.World
                          ConnectionProtocol.BuildHavenBagThemes(new[] { 34, 51, 2, 4, 1, 21, 32, 3 }));
         }
 
-        /// <summary>Whose bag the map is (jss f8): room, theme, rooms and owner, as «Sacri-Master»'s.</summary>
+        /// <summary>Whose bag the map is (jss f8): room, theme, rooms and owner, as «Hero-Example»'s.</summary>
         [Fact]
         public void Whose_bag_has_the_capture_s_shape()
         {
-            Assert.Equal(Hex("10201804" + "2a1a0a11120c53616372692d4d617374657218e202" + "10a28280c8e708"),
-                         ConnectionProtocol.HavenBagInfo(0, 32, 4, 302677754146, "Sacri-Master", 354).Build());
+            Assert.Equal(Hex("10201804" + "2a1a0a11120c4865726f2d4578616d706c6518e202" + "10a28280c8e708"),
+                         ConnectionProtocol.HavenBagInfo(0, 32, 4, 302677754146, "Hero-Example", 354).Build());
         }
 
         /// <summary>Every character has every theme and the four rooms; a room keeps the theme it is given.</summary>

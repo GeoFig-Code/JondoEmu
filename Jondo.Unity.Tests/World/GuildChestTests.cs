@@ -56,8 +56,8 @@ namespace Jondo.Unity.Tests.World
         public void Opening_it_is_frames_29_to_32()
         {
             Assert.Equal(Hex("081610011864"), StorageProtocol.BuildGuildChestOpened(1));
-            Assert.Equal(Hex("0a0c53616372692d4d6173746572"), StorageProtocol.BuildGuildChestViewers(new[] { "Sacri-Master" }));
-            Assert.Equal(Hex("0a0c53616372692d4d6173746572"), StorageProtocol.BuildGuildChestViewer("Sacri-Master"));
+            Assert.Equal(Hex("0a0c4865726f2d4578616d706c65"), StorageProtocol.BuildGuildChestViewers(new[] { "Hero-Example" }));
+            Assert.Equal(Hex("0a0c4865726f2d4578616d706c65"), StorageProtocol.BuildGuildChestViewer("Hero-Example"));
 
             // Frame 39: the second tab refused, "No tienes el derecho de consultar el cofre de gremio."
             Assert.Equal(Hex("0801108e05"), ConnectionProtocol.BuildInfoMessage(InfoMessages.Warning, GuildChests.NoRightToLook));
@@ -128,7 +128,7 @@ namespace Jondo.Unity.Tests.World
             GuildStore.Join(leader, GuildId, GuildStore.RankLeader);
             Forget(leader);
 
-            await using var pipe = await ClientPipe.OpenAsync(8_830_000_101, leader, BankMap, "Sacri-Master");
+            await using var pipe = await ClientPipe.OpenAsync(8_830_000_101, leader, BankMap, "Hero-Example");
             try
             {
                 using (SessionContext.Push(pipe.Session))
@@ -143,8 +143,8 @@ namespace Jondo.Unity.Tests.World
                     Assert.Equal(StorageProtocol.BuildGuildChestTabs(GuildChests.TabsOfGuild(GuildId)), await pipe.Next(Op.Ivl));
                     Assert.Equal(Hex("081610011864"), await pipe.Next(Op.Kbk));
                     Assert.Empty(await pipe.Next(Op.Iwb));
-                    Assert.Equal(Hex("0a0c53616372692d4d6173746572"), await pipe.Next(Op.Jlo));
-                    Assert.Equal(Hex("0a0c53616372692d4d6173746572"), await pipe.Next(Op.Jlq));
+                    Assert.Equal(Hex("0a0c4865726f2d4578616d706c65"), await pipe.Next(Op.Jlo));
+                    Assert.Equal(Hex("0a0c4865726f2d4578616d706c65"), await pipe.Next(Op.Jlq));
 
                     // Frames 48-51: in, under a new uid.
                     Assert.True(await StorageHandler.MoveAsync(pipe.ToClient, Kcr(1, uid)));
@@ -197,7 +197,7 @@ namespace Jondo.Unity.Tests.World
             Forget(leader);
             Assert.NotNull(GuildChests.TabOf(GuildId, 2));
 
-            await using var pipe = await ClientPipe.OpenAsync(8_830_000_103, leader, BankMap, "Sacri-Master");
+            await using var pipe = await ClientPipe.OpenAsync(8_830_000_103, leader, BankMap, "Hero-Example");
             try
             {
                 using (SessionContext.Push(pipe.Session))

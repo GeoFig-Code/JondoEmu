@@ -13,7 +13,7 @@ namespace Jondo.Unity.Server.Managers
     /// <remarks>
     /// <para>
     /// Per ACCOUNT, as the captures show it: the plaque names the owner by the account's nickname
-    /// and tag -- f8 { f1: "Sacrogrito69", f2: "4234" } in every house frame of "Casas/" -- and jaa,
+    /// and tag -- f8 { f1: "OwnerAccount", f2: "0001" } in every house frame of "Casas/" -- and jaa,
     /// the list of one's houses, comes with the account at the world entry. Every character of the
     /// account is the owner.
     /// </para>

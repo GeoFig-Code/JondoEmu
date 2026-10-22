@@ -14,7 +14,7 @@ using Xunit;
 namespace Jondo.Unity.Tests.World
 {
     /// <summary>
-    /// A house's frames, byte for byte against the captures of "Casas/" -- Sacrogrito69's house
+    /// A house's frames, byte for byte against the captures of "Casas/" -- OwnerAccount's house
     /// 522652, door 522653 of map 212601864, instance 22 -- and the pandala door that asked for a
     /// code; and the store behind them: owners per account, sale, codes, purchase.
     /// </summary>
@@ -25,10 +25,10 @@ namespace Jondo.Unity.Tests.World
 
         private const int House = 522652, Door = 522653, Instance = 22;
 
-        private static HouseProtocol.Plaque Sacrogrito(long price = 0, bool locked = false, byte[]? guild = null)
+        private static HouseProtocol.Plaque CapturedPlaque(long price = 0, bool locked = false, byte[]? guild = null)
             => new HouseProtocol.Plaque
             {
-                Instance = Instance, OwnerName = "Sacrogrito69", OwnerTag = "4234",
+                Instance = Instance, OwnerName = "OwnerAccount", OwnerTag = "0001",
                 Price = price, Locked = locked, Rooms = 3, Chests = 2, Skills = new long[] { 339 }, GuildBlock = guild,
             };
 
@@ -40,8 +40,8 @@ namespace Jondo.Unity.Tests.World
             // khr: the Casa grande de Bonta's own price, 2,500,000, while not on sale.
             Assert.Equal(Hex("109cf31f1816200128a0cb9801"), HouseProtocol.BuildSaleWindow(false, House, Instance, 2_500_000));
             // izr: the full plaque, rooms, f10 and f11 included.
-            Assert.Equal(Hex("0a242001300342140a0c536163726f677269746f3639120434323334480150025a02d3026016"),
-                         HouseProtocol.BuildInfo(Sacrogrito()));
+            Assert.Equal(Hex("0a242001300342140a0c4f776e65724163636f756e74120430303031480150025a02d3026016"),
+                         HouseProtocol.BuildInfo(CapturedPlaque()));
         }
 
         [Fact]
@@ -52,23 +52,23 @@ namespace Jondo.Unity.Tests.World
 
             Assert.Equal(Hex("1a210801220608f6f2011054220608f8f2011064220608faf2011062289df31f30ac02"),
                          HouseProtocol.BuildElementChanged(Door, Houses.DoorType, off));                                   // 13
-            Assert.Equal(Hex("0a1c200142140a0c536163726f677269746f363912043432333448016016109cf31f1a039df31f"),
-                         HouseProtocol.BuildChanged(House, new long[] { Door }, Sacrogrito()));                           // 14
+            Assert.Equal(Hex("0a1c200142140a0c4f776e65724163636f756e7412043030303148016016109cf31f1a039df31f"),
+                         HouseProtocol.BuildChanged(House, new long[] { Door }, CapturedPlaque()));                           // 14
             Assert.Equal(Hex("1816209cf31f"), HouseProtocol.BuildPutOnSale(Instance, House));                              // 15
             Assert.Equal(Hex("1a210801220608f6f2011054220608f8f2011064220608fbf201106c289df31f30ac02"),
                          HouseProtocol.BuildElementChanged(Door, Houses.DoorType, on));                                    // 16
-            Assert.Equal(Hex("0a21200138a09ce30942140a0c536163726f677269746f363912043432333448016016109cf31f1a039df31f"),
-                         HouseProtocol.BuildChanged(House, new long[] { Door }, Sacrogrito(20_500_000)));                 // 17, 20
+            Assert.Equal(Hex("0a21200138a09ce30942140a0c4f776e65724163636f756e7412043030303148016016109cf31f1a039df31f"),
+                         HouseProtocol.BuildChanged(House, new long[] { Door }, CapturedPlaque(20_500_000)));                 // 17, 20
 
             var owned = new HouseProtocol.Owned
             {
                 HouseId = House, Model = 442, StreetMapId = 212601864, WorldX = -30, WorldY = -53, SubAreaId = 973,
-                Plaque = Sacrogrito(20_500_000),
+                Plaque = CapturedPlaque(20_500_000),
             };
-            Assert.Equal(Hex("0a54109cf31f20ba03324b0a1e088898b06510e2ffffffffffffffff0120cd0728cbffffffffffffffff0112292001300338a09ce30942140a0c536163726f677269746f3639120434323334480150025a02d3026016"),
+            Assert.Equal(Hex("0a54109cf31f20ba03324b0a1e088898b06510e2ffffffffffffffff0120cd0728cbffffffffffffffff0112292001300338a09ce30942140a0c4f776e65724163636f756e74120430303031480150025a02d3026016"),
                          HouseProtocol.BuildAccountHouses(new[] { owned }));                                               // 18
-            Assert.Equal(Hex("120c536163726f677269746f3639189cf31f2a043432333430a09ce3094016"),
-                         HouseProtocol.BuildSellingUpdate("Sacrogrito69", "4234", House, 20_500_000, Instance));           // 19
+            Assert.Equal(Hex("120c4f776e65724163636f756e74189cf31f2a043030303130a09ce3094016"),
+                         HouseProtocol.BuildSellingUpdate("OwnerAccount", "0001", House, 20_500_000, Instance));           // 19
             Assert.Equal(Hex("0803"), ConnectionProtocol.BuildDialogClosed(HouseProtocol.SaleClosed));                    // 21
         }
 
@@ -77,19 +77,19 @@ namespace Jondo.Unity.Tests.World
         {
             // "retirar casa de la venta": the window shows the price it is at, 21,500,000 (frame 3)...
             Assert.Equal(Hex("109cf31f1816200128e0a0a00a"), HouseProtocol.BuildSaleWindow(false, House, Instance, 21_500_000));
-            Assert.Equal(Hex("0a292001300338e0a0a00a42140a0c536163726f677269746f3639120434323334480150025a02d3026016"),
-                         HouseProtocol.BuildInfo(Sacrogrito(21_500_000)));                                                 // 5
+            Assert.Equal(Hex("0a292001300338e0a0a00a42140a0c4f776e65724163636f756e74120430303031480150025a02d3026016"),
+                         HouseProtocol.BuildInfo(CapturedPlaque(21_500_000)));                                                 // 5
 
             // ...and afterwards everything goes without a price (frames 22-23).
             var owned = new HouseProtocol.Owned
             {
                 HouseId = House, Model = 442, StreetMapId = 212601864, WorldX = -30, WorldY = -53, SubAreaId = 973,
-                Plaque = Sacrogrito(),
+                Plaque = CapturedPlaque(),
             };
-            Assert.Equal(Hex("0a4f109cf31f20ba0332460a1e088898b06510e2ffffffffffffffff0120cd0728cbffffffffffffffff0112242001300342140a0c536163726f677269746f3639120434323334480150025a02d3026016"),
+            Assert.Equal(Hex("0a4f109cf31f20ba0332460a1e088898b06510e2ffffffffffffffff0120cd0728cbffffffffffffffff0112242001300342140a0c4f776e65724163636f756e74120430303031480150025a02d3026016"),
                          HouseProtocol.BuildAccountHouses(new[] { owned }));
-            Assert.Equal(Hex("120c536163726f677269746f3639189cf31f2a04343233344016"),
-                         HouseProtocol.BuildSellingUpdate("Sacrogrito69", "4234", House, 0, Instance));
+            Assert.Equal(Hex("120c4f776e65724163636f756e74189cf31f2a04303030314016"),
+                         HouseProtocol.BuildSellingUpdate("OwnerAccount", "0001", House, 0, Instance));
 
             // An account with no house: jaa empty, as at the world entry of a new account.
             Assert.Empty(HouseProtocol.BuildAccountHouses(Array.Empty<HouseProtocol.Owned>()));
@@ -97,23 +97,23 @@ namespace Jondo.Unity.Tests.World
 
         /// <summary>
         /// The guild's houses as the world entry of «desde eleccion servidor...» lists them (jjs):
-        /// in the oneof's f5, the guild's rights after the plaque -- harmoo's 505 -- and the plaque
+        /// in the oneof's f5, the guild's rights after the plaque -- guildHouse's 505 -- and the plaque
         /// without the guild, though the house is shared with it.
         /// </summary>
         [Fact]
         public void The_guild_s_houses_are_the_capture()
         {
-            var harmoo = new HouseProtocol.Owned
+            var guildHouse = new HouseProtocol.Owned
             {
                 HouseId = 519601, Model = 424, StreetMapId = 219415040, WorldX = -25, WorldY = 34, SubAreaId = 977,
                 GuildRights = 505,
                 Plaque = new HouseProtocol.Plaque
                 {
-                    Instance = 16, OwnerName = "harmoo", OwnerTag = "4742", Locked = true, Rooms = 3, Chests = 2, Skills = new long[] { 339 }, GuildBlock = new byte[] { 0x08, 0x01 },
+                    Instance = 16, OwnerName = "owner2", OwnerTag = "0002", Locked = true, Rooms = 3, Chests = 2, Skills = new long[] { 339 }, GuildBlock = new byte[] { 0x08, 0x01 },
                 },
             };
-            Assert.Equal(Hex("124510b1db1f20a8032a3c1220200128013003420e0a066861726d6f6f120434373432480150025a02d302601018f9032a15088084d06810e7ffffffffffffffff0120d1072822"),
-                         HouseProtocol.BuildGuildHouses(new[] { harmoo }));
+            Assert.Equal(Hex("124510b1db1f20a8032a3c1220200128013003420e0a066f776e657232120430303032480150025a02d302601018f9032a15088084d06810e7ffffffffffffffff0120d1072822"),
+                         HouseProtocol.BuildGuildHouses(new[] { guildHouse }));
         }
 
         /// <summary>«Ir» takes one to his own houses, and to his guild's when they share the teleport.</summary>
@@ -194,8 +194,8 @@ namespace Jondo.Unity.Tests.World
         {
             // "entrar en mi casa", frame 16: the street's -30,-53, the plaque, the house and its model.
             byte[] guild = Hex("0a111a0f08ce0210221885e2ef072896d2820110be351a0748657a626f6c612004");
-            Assert.Equal(Hex("0a640a5b0a1608e2ffffffffffffffff0110cbffffffffffffffff0112411a210a111a0f08ce0210221885e2ef072896d2820110be351a0748657a626f6c6120042001280142140a0c536163726f677269746f363912043432333448016016109cf31f20ba03"),
-                         HouseProtocol.BuildInterior(House, 442, -30, -53, Sacrogrito(locked: true, guild: guild)).Build());
+            Assert.Equal(Hex("0a640a5b0a1608e2ffffffffffffffff0110cbffffffffffffffff0112411a210a111a0f08ce0210221885e2ef072896d2820110be351a0748657a626f6c6120042001280142140a0c4f776e65724163636f756e7412043030303148016016109cf31f20ba03"),
+                         HouseProtocol.BuildInterior(House, 442, -30, -53, CapturedPlaque(locked: true, guild: guild)).Build());
         }
 
         // ─── Codes ──────────────────────────────────────────────────────────────
@@ -951,7 +951,7 @@ namespace Jondo.Unity.Tests.World
         public void A_house_leaves_the_guild_with_jjt()
             => Assert.Equal(Convert.FromHexString("1816209cf31f"), HouseProtocol.BuildGuildHouseGone(522652, 22));
 
-        /// <summary>jak { f1: instance, f3: rights, f4: house }, Sacrogrito's house 522652, instance 22.</summary>
+        /// <summary>jak { f1: instance, f3: rights, f4: house }, the owner's house 522652, instance 22.</summary>
         [Fact]
         public void The_guild_rights_travel_in_jak()
             => Assert.Equal(Convert.FromHexString("081618092" + "09cf31f"),

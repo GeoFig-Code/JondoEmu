@@ -23,8 +23,8 @@ namespace Jondo.Unity.Server.Handlers
     ///   28  S ivl { the tabs }
     ///   29  S kbk { f1: 22, f2: 1, f3: 100 }         the window, on tab 1
     ///   30  S iwb {}                                  tab 1, empty
-    ///   31  S jlo { f1: "Sacri-Master" }             who has it open
-    ///   32  S jlq { f1: "Sacri-Master" }
+    ///   31  S jlo { f1: "Hero-Example" }             who has it open
+    ///   32  S jlq { f1: "Hero-Example" }
     ///   38  C jll { f2: 2 }                           tab 2, please
     ///   39  S lqn { f1: 1, f2: 654 }                  "No tienes el derecho de consultar el cofre de gremio."
     ///   48  C kcr { f1: 1, f2: 534451715 }  → itd, ium, iun
