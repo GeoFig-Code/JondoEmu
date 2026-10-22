@@ -122,6 +122,32 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
+        /// Every character placed in a mode this season, with a league: who the ladder window's Koliseo
+        /// tab ranks (Ladders.Koliseo).
+        /// </summary>
+        public static IReadOnlyList<Standing> PlacedIn(int mode)
+        {
+            lock (Gate)
+            {
+                using var connection = Open();
+                var now = Clock();
+                var season = CurrentSeason(connection, now);
+                var placed = new List<long>();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText =
+                        "SELECT CharacterId FROM KoliseoRatings WHERE Mode = $m AND Season = $s AND PlacementLeft <= 0 AND League <> $none;";
+                    command.Parameters.AddWithValue("$m", mode);
+                    command.Parameters.AddWithValue("$s", season.Number);
+                    command.Parameters.AddWithValue("$none", KoliseoLeagues.None);
+                    using var reader = command.ExecuteReader();
+                    while (reader.Read()) placed.Add(reader.GetInt64(0));
+                }
+                return placed.Select(id => Read(connection, id, mode, 0, season, now)).ToList();
+            }
+        }
+
+        /// <summary>
         /// A Koliseo fight is over: every player of both sides has his rating, league, placement
         /// and counters moved, and written. Returns the new standings.
         /// </summary>

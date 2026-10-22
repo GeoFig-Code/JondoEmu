@@ -90,6 +90,20 @@ namespace Jondo.Unity.Server.Managers
             return total;
         }
 
+        /// <summary>Every character's achievement points, read at once: the ladder window's achievements tab.</summary>
+        public static Dictionary<long, int> AllPoints()
+        {
+            var points = new Dictionary<long, int>();
+            if (_book == null || !_book.Ready) return points;
+
+            foreach (var (characterId, achievement) in DatabaseManager.LoadAllAchievements())
+            {
+                points[characterId] = points.GetValueOrDefault(characterId) + (_book.Of(achievement)?.Points ?? 0);
+            }
+
+            return points;
+        }
+
         /// <summary>
         /// Puts this character's badges on, from the database, with the tallies they count.
         /// </summary>

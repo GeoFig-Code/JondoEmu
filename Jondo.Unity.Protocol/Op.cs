@@ -1460,6 +1460,99 @@ public static class Op
     /// <summary>S→C: the ladder rewards obtained. f1 { f4 the raid }: a chat line per raid.</summary>
     public const string Ibs = "ibs";
 
+    /// <summary>S→C: the answer to the ibl, empty.</summary>
+    public const string Hwb = "hwb";
+
+    // The other tabs of the ladder window (LadderUI; Handlers/LadderHandler). Lines: ipx the
+    // character { f2 server, f3 class, f4 name, f5 sex, f6 level, f7 character }.
+
+    /// <summary>C→S: the experience tab's list. f3 the server.</summary>
+    public const string Ipz = "ipz";
+
+    /// <summary>S→C: the experience list. f1 iqb { f1 experience, f3 ipx, f4 rank }.</summary>
+    public const string Iqc = "iqc";
+
+    /// <summary>C→S: the player's own experience line. f1 the server.</summary>
+    public const string Iqa = "iqa";
+
+    /// <summary>S→C: the player's own experience line. f1 iqb, absent when he has none.</summary>
+    public const string Iqh = "iqh";
+
+    /// <summary>C→S: a name searched in the experience tab. f2 the name, f3 the server.</summary>
+    public const string Iqd = "iqd";
+
+    /// <summary>S→C: the experience lines of that name. f1 a result, f2 iqb.</summary>
+    public const string Iqg = "iqg";
+
+    /// <summary>C→S: the achievements tab's list. f2 the server.</summary>
+    public const string Irg = "irg";
+
+    /// <summary>S→C: the achievements list. f1 ird { f1 rank, f2 points, f3 ipx }.</summary>
+    public const string Irc = "irc";
+
+    /// <summary>C→S: the player's own achievements line. f1 the server.</summary>
+    public const string Irj = "irj";
+
+    /// <summary>S→C: the player's own achievements line. f1 ird.</summary>
+    public const string Iri = "iri";
+
+    /// <summary>C→S: a name searched in the achievements tab. f1 the server, f2 the name.</summary>
+    public const string Irb = "irb";
+
+    /// <summary>S→C: the achievements lines of that name. f1 ird.</summary>
+    public const string Irh = "irh";
+
+    /// <summary>C→S: the Koliseo tab's list. f2 the mode, f3 the first level of a band, f4 a class.</summary>
+    public const string Iqy = "iqy";
+
+    /// <summary>S→C: the Koliseo list. f1 iqx { f1 rank, f2 win rate, f3 ipx, f4 league, f5 rating }.</summary>
+    public const string Iqt = "iqt";
+
+    /// <summary>C→S: the player's own Koliseo line. f2 a class, f3 the mode, f4 the first level of a band.</summary>
+    public const string Iqu = "iqu";
+
+    /// <summary>S→C: the player's own Koliseo line. f1 iqx.</summary>
+    public const string Iqw = "iqw";
+
+    /// <summary>C→S: a name searched in the Koliseo tab. f1 a band, f2 the mode, f3 a class, f4 the name.</summary>
+    public const string Iqz = "iqz";
+
+    /// <summary>S→C: the Koliseo lines of that name. f1 iqx.</summary>
+    public const string Iqv = "iqv";
+
+    /// <summary>C→S: the infinite dreams tab's list. f3 the server.</summary>
+    public const string Iqq = "iqq";
+
+    /// <summary>
+    /// S→C: the dreams list. f1 iqn { f1 the dreamer, f2 intensity, f3 rank, f4 ipx, f5 turn, f6 when,
+    /// f7 waves }.
+    /// </summary>
+    public const string Iqj = "iqj";
+
+    /// <summary>C→S: the player's own dream line. f1 the server.</summary>
+    public const string Iql = "iql";
+
+    /// <summary>S→C: the player's own dream line. f2 iqn.</summary>
+    public const string Iqr = "iqr";
+
+    /// <summary>C→S: a name searched in the dreams tab. f1 the server, f2 the name.</summary>
+    public const string Iqk = "iqk";
+
+    /// <summary>S→C: the dream lines of that name. f1 iqn.</summary>
+    public const string Iqm = "iqm";
+
+    /// <summary>C→S: the world events tab's events going on, empty.</summary>
+    public const string Hfz = "hfz";
+
+    /// <summary>S→C (push): the world events going on. f1 heg.</summary>
+    public const string Hei = "hei";
+
+    /// <summary>C→S: the world events' instances with a ladder, empty.</summary>
+    public const string Hfv = "hfv";
+
+    /// <summary>S→C: those instances. f1 and f2 hgc { f1 the start, f2 the instance, f3 the event }.</summary>
+    public const string Hfe = "hfe";
+
     // Invitations into a guild raid, the way outsiders come in.
 
     /// <summary>C→S: RaidInvitationRequest. f1 the invited character's id.</summary>

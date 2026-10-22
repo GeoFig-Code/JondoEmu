@@ -909,6 +909,9 @@ namespace Jondo.Unity.Server.Handlers
             public long CharacterId { get; init; }
             public Dreams.FinalRules Rules { get; init; } = Dreams.FinalRulesOf(1);
             public int Cleared { get; set; }
+
+            /// <summary>The turn the last wave fell on: the ladder's «Turno global».</summary>
+            public int ClearedAtRound { get; set; }
         }
 
         private static readonly ConcurrentDictionary<long, FinalFight> _finales = new();
@@ -957,6 +960,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             if (!_finales.TryGetValue(fight.FightId, out var state)) return null;
             state.Cleared++;
+            state.ClearedAtRound = fight.RoundNumber;
             if (state.Rules.MaxWaves > 0 && state.Cleared >= state.Rules.MaxWaves) return null;
 
             int wave = state.Cleared + 1;
@@ -1050,6 +1054,10 @@ namespace Jondo.Unity.Server.Handlers
             // The time it took is the time of its fights: the result's "cumulatedDuration".
             sueno.FightMs += Math.Max(0, (long)(DateTime.UtcNow - fight.StartedAt).TotalMilliseconds);
 
+            // And who fought it, for the ladder: only who has fought them all.
+            var fought = PlayersOf(fight);
+            sueno.Regulars = sueno.Regulars == null ? fought : sueno.Regulars.Intersect(fought).ToList();
+
             if (final != null)
             {
                 int cleared = final.Cleared;
@@ -1059,6 +1067,7 @@ namespace Jondo.Unity.Server.Handlers
                     // (FightHandler.PlanRewards); the notice says how many.
                     int fragments = sueno.FromSouvenir ? 0 : Dreams.FragmentsFor(sueno.Dificultad, cleared);
                     var result = ResultOf(sueno, fight, won: true, cleared);
+                    RankTheDream(sueno, cleared, final.ClearedAtRound);
                     var (map, cell) = End(sueno);
                     return (map, cell, CommandTexts.Get("dream.completed", cleared, fragments), true, result);
                 }
@@ -1081,6 +1090,30 @@ namespace Jondo.Unity.Server.Handlers
             var lost = ResultOf(sueno, fight, won: false, final?.Cleared ?? 0);
             var (outMap, outCell) = End(sueno);
             return (outMap, outCell, CommandTexts.Get("dream.over"), true, lost);
+        }
+
+        /// <summary>The characters who fought a fight: no monster, summon, illusion or bot.</summary>
+        private static List<long> PlayersOf(Jondo.Unity.World.Fights.FightInstance fight)
+            => fight.Azul.Concat(fight.Rojo)
+                    .Where(f => !f.IsMonster && !f.EsInvocado && !f.EsIlusion && !f.IsBot)
+                    .Select(f => f.Id)
+                    .Distinct()
+                    .ToList();
+
+        /// <summary>
+        /// A dream won: its line on the ladder window's dreams tab for each of its people who fought
+        /// every one of its fights, when it is better than his best (Ladders). Neither a souvenir's
+        /// dream nor one skipped through is ranked: «Los recuerdos y las pruebas de sueño no aparecen».
+        /// </summary>
+        private static void RankTheDream(Dreams.Sueno sueno, int waves, int turn)
+        {
+            if (sueno.FromSouvenir || sueno.SkippedFights > 0 || sueno.Regulars == null) return;
+            var now = DateTime.UtcNow;
+            var kept = Ladders.RecordDream(sueno.Regulars.Select(id =>
+                new Ladders.DreamRecord(id, id == sueno.CharacterId, sueno.Dificultad, waves, turn, now)));
+            if (kept.Count > 0)
+                Console.WriteLine($"[Dreams] On the ladder: intensity {sueno.Dificultad}, {waves} wave(s), turn {turn}, " +
+                                  $"for {string.Join(", ", kept.Select(k => k.CharacterId))}.");
         }
 
         /// <summary>
@@ -1120,6 +1153,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             var result = Dreams.SkipTo(sueno, row);
             if (result.Outcome != Dreams.SkipOutcome.Done || result.Room == null) return result;
+            sueno.SkippedFights += Math.Max(1, result.Skipped);
 
             Dreams.Unplant(sueno);
             if (!Dreams.IsDreamMap(GameState.MapId) && GameState.MapId != PlanoAstral)

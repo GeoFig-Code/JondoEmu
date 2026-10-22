@@ -712,6 +712,15 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>The time spent fighting in it, in milliseconds: the result's "cumulatedDuration".</summary>
             public long FightMs { get; set; }
 
+            /// <summary>
+            /// Who has fought every fight of the dream so far, null before the first: the ladder ranks
+            /// only them, «hay que haber participado en todos los combates de un Sueño».
+            /// </summary>
+            public List<long>? Regulars { get; set; }
+
+            /// <summary>Fights counted as won without being fought (".sueno"): a dream with any is not ranked.</summary>
+            public int SkippedFights { get; set; }
+
             [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
             public List<Sala> Salas { get; } = new List<Sala>();
 

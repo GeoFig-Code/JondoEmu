@@ -526,8 +526,9 @@ namespace Jondo.Unity.Server.Handlers
                 GuildRaidProtocol.BuildRaidLadder(GuildStore.GuildOf(GameState.CharacterId)?.Id ?? 0, DateTimeOffset.UtcNow),
                 ConnectionProtocol.RequestId(frame)));
 
-        /// <summary>Stops listening to the ladder (ibl). The client expects no answer.</summary>
-        public static Task StopLadderAsync(NetworkStream stream, byte[] frame) => Task.CompletedTask;
+        /// <summary>Stops listening to the ladder (ibl): the capture's answer, an empty hwb.</summary>
+        public static async Task StopLadderAsync(NetworkStream stream, byte[] frame)
+            => await WriteAsync(stream, ConnectionProtocol.Answer(Op.Hwb, null, ConnectionProtocol.RequestId(frame)));
 
         // ─── Coming and going ───────────────────────────────────────────────────
 

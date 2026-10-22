@@ -1104,6 +1104,34 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.GuildRaidHandler.LadderAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Ibl)))
                     await Handlers.GuildRaidHandler.StopLadderAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Ipz)))
+                    await Handlers.LadderHandler.ExperienceListAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Iqa)))
+                    await Handlers.LadderHandler.ExperienceOwnAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Iqd)))
+                    await Handlers.LadderHandler.ExperienceSearchAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Irg)))
+                    await Handlers.LadderHandler.AchievementListAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Irj)))
+                    await Handlers.LadderHandler.AchievementOwnAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Irb)))
+                    await Handlers.LadderHandler.AchievementSearchAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Iqy)))
+                    await Handlers.LadderHandler.KoliseoListAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Iqu)))
+                    await Handlers.LadderHandler.KoliseoOwnAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Iqz)))
+                    await Handlers.LadderHandler.KoliseoSearchAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Iqq)))
+                    await Handlers.LadderHandler.DreamListAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Iql)))
+                    await Handlers.LadderHandler.DreamOwnAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Iqk)))
+                    await Handlers.LadderHandler.DreamSearchAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hfz)))
+                    await Handlers.LadderHandler.WorldEventsAsync(stream, payload);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hfv)))
+                    await Handlers.LadderHandler.WorldEventInstancesAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Hwg)))
                     await Handlers.GuildRaidHandler.InviteAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Iag)))

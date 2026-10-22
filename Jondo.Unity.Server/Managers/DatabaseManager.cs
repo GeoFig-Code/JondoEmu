@@ -4842,6 +4842,27 @@ namespace Jondo.Unity.Server
             return salida;
         }
 
+        /// <summary>Every character's achievements at once: the character and the achievement.</summary>
+        public static List<(long CharacterId, int Achievement)> LoadAllAchievements()
+        {
+            EnsureProgressionTables();
+            var all = new List<(long, int)>();
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT CharacterId, AchievementId FROM CharacterAchievements;";
+                using var reader = command.ExecuteReader();
+                while (reader.Read()) all.Add((reader.GetInt64(0), reader.GetInt32(1)));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SQLite] Could not read the achievements: {ex.Message}");
+            }
+            return all;
+        }
+
         /// <summary>A character's professions, to leave them in place on entering.</summary>
         public static Dictionary<int, long> LoadJobExperience(long characterId)
         {
