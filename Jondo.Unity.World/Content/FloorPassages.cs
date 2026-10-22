@@ -15,6 +15,9 @@ namespace Jondo.Unity.World.Content
         public long DestinationMapId { get; init; }
         public int DestinationCell { get; init; }
 
+        /// <summary>What the one stepping on it has to meet, in the quests' criterion language; empty for anybody.</summary>
+        public string Criterion { get; init; }
+
         public override string ToString()
             => $"{SourceMapId}@{SourceCell} → {DestinationMapId}@{DestinationCell}";
     }
@@ -60,6 +63,7 @@ namespace Jondo.Unity.World.Content
                         SourceCell = (int)Long(entry, "cell"),
                         DestinationMapId = Long(entry, "toMap"),
                         DestinationCell = (int)Long(entry, "toCell"),
+                        Criterion = entry.TryGetProperty("criterion", out var criterion) ? criterion.GetString() ?? "" : "",
                     };
                     if (passage.SourceMapId <= 0 || passage.DestinationMapId <= 0 ||
                         !OnTheBoard(passage.SourceCell) || !OnTheBoard(passage.DestinationCell))

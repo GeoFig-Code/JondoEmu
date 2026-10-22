@@ -31,6 +31,30 @@ namespace Jondo.Unity.Tests.Content
         }
 
         [Fact]
+        public void A_passage_carries_its_criterion()
+        {
+            File.WriteAllText(_path, @"{ ""passages"": [ { ""map"": 188484104, ""cell"": 190, ""toMap"": 188483080, ""toCell"": 280,
+                                                           ""criterion"": ""(Qo>9521&Qo<9526)"" },
+                                                         { ""map"": 100, ""cell"": 1, ""toMap"": 200, ""toCell"": 2 } ] }");
+
+            var passages = FloorPassages.Load(_path);
+            Assert.Equal("(Qo>9521&Qo<9526)", passages[0].Criterion);
+            Assert.Equal("", passages[1].Criterion);
+        }
+
+        /// <summary>The 2.73 world graph's cell passages, the dungeons' and caves' stairs and holes.</summary>
+        [Fact]
+        public void The_graph_s_cell_passages_are_read()
+        {
+            string path = Jondo.Unity.Launcher.Paths.WorldGraphFloorPassagesJson;
+            if (!File.Exists(path)) return;
+            var passages = FloorPassages.Load(path);
+            Assert.True(passages.Count > 500);
+            Assert.Contains(passages, p => p.SourceMapId == 72090624 && p.SourceCell == 402);   // the Dragocerdo's labyrinth
+            Assert.Contains(passages, p => p.Criterion.Length > 0);
+        }
+
+        [Fact]
         public void One_with_no_map_or_off_the_board_is_left_out_and_said()
         {
             File.WriteAllText(_path, @"{ ""passages"": [

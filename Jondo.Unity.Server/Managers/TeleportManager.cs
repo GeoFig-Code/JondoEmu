@@ -30,6 +30,9 @@ namespace Jondo.Unity.Server.Managers
         public int DestinationCellId { get; init; }
         public string SourceVersion { get; init; } = "";
         public string Confidence { get; init; } = "";
+
+        /// <summary>What whoever takes it has to meet, in the quests' criterion language; empty for anybody.</summary>
+        public string Criterion { get; init; } = "";
     }
 
     /// <summary>
@@ -560,18 +563,33 @@ namespace Jondo.Unity.Server.Managers
         /// </remarks>
         private static void AddFloorPassages(Dictionary<(long, int), InteractiveTeleport> byCell)
         {
+            Action<string> report = message => Console.WriteLine("[Teleports] " + message);
+            int authored = AddFloorPassages(byCell, FloorPassages.Load(Paths.ContentFile(FloorPassages.AuthoredFile), report),
+                                            "authored", loud: true);
+            // Then the 2.73 graph's, the dungeons' and caves' stairs and holes: an authored one or an
+            // element's passage on the same cell wins.
+            int graph = AddFloorPassages(byCell, FloorPassages.Load(Paths.WorldGraphFloorPassagesJson, report),
+                                         "graph-2.73-approx", loud: false);
+
+            if (authored + graph > 0)
+                Console.WriteLine($"[Teleports] {authored} floor passage(s) from content/interactives/floor_passages.json, " +
+                                  $"{graph} from the 2.73 world graph.");
+        }
+
+        private static int AddFloorPassages(Dictionary<(long, int), InteractiveTeleport> byCell,
+                                            IReadOnlyList<FloorPassage> passages, string confidence, bool loud)
+        {
             int added = 0;
-            foreach (var floor in FloorPassages.Load(Paths.ContentFile(FloorPassages.AuthoredFile),
-                                                     message => Console.WriteLine("[Teleports] " + message)))
+            foreach (var floor in passages)
             {
                 if (byCell.ContainsKey((floor.SourceMapId, floor.SourceCell)))
                 {
-                    Console.WriteLine($"[Teleports] Floor passage {floor}: the cell has an element's passage already; left out.");
+                    if (loud) Console.WriteLine($"[Teleports] Floor passage {floor}: the cell has an element's passage already; left out.");
                     continue;
                 }
                 if (MapManager.GetMapInfo(floor.DestinationMapId) == null)
                 {
-                    Console.WriteLine($"[Teleports] Floor passage {floor}: the world has no map {floor.DestinationMapId}; left out.");
+                    if (loud) Console.WriteLine($"[Teleports] Floor passage {floor}: the world has no map {floor.DestinationMapId}; left out.");
                     continue;
                 }
 
@@ -582,13 +600,12 @@ namespace Jondo.Unity.Server.Managers
                     DestinationMapId = floor.DestinationMapId,
                     DestinationCellId = floor.DestinationCell,
                     SourceVersion = "floor",
-                    Confidence = "authored",
+                    Confidence = confidence,
+                    Criterion = floor.Criterion ?? "",
                 };
                 added++;
             }
-
-            if (added > 0)
-                Console.WriteLine($"[Teleports] {added} floor passage(s), from content/interactives/floor_passages.json.");
+            return added;
         }
     }
 }

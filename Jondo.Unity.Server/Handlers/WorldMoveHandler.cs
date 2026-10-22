@@ -207,6 +207,9 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             if (!Managers.TeleportManager.TryGetCellTrigger(mapId, cellId, out var route))
                 return;
+            // A passage with a criterion -- a quest's step, an item -- opens only for whoever meets it.
+            if (route.Criterion.Length > 0 && !Managers.ItemCriteria.Holds(route.Criterion))
+                return;
 
             int landed = await TeleportHandler.ToMapAsync(
                 stream, route.DestinationMapId, route.DestinationCellId);

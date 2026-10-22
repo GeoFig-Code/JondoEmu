@@ -240,6 +240,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 
 - ✅ **5,347 interactive teleports** and passages that fire when you step on a cell — the suns and
   stars of houses and caves among them
+- ✅ 510 more cells that move you on — the stairs and holes drawn into dungeons and caves, the Dragocerdo's
+  labyrinth, the Gélifux caverns, Otomai's ark… —, the ones a quest gates only for those on it
 - ✅ The GM prison's three maps joined in a round: trapdoor, hanging cage and treasure chest
 - ✅ New passages can be created, both ways, from Jondo Studio
 <img width="2560" height="1506" alt="image" src="https://github.com/user-attachments/assets/e3908060-2ad1-415c-a11a-cb6f323b9378" />
