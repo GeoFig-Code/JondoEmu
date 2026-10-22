@@ -9352,10 +9352,15 @@ namespace Jondo.Unity.Server.Handlers
             if (won && fight.Reglas.PagaElKoliseo)
             {
                 // Under the limit he set, as the client warns beside the Koliseo's experience.
+                // And today's Almanax: the Koliseo's experience (type 28) and its tokens (type 25).
+                var anywhere = Managers.Almanax.Where.Anywhere;
                 xpGained = Managers.ExperienceLimit.ApplyFor(GameState.CharacterId,
-                    Managers.KoliseoRewards.Experiencia(GameState.CharacterLevel));
+                    Managers.Almanax.WithBonus(Managers.Almanax.BonusType.KoliseoExperience,
+                        Managers.KoliseoRewards.Experiencia(GameState.CharacterLevel), anywhere));
                 kamas = Managers.KoliseoRewards.KamasPorVictoria;
                 loot = Managers.KoliseoRewards.Botin();
+                loot[Managers.KoliseoRewards.Kolicha] = (int)Managers.Almanax.WithBonus(Managers.Almanax.BonusType.KoliseoTokens,
+                    loot[Managers.KoliseoRewards.Kolicha], anywhere);
                 EntregarBotin(loot, out caidos);
 
                 Program.LogDebug($"[Koliseo] Victory: {kamas} kamas, " +
@@ -10508,6 +10513,8 @@ namespace Jondo.Unity.Server.Handlers
                                                      List<Managers.RandomLoot.Drop> perfect = null)
         {
             var loot = new Dictionary<int, int>();
+            var worn = Managers.Equipment.WornTemplates();
+            bool inDungeon = DungeonManager.IsRoom(fight.RoleplayMapId);
 
             // SUMMONS do not pay. They go into their summoner's side with IsMonster set, so a
             // monster that summons would put its creature into this loop: it would take its own
@@ -10521,6 +10528,12 @@ namespace Jondo.Unity.Server.Handlers
                 int monedas = Managers.JondoCoin.RewardFor(monster.Level);
                 loot.TryGetValue(Managers.JondoCoin.TemplateId, out int llevadas);
                 loot[Managers.JondoCoin.TemplateId] = llevadas + monedas;
+
+                // Today's Almanax raises the chances where its day says so (type 16): this monster,
+                // this place, what he wears.
+                int almanax = Managers.Almanax.BonusPercent(Managers.Almanax.BonusType.MonsterDrops,
+                    Managers.Almanax.ForFight(fight.RoleplayMapId, new[] { monster.MonsterId }, worn, inDungeon));
+                double WithAlmanax(double chance) => almanax > 0 ? Math.Min(100.0, chance * (100.0 + almanax) / 100.0) : chance;
 
                 var table = DatabaseManager.GetMonsterDrops(monster.MonsterId, monster.GradeIndex);
                 foreach (var drop in table)
@@ -10537,7 +10550,7 @@ namespace Jondo.Unity.Server.Handlers
                     double probabilidad = extra > 0
                         ? Math.Min(100.0, drop.PercentDrop * (100.0 + extra) / 100.0)
                         : drop.PercentDrop;
-                    probabilidad = ServerSettings.ChanceWithBonus(probabilidad, ServerSettings.Current.DropBonusPercent);
+                    probabilidad = ServerSettings.ChanceWithBonus(WithAlmanax(probabilidad), ServerSettings.Current.DropBonusPercent);
                     if (TirarPorcentaje() >= probabilidad) continue;
                     loot.TryGetValue(drop.ObjectId, out int q);
                     loot[drop.ObjectId] = q + 1;
@@ -10554,7 +10567,7 @@ namespace Jondo.Unity.Server.Handlers
                     double probabilidad = extra > 0
                         ? Math.Min(100.0, drop.PercentDrop * (100.0 + extra) / 100.0)
                         : drop.PercentDrop;
-                    probabilidad = ServerSettings.ChanceWithBonus(probabilidad, ServerSettings.Current.DropBonusPercent);
+                    probabilidad = ServerSettings.ChanceWithBonus(WithAlmanax(probabilidad), ServerSettings.Current.DropBonusPercent);
                     if (TirarPorcentaje() >= probabilidad) continue;
                     loot.TryGetValue(drop.ObjectId, out int q);
                     loot[drop.ObjectId] = q + 1;
@@ -10566,7 +10579,7 @@ namespace Jondo.Unity.Server.Handlers
                 {
                     double chance = ServerSettings.Current.RandomLootChancePercent;
                     if (extra > 0) chance = Math.Min(100.0, chance * (100.0 + extra) / 100.0);
-                    chance = ServerSettings.ChanceWithBonus(chance, ServerSettings.Current.DropBonusPercent);
+                    chance = ServerSettings.ChanceWithBonus(WithAlmanax(chance), ServerSettings.Current.DropBonusPercent);
                     foreach (var drop in Managers.RandomLoot.Roll(monster.Level, chance, Random.Shared))
                     {
                         loot.TryGetValue(drop.Gid, out int q);

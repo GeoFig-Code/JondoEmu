@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using Jondo.Unity.Launcher;
@@ -154,6 +154,39 @@ namespace Jondo.Unity.Tests.Quests
             Assert.Equal(1625, step.Objectives[0].NpcId);
             Assert.True(step.Objectives[0].ConsumesItems);
             Assert.Equal(1625, step.Objectives[3].NpcId);
+        }
+
+        private static AlmanaxBonus Bonus(int type, params (int Kind, int Value)[] criteria)
+            => new AlmanaxBonus { Type = type, Amount = 50, Criteria = criteria };
+
+        private static AlmanaxManager.Where At(int area = -1, int subarea = 0, int[]? monsters = null, int[]? races = null,
+                                               int[]? worn = null, bool dungeon = false)
+            => new(area, subarea, monsters ?? Array.Empty<int>(), races ?? Array.Empty<int>(), worn ?? Array.Empty<int>(), dungeon);
+
+        /// <summary>
+        /// The conditions as the days' descriptions word them: a race with its archmonsters is one
+        /// condition, kinds add up, a job and its skills, and what no anomaly here can meet.
+        /// </summary>
+        [Fact]
+        public void A_bonus_s_conditions_are_read_as_its_day_words_them()
+        {
+            var cuerboks = Bonus(1, (4, 51), (3, 2437));   // «criaturas de tipo cuerboks», with 2437
+            Assert.True(AlmanaxManager.Fits(cuerboks, At(races: new[] { 51 })));
+            Assert.True(AlmanaxManager.Fits(cuerboks, At(monsters: new[] { 2437 })));
+            Assert.False(AlmanaxManager.Fits(cuerboks, At(monsters: new[] { 31 }, races: new[] { 3 })));
+
+            Assert.True(AlmanaxManager.Fits(Bonus(1, (2, 1030)), At(subarea: 1030)));          // la Cámara de los Maleficios
+            Assert.True(AlmanaxManager.Fits(Bonus(16, (1, 53), (1, 54), (1, 55)), At(area: 54)));  // dimensiones divinas
+            Assert.False(AlmanaxManager.Fits(Bonus(16, (2, 210), (4, 9)), At(subarea: 210)));       // both kinds, or nothing
+            Assert.True(AlmanaxManager.Fits(Bonus(16, (2, 210), (4, 9)), At(subarea: 210, races: new[] { 9 })));
+            Assert.True(AlmanaxManager.Fits(Bonus(1, (7, 12035)), At(worn: new[] { 12035 })));
+            Assert.True(AlmanaxManager.Fits(Bonus(35, (15, 1)), At(dungeon: true)));
+            Assert.False(AlmanaxManager.Fits(Bonus(1, (13, 1)), At(subarea: 166)));             // no anomaly here
+            Assert.True(AlmanaxManager.Fits(Bonus(1), At()));                                   // no condition at all
+
+            Assert.True(AlmanaxManager.Fits(Bonus(7, (5, 36)), AlmanaxManager.Where.AtWork(36)));      // los pescadores
+            Assert.True(AlmanaxManager.Fits(Bonus(7, (10, 52), (10, 159)), AlmanaxManager.Where.AtWork(28, 52)));   // centeno
+            Assert.False(AlmanaxManager.Fits(Bonus(7, (10, 52)), AlmanaxManager.Where.AtWork(28, 46)));
         }
     }
 }

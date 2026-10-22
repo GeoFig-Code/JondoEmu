@@ -126,6 +126,12 @@ namespace Jondo.Unity.Server.Handlers
 
             var paying = fight.Rojo.Where(m => m.IsMonster && !m.EsInvocado && !m.EsIlusion).ToList();
             int extra = ChallengeWatcher.EndBonus(fight, won: true);
+
+            // Today's Almanax raises the challenges' bonus where its day says so (type 17).
+            bool inDungeon = DungeonManager.IsRoom(fight.RoleplayMapId);
+            if (extra > 0)
+                extra = extra * (100 + Almanax.BonusPercent(Almanax.BonusType.ChallengeBonus,
+                    Almanax.ForFight(fight.RoleplayMapId, paying.Select(m => m.MonsterId), Array.Empty<int>(), inDungeon))) / 100;
             long xpBase = paying.Sum(m => (long)m.XpReward);
             long xpAlone = ServerSettings.WithBonus(ConElExtra(xpBase, extra), ServerSettings.Current.ExperienceBonusPercent);
             long kamasAlone = ServerSettings.WithBonus(ConElExtra(paying.Sum(m => 10L + (m.Level * 5L)), extra),
@@ -161,6 +167,7 @@ namespace Jondo.Unity.Server.Handlers
                     if (CombatExperience.FightsUnderOwnPrism(fighter.Id, fight.RoleplayMapId))
                         xp = CombatExperience.WithCharacterBonus(xp, CombatExperience.AlliancePrismBonusPercent);
                     xp = ServerSettings.WithBonus(ConElExtra(xp, extra), ServerSettings.Current.ExperienceBonusPercent);
+                    using (SessionContext.Push(session)) xp = WithAlmanaxExperience(xp, paying, fight.RoleplayMapId, inDungeon);
                 }
                 // And last, as the client cuts its tooltip: the limit he set on what he earns.
                 xp = ExperienceLimit.ApplyFor(fighter.Id, xp);
@@ -189,6 +196,26 @@ namespace Jondo.Unity.Server.Handlers
                                  string.Join(", ", plan.Select(p => $"{p.Key} {p.Value.Xp} xp {p.Value.Kamas} kamas " +
                                                                     $"{p.Value.Loot.Sum(l => l.Value)} item(s)")));
             }
+        }
+
+        /// <summary>
+        /// The experience with today's Almanax on top (type 1), monster by monster: each one's share
+        /// of the fight's experience raised by the bonus its day gives for it -- its race, this place,
+        /// what the character in session wears.
+        /// </summary>
+        internal static long WithAlmanaxExperience(long xp, IReadOnlyList<Fighter> paying, long mapId, bool inDungeon)
+        {
+            long total = paying.Sum(m => (long)m.XpReward);
+            if (xp <= 0 || total <= 0) return xp;
+            var worn = Equipment.WornTemplates();
+            double raised = 0;
+            foreach (var monster in paying)
+            {
+                int percent = Almanax.BonusPercent(Almanax.BonusType.MonsterExperience,
+                    Almanax.ForFight(mapId, new[] { monster.MonsterId }, worn, inDungeon));
+                raised += monster.XpReward * (100.0 + percent) / 100.0;
+            }
+            return (long)Math.Round(xp * raised / total);
         }
 
         /// <summary>

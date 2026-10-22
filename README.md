@@ -538,7 +538,7 @@ An alliance is made of characters, not guilds.
 
 - ✅ **38,744 monster groups**, respawned and kept populated, across **562 sub-areas**
 - ✅ No monsters indoors or on zaaps
-- 🟡 401 monsters have no spells in the database
+- 🟡 371 monsters have no spells in the client's own data: summoned objects, and six that roam (eggs, spirits)
 - ✅ Dialogue trees authored in `content/npcs/dialogues.json`
 <img width="1138" height="694" alt="image" src="https://github.com/user-attachments/assets/fc1182c3-a261-4bcd-9532-84a2ceda8dc8" />
 <img width="1082" height="692" alt="image" src="https://github.com/user-attachments/assets/39cdf857-b506-4968-b2f9-c0c5f80b64c3" />
@@ -588,7 +588,9 @@ Full workings in **`docs/achievements.md`**.
 - ✅ **376 days**, each with its saint, offering quest and bonuses
 - ✅ Ontoral Zo hands over the day's offering once a day
 - 🟡 The saint of the day only stands on 80 of the 373 days
-- 🟡 Of the day's bonuses, the quest and job ones apply
+- ✅ The day's bonuses to fights (experience, drops, challenges — by zone, dungeon, monster family or
+  item worn), the Koliseo, quests, jobs, harvests and healing consumables
+- 🟡 The bonuses to crafting, tax collectors, breeding and resources are not applied yet
 
 ### 🏰 Dungeons
 <img width="2550" height="1498" alt="image" src="https://github.com/user-attachments/assets/f79f7881-c68e-45b5-ae29-b4aaba928a1d" />

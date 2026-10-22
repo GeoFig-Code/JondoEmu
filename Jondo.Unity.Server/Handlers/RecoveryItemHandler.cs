@@ -75,17 +75,21 @@ namespace Jondo.Unity.Server.Handlers
         /// life is missing -- the energy here never goes below 1, and nothing healed would read as
         /// «la vida ya está al máximo».
         /// </remarks>
-        internal static (int Life, int Energy) WouldGive(Recovery recovery, int lifeMissing, int energy, Random dice)
+        internal static (int Life, int Energy) WouldGive(Recovery recovery, int lifeMissing, int energy, Random dice,
+                                                         int lifeBonus = 0, int energyBonus = 0)
         {
             int life = 0;
             if (recovery.Life != null && lifeMissing > 0)
             {
                 long rolled = Roll(recovery.Life, dice);
+                rolled += rolled * Math.Max(0, lifeBonus) / 100;
                 long scaled = rolled * Math.Clamp(energy, 0, DefeatPenalty.MaxEnergy) / DefeatPenalty.MaxEnergy;
                 life = (int)Math.Min(Math.Max(rolled > 0 ? 1 : 0, scaled), lifeMissing);
             }
             int toFull = Math.Max(0, DefeatPenalty.MaxEnergy - energy);
-            int gained = recovery.Energy == null || toFull == 0 ? 0 : Math.Min(Roll(recovery.Energy, dice), toFull);
+            int gained = recovery.Energy == null || toFull == 0
+                ? 0
+                : Math.Min(Roll(recovery.Energy, dice) * (100 + Math.Max(0, energyBonus)) / 100, toFull);
             return (Math.Max(0, life), Math.Max(0, gained));
         }
 
@@ -104,7 +108,11 @@ namespace Jondo.Unity.Server.Handlers
             var now = DateTime.UtcNow;
             int missing = RestingLife.MissingAt(character, now);
             int energy = Energy.Of(character);
-            var (life, gained) = WouldGive(recovery, missing, energy, Random.Shared);
+            // Today's Almanax may make them heal more: «las curas con consumibles (vida y energía)
+            // aumenta un 100%».
+            var (life, gained) = WouldGive(recovery, missing, energy, Random.Shared,
+                Almanax.BonusPercent(Almanax.BonusType.ConsumableLife, Almanax.Where.Anywhere),
+                Almanax.BonusPercent(Almanax.BonusType.ConsumableEnergy, Almanax.Where.Anywhere));
 
             if (life == 0 && gained == 0)
             {

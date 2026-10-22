@@ -80,6 +80,9 @@ namespace Jondo.Unity.Server.Managers
         private static Dictionary<long, Item> Items => SessionContext.State.EquipmentItems;
 
         public static System.Collections.Generic.IEnumerable<Item> All => Items.Values;
+
+        /// <summary>The templates of what the character in session wears: the Almanax's «lleven equipado».</summary>
+        public static List<int> WornTemplates() => Items.Values.Where(i => IsWorn(i.Position)).Select(i => i.Template).ToList();
         public static int Worn
         {
             get

@@ -183,6 +183,11 @@ namespace Jondo.Unity.Server.Handlers
                 // A Gigalodón salt deposit gives its one salt to the raid's pool, not to the bag.
                 bool deposit = GuildRaidSaltDeposits.IsDeposit(resource);
                 int cuantos = deposit ? GuildRaidSaltDeposits.SaltPerDeposit : Roll(jobLevel, resource.LevelMin);
+                // Today's Almanax may make the harvest bigger: «La cantidad de mineral que consigan los
+                // mineros ... aumentará en un 100%» (type 7, by job or by skill).
+                if (!deposit)
+                    cuantos = (int)Managers.Almanax.WithBonus(Managers.Almanax.BonusType.HarvestQuantity, cuantos,
+                        Managers.Almanax.Where.AtWork(resource.JobId, skillId));
                 long characterId = SessionContext.State.CharacterId;
 
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
@@ -233,7 +238,8 @@ namespace Jondo.Unity.Server.Handlers
 
                 bool subeNivel = SessionContext.State.AddJobExperience(
                     resource.JobId,
-                    Managers.Almanax.WithBonus(Managers.Almanax.BonusType.JobExperience, JobExperience.PerGather),
+                    Managers.Almanax.WithBonus(Managers.Almanax.BonusType.JobExperience, JobExperience.PerGather,
+                        Managers.Almanax.Where.AtWork(resource.JobId, skillId)),
                     out long total, out int nivel);
                 DatabaseManager.SaveJobExperience(characterId, resource.JobId, total);
 

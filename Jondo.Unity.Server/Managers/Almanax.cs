@@ -27,11 +27,12 @@ namespace Jondo.Unity.Server.Managers
     ///   quest cannot be taken again that day.</item>
     /// </list>
     ///
-    /// Of the day's bonuses, three kinds are applied when they come with no condition: job
-    /// experience, quest experience and quest kamas (see <see cref="BonusType"/>). The rest — the
-    /// experience and drops of monsters, harvest quantities, challenge bonuses — are read and
-    /// named, not applied: they come with conditions whose types the client data does not
-    /// explain, and applying them would mean guessing inside the fight code.
+    /// Of the day's bonuses, these are applied (see <see cref="BonusType"/>): job experience,
+    /// quest experience and kamas, the fights' experience, drops and challenge bonuses, the
+    /// Koliseo's experience and tokens, and what consumables heal. Their conditions are read the
+    /// way the days' own descriptions word them (<see cref="Fits"/>). The rest -- harvests,
+    /// resources' respawn, crafting, tax collectors, breeding, regeneration -- are read and named,
+    /// not applied.
     /// </remarks>
     public static class Almanax
     {
@@ -150,6 +151,133 @@ namespace Jondo.Unity.Server.Managers
 
             /// <summary>Day 250: "La ganancia de kamas aumentará en un 100% en todas las misiones".</summary>
             public const int QuestKamas = 15;
+
+            /// <summary>"La ganancia de experiencia aumenta un 100% en la mazmorra de la Cámara de los Maleficios".</summary>
+            public const int MonsterExperience = 1;
+
+            /// <summary>"Las posibilidades de conseguir un botín aumentan en un 100% en la mazmorra ...".</summary>
+            public const int MonsterDrops = 16;
+
+            /// <summary>"Los bonus que se consiguen al superar un reto aumentan en un 75%".</summary>
+            public const int ChallengeBonus = 17;
+
+            /// <summary>"La cantidad de fichas que se gana en el koliseo aumentará en un 100%".</summary>
+            public const int KoliseoTokens = 25;
+
+            /// <summary>"La ganancia de experiencia aumenta en un 75% con los combates del koliseo".</summary>
+            public const int KoliseoExperience = 28;
+
+            /// <summary>"las curas con consumibles (vida y energía) aumenta un 100%": the life (21) and the energy (32).</summary>
+            public const int ConsumableLife = 21, ConsumableEnergy = 32;
+
+            /// <summary>"La cantidad de peces que consiguen los pescadores ... aumenta un 100%".</summary>
+            public const int HarvestQuantity = 7;
+        }
+
+        /// <summary>
+        /// What a bonus's conditions ask about, as <see cref="Fits"/> reads them: where it is (area,
+        /// subarea, a dungeon), whom the fight is against (monsters and their races), and what the
+        /// character wears.
+        /// </summary>
+        public sealed record Where(int Area, int Subarea, IReadOnlyCollection<int> Monsters, IReadOnlyCollection<int> Races,
+                                   IReadOnlyCollection<int> Worn, bool InDungeon, int Job = 0, int Skill = 0)
+        {
+            public static readonly Where Anywhere = new(-1, 0, Array.Empty<int>(), Array.Empty<int>(), Array.Empty<int>(), false);
+
+            /// <summary>A job's work: its experience, a harvest by one of its skills.</summary>
+            public static Where AtWork(int job, int skill = 0) => Anywhere with { Job = job, Skill = skill };
+        }
+
+        /// <summary>
+        /// Today's bonus of that type that fits here, in percent: the ones with no condition and
+        /// the ones whose every condition is met.
+        /// </summary>
+        public static int BonusPercent(int type, Where where)
+        {
+            var today = Today();
+            if (today == null) return 0;
+            int percent = 0;
+            foreach (var bonus in today.Bonuses)
+                if (bonus.Type == type && Fits(bonus, where)) percent += bonus.Amount;
+            return percent;
+        }
+
+        /// <summary>
+        /// Whether a bonus's conditions are met: each kind is one of its values, and every kind is
+        /// met. The kinds, read off the days whose descriptions name them: 1 an area (the «dimensiones
+        /// divinas» are 53, 54 and 55), 2 a subarea («la Cámara de los Maleficios», 1030), 3 a monster
+        /// and 4 a race -- one condition, the race and its archmonsters: «{{monsterRace,51::cuerboks}}»
+        /// comes with 2437 --, 5 a job («los pescadores»: 36), 7 an item worn («para todos los
+        /// aventureros que lleven equipado»), 10 a job's skill («centeno» and «arroz»: skills 52 and
+        /// 159, «Segar» rye and rice), 15 the dungeons. 13, the zones an anomaly touches, and every other kind are never met here.
+        /// </summary>
+        public static bool Fits(AlmanaxBonus bonus, Where where)
+        {
+            foreach (var kind in bonus.Criteria.GroupBy(c => c.Type == 4 ? 3 : c.Type))
+            {
+                bool met = kind.Any(c => c.Type switch
+                {
+                    1 => where.Area == c.Value,
+                    2 => where.Subarea == c.Value,
+                    3 => where.Monsters.Contains(c.Value),
+                    4 => where.Races.Contains(c.Value),
+                    5 => where.Job == c.Value,
+                    7 => where.Worn.Contains(c.Value),
+                    10 => where.Skill == c.Value,
+                    15 => where.InDungeon,
+                    _ => false,
+                });
+                if (!met) return false;
+            }
+            return true;
+        }
+
+        /// <summary>An amount with today's bonus of that type that fits here on top.</summary>
+        public static long WithBonus(int type, long amount, Where where)
+        {
+            int percent = BonusPercent(type, where);
+            return percent <= 0 || amount <= 0 ? amount : amount + amount * percent / 100;
+        }
+
+        /// <summary>
+        /// A fight's monsters and place, for the bonuses: its map's subarea and area, whether it is a
+        /// dungeon's room, the monsters and their races, and what the character in session wears.
+        /// </summary>
+        public static Where ForFight(long mapId, IEnumerable<int> monsters, IEnumerable<int> worn, bool inDungeon)
+        {
+            int subarea = MapManager.GetMapInfo(mapId)?.SubAreaId ?? 0;
+            var ids = monsters.Where(m => m > 0).Distinct().ToList();
+            return new Where(subarea > 0 ? Interactives.AreaOfSubArea(subarea) : -1, subarea, ids,
+                             ids.Select(RaceOf).Where(r => r != 0).Distinct().ToList(), worn.ToList(), inDungeon);
+        }
+
+        private static Dictionary<int, int>? _races;
+        private static readonly object _racesGate = new();
+
+        /// <summary>A monster's race, from its template (MonsterTemplates.Data "race"); 0 when unknown.</summary>
+        public static int RaceOf(int monsterId)
+        {
+            lock (_racesGate)
+            {
+                if (_races == null)
+                {
+                    _races = new Dictionary<int, int>();
+                    try
+                    {
+                        using var connection = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.WorldConnectionString);
+                        connection.Open();
+                        using var command = connection.CreateCommand();
+                        command.CommandText = "SELECT Id, COALESCE(json_extract(Data, '$.race'), 0) FROM MonsterTemplates;";
+                        using var reader = command.ExecuteReader();
+                        while (reader.Read()) _races[reader.GetInt32(0)] = reader.GetInt32(1);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Almanax] The monsters' races could not be read: {ex.Message}");
+                    }
+                }
+                return _races.TryGetValue(monsterId, out int race) ? race : 0;
+            }
         }
 
         /// <summary>

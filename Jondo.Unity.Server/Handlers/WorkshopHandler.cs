@@ -832,7 +832,8 @@ namespace Jondo.Unity.Server.Handlers
         public static async Task GiveJobExperienceAsync(NetworkStream stream, int jobId, long amount, bool bonus = true)
         {
             if (amount <= 0) return;
-            if (bonus) amount = Managers.Almanax.WithBonus(Managers.Almanax.BonusType.JobExperience, amount);
+            if (bonus) amount = Managers.Almanax.WithBonus(Managers.Almanax.BonusType.JobExperience, amount,
+                                                          Managers.Almanax.Where.AtWork(jobId));
             bool up = SessionContext.State.AddJobExperience(jobId, amount, out long total, out int level);
             DatabaseManager.SaveJobExperience(SessionContext.State.CharacterId, jobId, total);
             if (up) await SendLevelUpAsync(stream, jobId, level);
