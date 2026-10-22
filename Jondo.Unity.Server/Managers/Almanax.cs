@@ -153,7 +153,7 @@ namespace Jondo.Unity.Server.Managers
                 {
                     Console.WriteLine($"[Almanax] {calendar.Count} days in the calendar; today is {today.Id}, " +
                                       $"offering in quest {today.QuestId}, saint {today.Saint}, " +
-                                      $"{today.Bonuses.Count} bonuses not applied. Ontoral hands it over (NPC {Giver}).");
+                                      $"{today.Bonuses.Count} bonus(es) today. Ontoral hands it over (NPC {Giver}).");
                 }
             }
         }
