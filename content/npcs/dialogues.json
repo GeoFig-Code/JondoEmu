@@ -34,7 +34,10 @@
     "French, and matched back to ids with tools/dialogue_from_guide.py. Inside one NPC the text",
     "identifies its lines 98.3% of the time, and the reply ids do not have to be Ankama's: the",
     "server sends the ids and the client sends back what it was given, so any id with the right",
-    "text works as long as the tree agrees with itself."
+    "text works as long as the tree agrees with itself.",
+    "",
+    "  mutation      the reply gives this mutation item after its teleport (the Orbalantir's).",
+    "  endsMutation  the reply takes the player's mutation away after its teleport."
   ],
   "dialogues": [
   {"npc": 2345, "map": 0, "opening": 59923, "lines": [{"message": 59923, "choices": [{"reply": 82197, "startsQuest": 2539, "next": 59925}, {"reply": 82220, "startsQuest": 2538, "next": 59937}, {"reply": 82222, "startsQuest": 2540, "next": 59938}, {"reply": 82224, "startsQuest": 2541, "next": 59939}, {"reply": 82226, "startsQuest": 2542, "next": 59940}, {"reply": 82228, "startsQuest": 2543, "next": 59941}, {"reply": 82203, "next": 59928}, {"reply": 82212, "next": 59927}, {"reply": 82206, "next": 59930}, {"reply": 82207, "next": 59931}, {"reply": 82199}]}, {"message": 59925, "choices": [{"reply": 82196}]}, {"message": 59937, "choices": [{"reply": 82219}]}, {"message": 59938, "choices": [{"reply": 82221}]}, {"message": 59939, "choices": [{"reply": 82223}]}, {"message": 59940, "choices": [{"reply": 82225}]}, {"message": 59941, "choices": [{"reply": 82227}]}, {"message": 59928, "choices": [{"reply": 82201, "next": 59929}, {"reply": 82205}]}, {"message": 59927, "choices": [{"reply": 82209, "next": 59929}, {"reply": 82210}]}, {"message": 59929, "choices": [{"reply": 82200}, {"reply": 82202}]}, {"message": 59930, "choices": [{"reply": 82216}]}, {"message": 59931, "choices": [{"reply": 82218}]}], "_byHand": true},
@@ -2642,6 +2645,268 @@
         {
           "message": 52532,
           "choices": []
+        }
+      ]
+    },
+    {
+      "npc": 3687,
+      "map": 122422272,
+      "opening": 26449,
+      "lines": [
+        {
+          "message": 26449,
+          "choices": [
+            {
+              "reply": 31748,
+              "teleport": 175374336,
+              "mutation": 15019,
+              "params": [
+                2
+              ]
+            },
+            {
+              "reply": 31749,
+              "teleport": 175375360,
+              "mutation": 15592,
+              "params": [
+                2
+              ]
+            },
+            {
+              "reply": 31750,
+              "teleport": 175376384,
+              "mutation": 16907,
+              "params": [
+                2
+              ]
+            },
+            {
+              "reply": 31751,
+              "teleport": 175374338,
+              "mutation": 16908,
+              "params": [
+                2
+              ]
+            },
+            {
+              "reply": 31752,
+              "teleport": 175375362,
+              "mutation": 18317,
+              "params": [
+                2
+              ]
+            },
+            {
+              "reply": 35638,
+              "teleport": 183239183,
+              "mutation": 19166,
+              "params": [
+                2
+              ]
+            },
+            {
+              "reply": 35639,
+              "teleport": 183240207,
+              "params": [
+                2
+              ]
+            },
+            {
+              "reply": 45277,
+              "teleport": 183241231,
+              "params": [
+                2
+              ]
+            },
+            {
+              "reply": 45278,
+              "teleport": 183242255,
+              "mutation": 20712,
+              "params": [
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "npc": 3687,
+      "map": 175374336,
+      "opening": 26449,
+      "lines": [
+        {
+          "message": 26449,
+          "choices": [
+            {
+              "reply": 31753,
+              "teleport": 122422272,
+              "endsMutation": true,
+              "params": [
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "npc": 3687,
+      "map": 175375360,
+      "opening": 26449,
+      "lines": [
+        {
+          "message": 26449,
+          "choices": [
+            {
+              "reply": 31753,
+              "teleport": 122422272,
+              "endsMutation": true,
+              "params": [
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "npc": 3687,
+      "map": 175376384,
+      "opening": 26449,
+      "lines": [
+        {
+          "message": 26449,
+          "choices": [
+            {
+              "reply": 31753,
+              "teleport": 122422272,
+              "endsMutation": true,
+              "params": [
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "npc": 3687,
+      "map": 175374338,
+      "opening": 26449,
+      "lines": [
+        {
+          "message": 26449,
+          "choices": [
+            {
+              "reply": 31753,
+              "teleport": 122422272,
+              "endsMutation": true,
+              "params": [
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "npc": 3687,
+      "map": 175375362,
+      "opening": 26449,
+      "lines": [
+        {
+          "message": 26449,
+          "choices": [
+            {
+              "reply": 31753,
+              "teleport": 122422272,
+              "endsMutation": true,
+              "params": [
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "npc": 3687,
+      "map": 183239183,
+      "opening": 26449,
+      "lines": [
+        {
+          "message": 26449,
+          "choices": [
+            {
+              "reply": 31753,
+              "teleport": 122422272,
+              "endsMutation": true,
+              "params": [
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "npc": 3687,
+      "map": 183240207,
+      "opening": 26449,
+      "lines": [
+        {
+          "message": 26449,
+          "choices": [
+            {
+              "reply": 31753,
+              "teleport": 122422272,
+              "endsMutation": true,
+              "params": [
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "npc": 3687,
+      "map": 183241231,
+      "opening": 26449,
+      "lines": [
+        {
+          "message": 26449,
+          "choices": [
+            {
+              "reply": 31753,
+              "teleport": 122422272,
+              "endsMutation": true,
+              "params": [
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "npc": 3687,
+      "map": 183242255,
+      "opening": 26449,
+      "lines": [
+        {
+          "message": 26449,
+          "choices": [
+            {
+              "reply": 31753,
+              "teleport": 122422272,
+              "endsMutation": true,
+              "params": [
+                2
+              ]
+            }
+          ]
         }
       ]
     }

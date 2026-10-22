@@ -106,6 +106,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>«Has conseguido {0} '$item{1}'.»</summary>
         public const int ItemGained = 21;
 
+        /// <summary>«Has perdido {0} '$item{1}'.»: a mutation taken away, «1» and its item.</summary>
+        public const int ItemLost = 22;
+
         /// <summary>«Has recuperado &lt;b&gt;{0}&lt;/b&gt; puntos de vida.» Info, the life healed.</summary>
         public const int LifeRecovered = 1;
 

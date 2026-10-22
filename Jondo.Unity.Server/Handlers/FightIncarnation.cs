@@ -60,17 +60,23 @@ namespace Jondo.Unity.Server.Handlers
         // ─── The incarnation ─────────────────────────────────────────────────────
 
         /// <summary>
-        /// Makes <paramref name="player"/> fight as <paramref name="monsterId"/>, its sheet brought to
-        /// <paramref name="level"/>: see the class remarks. False, and nothing changed, when the
-        /// template is not in the data.
+        /// Makes <paramref name="player"/> fight as <paramref name="monsterId"/> at the grade
+        /// <paramref name="gradeIndex"/>, its sheet brought to <paramref name="level"/> when it is
+        /// not zero: see the class remarks. A mutation (Mutations) is its grade as it stands. False,
+        /// and nothing changed, when the template is not in the data.
         /// </summary>
-        internal static bool Incarnate(Fighter player, int monsterId, int level)
+        internal static bool Incarnate(Fighter player, int monsterId, int level, int gradeIndex = 0)
         {
             MobSpawnManager.EnsureMonsterData();
             var data = MobSpawnManager.GetMonsterData(monsterId);
             if (data == null || data.Grades.Count == 0) return false;
 
-            var template = BuildMonsterFighter(new MobSpawnManager.MobMember { Monster = data, GradeIndex = 0 }, player.Id, player.CellId);
+            var member = new MobSpawnManager.MobMember
+            {
+                Monster = data,
+                GradeIndex = Math.Clamp(gradeIndex, 0, data.Grades.Count - 1),
+            };
+            var template = BuildMonsterFighter(member, player.Id, player.CellId);
             if (level > 0) Managers.Dreams.ScaleTo(template, level);
 
             player.IncarnatedMonster = monsterId;

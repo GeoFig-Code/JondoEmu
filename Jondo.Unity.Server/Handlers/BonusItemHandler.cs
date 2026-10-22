@@ -29,9 +29,9 @@ namespace Jondo.Unity.Server.Handlers
     /// sense of the replacing: without it, those criteria would ask for nothing a full slot did not.
     /// </para>
     /// <para>
-    /// Not handled, and logged: an item for a slot that changes the look (a mutation, a follower, a
-    /// roleplay transformation), a boost food that lasts minutes instead of fights (the perlequines'),
-    /// and anything mixed with other effects.
+    /// A mutation given goes through <see cref="MutationHandler"/>. Not handled, and logged: an item
+    /// for a slot that changes the look (a follower, a roleplay transformation), a boost food that
+    /// lasts minutes instead of fights (the perlequines'), and anything mixed with other effects.
     /// </para>
     /// </remarks>
     public static class BonusItemHandler
@@ -145,6 +145,11 @@ namespace Jondo.Unity.Server.Handlers
             bool placed = false;
             foreach (var (template, quantity, type) in typed)
             {
+                if (type == BonusSlots.MutationType)
+                {
+                    await MutationHandler.GiveAsync(stream, template);
+                    continue;
+                }
                 var slots = BonusSlots.SlotsFor(type);
                 if (slots.Count > 0)
                 {

@@ -151,6 +151,12 @@ namespace Jondo.Unity.Server.Handlers
                 if (counted == null) continue;
 
                 var (effects, isSpent) = counted.Value;
+                if (isSpent && item.Position == Mutations.Slot)
+                {
+                    // A mutation spent gives the character back his spells, look and sheet.
+                    await MutationHandler.EndAsync(stream);
+                    continue;
+                }
                 if (isSpent)
                 {
                     await RemoveSlotItemAsync(stream, character, item);
@@ -165,10 +171,17 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>A bonus slot's item gone: out of the base, the bag, the sheet's cache, and the client (ium).</summary>
         internal static async Task RemoveSlotItemAsync(NetworkStream stream, long character, Equipment.Item item)
         {
-            if (!DatabaseManager.DestroyCharacterItem(character, item.Uid, item.Quantity)) return;
+            if (!TakeSlotItem(character, item)) return;
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Ium, ConnectionProtocol.BuildItemGone(item.Uid)));
+        }
+
+        /// <summary>A bonus slot's item out of the base, the bag and the sheet's cache, without telling the client.</summary>
+        internal static bool TakeSlotItem(long character, Equipment.Item item)
+        {
+            if (!DatabaseManager.DestroyCharacterItem(character, item.Uid, item.Quantity)) return false;
             Equipment.Remove(item.Uid, item.Quantity);
             Equipment.RememberWorn(item.Uid, Equipment.Bag, (string?)null);
-            await WriteAsync(stream, ConnectionProtocol.Push(Op.Ium, ConnectionProtocol.BuildItemGone(item.Uid)));
+            return true;
         }
 
         private static async Task TellLostAsync(NetworkStream stream, Alterations.Active gone, DateTime now)

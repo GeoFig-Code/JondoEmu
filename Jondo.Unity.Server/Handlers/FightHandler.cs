@@ -749,6 +749,10 @@ namespace Jondo.Unity.Server.Handlers
             // fights, not to the character outside them -- to every one of its people, the owner
             // and whoever came with him ("Les compagnons et les invocations profiteront également
             // de ces bonus"); only the owner got them.
+            // A mutated character fights as his monster, at its grade (Mutations).
+            if (Managers.Mutations.Current() is { } mutation)
+                Incarnate(playerFighter, mutation.Monster, 0, mutation.Grade - 1);
+
             var dream = Managers.Dreams.De(GameState.CharacterId);
             if (dream?.SalaActual?.MapaDeLaSala != fight.RoleplayMapId) dream = DreamHandler.DreamOf(fight);
             if (dream != null)

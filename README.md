@@ -459,7 +459,9 @@ An alliance is made of characters, not guilds.
   what the client says, their characteristics growing with the level; the Almanax's day 341 feeds them more
 - ✅ Legendary pets: the bebemot's reflection makes a pet legendary, an impregnated croquette gives it a
   power, and the power is a spell in your fights
-- ❌ The bonus slots that change the look
+- ✅ Mutations: the Orbalantir de Meriana takes you to its nine epic fights, most of them turned into a
+  monster with its look, spells and characteristics, until the fight is over or you go back
+- ❌ The roleplay disguises and the followers in their bonus slots
 - ✅ **520 mounts** with their look, swapped and unequipped correctly
 <img width="2560" height="1500" alt="image" src="https://github.com/user-attachments/assets/375da573-ab61-4bf0-83fd-6f2a8f872cde" />
 <img width="2560" height="1506" alt="image" src="https://github.com/user-attachments/assets/581b105c-9569-4f54-ab77-01e122b8ce06" />

@@ -119,6 +119,15 @@ namespace Jondo.Unity.World.Content
         /// </summary>
         public bool DreamFavor { get; init; }
 
+        /// <summary>
+        /// The mutation item this reply gives, or zero: the Orbalantir de Meriana's «Pensar en Dark
+        /// Vlad y tocar las escamas.» takes the player to the epic fight and mutates him (15019).
+        /// </summary>
+        public int GivesMutation { get; init; }
+
+        /// <summary>True when the reply takes the player's mutation away: the Orbalantir's «Pensar en la casa de Meriana.».</summary>
+        public bool EndsMutation { get; init; }
+
         /// <summary>True when the reply puts the player back where they came in from.</summary>
         /// <remarks>
         /// Separate from <see cref="TeleportsTo"/> because there is no map to write down: the
@@ -427,6 +436,9 @@ namespace Jondo.Unity.World.Content
                                          && after.ValueKind == JsonValueKind.True,
                             KothRole = (int)Number(choice, "kothRole"),
                             RefusedNext = Number(choice, "refused"),
+                            GivesMutation = (int)Number(choice, "mutation"),
+                            EndsMutation = choice.TryGetProperty("endsMutation", out var ends)
+                                           && ends.ValueKind == JsonValueKind.True,
                         });
                     }
                 }
@@ -532,6 +544,8 @@ namespace Jondo.Unity.World.Content
                             if (choice.ReturnsHome) writer.WriteBoolean("teleportBack", true);
                             if (choice.KothRole != 0) writer.WriteNumber("kothRole", choice.KothRole);
                             if (choice.RefusedNext != 0) writer.WriteNumber("refused", choice.RefusedNext);
+                            if (choice.GivesMutation != 0) writer.WriteNumber("mutation", choice.GivesMutation);
+                            if (choice.EndsMutation) writer.WriteBoolean("endsMutation", true);
                             writer.WriteEndObject();
                         }
 

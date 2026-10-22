@@ -1061,6 +1061,10 @@ namespace Jondo.Unity.Server.Handlers
 
                 await WorldMoveHandler.TeleportAsync(stream, adonde);
                 Console.WriteLine($"[NPC] Reply {reply}: leads to map {adonde}.");
+
+                // The orbalantir's, after the map change: the mutation taken away or given.
+                if (elegidaAhora.EndsMutation) await MutationHandler.EndAsync(stream);
+                if (elegidaAhora.GivesMutation != 0) await MutationHandler.GiveAsync(stream, elegidaAhora.GivesMutation);
                 return;
             }
 

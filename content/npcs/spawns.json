@@ -549,6 +549,83 @@
       "cell": 398,
       "orientation": 1,
       "why": "Brakmar's estate agent, as Bonta's: hint 3014 «Casa de los oficios», street map 212862981 (-24,38). Cell inferred."
+    },
+    {
+      "map": 122422272,
+      "npc": 3687,
+      "cell": 327,
+      "orientation": 1,
+      "why": "The Orbalantir de Meriana in Meriana's house, measured in «orbalantir de meriana-teleport a todas las peleas epicas»: his nine replies take one to the epic fights, most of them mutated (MutationHandler)."
+    },
+    {
+      "map": 122422272,
+      "npc": 4647,
+      "cell": 230,
+      "orientation": 1,
+      "why": "The «Crisol alquímico» beside the Orbalantir, measured in the same capture."
+    },
+    {
+      "map": 175374336,
+      "npc": 3687,
+      "cell": 214,
+      "orientation": 1,
+      "why": "The Orbalantir on the epic fight it leads to, measured in «orbalantir de meriana-teleport a todas las peleas epicas»: «Pensar en la casa de Meriana.» takes one back."
+    },
+    {
+      "map": 175375360,
+      "npc": 3687,
+      "cell": 511,
+      "orientation": 6,
+      "why": "The Orbalantir on the epic fight it leads to, measured in «orbalantir de meriana-teleport a todas las peleas epicas»: «Pensar en la casa de Meriana.» takes one back."
+    },
+    {
+      "map": 175376384,
+      "npc": 3687,
+      "cell": 422,
+      "orientation": 7,
+      "why": "The Orbalantir on the epic fight it leads to, measured in «orbalantir de meriana-teleport a todas las peleas epicas»: «Pensar en la casa de Meriana.» takes one back."
+    },
+    {
+      "map": 175374338,
+      "npc": 3687,
+      "cell": 398,
+      "orientation": 7,
+      "why": "The Orbalantir on the epic fight it leads to, measured in «orbalantir de meriana-teleport a todas las peleas epicas»: «Pensar en la casa de Meriana.» takes one back."
+    },
+    {
+      "map": 175375362,
+      "npc": 3687,
+      "cell": 342,
+      "orientation": 7,
+      "why": "The Orbalantir on the epic fight it leads to, measured in «orbalantir de meriana-teleport a todas las peleas epicas»: «Pensar en la casa de Meriana.» takes one back."
+    },
+    {
+      "map": 183239183,
+      "npc": 3687,
+      "cell": 300,
+      "orientation": 5,
+      "why": "The Orbalantir on the epic fight it leads to, measured in «orbalantir de meriana-teleport a todas las peleas epicas»: «Pensar en la casa de Meriana.» takes one back."
+    },
+    {
+      "map": 183240207,
+      "npc": 3687,
+      "cell": 401,
+      "orientation": 5,
+      "why": "The Orbalantir on the epic fight it leads to, measured in «orbalantir de meriana-teleport a todas las peleas epicas»: «Pensar en la casa de Meriana.» takes one back."
+    },
+    {
+      "map": 183241231,
+      "npc": 3687,
+      "cell": 148,
+      "orientation": 3,
+      "why": "The Orbalantir on the epic fight it leads to, measured in «orbalantir de meriana-teleport a todas las peleas epicas»: «Pensar en la casa de Meriana.» takes one back."
+    },
+    {
+      "map": 183242255,
+      "npc": 3687,
+      "cell": 247,
+      "orientation": 3,
+      "why": "The Orbalantir on the epic fight it leads to, measured in «orbalantir de meriana-teleport a todas las peleas epicas»: «Pensar en la casa de Meriana.» takes one back."
     }
   ]
 }

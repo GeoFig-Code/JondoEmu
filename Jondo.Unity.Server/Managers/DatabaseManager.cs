@@ -3971,7 +3971,11 @@ namespace Jondo.Unity.Server
                                 {
                                     string entry = perGrade[Math.Clamp(gradeIndex, 0, perGrade.Length - 1)];
                                     string[] parts = entry.Split(',');
-                                    if (parts.Length > 0 && int.TryParse(parts[0], out int g) && g > 0) spellGrade = g;
+                                    if (parts.Length > 0 && int.TryParse(parts[0], out int g))
+                                    {
+                                        if (g > 0) spellGrade = g;
+                                        else stats.SpellsAbsentAtGrade.Add(sid);
+                                    }
                                 }
                             }
 
@@ -5875,6 +5879,13 @@ namespace Jondo.Unity.Server
 
         /// <summary>Grade (level) of each of the monster's spells, keyed by spell id.</summary>
         public Dictionary<int, int> SpellGrades { get; set; } = new Dictionary<int, int>();
+
+        /// <summary>
+        /// The spells whose spellGrades entry for this grade says level 0: not the monster's at this
+        /// grade. «Reflejo de Prismaradona» (3577) has six spells and its 4317 is «0,100» at grade 1;
+        /// the mutation into it at that grade brings the other five alone (Mutations).
+        /// </summary>
+        public HashSet<int> SpellsAbsentAtGrade { get; } = new HashSet<int>();
     }
 
     public class MonsterDrop

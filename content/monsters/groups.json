@@ -33,7 +33,12 @@
     "THE ASTRUB MILITIA TOWER'S PUNCHING BAGS. The same six Puch Ingball on 192415754, the",
     "tower's training room, where the master stands too. Cells, facings and grades are",
     "measured off the four jss of that room in 'bastante combate con steamer': one monster a",
-    "group, Puch Ingball at every level, drawn as the Kanojedo ones are ({431|||100})."
+    "group, Puch Ingball at every level, drawn as the Kanojedo ones are ({431|||100}).",
+    "",
+    "THE ORBALANTIR'S EPIC FIGHTS. Nine maps the Orbalantir de Meriana (3687) takes one to, each with",
+    "one epic monster alone -- Dark Vlad (3578), the Minogólem secular (3740) and so on --, measured off the jss of",
+    "'orbalantir de meriana-teleport a todas las peleas epicas': cell, facing, grade 1. The base's",
+    "groups on them, and on Meriana's house 122422272 where none stands, are a subarea's roster and go."
   ],
   "groups": [
     {
@@ -267,6 +272,264 @@
         {
           "monster": 494,
           "grade": 5
+        }
+      ]
+    },
+    {
+      "map": 122422272,
+      "group": -1016328,
+      "remove": true
+    },
+    {
+      "map": 122422272,
+      "group": -1016327,
+      "remove": true
+    },
+    {
+      "map": 122422272,
+      "group": -1016326,
+      "remove": true
+    },
+    {
+      "map": 175374336,
+      "group": -1027410,
+      "remove": true
+    },
+    {
+      "map": 175374336,
+      "group": -1027409,
+      "remove": true
+    },
+    {
+      "map": 175374336,
+      "group": -1027408,
+      "remove": true
+    },
+    {
+      "map": 175374336,
+      "group": -1027407,
+      "remove": true
+    },
+    {
+      "map": 175375360,
+      "group": -1027418,
+      "remove": true
+    },
+    {
+      "map": 175375360,
+      "group": -1027417,
+      "remove": true
+    },
+    {
+      "map": 175375360,
+      "group": -1027416,
+      "remove": true
+    },
+    {
+      "map": 175375360,
+      "group": -1027415,
+      "remove": true
+    },
+    {
+      "map": 175376384,
+      "group": -1027423,
+      "remove": true
+    },
+    {
+      "map": 175376384,
+      "group": -1027422,
+      "remove": true
+    },
+    {
+      "map": 175376384,
+      "group": -1027421,
+      "remove": true
+    },
+    {
+      "map": 175374338,
+      "group": -1027414,
+      "remove": true
+    },
+    {
+      "map": 175374338,
+      "group": -1027413,
+      "remove": true
+    },
+    {
+      "map": 175374338,
+      "group": -1027412,
+      "remove": true
+    },
+    {
+      "map": 175374338,
+      "group": -1027411,
+      "remove": true
+    },
+    {
+      "map": 175375362,
+      "group": -1027420,
+      "remove": true
+    },
+    {
+      "map": 175375362,
+      "group": -1027419,
+      "remove": true
+    },
+    {
+      "map": 183239183,
+      "group": -1028831,
+      "remove": true
+    },
+    {
+      "map": 183239183,
+      "group": -1028830,
+      "remove": true
+    },
+    {
+      "map": 183239183,
+      "group": -1028829,
+      "remove": true
+    },
+    {
+      "map": 183239183,
+      "group": -1028828,
+      "remove": true
+    },
+    {
+      "map": 183240207,
+      "group": -1028847,
+      "remove": true
+    },
+    {
+      "map": 183240207,
+      "group": -1028846,
+      "remove": true
+    },
+    {
+      "map": 183241231,
+      "group": -1028868,
+      "remove": true
+    },
+    {
+      "map": 183241231,
+      "group": -1028867,
+      "remove": true
+    },
+    {
+      "map": 183242255,
+      "group": -1028881,
+      "remove": true
+    },
+    {
+      "map": 183242255,
+      "group": -1028880,
+      "remove": true
+    },
+    {
+      "map": 175374336,
+      "group": -2000018,
+      "cell": 287,
+      "orientation": 7,
+      "members": [
+        {
+          "monster": 3578,
+          "grade": 0
+        }
+      ]
+    },
+    {
+      "map": 175375360,
+      "group": -2000019,
+      "cell": 244,
+      "orientation": 3,
+      "members": [
+        {
+          "monster": 3740,
+          "grade": 0
+        }
+      ]
+    },
+    {
+      "map": 175376384,
+      "group": -2000020,
+      "cell": 262,
+      "orientation": 7,
+      "members": [
+        {
+          "monster": 4045,
+          "grade": 0
+        }
+      ]
+    },
+    {
+      "map": 175374338,
+      "group": -2000021,
+      "cell": 290,
+      "orientation": 3,
+      "members": [
+        {
+          "monster": 4074,
+          "grade": 0
+        }
+      ]
+    },
+    {
+      "map": 175375362,
+      "group": -2000022,
+      "cell": 328,
+      "orientation": 7,
+      "members": [
+        {
+          "monster": 4614,
+          "grade": 0
+        }
+      ]
+    },
+    {
+      "map": 183239183,
+      "group": -2000023,
+      "cell": 271,
+      "orientation": 3,
+      "members": [
+        {
+          "monster": 4946,
+          "grade": 0
+        }
+      ]
+    },
+    {
+      "map": 183240207,
+      "group": -2000024,
+      "cell": 343,
+      "orientation": 1,
+      "members": [
+        {
+          "monster": 4974,
+          "grade": 0
+        }
+      ]
+    },
+    {
+      "map": 183241231,
+      "group": -2000025,
+      "cell": 144,
+      "orientation": 5,
+      "members": [
+        {
+          "monster": 5394,
+          "grade": 0
+        }
+      ]
+    },
+    {
+      "map": 183242255,
+      "group": -2000026,
+      "cell": 300,
+      "orientation": 1,
+      "members": [
+        {
+          "monster": 5388,
+          "grade": 0
         }
       ]
     }

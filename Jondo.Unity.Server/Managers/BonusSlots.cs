@@ -21,9 +21,10 @@ namespace Jondo.Unity.Server.Managers
     /// mutation at 1 of 1 is taken away at the end of its fight (ium).
     /// </para>
     /// <para>
-    /// Only the boost food and the blessings are placed: they do nothing but add characteristics. The
-    /// mutation, the roleplay buff and the follower change the character's look, and the curses have
-    /// nothing that gives them.
+    /// The boost food and the blessings are placed as they are: they do nothing but add
+    /// characteristics. The mutation goes through MutationHandler, which tells the client its spells,
+    /// look and sheet. The roleplay buff and the follower, which change the look, are not placed, and
+    /// the curses have nothing that gives them.
     /// </para>
     /// </remarks>
     public static class BonusSlots
@@ -34,6 +35,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The boost food's slot, the candies'.</summary>
         public const int BoostFood = 21;
 
+        public const int MutationType = 27;
         public const int BoostFoodType = 28;
         public const int BlessingType = 29;
 
@@ -48,6 +50,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The slots this server places an item type in; empty for the ones it does not.</summary>
         public static IReadOnlyList<int> SlotsFor(int itemType) => itemType switch
         {
+            MutationType => new[] { Mutations.Slot },
             BoostFoodType => new[] { BoostFood },
             BlessingType => new[] { 22, 23 },
             _ => Array.Empty<int>(),

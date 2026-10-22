@@ -450,6 +450,11 @@ public static class Op
     /// <summary>S→C: a smiley over somebody's head. f2 character, f3 account, f4 smiley.</summary>
     public const string Hoc = "hoc";
 
+    /// <summary>
+    /// S→C: f1 17 before a mutation's spells give way to the character's own (MutationHandler).
+    /// </summary>
+    public const string Hod = "hod";
+
     /// <summary>C→S: the mood smiley, f5 the smiley, or empty to clear it.</summary>
     public const string Hor = "hor";
 
@@ -2500,6 +2505,9 @@ public static class Op
     public const string Kld = "kld";
 
     /// <summary>Abandoning the fight. Empty body; the server answers with a type 5 death sequence and a jxh.</summary>
+    /// <summary>S→C: an actor's look changed. f1 the look, f2 the actor: a mutation given or taken away.</summary>
+    public const string Kmb = "kmb";
+
     public const string Kme = "kme";
 
     /// <summary>

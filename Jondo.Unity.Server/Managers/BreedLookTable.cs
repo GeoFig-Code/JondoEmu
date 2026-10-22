@@ -200,8 +200,10 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Rebuild a character with their persisted palette and current equipment.</summary>
         public static byte[] BuildLook(DatabaseManager.DbCharacter character,
                                        bool paraLaVentana = false, bool onFoot = false)
-            => BuildLook(character.Breed, character.Sex, character.HeadId, SavedColors(character),
-                         character.Id, paraLaVentana, onFoot);
+            => Mutations.OfCharacter(character.Id) is { } mutation && !paraLaVentana
+                ? ConnectionProtocol.MonsterLook(mutation.Look, false).Build()   // mutated: the monster's (Mutations)
+                : BuildLook(character.Breed, character.Sex, character.HeadId, SavedColors(character),
+                            character.Id, paraLaVentana, onFoot);
 
         /// <summary>
         /// Assembles a character's look block. If custom colors are passed those are used;

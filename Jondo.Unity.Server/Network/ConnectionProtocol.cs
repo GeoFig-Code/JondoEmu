@@ -648,6 +648,26 @@ namespace Jondo.Unity.Server.Network
             var fromEquipment = Managers.Equipment.Bonuses();
             var fromAlterations = Managers.Alterations.Bonuses(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
 
+            // A mutated character's sheet is his monster grade's: its life, points and
+            // characteristics, and nothing of his own, his scrolls or his gear (Mutations).
+            var mutation = Managers.Mutations.Current();
+            var monster = mutation == null ? null : Managers.Mutations.SheetOf(mutation);
+            if (monster != null)
+            {
+                fromEquipment = new Dictionary<int, long>();
+                fromAlterations = new Dictionary<int, long>();
+                foreach (int key in scrolled.Keys.ToList()) scrolled[key] = 0;
+                primary[Stat.Strength] = monster.Strength;
+                primary[Stat.Vitality] = 0;
+                primary[Stat.Wisdom] = monster.Wisdom;
+                primary[Stat.Chance] = monster.Chance;
+                primary[Stat.Agility] = monster.Agility;
+                primary[Stat.Intelligence] = monster.Intelligence;
+                primary[Stat.LifePoints] = monster.LifePoints;
+                primary[Stat.ActionPoints] = monster.ActionPoints;
+                primary[Stat.MovementPoints] = monster.MovementPoints;
+            }
+
             foreach (int id in ids)
             {
                 long value = primary.TryGetValue(id, out long spent) ? spent : ValueOf(id, level);
@@ -1583,6 +1603,13 @@ namespace Jondo.Unity.Server.Network
                     hms.Msg(1, Pb.New().Var(1, grade).Var(3, spell).Var(4, 1));
             }
 
+            // And a mutation's, after his own: f3 { f1 grade, f3 spell, f4 6 } (Mutations).
+            if (Managers.Mutations.Current() is { } mutation)
+            {
+                foreach (var (spell, grade) in Managers.Mutations.SpellsOf(mutation))
+                    hms.Msg(3, Pb.New().Var(1, grade).Var(3, spell).Var(4, Managers.Mutations.SpellOrigin));
+            }
+
             // The loose f2 at the end, which is the same kind of oversight the spell bar
             // had with its itg: it goes after the list, looks like one more slot and without it is zero.
             //
@@ -1614,6 +1641,16 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         public static byte[] BuildSpellBar(int breed, int level, long accountId = 0)
         {
+            // A mutated character's bar is the monster's spells alone, slot by slot from 0 (Mutations).
+            if (Managers.Mutations.Current() is { } mutation)
+            {
+                var bar = Pb.New();
+                int slot = 0;
+                foreach (var (spell, _) in Managers.Mutations.SpellsOf(mutation))
+                    bar.Msg(1, Pb.New().VarIfNotZero(2, slot++).Msg(6, Pb.New().Var(2, spell)));
+                return bar.Var(2, SpellBar).Build();
+            }
+
             var layout = Managers.FightSpellLayout.Current(breed, level, accountId);
 
             var remembered = new List<(int Slot, int SpellId)>();
@@ -1805,10 +1842,14 @@ namespace Jondo.Unity.Server.Network
             // whole level, Omega included. Measured over the 319 players with an ornament in the
             // captures: below 200 both are equal (64), and every one above shows 200 in f1.f5 and its
             // full level in the ornament (255) -- a 253 is a 200 with Omega 53. See AddCharacterOptions.
-            var cuerpo = Pb.New()
-                .Msg(1, Pb.New().Var(2, HumanKind)
-                                .VarIfNotZero(5, Handlers.StatsHandler.StatLevel(character.Level)))
-                .Var(3, accountId);
+            // A mutated character carries, in place of that f1, f2 { f1 grade, f2 monster } (Mutations).
+            var mutation = Managers.Mutations.OfCharacter(character.Id);
+            var cuerpo = mutation != null
+                ? Pb.New().Msg(2, Pb.New().Var(1, mutation.Grade).Var(2, mutation.Monster)).Var(3, accountId)
+                : Pb.New()
+                    .Msg(1, Pb.New().Var(2, HumanKind)
+                                    .VarIfNotZero(5, Handlers.StatsHandler.StatLevel(character.Level)))
+                    .Var(3, accountId);
 
             AddCharacterOptions(cuerpo, character.Id, character.Level);
 
