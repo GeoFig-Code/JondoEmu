@@ -53,10 +53,10 @@ namespace Jondo.Unity.Server.Handlers
     /// Everything here is seen from the member's side. What turns following ON on the real server
     /// -- the imk 1 of frames 9 and 268 -- is not in any capture: it happens on the leader's
     /// client, and before it, at frames 4-5, the leader walks and leaves with no ikv to a member
-    /// who had asked to follow. So the real server seems to keep a switch on the leader's side,
-    /// and the message that flips it has never been recorded. Here there is no such switch: a
-    /// member who asks to follow is followed. That departs from frames 4-5 on purpose, and it is
-    /// the reason nothing here ever sends imk 1.
+    /// who had asked to follow. So the real server keeps a switch on the leader's side. No capture
+    /// records it, but the client names it: ikb, the leader's «que me sigan»
+    /// (<see cref="LeaderSwitchAsync"/>), which sends the members imk 1 or cuts them. A member who
+    /// asks to follow on his own is still followed: that departs from frames 4-5 on purpose.
     ///
     /// Also inferred: the 1664 to the leader on imo, and cutting the followers when the leader
     /// changes (promotion, or the leader leaving). The ima of "nombrar a otro jugador jefe" gets
@@ -171,6 +171,43 @@ namespace Jondo.Unity.Server.Handlers
             if (leader != null)
                 plan.Add(new Delivery(leader.Id, PartyFollowProtocol.BuildStoppedFollowingYou(memberName)));
 
+            return plan;
+        }
+
+        // ─── ikb: the leader's switch ───────────────────────────────────────────
+
+        /// <summary>
+        /// The leader's own switch, «que me sigan» (ikb { 1 on }): what turns following on for the
+        /// whole party, the message the remarks above could not name. Read in the client: its
+        /// PartyMember.ToggleLeaderAutoFollowValueChanged raises the action ded, which the party frame
+        /// (ffd) sends as ikb with that bool.
+        /// </summary>
+        /// <remarks>
+        /// On, each member not following yet gets the imk 1 of frames 9 and 268 and his client asks
+        /// to follow (imh); off, the followers get the empty imk of the zaap and stop. INFERRED: no
+        /// capture records the leader's side. Anybody but the leader is not heard.
+        /// </remarks>
+        public static async Task LeaderSwitchAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? ikb = ConnectionProtocol.ReadPayload(payload, "ikb");
+            if (ikb == null) return;
+            bool on = ProtoMessage.Parse(ikb).Fields.Any(f => f.FieldNumber == 1 && f.WireType == 0 && f.VarIntValue != 0);
+            var me = SessionContext.Current;
+            await DeliverAsync(stream, me.CharacterId, PlanLeaderSwitch(me.CharacterId, on));
+            Console.WriteLine($"[Party] {me.State.CharacterName} {(on ? "has the party follow him" : "lets the party go")}.");
+        }
+
+        internal static List<Delivery> PlanLeaderSwitch(long leaderId, bool on)
+        {
+            var party = Parties.Of(leaderId);
+            if (party == null || party.LeaderId != leaderId) return new List<Delivery>();
+            if (!on) return PlanCut(party);
+
+            var following = Parties.FollowersOf(leaderId);
+            var plan = new List<Delivery>();
+            foreach (long member in Parties.MembersOf(party))
+                if (member != leaderId && !following.Contains(member))
+                    plan.Add(new Delivery(member, PartyFollowProtocol.BuildFollowSwitch(true)));
             return plan;
         }
 

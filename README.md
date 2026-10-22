@@ -308,7 +308,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Friends window: contacts, mutual friends seen playing (character, level, class, in a fight), blocked and ignored players
 - ✅ Ankama friends: invite by nickname and tag, accept or refuse, see them connected
 - ✅ Blocked and ignored players cannot whisper to you, and you do not hear them on the map
-- ✅ Parties — invite, accept, refuse, leave, hand over the lead, kick, follow the leader
+- ✅ Parties — invite, accept, refuse, leave, hand over the lead, kick, follow the leader, and the leader's
+  switch that has the whole party follow him
 - ✅ Trading with another player: items and kamas
 - ✅ Commands answer in Spanish, English or French
 - ✅ Emotes, sitting included, and smileys; emotes learned from scrolls and potions

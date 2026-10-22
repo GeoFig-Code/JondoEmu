@@ -662,6 +662,8 @@ namespace Jondo.Unity.Server.Network
                 // The guidebook's suggestions: the cards asked for, and a card locked.
                 else if (payloadStr == Op.Uri("hmo")) await ActivitySuggestionHandler.SuggestAsync(stream, payload);
                 else if (payloadStr == Op.Uri("hmp")) await ActivitySuggestionHandler.LockAsync(stream, payload);
+                // The party leader's «que me sigan».
+                else if (payloadStr == Op.Uri("ikb")) await Handlers.PartyFollowHandler.LeaderSwitchAsync(stream, payload);
                 // A cell marked for one's side in a fight.
                 else if (payloadStr == Op.Uri("kmh")) await FightHandler.MarkCellAsync(stream, payload);
                 // A player's card («Mostrar perfil»).

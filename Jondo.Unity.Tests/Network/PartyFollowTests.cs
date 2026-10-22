@@ -203,6 +203,27 @@ namespace Jondo.Unity.Tests.Network
             Assert.Equal(new[] { member }, Parties.FollowersOf(leader));
         }
 
+        /// <summary>The leader's «que me sigan» (ikb): on, the members not following get imk 1; off, the followers are cut.</summary>
+        [Fact]
+        public void The_leader_s_switch_turns_following_on_and_off()
+        {
+            const long leader = 8_100_000_000_061, follows = 8_100_000_000_062, idle = 8_100_000_000_063;
+            using var party = new Party(leader, follows, idle);
+            Assert.NotNull(Parties.Follow(follows, out _));
+
+            var on = PartyFollowHandler.PlanLeaderSwitch(leader, true);
+            Assert.Equal(new[] { idle }, on.Select(d => d.To).ToArray());
+            Assert.Equal(Hex(PartyFollowProtocol.BuildFollowSwitch(true)), Hex(on[0].Frame));
+
+            var off = PartyFollowHandler.PlanLeaderSwitch(leader, false);
+            Assert.Equal(new[] { follows }, off.Select(d => d.To).ToArray());
+            Assert.Equal(Hex(PartyFollowProtocol.BuildFollowSwitch(false)), Hex(off[0].Frame));
+            Assert.Empty(Parties.FollowersOf(leader));
+
+            // A member's switch is not heard.
+            Assert.Empty(PartyFollowHandler.PlanLeaderSwitch(idle, true));
+        }
+
         [Fact]
         public void Asking_again_gets_the_same_answer_and_the_leader_is_not_told_twice()
         {
