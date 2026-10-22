@@ -87,6 +87,7 @@ namespace Jondo.Unity.World.Almanax
     {
         private readonly Dictionary<int, AlmanaxDay> _byId = new Dictionary<int, AlmanaxDay>();
         private readonly Dictionary<int, AlmanaxDay> _byQuest = new Dictionary<int, AlmanaxDay>();
+        private readonly HashSet<int> _saints = new HashSet<int>();
 
         public AlmanaxCalendar(Action<string>? report = null)
         {
@@ -153,6 +154,7 @@ namespace Jondo.Unity.World.Almanax
 
                     _byId[id] = day;
                     if (day.QuestId != 0) _byQuest.TryAdd(day.QuestId, day);
+                    if (day.Saint != 0) _saints.Add(day.Saint);
                 }
             }
             catch (Exception ex)
@@ -163,6 +165,9 @@ namespace Jondo.Unity.World.Almanax
 
         public bool Ready => _byId.Count > 0;
         public int Count => _byId.Count;
+
+        /// <summary>Whether an NPC is the saint of some day.</summary>
+        public bool IsSaint(int npcId) => _saints.Contains(npcId);
 
         /// <summary>Whether a quest is one of the offerings.</summary>
         public bool IsOffering(int questId) => _byQuest.ContainsKey(questId);

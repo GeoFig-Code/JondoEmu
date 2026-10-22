@@ -134,6 +134,9 @@ namespace Jondo.Unity.Server.Handlers
                 case InteractiveActionKind.AnomalyClock:
                     await AnomalyHandler.ClockAsync(stream, interactive.Element, action.SkillId);
                     break;
+                case InteractiveActionKind.AlmanaxWay:
+                    await AlmanaxTempleHandler.UseAsync(stream, interactive.Element, interactive.Type, action.SkillId);
+                    break;
                 case InteractiveActionKind.Transport:
                     await TransportTravelHandler.OpenAsync(stream, interactive.Element, action.SkillId);
                     break;

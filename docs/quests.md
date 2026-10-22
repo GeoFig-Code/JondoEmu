@@ -360,8 +360,16 @@ Which day it is today: each date of the year is named by two entries, the month'
 (31 to 34 days, «se encargará de reemplazar lo irremplazable»), and six days a year a moveable feast
 with its year. The most precise one wins: the date with a year, and otherwise the entry that names the fewest days.
 
-Today's saint is only where the client puts it: 80 of the 373 have a map in the data, so
-on the other days the «go and see …» objective cannot be closed. Of the day's bonuses, the ones applied are those that
+Today's saint stands in the temple, alone, in the room of its day (`Managers.AlmanaxTemple`). The
+season is the one the offering's prayer names («Reza ante el altar de verano»): spring from 20 March,
+summer from 21 June, autumn from 22 September, winter from 21 December. Each season has four rooms,
+three alike and one drawn darker; the 80 saints whose objective names a map stand in summer's three,
+a month each from the 21st (101453313 July, 101453315 to 20 August, 101453317 to 20 September), and
+the other seasons' rooms are read the same way. The sanctuary's door (element 476222) leads to the
+hall of today's season -- the one of the four halls whose door of that season is drawn otherwise --;
+there that door leads to today's room and the other three to their dark rooms; every room's way out
+back to today's hall. The cell the saint stands on is ours (302): no capture enters the temple.
+Of the day's bonuses, the ones applied are those that
 carry no condition and touch quests or jobs (quest experience and kamas, job
 experience); the others carry conditions whose types the client does not explain, and are not applied.
 

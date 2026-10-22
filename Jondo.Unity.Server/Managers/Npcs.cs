@@ -118,6 +118,7 @@ namespace Jondo.Unity.Server.Managers
         {
             _byMap.Clear();
             _templates.Clear();
+            AlmanaxTemple.Forget();
 
             try
             {
@@ -442,7 +443,26 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>The maps that have some NPC placed.</summary>
-        public static IEnumerable<long> Maps => _byMap.Keys;
+        /// <remarks>
+        /// A copy: walking it, <see cref="Of"/> may put the day's saint in a room of the temple.
+        /// </remarks>
+        public static IEnumerable<long> Maps
+        {
+            get { lock (_byMap) return _byMap.Keys.ToArray(); }
+        }
+
+        /// <summary>
+        /// A map that will have NPCs by turns -- the temple's rooms, a saint each day --, with its list
+        /// from the start: a day's placement then replaces a list, it does not grow the table that
+        /// every socket reads.
+        /// </summary>
+        internal static void Reserve(long mapId)
+        {
+            lock (_byMap)
+            {
+                if (!_byMap.ContainsKey(mapId)) _byMap[mapId] = new List<Spawn>();
+            }
+        }
 
         /// <summary>Every NPC placed in the world, map by map.</summary>
         public static IEnumerable<Spawn> AllSpawns
@@ -455,15 +475,18 @@ namespace Jondo.Unity.Server.Managers
         }
 
         public static IReadOnlyList<Spawn> Of(long mapId)
-            => _byMap.TryGetValue(mapId, out var here) ? here : (IReadOnlyList<Spawn>)Array.Empty<Spawn>();
+        {
+            AlmanaxTemple.KeepSaint(mapId);
+            return _byMap.TryGetValue(mapId, out var here) ? here : (IReadOnlyList<Spawn>)Array.Empty<Spawn>();
+        }
 
         /// <summary>The NPCs on a map. Empty if there are none.</summary>
-        public static IReadOnlyList<Spawn> OnMap(long mapId)
-            => _byMap.TryGetValue(mapId, out var here) ? here : (IReadOnlyList<Spawn>)Array.Empty<Spawn>();
+        public static IReadOnlyList<Spawn> OnMap(long mapId) => Of(mapId);
 
         /// <summary>Who the negative the client has just clicked is.</summary>
         public static Spawn? Find(long mapId, long contextualId)
         {
+            AlmanaxTemple.KeepSaint(mapId);
             if (!_byMap.TryGetValue(mapId, out var here)) return null;
             return here.Find(s => s.ContextualId == contextualId);
         }

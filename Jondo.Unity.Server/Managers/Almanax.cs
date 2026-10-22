@@ -126,6 +126,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Today's calendar entry, or null without a calendar.</summary>
         public static AlmanaxDay? Today() => _calendar?.DayOf(Clock());
 
+        /// <summary>Whether an NPC is the saint of some day: only today's stands (AlmanaxTemple).</summary>
+        public static bool IsSaint(int npcId) => _calendar?.IsSaint(npcId) == true;
+
         /// <summary>
         /// What <c>Ad</c> answers: today's entry. Null — the term left unjudged — without a calendar.
         /// </summary>

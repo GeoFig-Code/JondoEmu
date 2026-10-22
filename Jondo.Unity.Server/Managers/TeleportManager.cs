@@ -72,6 +72,27 @@ namespace Jondo.Unity.Server.Managers
                               $"{_byMap.Count} maps.");
         }
 
+        /// <summary>
+        /// The Almanax temple's ways lead where today says (AlmanaxTemple), so the fixed routes the
+        /// catalogues give them -- the sanctuary's door always to one hall, each room's way out to
+        /// another -- are taken out.
+        /// </summary>
+        private static void LeaveTheTempleToToday(Dictionary<(long, int), InteractiveTeleport> byElement,
+                                                  Dictionary<long, List<InteractiveTeleport>> byMap,
+                                                  Dictionary<(long, int), InteractiveTeleport> byCell)
+        {
+            int taken = 0;
+            foreach (var (map, element) in AlmanaxTemple.Ways())
+            {
+                if (!byElement.Remove((map, element.Id), out var route)) continue;
+                if (byMap.TryGetValue(map, out var list)) list.Remove(route);
+                if (byCell.TryGetValue((map, route.SourceCellId), out var onCell) && ReferenceEquals(onCell, route))
+                    byCell.Remove((map, route.SourceCellId));
+                taken++;
+            }
+            if (taken > 0) Console.WriteLine($"[Teleport] {taken} fixed route(s) of the Almanax temple left to today's ways.");
+        }
+
         public static bool TryGet(long mapId, int elementId, out InteractiveTeleport route)
             => _byElement.TryGetValue((mapId, elementId), out route!);
 
@@ -383,6 +404,7 @@ namespace Jondo.Unity.Server.Managers
             AddRaidPassages(byElement, byMap, byCell);
             AddGuildHallDoors(byElement, byMap, byCell);
             AddFloorPassages(byCell);
+            LeaveTheTempleToToday(byElement, byMap, byCell);
 
             _byElement = byElement;
             _byMap = byMap.ToDictionary(x => x.Key, x => (IReadOnlyList<InteractiveTeleport>)x.Value);

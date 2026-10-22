@@ -19,6 +19,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A clock of Noximilian's Workshop, which tells the hour (AnomalyHandler).</summary>
         AnomalyClock,
 
+        /// <summary>A way of the Almanax's temple, which leads to today's hall or room (AlmanaxTemple).</summary>
+        AlmanaxWay,
+
         /// <summary>A kart of route 666: its network's stops in the zaapi's window (Transports).</summary>
         Transport,
 
@@ -435,6 +438,7 @@ namespace Jondo.Unity.Server.Managers
             // mechanism offers the same skill (184) under six names.
             RegisterTravelersTower();
             RegisterAnomalyPlaces();
+            RegisterAlmanaxTemple();
 
             // The passages between maps. Houses have already gone through above with their jqw protocol;
             // only the generic ones TeleportManager has validated and left active come in here.
@@ -734,6 +738,25 @@ namespace Jondo.Unity.Server.Managers
                 }
             }
             if (exits > 0) Console.WriteLine($"[Anomalies] {exits} place exit(s) and {clocks} clock(s) declared.");
+        }
+
+        /// <summary>
+        /// The Almanax temple's ways: the sanctuary's door, the halls' doors and ways out, the
+        /// rooms' ways out, skill 114 like the graph's passages there (AlmanaxTemple).
+        /// </summary>
+        private static void RegisterAlmanaxTemple()
+        {
+            int ways = 0;
+            foreach (var (map, element) in AlmanaxTemple.Ways())
+            {
+                // The ways out are walked onto, type -1 like the graph's; the doors are clicked.
+                bool walked = Array.IndexOf(AlmanaxTemple.RoomExitCells, element.Cell) >= 0
+                              || element.Cell == AlmanaxTemple.HallExitCell;
+                Register(map, element, walked ? -1 : TeleportManager.GenericTeleportType,
+                         InteractiveActionKind.AlmanaxWay, TeleportManager.UseSkill);
+                ways++;
+            }
+            if (ways > 0) Console.WriteLine($"[Almanax] {ways} ways of the temple declared.");
         }
 
         private static void RegisterTravelersTower()

@@ -203,6 +203,8 @@ namespace Jondo.Unity.Server.Handlers
             // goes on exactly to the usual jqk.
             if (!TryTakeCompletedMovement(SessionContext.State, out long mapId, out int cellId))
                 return;
+            if (await AlmanaxTempleHandler.WalkAsync(stream, mapId, cellId))
+                return;
             if (!Managers.TeleportManager.TryGetCellTrigger(mapId, cellId, out var route))
                 return;
 

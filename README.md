@@ -608,7 +608,9 @@ Full workings in **`docs/achievements.md`**.
 
 - ✅ **376 days**, each with its saint, offering quest and bonuses
 - ✅ Ontoral Zo hands over the day's offering once a day
-- 🟡 The saint of the day only stands on 80 of the 373 days
+- ✅ The temple follows the seasons: the sanctuary's door opens on the hall of today's season, its door on
+  the room of today's month, and the other seasons' rooms lie asleep
+- ✅ Every day its saint, alone in the room of its month
 - ✅ The day's bonuses to fights (experience, drops, challenges and an extra one, a second loot in dungeons — by zone,
   dungeon, monster family or item worn), the Koliseo, quests, jobs, harvests, crafting (ingredients
   saved, a second item, runes kept), tax collectors, breeding and paddock items, resources' respawn, life

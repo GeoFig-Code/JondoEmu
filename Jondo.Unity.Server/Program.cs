@@ -164,6 +164,8 @@ namespace Jondo.Unity.Server
             // Behind the quests as well: the Almanax offerings are quests, and the calendar finds
             // their giver in the quest catalogue.
             Managers.Almanax.Load();
+            // And today's saint in the temple, before anyone walks the NPCs' maps.
+            Managers.AlmanaxTemple.Prepare();
             Managers.Emotes.Load();
             Managers.TokenShops.Initialize();
 
