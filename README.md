@@ -576,7 +576,9 @@ Full workings in **`docs/quests.md`**.
 - ✅ Earned by quests, exploration, levels, crafting, monsters, dungeon challenges and items —
   **2,172 of 2,780** fully judged
 - ✅ Rewards claimed from the window: kamas, experience, items and emotes
-- ❌ Breeding, sweets, leagues, alignment and tutorial achievements; announcements in the chat
+- ✅ Breeding, ride hunting, sweets, breaking items, Koliseo leagues, guild missions and tokens, challenge
+  tallies and the guild hall's achievements
+- ❌ Alignment and tutorial achievements; announcements in the chat
 
 Full workings in **`docs/achievements.md`**.
 

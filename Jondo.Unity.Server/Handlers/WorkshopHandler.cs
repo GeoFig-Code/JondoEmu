@@ -728,6 +728,7 @@ namespace Jondo.Unity.Server.Handlers
 
             var report = new List<(long Uid, IReadOnlyList<(int Rune, int Quantity)> Runes, float Coefficient)>();
             var gained = new Dictionary<int, int>();
+            int brokenUnits = 0;
             foreach (var (uid, quantity) in bench.Slots.ToList())
             {
                 var item = Equipment.ByUid(uid);
@@ -735,6 +736,7 @@ namespace Jondo.Unity.Server.Handlers
                 var template = Forgemagic.TemplateOf(item.Template);
                 if (template == null) continue;
                 int units = Math.Min(quantity, item.Quantity);
+                brokenUnits += units;
                 double coefficient = Breaking.CoefficientOf(item.Template);
 
                 var runes = new Dictionary<int, int>();
@@ -752,6 +754,7 @@ namespace Jondo.Unity.Server.Handlers
             foreach (var (rune, n) in gained) await GiveAsync(stream, rune, n);
             await SendPodsAsync(me);
             await SendAsync(stream, Op.Kfp, WorkshopProtocol.BuildBroken(report));
+            await Managers.Achievements.CountAsync(stream, "Eu", 0, brokenUnits);   // «¿Y si lo parto?»
             Console.WriteLine($"[Workshop] Broke {report.Count} item(s){(focus != 0 ? $", focus on effect {focus}" : "")}: " +
                               string.Join(", ", gained.Select(g => $"{g.Value} x {g.Key}")) + ".");
         }

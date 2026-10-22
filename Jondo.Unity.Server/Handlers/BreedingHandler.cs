@@ -574,6 +574,7 @@ namespace Jondo.Unity.Server.Handlers
             Stable.Save(a);
             Stable.Save(b);
 
+            await Achievements.CountAsync(stream, "EB", 0, children.Count);   // «Hacer que nazcan 10 monturas»
             int tokens = target ? preview.Tokens : 0;
             if (tokens > 0) await Equipment.GiveAsync(stream, Mating.Geneticha, tokens);
             if (preview.Experience > 0) await WorkshopHandler.GiveJobExperienceAsync(stream, Breeding.BreederJob, preview.Experience);

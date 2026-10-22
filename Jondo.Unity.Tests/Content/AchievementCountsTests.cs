@@ -1,0 +1,80 @@
+using Jondo.Unity.Server;
+using Jondo.Unity.Server.Managers;
+using Jondo.Unity.Server.Network;
+using Jondo.Unity.World.Achievements;
+using Jondo.Unity.World.Quests;
+using Xunit;
+
+namespace Jondo.Unity.Tests.Content
+{
+    /// <summary>
+    /// The achievements' criteria the server now answers: mounts born (EB), rides caught (HD), guild
+    /// missions by super category (NC), guild tokens (NT), challenges won (EA, Ea), items used (EI) or
+    /// broken (Eu), items crafted (EC), subareas explored (ES), the best Koliseo league (lB) and
+    /// one's own guild hall (HP) -- each judged, so what is not met is refused rather than unknown.
+    /// </summary>
+    [Collection("MapManager")]   // the Koliseo's clock and seasons, shared with KoliseoLadderTests
+    public class AchievementCountsTests
+    {
+        private static CriterionVerdict Judge(string criterion) => QuestCriterion.Judge(criterion, new Achievements.CharacterFacts());
+
+        [Fact]
+        public void The_tallies_answer_their_criteria()
+        {
+            var session = GameSession.SinSocket();
+            using (SessionContext.Push(session))
+            {
+                var tallies = session.State.AchievementTallies;
+                tallies[("EB", 0)] = 10;
+                tallies[("NC", 1)] = 5;
+                tallies[("NT", 0)] = 120;
+                tallies[("EA", 0)] = 10;
+                tallies[("EI", 12823)] = 1;
+                tallies[("HD", 33001)] = 1;
+                tallies[("Eu", 0)] = 100;
+                tallies[(AchievementCatalogue.CraftKey, 0)] = 100;
+                tallies[(AchievementCatalogue.ExploreKey, 320)] = 1;
+
+                Assert.True(Judge("(EB>0,9)").Met);                // «Comadrona»: 10 born
+                Assert.False(Judge("(EB>0,99)").Met);
+                Assert.True(Judge("(EB>0,99)").FullyJudged);
+                Assert.True(Judge("NC>1,4").Met);                  // five dungeon missions
+                Assert.False(Judge("NC>2,0").Met);
+                Assert.True(Judge("NT>99").Met);                   // gremichas
+                Assert.True(Judge("(EA>9)").Met);
+                Assert.False(Judge("(Ea>9)").Met);
+                Assert.True(Judge("(EI>12823,0)").Met);            // a sweet eaten
+                Assert.True(Judge("HD>33001,0").Met);              // an almond dragoturkey caught
+                Assert.True(Judge("(Eu>0,99)").Met);
+                Assert.True(Judge("(EC>0,99)").Met);
+                Assert.True(Judge("(ES>320,0)").Met);
+            }
+        }
+
+        [Fact]
+        public void Where_one_stands_and_one_s_league_are_judged_too()
+        {
+            var session = GameSession.SinSocket();
+            session.State.CharacterId = 9_300_901;
+            session.State.MapId = 191105026;
+            using (SessionContext.Push(session))
+            {
+                var hall = Judge("HP=1,1");
+                Assert.True(hall.FullyJudged);
+                Assert.False(hall.Met);                            // no guild, no hall
+
+                int seasons = KoliseoLadder.LastSeasonNumber();
+                try
+                {
+                    var league = Judge("lB=6|lB=7");
+                    Assert.True(league.FullyJudged);
+                    Assert.False(league.Met);                      // never placed
+                }
+                finally
+                {
+                    KoliseoLadder.EraseSeasonsAfter(seasons);
+                }
+            }
+        }
+    }
+}

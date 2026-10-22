@@ -130,7 +130,11 @@ namespace Jondo.Unity.Server.Managers
                 var ride = Breeding.RideOf(rideId);
                 if (ride == null || ride.Item <= 0) continue;
                 for (int i = 0; i < count; i++)
-                    if (await Equipment.GiveAsync(stream, ride.Item, 1)) caught++;
+                {
+                    if (!await Equipment.GiveAsync(stream, ride.Item, 1)) continue;
+                    caught++;
+                    await Achievements.CountAsync(null, "HD", ride.Item);   // «Cazamonturas», back on the map
+                }
             }
             if (caught > 0)
             {

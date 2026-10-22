@@ -186,6 +186,7 @@ namespace Jondo.Unity.Server.Handlers
                               $"{credited.Tokens} token(s), {credited.Points} activity point(s).");
 
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Jen, GuildProtocol.BuildMissionDone(mission.MissionId)));
+            if (data != null) await Achievements.CountAsync(stream, "NC", data.SuperCategoryId);   // «Aspirante de los encargos»
             await GiveTokensAsync(stream, credited.Tokens);
             await TellTheWeekAsync(guild, now);
             if (credited.Experience > 0)
@@ -243,6 +244,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             if (tokens <= 0) return;
             if (!await WorkshopHandler.GiveAsync(stream, TokenItem, tokens)) return;
+            await Achievements.CountAsync(stream, "NT", 0, tokens);   // «Gremichas obtenidas»
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
                 ConnectionProtocol.BuildSystemMessage(InfoMessages.ItemGained, tokens.ToString(), TokenItem.ToString())));
             if (weigh) await ItemUseHandler.WeighAsync(stream);

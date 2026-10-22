@@ -89,9 +89,13 @@ each thing that happens asks only about its own:
 | Happens | Looks at | Operators |
 |---|---|---|
 | Finishing a quest | the ones waiting for that quest | `Qf` `Qc` `QF` `QQ` |
-| Reaching a map | the area, if new; the level, if it changed; the bag; the map | `Xs` `PL` `PO` `Pm` |
-| Winning a fight | each defeated monster; with a challenge met, again; the challenges | `EM` `Ef` `EH` |
-| Crafting | what was crafted and the jobs | `Xc` `Xj` |
+| Reaching a map | the area, if new; the level, if it changed; the bag; the map; one's guild hall; the best Koliseo league | `Xs` `ES` `PL` `PO` `Pm` `HP` `lB` |
+| Winning a fight | each defeated monster; with a challenge met, again; the challenges, all and in dungeons | `EM` `Ef` `EH` `EA` `Ea` |
+| Crafting | what was crafted and the jobs | `Xc` `EC` `Xj` |
+| Breeding | the mounts born | `EB` |
+| Catching a ride in a fight | the ride's item, back on the map | `HD` |
+| A guild mission done, its tokens | the mission's super category; the tokens | `NC` `NT` |
+| Using an item, breaking items | the item used; the units broken | `EI` `Eu` |
 | Levelling a job | the jobs | `Xj` |
 | Entering the world | everything, once | |
 
@@ -100,7 +104,12 @@ does not describe. The fight's part is set aside and looked at on returning to t
 the middle of the end of the fight, where no capture has it.
 
 The counters nothing else keeps are kept in `CharacterAchievementCounters` (monsters defeated,
-defeated with a challenge, areas visited, items crafted, and the day of the last Almanax offering).
+defeated with a challenge, areas visited, items crafted, the day of the last Almanax offering,
+challenges won, mounts born, rides caught, guild missions and tokens, items used and broken).
+
+`HP=1,1` is read as «standing in one's own guild's hall»: the three achievements that use it are «Estás en tu
+casa» alone and two with the hall's merchants' and activities' rooms (`Pm`). `lB` is the best league
+reached in any mode this season, compared with each `lB=` of the condition.
 
 ### The 322 the client does not describe
 

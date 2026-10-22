@@ -217,7 +217,13 @@ namespace Jondo.Unity.Server.Managers
             {
                 SetTally(AchievementCatalogue.ExploreKey, subAreaId, 1);
                 candidates.AddRange(book.WaitingOn(AchievementCatalogue.ExploreKey, subAreaId));
+                candidates.AddRange(book.WaitingOn("ES", subAreaId));
             }
+
+            // Where he stands and what he holds: his guild's hall (HP) and his best Koliseo league
+            // (lB, which a Koliseo fight moves before he is back on a map).
+            candidates.AddRange(book.WaitingOn("HP"));
+            candidates.AddRange(book.WaitingOn("lB"));
 
             if (state.AchievementLevelChecked != state.CharacterLevel)
             {
@@ -257,7 +263,8 @@ namespace Jondo.Unity.Server.Managers
 
             SetTally(AchievementCatalogue.CraftKey, 0, Tally(AchievementCatalogue.CraftKey, 0) + count);
             return CheckAsync(stream, book.WaitingOn(AchievementCatalogue.CraftKey)
-                .Concat(book.WaitingOn(AchievementCatalogue.JobKey)));
+                .Concat(book.WaitingOn(AchievementCatalogue.JobKey))
+                .Concat(book.WaitingOn("EC")));
         }
 
         /// <summary>A job's level went up: the achievements that want jobs at a level.</summary>
@@ -309,6 +316,63 @@ namespace Jondo.Unity.Server.Managers
                 state.ChallengesDone.Add(challenge);
                 state.AchievementsPending.UnionWith(book.WaitingOn("EH", challenge));
             }
+
+            // And the challenges won, all told (EA, «Retador milenario») and in dungeons (Ea).
+            if (challengesWon.Count > 0)
+            {
+                SetTally("EA", 0, Tally("EA", 0) + challengesWon.Count);
+                state.AchievementsPending.UnionWith(book.WaitingOn("EA"));
+                if (inDungeon)
+                {
+                    SetTally("Ea", 0, Tally("Ea", 0) + challengesWon.Count);
+                    state.AchievementsPending.UnionWith(book.WaitingOn("Ea"));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Something the achievements count happened -- the kind and key their criteria name:
+        /// <c>EB</c> 0 a mount born, <c>HD</c> a ride caught (its item), <c>NC</c> a guild mission
+        /// done (its super category), <c>NT</c> guild tokens obtained, <c>EI</c> an item used,
+        /// <c>Eu</c> items broken into runes -- and the achievements waiting on it are looked at
+        /// now; with no stream, back on the map, as a fight's are.
+        /// </summary>
+        public static async Task CountAsync(NetworkStream? stream, string kind, long key, long by = 1)
+        {
+            var book = _book;
+            if (book == null || Log == null || by <= 0 || SessionContext.State.CharacterId == 0) return;
+
+            SetTally(kind, key, Tally(kind, key) + by);
+            var waiting = book.WaitingOn(kind, key).Concat(Totals.Contains(kind) ? book.WaitingOn(kind) : Array.Empty<int>()).ToList();
+            if (stream == null)
+            {
+                SessionContext.State.AchievementsPending.UnionWith(waiting);
+                return;
+            }
+            await CheckAsync(stream, waiting);
+        }
+
+        /// <summary>The kinds judged as one number (NT&gt;99), whatever key their term carries.</summary>
+        private static readonly HashSet<string> Totals = new() { "EA", "Ea", "NT" };
+
+        /// <summary>The best Koliseo league the character has reached this season, in any mode: lB.</summary>
+        private static long BestLeague()
+        {
+            var state = SessionContext.State;
+            int best = KoliseoLeagues.None;
+            foreach (var standing in KoliseoLadder.AllOf(state.CharacterId, state.CharacterLevel))
+                if (standing.BestLeague != KoliseoLeagues.None)
+                    best = best == KoliseoLeagues.None ? standing.BestLeague : KoliseoLeagues.Higher(best, standing.BestLeague);
+            return best;
+        }
+
+        /// <summary>Whether the character stands in his own guild's hall: HP=1,1, «Estás en tu casa».</summary>
+        private static bool InOwnGuildHall()
+        {
+            var state = SessionContext.State;
+            var guild = GuildStore.GuildOf(state.CharacterId);
+            var hall = GuildHalls.OfRoom(state.MapId);
+            return guild != null && hall != null && GuildHalls.ChoiceOf(guild.Id)?.HallId == hall.Id;
         }
 
         /// <summary>The tally kind for monsters beaten in their dungeon: EM with the "d" flag.</summary>
@@ -545,6 +609,8 @@ namespace Jondo.Unity.Server.Managers
             {
                 "SC" => ServerGameType,
                 "QQ" => S.Quests?.Runs.Values.Count(r => r.Finished) ?? 0,
+                "EA" or "Ea" or "NT" => Tally(op, 0),
+                "lB" => BestLeague(),
                 AchievementCatalogue.CraftKey => Tally(AchievementCatalogue.CraftKey, 0),
                 Almanax.DayOperator => Almanax.Scalar(op),
                 _ => null,
@@ -556,6 +622,10 @@ namespace Jondo.Unity.Server.Managers
                 "EM" => Tally(flag == "d" ? DungeonKind : "EM", key),
                 "Ef" => Tally("Ef", key),
                 "EH" => S.ChallengesDone.Contains((int)key) ? 1 : 0,
+                "EB" or "HD" or "NC" or "EI" or "Eu" => Tally(op, key),
+                "EC" => Tally(AchievementCatalogue.CraftKey, 0),
+                "ES" => Tally(AchievementCatalogue.ExploreKey, key),
+                "HP" => key == 1 && InOwnGuildHall() ? 1 : 0,
 
                 // Finished at least once is all the quest log keeps: "QF>1300,4", five times,
                 // is then never met, which is the safe way to be wrong.

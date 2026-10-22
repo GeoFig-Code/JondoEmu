@@ -170,6 +170,7 @@ namespace Jondo.Unity.Server.Handlers
             int left = item.Quantity - 1;
             if (!DatabaseManager.DestroyCharacterItem(SessionContext.State.CharacterId, uid, 1)) return false;
             Equipment.Remove(uid, 1);
+            await Achievements.CountAsync(stream, "EI", item.Template);   // «Dulces de Nawidad»: each one used
             await WriteAsync(stream, left > 0
                 ? ConnectionProtocol.Push(Op.Ivj, ConnectionProtocol.BuildItemQuantity(uid, left))
                 : ConnectionProtocol.Push(Op.Ium, ConnectionProtocol.BuildItemGone(uid)));
