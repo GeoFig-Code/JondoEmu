@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Jondo.Unity.Server.Managers;
+using Jondo.Unity.Protocol;
 using Jondo.Unity.Server.Network;
 
 namespace Jondo.Unity.Server.Handlers
@@ -58,6 +59,15 @@ namespace Jondo.Unity.Server.Handlers
     /// (<see cref="LeaderSwitchAsync"/>), which sends the members imk 1 or cuts them. A member who
     /// asks to follow on his own is still followed: that departs from frames 4-5 on purpose.
     ///
+    /// ─── Following another member ─────────────────────────────────────────────────────────
+    ///
+    /// The member's card in the party window also offers to follow any member: the party frame
+    /// (ffd) sends imr { f1 the member, f2 the party } for it (actions ddq and ddt) and
+    /// ikx { f2 the member, f3 the party } to stop (ddr and dec). It is the leader's following
+    /// with somebody else in front: the same 1662, ikv and answer to the one who follows, the same
+    /// 1663 to the one followed, and every move of that member sends his followers the ikv.
+    /// INFERRED from the client: no capture follows anybody but the leader.
+    ///
     /// Also inferred: the 1664 to the leader on imo, and cutting the followers when the leader
     /// changes (promotion, or the leader leaving). The ima of "nombrar a otro jugador jefe" gets
     /// the same empty imk the zaap sends, which fits following being switched off with the
@@ -108,11 +118,13 @@ namespace Jondo.Unity.Server.Handlers
         /// already been told.
         /// </remarks>
         internal static List<Delivery> PlanFollow(long memberId, string memberName, long requestId,
-                                                  Func<long, LeaderView?> leaderOf)
+                                                  Func<long, LeaderView?> leaderOf,
+                                                  long followedId = Parties.TheLeader)
         {
             var plan = new List<Delivery>();
-            var party = Parties.Follow(memberId, out bool isNew);
-            var leader = party == null ? null : leaderOf(party.LeaderId);
+            var party = Parties.Follow(memberId, out bool isNew, followedId);
+            var leader = party == null ? null
+                       : leaderOf(followedId == Parties.TheLeader ? party.LeaderId : followedId);
 
             if (leader != null)
             {
@@ -130,6 +142,38 @@ namespace Jondo.Unity.Server.Handlers
                 plan.Add(new Delivery(leader.Id, PartyFollowProtocol.BuildFollowsYou(memberName)));
 
             return plan;
+        }
+
+        // ─── imr: follow a member ───────────────────────────────────────────────
+
+        public static async Task FollowMemberAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? imr = ConnectionProtocol.ReadPayload(payload, Op.Imr);
+            if (imr == null) return;
+            long memberId = ProtoMessage.Parse(imr).Fields
+                .FirstOrDefault(f => f.FieldNumber == 1 && f.WireType == 0)?.VarIntValue ?? 0;
+            if (memberId <= 0) return;
+
+            var me = SessionContext.Current;
+            var plan = PlanFollow(me.CharacterId, me.State.CharacterName,
+                                  ConnectionProtocol.RequestId(payload), Live, memberId);
+            await DeliverAsync(stream, me.CharacterId, plan);
+
+            Console.WriteLine($"[Party] {me.State.CharacterName} follows member {memberId}.");
+        }
+
+        // ─── ikx: stop following a member ──────────────────────────────────────
+
+        public static async Task UnfollowMemberAsync(NetworkStream stream, byte[] payload)
+        {
+            if (ConnectionProtocol.ReadPayload(payload, Op.Ikx) == null) return;
+
+            var me = SessionContext.Current;
+            var plan = PlanUnfollow(me.CharacterId, me.State.CharacterName,
+                                    ConnectionProtocol.RequestId(payload), Live);
+            await DeliverAsync(stream, me.CharacterId, plan);
+
+            Console.WriteLine($"[Party] {me.State.CharacterName} stops following a member.");
         }
 
         // ─── imo: stop following ────────────────────────────────────────────────
@@ -157,8 +201,8 @@ namespace Jondo.Unity.Server.Handlers
                                                     Func<long, LeaderView?> leaderOf)
         {
             var plan = new List<Delivery>();
-            var party = Parties.Unfollow(memberId, out _);
-            var leader = party == null || party.LeaderId == memberId ? null : leaderOf(party.LeaderId);
+            var party = Parties.Unfollow(memberId, out _, out long followed);
+            var leader = party == null || followed == memberId ? null : leaderOf(followed);
 
             if (leader != null)
             {
@@ -251,14 +295,16 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Cuts the leader's followers and says so to each. Nothing when he leads nobody: a member
-        /// who takes a zaap on his own is still following, and the next ikv sends him back.
+        /// Cuts whoever follows the traveller -- as the leader or by name -- and says so to each.
+        /// Nothing when nobody follows him: a member who takes a zaap on his own is still
+        /// following, and the next ikv sends him back.
         /// </summary>
         internal static List<Delivery> PlanLeaderTravelled(long leaderId)
         {
-            var party = Parties.Of(leaderId);
-            if (party == null || party.LeaderId != leaderId) return new List<Delivery>();
-            return PlanCut(party);
+            var plan = new List<Delivery>();
+            foreach (long follower in Parties.CutFollowersOf(leaderId))
+                plan.Add(new Delivery(follower, PartyFollowProtocol.BuildFollowSwitch(false)));
+            return plan;
         }
 
         /// <summary>

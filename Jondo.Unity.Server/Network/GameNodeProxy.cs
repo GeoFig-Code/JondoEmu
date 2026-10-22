@@ -847,6 +847,14 @@ namespace Jondo.Unity.Server.Network
                 {
                     await Handlers.PartyFollowHandler.UnfollowAsync(stream, payload);
                 }
+                else if (payloadStr.Contains(Op.Uri(Op.Imr)))
+                {
+                    await Handlers.PartyFollowHandler.FollowMemberAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Ikx)))
+                {
+                    await Handlers.PartyFollowHandler.UnfollowMemberAsync(stream, payload);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Ktb)))
                 {
                     await Handlers.PrivateMessageHandler.WhisperAsync(stream, payload);

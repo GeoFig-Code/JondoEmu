@@ -326,6 +326,82 @@ namespace Jondo.Unity.Tests.Network
             Assert.Equal(new[] { follower }, Parties.FollowersOf(leader));
         }
 
+        // ─── Following another member (imr / ikx) ───────────────────────────────
+
+        [Fact]
+        public void Following_a_member_is_the_leader_s_following_with_him_in_front()
+        {
+            const long leader = 8_100_000_000_071, member = 8_100_000_000_072, follower = 8_100_000_000_073;
+            using var party = new Party(leader, member, follower);
+            var where = View(member, "Member-Name", 120063491, 406, 2, -32, 30);
+
+            var plan = PartyFollowHandler.PlanFollow(follower, "Follower-1", -1,
+                id => id == member ? where : null, member);
+
+            Assert.Equal(new[] { follower, follower, follower, member }, plan.Select(d => d.To).ToArray());
+            Assert.Equal(Hex(PartyFollowProtocol.BuildFollowing("Member-Name")), Hex(plan[0].Frame));
+            Assert.Equal(Hex(PartyFollowProtocol.BuildLeaderPosition(member, 120063491, where.Map, 406)),
+                         Hex(plan[1].Frame));
+            Assert.Equal(Hex(PartyFollowProtocol.BuildFollowsYou("Follower-1")), Hex(plan[3].Frame));
+
+            // He is that member's follower, not the leader's: the member's steps reach him.
+            Assert.Equal(new[] { follower }, Parties.FollowersOf(member));
+            Assert.Empty(Parties.FollowersOf(leader));
+            var moved = PartyFollowHandler.PlanLeaderMoved(View(member, "M", 120063490, 538, 2, -33, 30));
+            Assert.Equal(new[] { follower }, moved.Select(d => d.To).ToArray());
+        }
+
+        [Fact]
+        public void Nobody_follows_himself_or_somebody_outside_the_party()
+        {
+            const long leader = 8_100_000_000_081, member = 8_100_000_000_082, stranger = 8_100_000_000_083;
+            using var party = new Party(leader, member);
+
+            Assert.Null(Parties.Follow(member, out _, member));
+            Assert.Null(Parties.Follow(member, out _, stranger));
+            // The leader may follow a member: he only cannot follow whoever leads.
+            Assert.NotNull(Parties.Follow(leader, out _, member));
+            Assert.Equal(new[] { leader }, Parties.FollowersOf(member));
+        }
+
+        [Fact]
+        public void Stopping_tells_the_member_he_followed_and_a_new_leader_does_not_cut_him()
+        {
+            const long leader = 8_100_000_000_091, member = 8_100_000_000_092;
+            const long byName = 8_100_000_000_093, byLead = 8_100_000_000_094;
+            using var party = new Party(leader, member, byName, byLead);
+            Assert.NotNull(Parties.Follow(byName, out _, member));
+            Assert.NotNull(Parties.Follow(byLead, out _));
+
+            // The party changes leader: only those following whoever leads are cut.
+            Assert.True(Parties.Promote(party.Value, member));
+            Assert.Equal(new[] { byLead }, Parties.CutFollowers(party.Value));
+            Assert.Equal(new[] { byName }, Parties.FollowersOf(member));
+
+            // ikx: the 1664 goes to the member he followed, not to the leader.
+            var plan = PartyFollowHandler.PlanUnfollow(byName, "Follower-1", -1,
+                id => View(id, id == member ? "Member-Name" : "Other", 120063491, 406, 2, -32, 30));
+            Assert.Equal(new[] { byName, byName, byName, member }, plan.Select(d => d.To).ToArray());
+            Assert.Equal(Hex(PartyFollowProtocol.BuildStoppedFollowing("Member-Name")), Hex(plan[0].Frame));
+            Assert.Empty(Parties.FollowersOf(member));
+        }
+
+        [Fact]
+        public void A_member_leaving_frees_whoever_followed_him_and_a_zaap_cuts_his_followers()
+        {
+            const long leader = 8_100_000_000_101, member = 8_100_000_000_102, follower = 8_100_000_000_103;
+            using var party = new Party(leader, member, follower);
+            Assert.NotNull(Parties.Follow(follower, out _, member));
+
+            var cut = PartyFollowHandler.PlanLeaderTravelled(member);
+            Assert.Equal(new[] { follower }, cut.Select(d => d.To).ToArray());
+            Assert.Empty(Parties.FollowersOf(member));
+
+            Assert.NotNull(Parties.Follow(follower, out _, member));
+            Parties.Leave(party.Value, member);
+            Assert.Empty(party.Value.Followers);
+        }
+
         [Fact]
         public void An_imo_from_outside_any_party_gets_only_its_answer()
         {

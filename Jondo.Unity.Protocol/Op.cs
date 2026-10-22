@@ -603,6 +603,12 @@ public static class Op
     /// <summary>A member stops following the leader: empty. Answered with lqn 1661, ika and inb.</summary>
     public const string Imo = "imo";
 
+    /// <summary>C→S: follow a member of the party { f1 the member, f2 the party }, from his card.</summary>
+    public const string Imr = "imr";
+
+    /// <summary>C→S: stop following that member { f2 the member, f3 the party }.</summary>
+    public const string Ikx = "ikx";
+
     /// <summary>The answer to imo, empty, on root field 3 with the request id.</summary>
     public const string Inb = "inb";
 
