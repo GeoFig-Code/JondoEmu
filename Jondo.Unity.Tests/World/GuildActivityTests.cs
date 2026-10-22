@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Jondo.Unity.Server.Managers;
@@ -35,6 +36,13 @@ namespace Jondo.Unity.Tests.World
         }
 
         private static string Hex(byte[] bytes) => string.Concat(bytes.Select(b => b.ToString("x2")));
+
+        /// <summary>
+        /// The frames of these kinds, in their order: not what a fight of a test running alongside
+        /// sends to a fighter that happens to share the character id (a jxm once, in the full run).
+        /// </summary>
+        private static List<(string Op, byte[] Payload)> Only(List<(string Op, byte[] Payload)> frames, params string[] ops)
+            => frames.Where(f => ops.Contains(f.Op)).ToList();
 
         [Fact]
         public void The_tiers_are_the_client_s()
@@ -159,7 +167,7 @@ namespace Jondo.Unity.Tests.World
                     ConnectionProtocol.Push(Jondo.Unity.Protocol.Op.Jfp, Array.Empty<byte>()));
             }
 
-            var frames = await wire.Drain();
+            var frames = Only(await wire.Drain(), "jdb", "jff");
             Assert.Equal(new[] { "jdb", "jff" }, frames.Select(f => f.Op));
             // The capture's jdb: f2 { f1 {} the preferences, f2 { f1 1, f3 250 }, f3 the missions }
             // -- twelve, drawn as the tier is chosen (see GuildMissionTests).
@@ -185,7 +193,7 @@ namespace Jondo.Unity.Tests.World
                 await Jondo.Unity.Server.Handlers.GuildHandler.SaveTierAsync(wire.Session.Stream!,
                     ConnectionProtocol.Push(Jondo.Unity.Protocol.Op.Jey, new byte[] { 0x08, 0x02 }));
 
-            var frames = await wire.Drain();
+            var frames = Only(await wire.Drain(), "jex", "jdb");
             Assert.Equal(new[] { "jex" }, frames.Select(f => f.Op));
             Assert.Equal("0a07080118fa012802", Hex(frames[0].Payload));   // { f1 1, f3 250, f5 2 }
             Assert.Equal(2, GuildActivity.Of(guild.Id, DateTimeOffset.UtcNow).PendingActivityId);
@@ -214,7 +222,7 @@ namespace Jondo.Unity.Tests.World
                     ConnectionProtocol.Push(Jondo.Unity.Protocol.Op.Jgr, Array.Empty<byte>()));
             }
 
-            var frames = await wire.Drain();
+            var frames = Only(await wire.Drain(), "jgl", "jgq", "jex");
             Assert.Equal(new[] { "jgl", "jgl", "jgq" }, frames.Select(f => f.Op));
             Assert.Equal("0a00", Hex(frames[0].Payload));
             Assert.Equal("1208" + "0a06" + Hex(jgs), Hex(frames[1].Payload));
