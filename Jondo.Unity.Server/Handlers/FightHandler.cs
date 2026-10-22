@@ -602,9 +602,11 @@ namespace Jondo.Unity.Server.Handlers
         {
             if (fighter.IsBot) return (fighter.BotLook ?? Array.Empty<byte>(), fighter.Breed, fighter.Sex);
             var ficha = DatabaseManager.GetCharacterById(fighter.Id);
-            byte[] look = ficha != null
-                ? Managers.BreedLookTable.BuildLook(ficha)
-                : Array.Empty<byte>();
+            byte[] look = !string.IsNullOrEmpty(fighter.IncarnationLook)
+                ? ConnectionProtocol.MonsterLook(fighter.IncarnationLook, false).Build()
+                : ficha != null
+                    ? Managers.BreedLookTable.BuildLook(ficha)
+                    : Array.Empty<byte>();
             return (look, ficha?.Breed ?? 0, ficha?.Sex ?? 0);
         }
 
@@ -751,6 +753,9 @@ namespace Jondo.Unity.Server.Handlers
             if (dream?.SalaActual?.MapaDeLaSala != fight.RoleplayMapId) dream = DreamHandler.DreamOf(fight);
             if (dream != null)
             {
+                // A trial that makes him a monster does it first: its bonuses go on that sheet.
+                if (Managers.DreamTrials.Of(dream) is { Incarnation: > 0 } trial)
+                    Incarnate(playerFighter, trial.Incarnation, IncarnationLevel(dream));
                 var applied = Managers.Dreams.ApplyTo(playerFighter, dream);
                 if (applied.Count > 0)
                     Program.LogDebug($"[Dreams] Bonuses in the fight: {string.Join(", ", applied)}.");
@@ -767,20 +772,24 @@ namespace Jondo.Unity.Server.Handlers
             // And the class's own, in the order the real server casts them before the first
             // turn: the initial spells of his choices, the items' attitudes, the class passive
             // last. See ClassPassives for what is measured and what is read off the names.
-            var propios = Managers.ClassPassives.ForFight(
-                GameState.Breed,
-                Managers.FightSpellLayout.ForFight(GameState.Breed, GameState.CharacterLevel,
-                                                  SessionContext.Current.AccountId).Spells);
-            int pasivo = Managers.ClassPassives.PassiveOf(GameState.Breed);
-            foreach (var (hechizo, grado) in propios)
+            // None of them for a monster he fights as: it brings its own start (Incarnate).
+            if (playerFighter.IncarnatedMonster == 0)
             {
-                if (hechizo != pasivo) playerFighter.Buffs.PonerActitud(hechizo, grado);
+                var propios = Managers.ClassPassives.ForFight(
+                    GameState.Breed,
+                    Managers.FightSpellLayout.ForFight(GameState.Breed, GameState.CharacterLevel,
+                                                      SessionContext.Current.AccountId).Spells);
+                int pasivo = Managers.ClassPassives.PassiveOf(GameState.Breed);
+                foreach (var (hechizo, grado) in propios)
+                {
+                    if (hechizo != pasivo) playerFighter.Buffs.PonerActitud(hechizo, grado);
+                }
+                foreach (int hechizo in Managers.SpellEffects.ActitudesDelEquipo(GameState.CharacterId))
+                {
+                    playerFighter.Buffs.PonerActitud(hechizo);
+                }
+                if (pasivo != 0) playerFighter.Buffs.PonerActitud(pasivo);
             }
-            foreach (int hechizo in Managers.SpellEffects.ActitudesDelEquipo(GameState.CharacterId))
-            {
-                playerFighter.Buffs.PonerActitud(hechizo);
-            }
-            if (pasivo != 0) playerFighter.Buffs.PonerActitud(pasivo);
 
             // And the dream's passives, cast on him the same way (see Dreams.PassiveEffect).
             if (dream != null)
@@ -790,6 +799,9 @@ namespace Jondo.Unity.Server.Handlers
                     if (bonus.Efecto == Managers.Dreams.PassiveEffect && bonus.Valor > 0)
                         playerFighter.Buffs.PonerActitud(bonus.Valor);
                 }
+
+                // And what its trial gives every fighter: NILEZAFF's Cohobación.
+                Managers.Dreams.AsTrialWants(playerFighter, dream, monstersSide: false);
             }
 
             if (playerFighter.Buffs.Actitudes.Count > 0)
@@ -1612,6 +1624,10 @@ namespace Jondo.Unity.Server.Handlers
             if (fighter.IsMonster && fighter.DoubleOf == 0) return MonsterLook(fighter);
             if (fighter.IsBot) return (onFoot ? fighter.BotLookOnFoot : null) ?? fighter.BotLook ?? Array.Empty<byte>();
 
+            // A monster he fights as (FightIncarnation): its look, or the guardian's he chose.
+            if (!string.IsNullOrEmpty(fighter.IncarnationLook))
+                return ConnectionProtocol.MonsterLook(fighter.IncarnationLook, false).Build();
+
             var character = DatabaseManager.GetCharacterById(fighter.DoubleOf != 0 ? fighter.DoubleOf : fighter.Id);
             return character != null
                 ? Managers.BreedLookTable.BuildLook(character, onFoot: onFoot)
@@ -1633,6 +1649,14 @@ namespace Jondo.Unity.Server.Handlers
             if (appearance != 0)
             {
                 int bones = Managers.Cosmetics.AppearanceBones(appearance);
+                if (bones <= 0 && !string.IsNullOrEmpty(fighter.IncarnationLook))
+                {
+                    // A trial's guardian or hero, an appearance the client's data does not have: the
+                    // look its choice found, which the normal look already is.
+                    await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jwe,
+                        Network.FightProtocol.BuildLookChanged(fighter.Id, look)));
+                    return;
+                }
                 if (bones <= 0)
                 {
                     Program.LogDebug($"[Fight] Appearance {appearance} has no compatible " +
@@ -2213,6 +2237,13 @@ namespace Jondo.Unity.Server.Handlers
         private static LimitesDelHechizo LimitesDelQueLanza(Fighter caster, int spell)
         {
             if (spell == 0) return WeaponLimits(caster);
+            if (caster.IncarnatedMonster != 0)
+            {
+                foreach (var (suyo, grado) in IncarnationCasts(caster))
+                {
+                    if (suyo == spell) return LimitesDeGrado(spell, grado);
+                }
+            }
             if (caster.EsInvocado)
             {
                 foreach (var (suyo, grado) in caster.HechizosDeInvocado)
@@ -2481,7 +2512,7 @@ namespace Jondo.Unity.Server.Handlers
                                                                  GameState.CharacterLevel,
                                                                  SessionContext.Current.AccountId);
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jyy,
-                Network.FightProtocol.BuildSpellBar(me, spellLayout.Spells, spellLayout.Bar)));
+                Network.FightProtocol.BuildSpellBar(me, spellLayout.Spells, spellLayout.Bar, spellLayout.WithWeapon)));
 
             var spots = new List<(int Cell, int Orientation, long Fighter)>();
             foreach (var fighter in TodosLosCombatientes(fight))
@@ -2796,7 +2827,7 @@ namespace Jondo.Unity.Server.Handlers
             var bar = spellLayout.Bar;
 
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jyy,
-                Network.FightProtocol.BuildSpellBar(me, spells, bar)));
+                Network.FightProtocol.BuildSpellBar(me, spells, bar, spellLayout.WithWeapon)));
 
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jxz,
                 Network.FightProtocol.BuildRound(FirstRound)));
@@ -2815,7 +2846,8 @@ namespace Jondo.Unity.Server.Handlers
             {
                 foreach (var (hechizo, _) in spells)
                 {
-                    int espera = LimitesDe(hechizo, GameState.CharacterLevel).EsperaInicial;
+                    // A monster he fights as at its spells' own grades (FightIncarnation).
+                    int espera = LimitesDelQueLanza(yoMismo, hechizo).EsperaInicial;
                     if (espera > 0) yoMismo.Recarga[hechizo] = espera;
                 }
             }
@@ -3080,6 +3112,9 @@ namespace Jondo.Unity.Server.Handlers
             // The second jwz is let go without doing anything: otherwise expired summons are undone
             // twice and the points are given back twice.
             if (!fight.AtenderElTurnoUnaVez(fight.RoundNumber, fight.TurnSlot, fighter.Id)) return;
+
+            // A choice he has left unanswered is made for him before he plays.
+            await ChooseBeforeHisTurnAsync(stream, fight, fighter);
 
             int duration = fighter.EsInvocado
                 ? Network.FightProtocol.SummonTurnDeciseconds
@@ -4244,6 +4279,15 @@ namespace Jondo.Unity.Server.Handlers
                 return;
             }
 
+            // A character fighting as a monster casts what it has and what the fight gave him:
+            // neither his class's spells nor his weapon. A dream's spell is the dream's.
+            if (caster.IncarnatedMonster != 0 && !Managers.DreamSpells.IsDreamSpell(spell)
+                && !IncarnationCasts(caster).Any(h => h.Spell == spell))
+            {
+                Program.LogDebug($"[Fight] {caster.Id} fights as monster {caster.IncarnatedMonster}, which has no spell {spell}.");
+                return;
+            }
+
             // A dream spell is cast at the grade its reward taught, and only while the dream fought
             // in holds it -- by any of its people (see DreamSpells). The usual lookup took the
             // highest grade, one of the spell's own sub-casts: Psst Psst did nothing at its grade
@@ -4746,6 +4790,10 @@ namespace Jondo.Unity.Server.Handlers
             // invocations profiteront également de ces bonus".
             if (quienInvoca.TeamId == FightInstance.Azules && DreamHandler.DreamOf(fight) is { } dreamOfTheSummoner)
                 Managers.Dreams.ApplyTo(invocado, dreamOfTheSummoner);
+
+            // And a trial's rules on it: FONSOCAC's life for the monsters' summons, NILEZAFF's spell for all.
+            if (DreamHandler.DreamOf(fight) is { } dreamOfTheFight)
+                Managers.Dreams.AsTrialWants(invocado, dreamOfTheFight, EsDelBandoDeLosMonstruos(fight, quienInvoca));
 
             fight.Invocar(invocado, quienInvoca);
 
@@ -6499,6 +6547,12 @@ namespace Jondo.Unity.Server.Handlers
                     // the Princesa's Volonté de la Reine.
                     await Managers.GuildRaidReina.SecondPhaseAsync(stream, fight, quienLanza);
                     await Managers.GuildRaidPrincesa.SecondPhaseAsync(stream, fight, quienLanza);
+                    continue;
+                }
+                if (c.Choice > 0)
+                {
+                    // A choice for him to answer: a trial's guardian or hero (FightIncarnation).
+                    await ProposeChoiceAsync(fight, c.Sobre, c.Choice);
                     continue;
                 }
                 if (c.SpellBarChanged)
@@ -9946,7 +10000,7 @@ namespace Jondo.Unity.Server.Handlers
                                                            SessionContext.Current.AccountId);
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jyy,
                 Network.FightProtocol.BuildSpellBar(GameState.CharacterId,
-                                                    layout.Spells, layout.Bar)));
+                                                    layout.Spells, layout.Bar, layout.WithWeapon)));
             Program.LogDebug($"[FightHandler] Refreshed the in-fight spell bar with " +
                              $"{layout.Spells.Count} spells at level {GameState.CharacterLevel}.");
         }

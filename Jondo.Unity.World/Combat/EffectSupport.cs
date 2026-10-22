@@ -228,6 +228,20 @@ namespace Jondo.Unity.World.Combat
         /// <summary>Replace a fighter's visual appearance for the duration of the buff.</summary>
         public const int ChangeLook = 335;
 
+        /// <summary>
+        /// 149, «Cambia la apariencia»: the same as 335 on another row. The dream trials' choices
+        /// put on their guardian's or hero's look with it (REVERSED's «Retazos de Guardián»,
+        /// DOFOUSSE's Yoy), Supersimueño its own.
+        /// </summary>
+        public const int ChangeAppearance = 149;
+
+        /// <summary>
+        /// 3008, a choice proposed (its value the client's ChoicesDataRoot id): an ankla's
+        /// destinations out of a fight; in one, REVERSED's «Elige al guardián de mazmorra que deseas
+        /// encarnar» (33) and DOFOUSSE's heroes (95), from their incarnation's starting spell.
+        /// </summary>
+        public const int ProposesChoice = 3008;
+
         /// <summary>Summon a creature.</summary>
         public const int Summon = 181;
 
@@ -289,7 +303,7 @@ namespace Jondo.Unity.World.Combat
                 Push, Pull, StepBack, StepForward,
                 AddState, RemoveState,
                 CastSpell, TriggerSpell, NearestTargetExecuteSpell,
-                RemoveSpellEffects, ChangeLook,
+                RemoveSpellEffects, ChangeLook, ChangeAppearance, ProposesChoice,
                 Summon, FireHeal, HealPercent, Kill,
             };
 

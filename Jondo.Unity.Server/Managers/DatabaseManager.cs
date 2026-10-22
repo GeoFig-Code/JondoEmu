@@ -3773,6 +3773,49 @@ namespace Jondo.Unity.Server
         /// Retrieves the real stats for a monster at a specific grade index from the Monsters table.
         /// Returns null if the monster or grade is not found.
         /// </summary>
+        private static Dictionary<int, int[]>? _monsterSpells;
+
+        /// <summary>
+        /// The first monster -- the lowest id, the original before its dream or chaotic copies --
+        /// whose spells hold every one of <paramref name="spells"/>, from MonsterTemplates; 0 if none.
+        /// A trial's guardian is found so from the spells its choice gives.
+        /// </summary>
+        public static int MonsterWithSpells(IReadOnlyCollection<int> spells)
+        {
+            if (spells.Count == 0) return 0;
+            if (_monsterSpells == null)
+            {
+                var all = new Dictionary<int, int[]>();
+                try
+                {
+                    using var connection = new SqliteConnection(WorldConnectionString);
+                    connection.Open();
+                    var cmd = connection.CreateCommand();
+                    cmd.CommandText = "SELECT Id, Data FROM MonsterTemplates;";
+                    using var reader = cmd.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        if (reader.IsDBNull(1)) continue;
+                        using var doc = System.Text.Json.JsonDocument.Parse(reader.GetString(1));
+                        if (!doc.RootElement.TryGetProperty("spells", out var list)) continue;
+                        if (list.ValueKind == System.Text.Json.JsonValueKind.Object && list.TryGetProperty("Array", out var inner)) list = inner;
+                        if (list.ValueKind != System.Text.Json.JsonValueKind.Array) continue;
+                        all[reader.GetInt32(0)] = list.EnumerateArray()
+                            .Where(s => s.ValueKind == System.Text.Json.JsonValueKind.Number)
+                            .Select(s => s.GetInt32()).ToArray();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[DatabaseManager] Could not read the monsters' spells: {ex.Message}");
+                }
+                _monsterSpells = all;
+            }
+            foreach (var (monster, own) in _monsterSpells.OrderBy(m => m.Key))
+                if (spells.All(own.Contains)) return monster;
+            return 0;
+        }
+
         public static MonsterGradeStats? GetMonsterGradeStats(int monsterId, int gradeIndex)
         {
             using var connection = new SqliteConnection(WorldConnectionString);

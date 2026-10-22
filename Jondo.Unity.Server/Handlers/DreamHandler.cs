@@ -987,7 +987,8 @@ namespace Jondo.Unity.Server.Handlers
             int level = state.Rules.BaseLevel + state.Rules.Step * state.Cleared;
             Console.WriteLine($"[Dreams] Fin du rêve: wave {state.Cleared} down, wave {wave} at level {level}.");
             var dream = Dreams.De(state.CharacterId);
-            return (Dreams.FinalWave(wave, dream != null ? Dreams.DiceOf(dream, "wave", wave) : new Random()), level, wave);
+            return (Dreams.FinalWave(wave, dream != null ? Dreams.DiceOf(dream, "wave", wave) : new Random(), DreamTrials.Of(dream)),
+                    level, wave);
         }
 
         /// <summary>
@@ -1097,6 +1098,10 @@ namespace Jondo.Unity.Server.Handlers
                     int fragments = sueno.FromSouvenir ? 0 : Dreams.FragmentsFor(sueno.Dificultad, cleared);
                     var result = ResultOf(sueno, fight, won: true, cleared);
                     RankTheDream(sueno, cleared, final.ClearedAtRound);
+
+                    // A trial won: «Vencer en el combate final de la prueba» (EJ) for whoever fought it.
+                    if (DreamTrials.Of(sueno) is { Achievement: > 0 } trial)
+                        foreach (long who in fought) CountTrialWon(who, trial.Achievement);
                     var (map, cell) = End(sueno);
                     return (map, cell, CommandTexts.Get("dream.completed", cleared, fragments), true, result);
                 }
@@ -1122,6 +1127,14 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>The characters who fought a fight: no monster, summon, illusion or bot.</summary>
+        /// <summary>A trial's achievement counted for one of its people, in his own session; looked at back on the map.</summary>
+        private static void CountTrialWon(long characterId, int achievement)
+        {
+            var session = SessionRegistry.FindByCharacter(characterId);
+            if (session == null) return;
+            using (SessionContext.Push(session)) _ = Achievements.CountAsync(null, "EJ", achievement);
+        }
+
         private static List<long> PlayersOf(Jondo.Unity.World.Fights.FightInstance fight)
             => fight.Azul.Concat(fight.Rojo)
                     .Where(f => !f.IsMonster && !f.EsInvocado && !f.EsIlusion && !f.IsBot)

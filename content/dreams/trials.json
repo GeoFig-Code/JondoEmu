@@ -1,0 +1,37 @@
+{
+  "_": [
+    "The Infinite Dreams' trials: the dream hub's «Pruebas» tab starts each from its seed, as a code.",
+    "",
+    "From the client: InfiniteDreamTrialsDataRoot gives the id, the seed, the achievement and its",
+    "intensity, which is the trial's difficulty (4, 5 and 6 the Paradojas I to III, 8 the Pesadilla I:",
+    "the dofuspourlesnoobs guide 'Épreuves de Songe' plays them at exactly those). The achievements'",
+    "one objective is «EJ>achievement,0», «Vencer en el combate final de la prueba ...».",
+    "",
+    "incarnation  the monster each player fights as. The client's data names them: REVERSED's",
+    "             «Retazos de guardián» (8211), whose starting spell proposes choice 33, «Elige al",
+    "             guardián de mazmorra que deseas encarnar»; DOFOUSSE's «Púrpura» (8350), whose",
+    "             «Gameplay jugador» proposes choice 95, Yoy, RamboPL, Snyler or Crvor; SINJSONJ's",
+    "             «Simueño» (8264), «¡Te has transformado en Simueño!», whose starting spell summons",
+    "             its «Monórico» (8265). The guide: «Bosses have their spells but not their passives»,",
+    "             «each Sinj summons a Sonj», «All have equal stats, except Cruor».",
+    "everyoneCarries  a spell every fighter of the trial's fights holds as an attitude: NILEZAFF's",
+    "             «Cohobación Onírica» (31891), whose description is the trial's own.",
+    "monsterLifePercent  more life for the monsters and their summons: FONSOCAC's «vitality doubled,",
+    "             including enemy summons» (the guide); the client only says «PdV adicionales».",
+    "enemies      the monsters of every room instead of the world's groups: REVERSED's «Bribes",
+    "             d'aventurier», the race «Retazos de aventurero» (327) less its templates.",
+    "             rareEnemies come one draw in ten (the guide: «The Féca is rarer»); lateEnemies only",
+    "             from the fourth band and in the last room («the Roublard appears only in palier",
+    "             IV-V hard rooms and the final room»). INFERRED: the one in ten."
+  ],
+  "trials": [
+    { "id": 8,  "seed": "FONSOCAC", "difficulty": 6, "achievement": 9016, "monsterLifePercent": 100 },
+    { "id": 14, "seed": "REVERSED", "difficulty": 8, "achievement": 9017, "incarnation": 8211,
+      "enemies": [8212, 8213, 8215, 8217, 8218, 8219, 8220, 8221, 8222, 8223, 8224, 8225, 8226, 8227,
+                  8230, 8231, 8232, 8233, 8234, 8235, 8236, 8237],
+      "rareEnemies": [8229], "lateEnemies": [8228] },
+    { "id": 17, "seed": "NILEZAFF", "difficulty": 5, "achievement": 9018, "everyoneCarries": 31891 },
+    { "id": 19, "seed": "SINJSONJ", "difficulty": 5, "achievement": 9019, "incarnation": 8264 },
+    { "id": 21, "seed": "DOFOUSSE", "difficulty": 4, "achievement": 9021, "incarnation": 8350 }
+  ]
+}

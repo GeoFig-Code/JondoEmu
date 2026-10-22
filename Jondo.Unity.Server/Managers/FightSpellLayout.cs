@@ -15,6 +15,9 @@ namespace Jondo.Unity.Server.Managers
         {
             public List<(int Spell, int Grade)> Spells { get; } = new();
             public List<(int Slot, int Spell)> Bar { get; } = new();
+
+            /// <summary>Whether the bar carries the weapon's entry: not for a monster one fights as.</summary>
+            public bool WithWeapon { get; init; } = true;
         }
 
         /// <summary>
@@ -52,6 +55,22 @@ namespace Jondo.Unity.Server.Managers
             // A piece of Belladona's chess plays its move and the blessing, nothing else (GuildRaidEfedra).
             if (GuildRaidEfedra.SpellsFor(Network.SessionContext.State.CharacterId) is { } chess)
                 return Build(chess.Select(s => new SpellTable.KnownSpell(s.Spell, s.Spell, s.Grade)).ToList(), null);
+
+            // A character fighting as a monster casts its spells and what the fight gave him, one
+            // per slot, with no class spell and no weapon (FightIncarnation).
+            long me = Network.SessionContext.State.CharacterId;
+            var incarnated = Handlers.FightHandler.FightOf(me)?.Buscar(me);
+            if (incarnated != null && incarnated.IncarnatedMonster != 0)
+            {
+                var asMonster = new Layout { WithWeapon = false };
+                foreach (var (spell, grade) in Handlers.FightHandler.IncarnationCasts(incarnated))
+                {
+                    if (asMonster.Spells.Any(s => s.Spell == spell)) continue;
+                    asMonster.Bar.Add((asMonster.Spells.Count, spell));
+                    asMonster.Spells.Add((spell, grade));
+                }
+                return asMonster;
+            }
 
             var layout = Current(breed, level, accountId);
             int net = RideCapture.SpellOfEquippedNet();

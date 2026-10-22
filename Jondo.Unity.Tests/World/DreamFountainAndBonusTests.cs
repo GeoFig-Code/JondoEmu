@@ -176,7 +176,7 @@ namespace Jondo.Unity.Tests.World
 
             var monster = new Fighter { IsMonster = true, MaxHP = 200, CurrentHP = 200 };
             Dreams.AsTrialWants(monster, trial);
-            Assert.Equal((300, 300), (monster.MaxHP, monster.CurrentHP));
+            Assert.Equal((400, 400), (monster.MaxHP, monster.CurrentHP));   // «vitality doubled» (DreamTrials)
 
             var plain = New();
             var other = new Fighter { IsMonster = true, MaxHP = 200, CurrentHP = 200 };

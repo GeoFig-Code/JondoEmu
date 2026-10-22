@@ -127,6 +127,18 @@ namespace Jondo.Unity.World.Fights
         /// <summary>The spells taken back (3406): a spell of one use, used.</summary>
         public HashSet<int> TakenSpells { get; } = new HashSet<int>();
 
+        /// <summary>
+        /// The monster a character fights as in a dream trial (DreamTrials' incarnation), or 0: its
+        /// sheet, look and spells are his for the fight, his class's spells and weapon are not.
+        /// </summary>
+        public int IncarnatedMonster { get; set; }
+
+        /// <summary>The look he fights with as that monster: its own, or the guardian's he chose.</summary>
+        public string IncarnationLook { get; set; } = "";
+
+        /// <summary>The incarnation's own spells, at their grades.</summary>
+        public List<(int Spell, int Grade)> IncarnationSpells { get; } = new List<(int, int)>();
+
         /// <summary>Whether this fighter takes a cell: its own, or one of its body's.</summary>
         public bool Occupies(int cell) => CellId == cell || (ExtraCells.Count > 0 && ExtraCells.Contains(cell));
 

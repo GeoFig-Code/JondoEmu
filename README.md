@@ -633,9 +633,10 @@ Entered from the Plano Astral's well: a dream of 26 rooms in depth, walked band 
 - ✅ The Dream Market: Neru Stalar and Gobribe
 - ✅ A dream is saved and resumed after a disconnection or a restart
 - ✅ `.sueno [row]` for administrators
-- ✅ The trial FONSOCAC's rules: weapons cheaper, faster and harder-hitting, monsters with more life
+- ✅ The trial FONSOCAC's rules: weapons cheaper, faster and harder-hitting, monsters with double life
 - ✅ Dreams in a group: the owner invites his party, who follow him room to room and fight beside him
-- ❌ The other four trials' rules
+- ✅ The trials REVERSED (fight as the dungeon guardian you choose against adventurers' scraps), NILEZAFF (a hit from afar swaps places and sends the damage back around), SINJSONJ (fight as Simueño beside its Monórico) and DOFOUSSE (fight as Yoy, RamboPL, Snyler or Crvor)
+- ✅ Each trial at its own difficulty, with its achievement for winning its final fight
 
 ### 🪙 Jondo Coin
 

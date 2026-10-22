@@ -1600,8 +1600,10 @@ namespace Jondo.Unity.Server.Network
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kso)))
                 {
-                    // The option chosen in a choice an item proposed: an ankla's dungeon.
-                    await TravelItemHandler.ChooseAsync(stream, payload);
+                    // The option chosen in a choice: a fight's -- a trial's guardian or hero -- or
+                    // the one an item proposed, an ankla's dungeon.
+                    if (!await FightHandler.AnswerChoiceAsync(stream, payload))
+                        await TravelItemHandler.ChooseAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Lzh)))
                 {

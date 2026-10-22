@@ -334,7 +334,8 @@ namespace Jondo.Unity.Server.Managers
         /// Something the achievements count happened -- the kind and key their criteria name:
         /// <c>EB</c> 0 a mount born, <c>HD</c> a ride caught (its item), <c>NC</c> a guild mission
         /// done (its super category), <c>NT</c> guild tokens obtained, <c>EI</c> an item used,
-        /// <c>Eu</c> items broken into runes -- and the achievements waiting on it are looked at
+        /// <c>Eu</c> items broken into runes, <c>EJ</c> a dream trial won (its achievement) -- and
+        /// the achievements waiting on it are looked at
         /// now; with no stream, back on the map, as a fight's are.
         /// </summary>
         public static async Task CountAsync(NetworkStream? stream, string kind, long key, long by = 1)
@@ -629,7 +630,7 @@ namespace Jondo.Unity.Server.Managers
                 "EM" => Tally(flag == "d" ? DungeonKind : "EM", key),
                 "Ef" => Tally("Ef", key),
                 "EH" => S.ChallengesDone.Contains((int)key) ? 1 : 0,
-                "EB" or "HD" or "NC" or "EI" or "Eu" => Tally(op, key),
+                "EB" or "HD" or "NC" or "EI" or "Eu" or "EJ" => Tally(op, key),
                 "EC" => Tally(AchievementCatalogue.CraftKey, 0),
                 "ES" => Tally(AchievementCatalogue.ExploreKey, key),
                 "HP" => key == 1 && InOwnGuildHall() ? 1 : 0,

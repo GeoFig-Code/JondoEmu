@@ -53,6 +53,9 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A spell given or taken for the fight (3405, 3406): the bearer's bar is drawn again.</summary>
         public bool SpellBarChanged { get; init; }
 
+        /// <summary>A choice proposed to the bearer (3008), by its ChoicesDataRoot id; 0 for none.</summary>
+        public int Choice { get; init; }
+
         /// <summary>
         /// Whether this row comes out of a spell's CRITICAL list: the jxm carries it as its f9.
         /// A critical cast runs the whole chain on the critical lists, and a spell with none
@@ -4791,7 +4794,19 @@ namespace Jondo.Unity.Server.Managers
                                     combate.DanoDelDisparo * porciento / 100);
             }
 
-            if (efecto.EffectId == CambiarApariencia)
+            if (efecto.EffectId == EffectSupport.ProposesChoice)
+            {
+                // A character's to answer: the server waits for his kso (FightChoices).
+                if (sobre == null || sobre.IsMonster || sobre.IsBot || efecto.Value <= 0) return null;
+                return new Outcome
+                {
+                    Sobre = sobre, Caster = quienLanza, Efecto = efecto,
+                    HechizoOrigen = hechizo, NivelOrigen = grado,
+                    Choice = efecto.Value,
+                };
+            }
+
+            if (efecto.EffectId == CambiarApariencia || efecto.EffectId == EffectSupport.ChangeAppearance)
             {
                 int apariencia = efecto.Value != 0 ? efecto.Value : efecto.DiceNum;
                 if (apariencia <= 0) return null;

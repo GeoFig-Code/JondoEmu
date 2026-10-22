@@ -23,7 +23,7 @@ namespace Jondo.Unity.Server.Managers
         public sealed record ChoiceOption(int Id, int DescriptionId, int GfxId, int RewardType, string RewardValue);
 
         /// <summary>A choice the client draws as a popup of options (kss).</summary>
-        public sealed record Choice(int Id, int NameId, IReadOnlyList<ChoiceOption> Options);
+        public sealed record Choice(int Id, int NameId, IReadOnlyList<ChoiceOption> Options, int Duration = 0);
 
         /// <summary>An option's reward: go to a map reference.</summary>
         public const int GoToMapReference = 6;
@@ -83,7 +83,8 @@ namespace Jondo.Unity.Server.Managers
                                                      option.GetProperty("rewardType").GetInt32(),
                                                      option.GetProperty("rewardValue").GetString() ?? ""));
                     }
-                    choices[id] = new Choice(id, entry.Value.GetProperty("nameId").GetInt32(), options);
+                    int duration = entry.Value.TryGetProperty("duration", out var seconds) ? seconds.GetInt32() : 0;
+                    choices[id] = new Choice(id, entry.Value.GetProperty("nameId").GetInt32(), options, duration);
                 }
             }
             Console.WriteLine($"[Travel] {references.Count} map references and {choices.Count} choices.");

@@ -1062,6 +1062,10 @@ namespace Jondo.Unity.Server.Managers
             _cuenta.TryGetValue(characterId, out int cuenta);
             _cuenta[characterId] = ++cuenta;
 
+            // A trial is played at its own difficulty, whatever the hub asked: its achievement's
+            // intensity (DreamTrials).
+            if (IsSeed(seed) && DreamTrials.BySeed(seed) is { Difficulty: > 0 } trial) dificultad = trial.Difficulty;
+
             var sueno = new Sueno
             {
                 CharacterId = characterId,
@@ -1286,7 +1290,7 @@ namespace Jondo.Unity.Server.Managers
             {
                 // And after band V's fountain, the end of the dream.
                 var fin = new Sala { Id = siguiente++, Fila = filaBase++, EsFinal = true, Franja = sueno.Franja, Senalada = true };
-                fin.Miembros.AddRange(FinalWave(1, DiceOf(sueno, "wave", 1)));
+                fin.Miembros.AddRange(FinalWave(1, DiceOf(sueno, "wave", 1), DreamTrials.Of(sueno)));
                 sueno.Salas.Add(fin);
                 porFila.Add(new List<Sala> { fin });
             }
@@ -1692,8 +1696,8 @@ namespace Jondo.Unity.Server.Managers
             }
 
             // The trial FONSOCAC's weapons (InfiniteDreamTrialsDataRoot 8): «Las armas tienen: -1 PA,
-            // +1 lanzamiento por turno y +10 de daños básicos».
-            if (IsTrial(dream, FonsocacSeed))
+            // +1 lanzamiento por turno y +10 de daños básicos». Not a monster a player fights as.
+            if (IsTrial(dream, FonsocacSeed) && fighter.IncarnatedMonster == 0)
             {
                 Add(fighter.WeaponModifiers, SpellAspect.ApCostDown, 1);
                 Add(fighter.WeaponModifiers, SpellAspect.CastsPerTurnUp, 1);
@@ -1711,23 +1715,27 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public const string FonsocacSeed = "FONSOCAC";
 
-        /// <summary>
-        /// FONSOCAC's «Los monstruos tienen PdV adicionales», in percent. INFERRED: the trial gives
-        /// no number.
-        /// </summary>
-        public const int FonsocacMonsterLifePercent = 50;
-
         /// <summary>Whether the dream is that trial: started from its seed.</summary>
         public static bool IsTrial(Sueno dream, string seed)
             => dream.FromSouvenir && string.Equals(dream.Seed, seed, StringComparison.OrdinalIgnoreCase);
 
-        /// <summary>A monster of a dream's fight as its trial makes it: FONSOCAC's, with more life.</summary>
-        public static void AsTrialWants(Fighter monster, Sueno? dream)
+        /// <summary>
+        /// A fighter of a dream's fight as its trial makes it (DreamTrials): the monsters' side --
+        /// its summons too -- with FONSOCAC's more life, and everybody with the spell NILEZAFF gives
+        /// all, held as an attitude. <paramref name="monstersSide"/> says the side when the fighter
+        /// alone does not: a summon is a monster whoever summoned it.
+        /// </summary>
+        public static void AsTrialWants(Fighter fighter, Sueno? dream, bool? monstersSide = null)
         {
-            if (dream == null || !IsTrial(dream, FonsocacSeed) || !monster.IsMonster) return;
-            int extra = (int)Math.Round(monster.MaxHP * FonsocacMonsterLifePercent / 100.0);
-            monster.MaxHP += extra;
-            monster.CurrentHP += extra;
+            var trial = DreamTrials.Of(dream);
+            if (trial == null) return;
+            if (trial.MonsterLifePercent > 0 && (monstersSide ?? fighter.IsMonster))
+            {
+                int extra = (int)Math.Round(fighter.MaxHP * trial.MonsterLifePercent / 100.0);
+                fighter.MaxHP += extra;
+                fighter.CurrentHP += extra;
+            }
+            if (trial.EveryoneCarries != 0) fighter.Buffs.PonerActitud(trial.EveryoneCarries);
         }
 
         private static bool ApplyOne(Fighter fighter, int effect, int v, bool nested)
@@ -2234,6 +2242,19 @@ namespace Jondo.Unity.Server.Managers
             sala.Miembros.Clear();
             sala.Miembros.AddRange(MiembrosDe(elegido.Miembros));
 
+            // A trial with its own enemies puts them in the group's place, as many as it had:
+            // REVERSED's adventurers' scraps (DreamTrials).
+            if (DreamTrials.Of(sueno) is { Enemies.Count: > 0 } trial)
+            {
+                int count = Math.Clamp(sala.Miembros.Count, 1, MaxTrialGroup);
+                sala.Miembros.Clear();
+                for (int i = 0; i < count; i++)
+                {
+                    int enemy = DreamTrials.DrawEnemy(trial, sala.Franja, lastRoom: false, dado);
+                    if (enemy > 0) sala.Miembros.Add((enemy, TopGrade));
+                }
+            }
+
             // And what the room gives away, from the nine rewards the measured rooms offer.
             if (keepReward && sala.Reward != null) return;
             sala.Reward = DrawRoomReward(sueno, sala, dado);
@@ -2265,9 +2286,23 @@ namespace Jondo.Unity.Server.Managers
         /// world's high groups, four fighters in the first wave and one more every two, up to
         /// eight. Each at its top grade: the wave's level is put on them when the fight builds them.
         /// </summary>
-        public static List<(int Monstruo, int Grado)> FinalWave(int wave, Random dado)
+        public static List<(int Monstruo, int Grado)> FinalWave(int wave, Random dado, DreamTrials.Trial? trial = null)
         {
             Cargar();
+
+            // A trial with its own enemies fights its waves with them, the late ones among them.
+            if (trial is { Enemies.Count: > 0 })
+            {
+                var scraps = new List<(int, int)>();
+                int scrapCount = Math.Min(8, 4 + (wave - 1) / 2);
+                for (int i = 0; i < scrapCount; i++)
+                {
+                    int enemy = DreamTrials.DrawEnemy(trial, Bands, lastRoom: true, dado);
+                    if (enemy > 0) scraps.Add((enemy, TopGrade));
+                }
+                return scraps;
+            }
+
             var bosses = DungeonManager.All.Values.SelectMany(d => d.Bosses).Distinct().OrderBy(b => b).ToList();
             var bounties = Bounties();
             var strong = _strong ??= _grupos!.Where(g => g.Nivel >= 150).SelectMany(g => MiembrosDe(g.Miembros))
@@ -2284,6 +2319,9 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>A grade past any monster's: the fight's own clamp takes it to the highest there is.</summary>
         private const int TopGrade = 99;
+
+        /// <summary>The most a trial's own enemies put in a room, the size of the waves' largest.</summary>
+        private const int MaxTrialGroup = 8;
 
         private static List<int>? _bounties;
 
