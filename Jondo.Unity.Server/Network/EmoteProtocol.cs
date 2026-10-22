@@ -30,8 +30,8 @@ namespace Jondo.Unity.Server.Network
         /// Somebody plays an emote (khh), sent to everybody on the map, the player included.
         /// </summary>
         /// <remarks>
-        /// Byte for byte what the juggling capture sends: <c>khh {1: 302677754146, 3: 29,
-        /// 5: 65924386, 6: "AnimEmoteJuggle"}</c>. f5 is the account: 65924386 is the same number the
+        /// Byte for byte what the juggling capture sends: <c>khh {1: 300000000001, 3: 29,
+        /// 5: 60000001, 6: "AnimEmoteJuggle"}</c>. f5 is the account: 60000001 is the same number the
         /// map's actor record carries in its account field for that character.
         /// </remarks>
         public static byte[] BuildPlayed(long characterId, int emoteId, long accountId, string animation)

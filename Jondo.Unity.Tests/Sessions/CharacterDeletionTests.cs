@@ -94,11 +94,11 @@ namespace Jondo.Unity.Tests.Sessions
         [Fact]
         public void The_id_is_read_from_field_one_of_the_kvu()
         {
-            // 71434240350 is the id in the capture, carried as de82c08e8a02.
+            // 71000000018, carried as 928cb8bf8802.
             byte[] frame = ConnectionProtocol.Push(
-                Op.Kvu, Pb.New().Var(1, 71_434_240_350L).Str(2, new string('a', 32)).Build());
+                Op.Kvu, Pb.New().Var(1, 71_000_000_018L).Str(2, new string('a', 32)).Build());
 
-            Assert.Equal(71_434_240_350L, CharacterDeletionHandler.ReadCharacterId(frame));
+            Assert.Equal(71_000_000_018L, CharacterDeletionHandler.ReadCharacterId(frame));
         }
 
         [Fact]

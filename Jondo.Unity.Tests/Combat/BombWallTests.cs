@@ -169,12 +169,12 @@ namespace Jondo.Unity.Tests.Combat
             // f3=owner f14=401 f32{f1{f1{f2=colour f3=cell} f4=id f5=print f6=grade
             //                        f9=spell f10=cell f11=1 f12=owner}}
             byte[] paquete = FightProtocol.BuildGlyph(
-                owner: 53721497699, glyphId: 1, cell: 260, spell: 13458, grade: 3,
+                owner: 53000000024, glyphId: 1, cell: 260, spell: 13458, grade: 3,
                 size: 2, colour: FightProtocol.GlyphRed);
 
             // What really matters: the numbers it carries inside.
             var campos = ProtoMessage.Parse(paquete).Fields;
-            Assert.Contains(campos, f => f.FieldNumber == 3 && f.VarIntValue == 53721497699);
+            Assert.Contains(campos, f => f.FieldNumber == 3 && f.VarIntValue == 53000000024);
             Assert.Contains(campos, f => f.FieldNumber == 14 && f.VarIntValue == 401);
             Assert.Contains(campos, f => f.FieldNumber == 32);
         }
@@ -182,10 +182,10 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void Quitar_un_glifo_son_quince_bytes_y_su_numero()
         {
-            byte[] paquete = FightProtocol.BuildGlyphGone(53721497699, 2);
+            byte[] paquete = FightProtocol.BuildGlyphGone(53000000024, 2);
 
             var campos = ProtoMessage.Parse(paquete).Fields;
-            Assert.Contains(campos, f => f.FieldNumber == 3 && f.VarIntValue == 53721497699);
+            Assert.Contains(campos, f => f.FieldNumber == 3 && f.VarIntValue == 53000000024);
             Assert.Contains(campos, f => f.FieldNumber == 14 && f.VarIntValue == 310);
 
             var detalle = Assert.Single(campos, f => f.FieldNumber == 22);
@@ -202,9 +202,9 @@ namespace Jondo.Unity.Tests.Combat
         public void Empezar_el_turno_en_el_muro_se_avisa_con_el_307()
         {
             byte[] paquete = FightProtocol.BuildGlyphTriggered(
-                owner: 53721497699, glyphId: 6, cell: 274, victim: -1, walkedIn: false);
+                owner: 53000000024, glyphId: 6, cell: 274, victim: -1, walkedIn: false);
 
-            Assert.Equal("18e380b490c8014a1008920210ffffffffffffffffff01200670b302",
+            Assert.Equal("1898a4afb8c5014a1008920210ffffffffffffffffff01200670b302",
                          Hex(paquete));
         }
 
@@ -216,9 +216,9 @@ namespace Jondo.Unity.Tests.Combat
         public void Entrar_en_el_muro_se_avisa_con_el_306()
         {
             byte[] paquete = FightProtocol.BuildGlyphTriggered(
-                owner: 53721497699, glyphId: 1, cell: 289, victim: -4, walkedIn: true);
+                owner: 53000000024, glyphId: 1, cell: 289, victim: -4, walkedIn: true);
 
-            Assert.Equal("18e380b490c8014a1008a10210fcffffffffffffffff01200170b202",
+            Assert.Equal("1898a4afb8c5014a1008a10210fcffffffffffffffff01200170b202",
                          Hex(paquete));
         }
 

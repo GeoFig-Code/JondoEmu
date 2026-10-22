@@ -11,20 +11,20 @@ namespace Jondo.Unity.Tests.Economy
 {
     /// <summary>
     /// A trade between two players, against the two captures of Intercambio/: the one asking
-    /// (302677754146) and the one asked (293213045026).
+    /// (300000000001) and the one asked (290000000003).
     /// </summary>
     [Collection("forgemagic")]
     public class TradeTests
     {
         private static byte[] Hex(string hex) => Convert.FromHexString(hex);
-        private const long Asker = 302677754146, Asked = 293213045026;
+        private const long Asker = 300000000001, Asked = 290000000003;
 
         [Fact]
         public void Asking_and_opening_are_the_captures()
         {
-            Assert.Equal(Hex("08a28280c8e70810a282f0a6c4082001"), TradeProtocol.BuildRequested(Asker, Asked));
+            Assert.Equal(Hex("0881f092cbdd081083a8e3aab8082001"), TradeProtocol.BuildRequested(Asker, Asked));
             // The asker 25,738 pods of capacity and 16,677 carried, the asked 22,439 and 12,117.
-            Assert.Equal(Hex("108ac901180120a7af0128a5820130a28280c8e70838a282f0a6c40840d55e"),
+            Assert.Equal(Hex("108ac901180120a7af0128a582013081f092cbdd083883a8e3aab80840d55e"),
                          TradeProtocol.BuildStarted(Asker, 25738, 16677, Asked, 22439, 12117));
         }
 
@@ -38,14 +38,14 @@ namespace Jondo.Unity.Tests.Economy
                          TradeProtocol.BuildLaid(6903, new List<Effect>(), 1, 531768628, remote: false));
             Assert.Equal(Hex("088827"), TradeProtocol.BuildKamas(5000, remote: false));
             Assert.Equal(Hex("0888271801"), TradeProtocol.BuildKamas(5000, remote: true));
-            Assert.Equal(Hex("180120a282f0a6c408"), WorkshopProtocol.BuildReady(true, Asked));
+            Assert.Equal(Hex("18012083a8e3aab808"), WorkshopProtocol.BuildReady(true, Asked));
         }
 
         [Fact]
         public void The_end_is_the_captures()
         {
             Assert.Equal(Hex("1a0810ef94e2fc011803"), TradeProtocol.BuildQuantity(530090607, 3));
-            Assert.Equal(Hex("20a28280c8e708"), WorkshopProtocol.BuildReady(false, Asker));
+            Assert.Equal(Hex("2081f092cbdd08"), WorkshopProtocol.BuildReady(false, Asker));
             Assert.Equal(Hex("088ac90118a48201"), TradeProtocol.BuildWeight(25738, 16676, remote: false));
             Assert.Equal(Hex("08a7af01100118d65e"), TradeProtocol.BuildWeight(22439, 12118, remote: true));
             Assert.Equal(Hex("0801180b"), TradeProtocol.BuildClosed(done: true));

@@ -943,7 +943,7 @@ namespace Jondo.Unity.Server.Handlers
                 ? fight.Rojo.ConvertAll(f => (long)f.MonsterId)
                 : new List<long>();
             // The f6 is who OPENED the fight, whoever receives it: the follower of the follow
-            // capture gets Leader there (frame 162), the joiner of the sword capture Uvok (17),
+            // capture gets Leader there (frame 162), the joiner of the sword capture Duel (17),
             // and in the challenge both views name the challenger. It was the receiver, which was
             // right only for the one who attacked.
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kam,
@@ -5729,8 +5729,8 @@ namespace Jondo.Unity.Server.Handlers
         /// this list, so it lit the Rogue up while the Ocra was playing.
         ///
         /// Measured in both challenge captures: the jzu of the placement phase already lists the
-        /// first player first (293213045026 then 302677754146, and the first jzc is for
-        /// 293213045026), and the fight-start jxb keeps the same order.
+        /// first player first (290000000003 then 300000000001, and the first jzc is for
+        /// 290000000003), and the fight-start jxb keeps the same order.
         /// </remarks>
         /// <summary>A fight's jzu: its carousel, with the additional turn to come or being played behind whom it follows.</summary>
         private static byte[] TeamsOf(FightInstance fight)
@@ -9218,11 +9218,11 @@ namespace Jondo.Unity.Server.Handlers
             // THE AUTHOR OF THE SEQUENCE IS THE FIGHTER WHOSE TURN IT IS, not the one giving up, and
             // the two captures seemed to contradict each other until looking at who dies inside:
             //
-            //   poutch level 75  jto 08a28280c8e708 1005   author = the player, who is the only one
-            //                    jwe dies   a28280c8e708   and is also the one whose turn it is
+            //   poutch level 75  jto 0881f092cbdd08 1005   author = the player, who is the only one
+            //                    jwe dies   81f092cbdd08   and is also the one whose turn it is
             //
-            //   accept challenge jto 08a282f0a6c408 1005   author = the OTHER player
-            //                    jwe dies   a28280c8e708   but the one who dies is ours
+            //   accept challenge jto 0883a8e3aab808 1005   author = the OTHER player
+            //                    jwe dies   81f092cbdd08   but the one who dies is ours
             //
             // So the one giving up is the one in the inner jwe, and the one wrapping is the turn's.
             // With quitter.Id in both, the second capture is contradicted.

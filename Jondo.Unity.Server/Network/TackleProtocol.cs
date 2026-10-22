@@ -32,7 +32,7 @@ namespace Jondo.Unity.Server.Network
 
         /// <summary>
         /// <c>jwe { f3: mover, f11 { f1: packed tacklers }, f14: 104 }</c>. Byte for byte the
-        /// tutorial's frame 478: "18df82c0feaa02 5a0c0a0affffffffffffffffff01 7068".
+        /// tutorial's frame 478: "1891c0fc82aa02 5a0c0a0affffffffffffffffff01 7068".
         /// </summary>
         public static byte[] BuildTackled(long mover, IEnumerable<long> tacklers)
             => Pb.New()

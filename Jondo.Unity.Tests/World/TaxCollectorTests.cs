@@ -15,7 +15,7 @@ namespace Jondo.Unity.Tests.World
 {
     /// <summary>
     /// The alliances' tax collectors: their frames against the captures that have one -- the map
-    /// actor of «Bloodbath» in the party search capture, and the talk and the attack of «atacar a
+    /// actor of «Alliance2» in the party search capture, and the talk and the attack of «atacar a
     /// recaudador y perder» -- and the store and the rules underneath.
     /// </summary>
     [Collection("alliances")]
@@ -40,23 +40,23 @@ namespace Jondo.Unity.Tests.World
 
         private static byte[] Hex(string hex) => Convert.FromHexString(hex);
 
-        /// <summary>«Bloodbath», whose tax collector stands in the party search capture.</summary>
-        private static readonly AllianceStore.Alliance Bloodbath = new()
+        /// <summary>«Alliance2», whose tax collector stands in the party search capture.</summary>
+        private static readonly AllianceStore.Alliance Alliance2 = new()
         {
-            Uuid = "01ba8c1c-63e6-4c3b-95e5-a54c3eaddc3a",
-            Name = "Bloodbath",
+            Uuid = "00000000-0000-4000-8000-000000000005",
+            Name = "Alliance2",
             Tag = "BLOOD",
             EmblemSymbol = 104,
             EmblemSymbolColor = 8,
             EmblemSymbolRgb = 11862276,
         };
 
-        /// <summary>«Orifl-Ames», whose tax collector is talked to and attacked in the other capture.</summary>
-        private static readonly AllianceStore.Alliance OriflAmes = new()
+        /// <summary>«Alliance-3», whose tax collector is talked to and attacked in the other capture.</summary>
+        private static readonly AllianceStore.Alliance AllianceThree = new()
         {
-            Uuid = "26ebe943-0142-4b5e-a247-189ee0a0649d",
-            Name = "Orifl-Ames",
-            Tag = "ORI",
+            Uuid = "00000000-0000-4000-8000-000000000006",
+            Name = "Alliance-3",
+            Tag = "AL3",
             EmblemSymbol = 136,
             EmblemSymbolColor = 3,
             EmblemBackground = 1002575,
@@ -76,19 +76,19 @@ namespace Jondo.Unity.Tests.World
             var tc = new TaxCollectorStore.TaxCollector
             {
                 Id = TaxCollectorStore.ContextBase + 20006,
-                Uuid = "5222de46-ef3e-4454-a9f9-88109004f088",
-                OwnerId = 245577548066,
+                Uuid = "00000000-0000-4000-8000-000000000007",
+                OwnerId = 240000000014,
                 CellId = 352,
                 Direction = 1,
                 FirstNameId = 154,
                 LastNameId = 74,
             };
             Assert.Equal(-20006, tc.ContextId);
-            Assert.Equal(Hex("0a0508e00210011295010a7b32790a770a43120908681008288482d4051a09426c6f6f6462617468222430316261" +
-                             "386331632d363365362d346333622d393565352d6135346333656164646333612a05424c4f4f44104a1a24353232" +
-                             "32646534362d656633652d343435342d613966392d38383130393030346630383820a282c0ec9207289a011a160a" +
+            Assert.Equal(Hex("0a0508e00210011295010a7b32790a770a43120908681008288482d4051a09416c6c69616e636532222430303030" +
+                             "303030302d303030302d343030302d383030302d3030303030303030303030352a05424c4f4f44104a1a24303030" +
+                             "30303030302d303030302d343030302d383030302d303030303030303030303037208ec0f588fe06289a011a160a" +
                              "088482d4458080803810031890392a01733202ef0c18dae3feffffffffffff01"),
-                         TaxCollectorProtocol.Actor(tc, Bloodbath).Build());
+                         TaxCollectorProtocol.Actor(tc, Alliance2).Build());
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace Jondo.Unity.Tests.World
         {
             var tc = new TaxCollectorStore.TaxCollector { Id = 1, Uuid = "u", FirstNameId = 78, LastNameId = 241 };
 
-            var block = Field(Field(Field(Field(TaxCollectorProtocol.Actor(tc, Bloodbath).Build(), 2), 1), 6), 1);
+            var block = Field(Field(Field(Field(TaxCollectorProtocol.Actor(tc, Alliance2).Build(), 2), 1), 6), 1);
             Assert.Equal(241, Number(block, 2));
             Assert.Equal(78, Number(block, 5));
 
@@ -118,15 +118,15 @@ namespace Jondo.Unity.Tests.World
             => ProtoMessage.Parse(message).Fields.First(f => f.FieldNumber == number && f.WireType == 0).VarIntValue;
 
         /// <summary>
-        /// Talking to it (ion): 429 pods of 1000, «Orifl-Ames», 20 tax collectors, 200 of
+        /// Talking to it (ion): 429 pods of 1000, «Alliance-3», 20 tax collectors, 200 of
         /// prospecting and 23836 kamas' worth.
         /// </summary>
         [Fact]
         public void The_dialog_matches_the_capture()
         {
-            Assert.Equal(Hex("08ad0310e8071a47120e088801100318cf983d28ce82f7071a0a4f7269666c2d416d6573222432366562653934" +
-                             "332d303134322d346235652d613234372d3138396565306130363439642a034f5249201428c801389cba01"),
-                         TaxCollectorProtocol.BuildDialog(OriflAmes, 429, 20, 23836));
+            Assert.Equal(Hex("08ad0310e8071a47120e088801100318cf983d28ce82f7071a0a416c6c69616e63652d33222430303030303030" +
+                             "302d303030302d343030302d383030302d3030303030303030303030362a03414c33201428c801389cba01"),
+                         TaxCollectorProtocol.BuildDialog(AllianceThree, 429, 20, 23836));
         }
 
         /// <summary>The tax collector's side on the map (kae): kind 3, led by its actor, it by its names.</summary>
@@ -143,9 +143,9 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_announcement_matches_the_capture()
         {
-            Assert.Equal(Hex("10051896e3feffffffffffff0128c40130a28280c8e708"),
+            Assert.Equal(Hex("10051896e3feffffffffffff0128c4013081f092cbdd08"),
                          FightProtocol.BuildFightAnnounced(FightRules.ContraRecaudador.TipoDelKam, -20074,
-                                                           new List<long>(), 196, 302677754146));
+                                                           new List<long>(), 196, 300000000001));
             Assert.Equal(Hex("1801200128bb033005"),
                          FightProtocol.BuildFightSummary(FightRules.ContraRecaudador.TipoDelKam, 443));
         }
@@ -166,9 +166,9 @@ namespace Jondo.Unity.Tests.World
         public void Its_look_in_a_fight_matches_the_capture()
         {
             Assert.Equal("{7313|1762|8=16630094,7=1002575|115}",
-                         TaxCollectorProtocol.LookString(OriflAmes, TaxCollectorProtocol.FightBones));
+                         TaxCollectorProtocol.LookString(AllianceThree, TaxCollectorProtocol.FightBones));
             Assert.Equal(Hex("0a08ce82f747cf98bd3810031891392a01733202e20d"),
-                         TaxCollectorProtocol.Look(OriflAmes, TaxCollectorProtocol.FightBones).Build());
+                         TaxCollectorProtocol.Look(AllianceThree, TaxCollectorProtocol.FightBones).Build());
         }
 
         /// <summary>The fight's rules: the kam's 5, the usual clock, no challenges and no loot table.</summary>
@@ -265,7 +265,7 @@ namespace Jondo.Unity.Tests.World
                 Pods = 160, Worth = 622691,
                 Spells = new Dictionary<int, int> { [0] = 64128, [1] = 64239 },
             };
-            var fields = Fields(TaxCollectorProtocol.Information(tc, Bloodbath, 0, details).Build());
+            var fields = Fields(TaxCollectorProtocol.Information(tc, Alliance2, 0, details).Build());
 
             Assert.Equal(84, fields.Numbers[4]);
             Assert.Equal(67, fields.Numbers[10]);
@@ -465,7 +465,7 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void A_tax_collector_ends_the_fight_with_its_alliance()
         {
-            byte[] block = AllianceProtocol.Block(OriflAmes).Build();
+            byte[] block = AllianceProtocol.Block(AllianceThree).Build();
             var jyg = FightProtocol.BuildFightResults(new[]
             {
                 new FightProtocol.FightResult { Fighter = -1, TaxCollectorAlliance = block },

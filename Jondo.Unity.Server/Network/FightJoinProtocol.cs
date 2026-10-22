@@ -15,7 +15,7 @@ namespace Jondo.Unity.Server.Network
     ///      de grupo-combate-victoria»: the recorder, Hero-Example, stands on the map in Leader's
     ///      party; the leader attacks twice (fights 487 and 488) and the recorder is pulled in behind him.
     ///   S  «Combate/meterse en combate de otra persona haciendo click en la espadita y luego
-    ///      abandonar para salirse»: KTAS5625 clicks the swords of a challenge (fight 4923) and
+    ///      abandonar para salirse»: Fighter2 clicks the swords of a challenge (fight 4923) and
     ///      then leaves it from the placement.
     ///   B  «Busqueda grupo/busqueda automatica de grupo-encuentra para una dung...»: four players
     ///      into one dungeon fight (471), the recorder the fourth, by kay.
@@ -63,7 +63,7 @@ namespace Jondo.Unity.Server.Network
         ///   f1: a fighter of the team he wants, the one whose flag he clicked
         ///   f2: the fight
         ///
-        /// "08e380ecc4d40110bb26" in S: Inu-no-Kami's side of fight 4923. "08a282bc96e619109022"
+        /// "0888f4dbabd40110bb26" in S: Challenger1's side of fight 4923. "0887c0d9a0ce19109022"
         /// in J. Zeros when the message is not there.
         /// </summary>
         public static (long Fighter, long FightId) ReadJoinRequest(byte[] frame)
@@ -85,7 +85,7 @@ namespace Jondo.Unity.Server.Network
         /// "You cannot come in" (jxs): { f1: the fighter the kay named, f2: why }.
         /// </summary>
         /// <remarks>
-        /// ONE reason is measured: 16, in J at frame 856, "08a282bc96e6191010". The fight asked
+        /// ONE reason is measured: 16, in J at frame 856, "0887c0d9a0ce191010". The fight asked
         /// for (4368) had its attackers' side restricted to their party -- its options block in
         /// the jss reads { f4: 1 }, the same as behind the kau { f3: 1, f4: 1 } of F -- and the
         /// recorder was not in it. That is the only thing standing in his way that the capture
@@ -106,8 +106,8 @@ namespace Jondo.Unity.Server.Network
         ///   f1 { f1: level, f2: name }   f2: id
         ///
         /// The level is the one the party sheet carries -- 447 for Leader in both. Some entries
-        /// carry an f3 { f1: account uuid, f2: nickname } inside f1 (Ocrazy's in B, "WABIT");
-        /// most do not (Leader, Hero-Example, KTAS5625, Uvok, Venom-Vi, Riyuga) and it is not
+        /// carry an f3 { f1: account uuid, f2: nickname } inside f1 (Rover1's in B, "NICK1");
+        /// most do not (Leader, Hero-Example, Fighter2, Duel, Fighter1, Fight3) and it is not
         /// sent.
         /// </summary>
         public static Pb PersonOnTeam(long id, int level, string name)
@@ -239,7 +239,7 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         /// <remarks>
         /// The same message carries the member list to the map and, EMPTY, the board's "this is
-        /// your side" (F 168, "0a0b18a282f0a6c40820012a0010e703"): one kae, for the receiver's
+        /// your side" (F 168, "0a0b1883a8e3aab80820012a0010e703"): one kae, for the receiver's
         /// own side, in each of the six boards of F, S and B and in both views of the challenge.
         /// </remarks>
         public static byte[] BuildTeamUpdate(Pb team, long fightId)
@@ -260,7 +260,7 @@ namespace Jondo.Unity.Server.Network
         /// goes in them only one thing is measured: a side restricted to its party is { f4: 1 } (the
         /// fight 4368 of J 840); the other options' fields are not known and are left out. The
         /// flag cells are the attacker's cell and the group's (F: [71, 73] with the group drawn on
-        /// 71 before it went off; B: [228, 200], Ocrazy's path ending on 228 and the group on 200).
+        /// 71 before it went off; B: [228, 200], Rover1's path ending on 228 and the group on 200).
         /// </summary>
         public static Pb FightOnMap(long fightId, int kind, int attackersFlag, int defendersFlag,
                                     Pb attackers, Pb defenders,
@@ -327,9 +327,9 @@ namespace Jondo.Unity.Server.Network
         ///   f7: 1 against monsters, 4 a challenge
         ///   f8 { f1: map, f2: x, f4: subarea, f5: y }   where the fight is
         ///
-        /// Measured three times: B 95 (Ocrazy, 449 tenths left, f7 = 1) and the two challenge
+        /// Measured three times: B 95 (Rover1, 449 tenths left, f7 = 1) and the two challenge
         /// captures (Leader, no f2, f7 = 4). f3 is 63000188 for Leader in both challenges and a
-        /// different eight-digit number for Ocrazy: read as the account (inference). f8 is the
+        /// different eight-digit number for Rover1: read as the account (inference). f8 is the
         /// party sheet's position block; its numbers are the MapPositions row of the map, to
         /// the last digit, in both.
         /// </summary>

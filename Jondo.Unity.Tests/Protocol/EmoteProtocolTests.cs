@@ -19,8 +19,8 @@ namespace Jondo.Unity.Tests.Protocol
         {
             // Emotes\usar emote malabares-cancelarlo luego movimiendome, frames 4 and 5.
             Assert.Equal(29, EmoteProtocol.ReadPlay(Bytes("081d")));
-            Assert.Equal("08a28280c8e708181d28a2dab71f320f416e696d456d6f74654a7567676c65",
-                Hex(EmoteProtocol.BuildPlayed(302677754146, 29, 65924386, "AnimEmoteJuggle")));
+            Assert.Equal("0881f092cbdd08181d28818ece1c320f416e696d456d6f74654a7567676c65",
+                Hex(EmoteProtocol.BuildPlayed(300000000001, 29, 60000001, "AnimEmoteJuggle")));
         }
 
         [Fact]
@@ -28,8 +28,8 @@ namespace Jondo.Unity.Tests.Protocol
         {
             // Emotes\captura de muchas actitudes, frames 3 and 4: khl {1} and khh "AnimEmoteSit".
             Assert.Equal(1, EmoteProtocol.ReadPlay(Bytes("0801")));
-            Assert.Equal("08a28280c8e7081801" + "28a2dab71f" + "320c" + "416e696d456d6f7465536974",
-                Hex(EmoteProtocol.BuildPlayed(302677754146, 1, 65924386, "AnimEmoteSit")));
+            Assert.Equal("0881f092cbdd081801" + "28818ece1c" + "320c" + "416e696d456d6f7465536974",
+                Hex(EmoteProtocol.BuildPlayed(300000000001, 1, 60000001, "AnimEmoteSit")));
         }
 
         [Fact]
@@ -51,8 +51,8 @@ namespace Jondo.Unity.Tests.Protocol
         {
             // Emotes\usar emoticonos-poner estado animo actual-dejarlo en blanco, frames 4 and 5.
             Assert.Equal(1, EmoteProtocol.ReadSmiley(Bytes("1001")));
-            Assert.Equal("10a28280c8e70818a2dab71f2001", Hex(EmoteProtocol.BuildSmiley(302677754146, 65924386, 1)));
-            Assert.Equal("10a28280c8e70818a2dab71f2063", Hex(EmoteProtocol.BuildSmiley(302677754146, 65924386, 99)));
+            Assert.Equal("1081f092cbdd0818818ece1c2001", Hex(EmoteProtocol.BuildSmiley(300000000001, 60000001, 1)));
+            Assert.Equal("1081f092cbdd0818818ece1c2063", Hex(EmoteProtocol.BuildSmiley(300000000001, 60000001, 99)));
         }
 
         [Fact]

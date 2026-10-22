@@ -14,7 +14,7 @@ namespace Jondo.Unity.Tests.Security
     /// <list type="number">
     /// <item>The server answers the go-back request with a freshly minted id. That is the right
     /// shape — the real server does the same, and the capture opens with
-    /// <c>kqr (40) 0a24 b00dae9b-e88d-4b5c-9110-e54f3ffaeb40 2001</c>, a dashed GUID of 36
+    /// <c>kqr (40) 0a24 00000000-0000-4000-8000-00000000000a 2001</c>, a dashed GUID of 36
     /// characters.</item>
     /// <item>The client closes the connection, opens a new one, and presents THAT id as its
     /// identity.</item>

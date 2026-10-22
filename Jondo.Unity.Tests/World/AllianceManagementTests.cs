@@ -132,7 +132,7 @@ namespace Jondo.Unity.Tests.World
         // ─── The message and the bulletin ────────────────────────────────────────
 
         /// <summary>
-        /// A notice never written carries the alliance's founding date, as joining «A B S I N T O»
+        /// A notice never written carries the alliance's founding date, as joining «E X A M P L E»
         /// did; one written carries its text, when and who, and goes out with all four.
         /// </summary>
         [Fact]
@@ -143,9 +143,9 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal("", fresh.Text);
             Assert.Equal(alliance.CreatedUtcS, fresh.WhenS);
 
-            AllianceStore.SetNotice(alliance.Id, AllianceStore.NoticeBulletin, new AllianceStore.Notice("Hola", 1800000000, "Hiper-master", 9401));
+            AllianceStore.SetNotice(alliance.Id, AllianceStore.NoticeBulletin, new AllianceStore.Notice("Hola", 1800000000, "Member-Three", 9401));
             var bulletin = AllianceStore.NoticeOf(alliance, AllianceStore.NoticeBulletin);
-            Assert.Equal(new AllianceStore.Notice("Hola", 1800000000, "Hiper-master", 9401), bulletin);
+            Assert.Equal(new AllianceStore.Notice("Hola", 1800000000, "Member-Three", 9401), bulletin);
             Assert.Equal(alliance.CreatedUtcS, AllianceStore.NoticeOf(alliance, AllianceStore.NoticeMessage).WhenS);
 
             var leg = ProtoMessage.Parse(ProtoMessage.Parse(AllianceProtocol.BuildNotice(bulletin)).Fields.Single().BytesValue);
@@ -185,7 +185,7 @@ namespace Jondo.Unity.Tests.World
         public void An_application_has_the_shape_the_client_reads()
         {
             var row = new AllianceProtocol.ApplicationRow(
-                new AllianceStore.Application(9601, 1, "Hola", 1786000000000), "Hiper-master", 200, 7777, 2, 1, true);
+                new AllianceStore.Application(9601, 1, "Hola", 1786000000000), "Member-Three", 200, 7777, 2, 1, true);
             var mbb = ProtoMessage.Parse(AllianceProtocol.BuildApplicationsMoved(AllianceProtocol.ApplicationGone, row, 9001));
 
             Assert.Equal(1, mbb.Fields.Single(f => f.FieldNumber == 2).VarIntValue);
@@ -216,7 +216,7 @@ namespace Jondo.Unity.Tests.World
                 Tags = new() { 4, 17, 26 }, Languages = new() { 0, 3 },
             };
             var read = new AllianceStore.Profile();
-            AllianceProtocol.ReadRecruitment(AllianceProtocol.Recruitment(alliance, written, "Hiper-master").Build(), read);
+            AllianceProtocol.ReadRecruitment(AllianceProtocol.Recruitment(alliance, written, "Member-Three").Build(), read);
 
             Assert.Equal(2, read.Recruitment);
             Assert.Equal(120, read.MinLevel);
@@ -231,7 +231,7 @@ namespace Jondo.Unity.Tests.World
         /// <summary>A member gone (mby) is his character in f1, which is all fgv reads of it.</summary>
         [Fact]
         public void A_member_gone_is_his_character()
-            => Assert.Equal(new byte[] { 0x08, 0xa2, 0x82, 0x84, 0x9b, 0xce, 0x19 }, AllianceProtocol.BuildMemberGone(879988113698));
+            => Assert.Equal(new byte[] { 0x08, 0x84, 0xf8, 0xa9, 0x80, 0xa9, 0x19 }, AllianceProtocol.BuildMemberGone(870000000004));
 
         // ─── Invitations, name and emblem ────────────────────────────────────────
 
@@ -243,11 +243,11 @@ namespace Jondo.Unity.Tests.World
         public void Invitations_have_the_shape_the_client_reads()
         {
             var alliance = new AllianceStore.Alliance { Uuid = Guid.NewGuid().ToString(), Name = "Jondo Unidos", Tag = "JON" };
-            var mbs = ProtoMessage.Parse(AllianceProtocol.BuildInvited("Hiper-master", alliance));
-            Assert.Equal("Hiper-master", System.Text.Encoding.UTF8.GetString(mbs.Fields.Single(f => f.FieldNumber == 1).BytesValue));
+            var mbs = ProtoMessage.Parse(AllianceProtocol.BuildInvited("Member-Three", alliance));
+            Assert.Equal("Member-Three", System.Text.Encoding.UTF8.GetString(mbs.Fields.Single(f => f.FieldNumber == 1).BytesValue));
             Assert.Equal(AllianceProtocol.Block(alliance).Build(), mbs.Fields.Single(f => f.FieldNumber == 2).BytesValue);
 
-            var mbq = ProtoMessage.Parse(AllianceProtocol.BuildInvitationForInviter("Zob-Bilher", "Hiper-master",
+            var mbq = ProtoMessage.Parse(AllianceProtocol.BuildInvitationForInviter("Member-One", "Member-Three",
                                                                                   AllianceProtocol.InvitationSent));
             Assert.Equal(1, mbq.Fields.Single(f => f.FieldNumber == 3).VarIntValue);
             Assert.Equal(new byte[] { 0x08, 0x03 }, AllianceProtocol.BuildInvitationForInvited(AllianceProtocol.InvitationAccepted));

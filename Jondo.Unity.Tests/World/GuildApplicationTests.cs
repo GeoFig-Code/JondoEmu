@@ -46,11 +46,11 @@ namespace Jondo.Unity.Tests.World
         {
             var application = new GuildStore.Application
             {
-                GuildId = 42043, CharacterId = 182801072418, Message = "Hola dame gremio o te baneo", WhenMs = 1786568006510,
+                GuildId = 42043, CharacterId = 180000000005, Message = "Hello, may I join the guild", WhenMs = 1786568006510,
             };
-            Assert.Equal("0801125a08eeb681beff331a1b486f6c612064616d65206772656d696f206f2074652062616e656f2234080a180120aba8a11a2a0c4869696572626974612d587832043532303738a282acfea805420746656c697039374a02080150c60118a28280c8e708",
-                         Hex(GuildProtocol.BuildApplicationGone(application, "Hiierbita-Xx", 198, 55071787, "Felip97", "5207",
-                                                                302677754146)));
+            Assert.Equal("0801125a08eeb681beff331a1b48656c6c6f2c206d61792049206a6f696e20746865206775696c642234080a180120838ece1c2a0c506c617965722d416c706861320430303033388590d8c69e0542074e69636b3030314a02080150c6011881f092cbdd08",
+                         Hex(GuildProtocol.BuildApplicationGone(application, "Player-Alpha", 198, 60000003, "Nick001", "0003",
+                                                                300000000001)));
         }
 
         [Fact]
@@ -229,8 +229,8 @@ namespace Jondo.Unity.Tests.World
         public void The_own_application_carries_the_guild_and_the_application()
         {
             var guild = new GuildStore.Guild { Id = 42043, Name = "Jondo", Level = 1 };
-            var application = new GuildStore.Application { GuildId = 42043, CharacterId = 182801072418, Message = "hola", WhenMs = 1786568006510 };
-            var jme = ProtoMessage.Parse(GuildProtocol.BuildOwnApplication(guild, application, "Hiierbita-Xx", 198, 55071787, "Felip97", "5207"));
+            var application = new GuildStore.Application { GuildId = 42043, CharacterId = 180000000005, Message = "hola", WhenMs = 1786568006510 };
+            var jme = ProtoMessage.Parse(GuildProtocol.BuildOwnApplication(guild, application, "Player-Alpha", 198, 60000003, "Nick001", "0003"));
 
             var pair = ProtoMessage.Parse(Assert.Single(jme.Fields).BytesValue).Fields.ToList();
             var block = ProtoMessage.Parse(pair.Single(f => f.FieldNumber == 1).BytesValue).Fields.ToList();

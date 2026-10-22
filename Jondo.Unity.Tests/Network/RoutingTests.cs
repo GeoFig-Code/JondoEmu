@@ -19,7 +19,7 @@ namespace Jondo.Unity.Tests.Network
         public void A_client_frame_routes_by_its_type()
         {
             // The jlt that refuses an application, in «...-valorar candidatura-rechazarla».
-            byte[] jlt = Convert.FromHexString("122b0a1e0a13747970652e616e6b616d612e636f6d2f6a6c74120710a282acfea80510ffffffffffffffffff01");
+            byte[] jlt = Convert.FromHexString("122b0a1e0a13747970652e616e6b616d612e636f6d2f6a6c741207108590d8c69e0510ffffffffffffffffff01");
             Assert.Equal("type.ankama.com/jlt", Routed(jlt));
 
             // The heartbeat.

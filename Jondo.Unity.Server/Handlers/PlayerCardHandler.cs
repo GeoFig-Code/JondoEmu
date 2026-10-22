@@ -20,7 +20,7 @@ namespace Jondo.Unity.Server.Handlers
     ///   2 account   3 breed   4 character   6 online   7 level   8 the bare look
     ///   9 the card's background   10 gender, 0 male   11 name   14 the look with its outfit
     /// </code>
-    /// The capture's own card: { 1 18, 2 65924386, 3 11, 4 302677754146, 6 1, 7 354, 8 look, 9 5,
+    /// The capture's own card: { 1 18, 2 60000001, 3 11, 4 300000000001, 6 1, 7 354, 8 look, 9 5,
     /// 11 "Hero-Example", 14 look }. The background is left out: no card here is customised, and the
     /// client draws its default.
     /// </remarks>

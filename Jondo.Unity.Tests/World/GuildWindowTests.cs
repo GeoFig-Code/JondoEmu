@@ -47,14 +47,14 @@ namespace Jondo.Unity.Tests.World
         /// <summary>The founder as he comes out in the founding jgu: sacrier, 8,094 points, no guild coins nor note.</summary>
         private static GuildStore.Member Recorder(string note = "", long noteMs = 0) => new()
         {
-            CharacterId = 302677754146, GuildId = 42043, Rank = 1, JoinedUtcMs = 1786567982202, Note = note, NoteMs = noteMs,
+            CharacterId = 300000000001, GuildId = 42043, Rank = 1, JoinedUtcMs = 1786567982202, Note = note, NoteMs = noteMs,
         };
 
         [Fact]
         public void The_founders_row_is_the_capture()
         {
-            Assert.Equal("0a3d0a34120c4865726f2d4578616d706c6518e2022a211001180120faf8ffbdff33300b3a09089e3f1200180342004202080150a2dab71f10a28280c8e708",
-                         Hex(GuildProtocol.BuildMember(Recorder(), "Hero-Example", 354, 65924386, breed: 11, achievementPoints: 8094)));
+            Assert.Equal("0a3d0a34120c4865726f2d4578616d706c6518e2022a211001180120faf8ffbdff33300b3a09089e3f1200180342004202080150818ece1c1081f092cbdd08",
+                         Hex(GuildProtocol.BuildMember(Recorder(), "Hero-Example", 354, 60000001, breed: 11, achievementPoints: 8094)));
         }
 
         /// <summary>
@@ -64,15 +64,15 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_member_list_goes_in_one_message()
         {
-            var second = new GuildStore.Member { CharacterId = 302677754147, GuildId = 42043, Rank = 4, JoinedUtcMs = 1786567999999 };
+            var second = new GuildStore.Member { CharacterId = 300000000002, GuildId = 42043, Rank = 4, JoinedUtcMs = 1786567999999 };
             byte[] list = GuildProtocol.BuildMembers(new[]
             {
-                new GuildProtocol.MemberRow(Recorder(), "Hero-Example", 354, 65924386, 11, 8094, 0, true),
-                new GuildProtocol.MemberRow(second, "Hiierbita-Xx", 200, 65924387, 10, 55, 0, false),
+                new GuildProtocol.MemberRow(Recorder(), "Hero-Example", 354, 60000001, 11, 8094, 0, true),
+                new GuildProtocol.MemberRow(second, "Player-Alpha", 200, 60000002, 10, 55, 0, false),
             });
             var entries = ProtoMessage.Parse(list).Fields.Where(f => f.FieldNumber == 1).ToList();
             Assert.Equal(2, entries.Count);
-            Assert.StartsWith(Hex(GuildProtocol.BuildMember(Recorder(), "Hero-Example", 354, 65924386, breed: 11,
+            Assert.StartsWith(Hex(GuildProtocol.BuildMember(Recorder(), "Hero-Example", 354, 60000001, breed: 11,
                                                             achievementPoints: 8094)), Hex(list));
         }
 
@@ -83,8 +83,8 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_updated_row_carries_the_note_and_the_contributions()
         {
-            Assert.Equal("124e0a45120c4865726f2d4578616d706c6518e2022a321001180120faf8ffbdff33300b3a1a089e3f1204080a100a1803420d0a04686f6c6110808b88bfff334202080150a2dab71f10a28280c8e708",
-                         Hex(GuildProtocol.BuildMemberUpdated(Recorder("hola", 1786570212736), "Hero-Example", 354, 65924386,
+            Assert.Equal("124e0a45120c4865726f2d4578616d706c6518e2022a321001180120faf8ffbdff33300b3a1a089e3f1204080a100a1803420d0a04686f6c6110808b88bfff334202080150818ece1c1081f092cbdd08",
+                         Hex(GuildProtocol.BuildMemberUpdated(Recorder("hola", 1786570212736), "Hero-Example", 354, 60000001,
                                                               breed: 11, achievementPoints: 8094, contributed: 10)));
         }
 
@@ -119,7 +119,7 @@ namespace Jondo.Unity.Tests.World
                          Hex(GuildProtocol.BuildRanks(GuildStore.Ranks(guild.Id))));
         }
 
-        /// <summary>The «Jondo» journal: the founding and Hiierbita-Xx's two lines.</summary>
+        /// <summary>The «Jondo» journal: the founding and Player-Alpha's two lines.</summary>
         [Fact]
         public void The_log_is_the_capture()
         {
@@ -130,15 +130,15 @@ namespace Jondo.Unity.Tests.World
                 new()
                 {
                     GuildId = 42043, WhenMs = 1786568036573, Field = GuildLogProtocol.PlayerFlow,
-                    Details = GuildLogProtocol.PlayerFlowLine(182801072418, "Hiierbita-Xx", GuildLogProtocol.Flow.ApplicationRefused),
+                    Details = GuildLogProtocol.PlayerFlowLine(180000000005, "Player-Alpha", GuildLogProtocol.Flow.ApplicationRefused),
                 },
                 new()
                 {
                     GuildId = 42043, WhenMs = 1786568106484, Field = GuildLogProtocol.PlayerFlow,
-                    Details = GuildLogProtocol.PlayerFlowLine(182801072418, "Hiierbita-Xx", GuildLogProtocol.Flow.Joined),
+                    Details = GuildLogProtocol.PlayerFlowLine(180000000005, "Player-Alpha", GuildLogProtocol.Flow.Joined),
                 },
             };
-            Assert.Equal("0a0f58bbc8028a01009801f8f8ffbdff330a2658bbc8029801dda183beff33a2011710a282acfea8051a0c4869696572626974612d587820020a2458bbc8029801f4c387beff33a2011510a282acfea8051a0c4869696572626974612d5878",
+            Assert.Equal("0a0f58bbc8028a01009801f8f8ffbdff330a2658bbc8029801dda183beff33a20117108590d8c69e051a0c506c617965722d416c70686120020a2458bbc8029801f4c387beff33a20115108590d8c69e051a0c506c617965722d416c706861",
                          Hex(GuildLogProtocol.BuildLog(entries)));
 
             // And the store writes it on its own: founding is one line, joining is another.

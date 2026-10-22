@@ -14,13 +14,13 @@ namespace Jondo.Unity.Tests.Combat
 
         /// <summary>
         /// Against the Xelor's glyph in "xelor-reloj de bolsillo-arenas del tiempo": owner
-        /// 53720973411, one cell 245 in colour 6231403, casting 13312 at grade 1, glyph 1, laid by
+        /// 53000000025, one cell 245 in colour 6231403, casting 13312 at grade 1, glyph 1, laid by
         /// 13301. The cell's own f1 (4 in this one) is not known and not sent.
         /// </summary>
         [Fact]
         public void A_spell_glyph_says_what_the_capture_says()
         {
-            const long owner = 53720973411;
+            const long owner = 53000000025;
             byte[] jwe = FightProtocol.BuildSpellGlyph(owner, glyphId: 1, cells: new[] { 245 }, aimedCell: 245,
                                                        castSpell: 13312, layingSpell: 13301, grade: 1, colour: 6231403);
 

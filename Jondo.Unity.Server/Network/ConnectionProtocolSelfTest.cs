@@ -25,7 +25,7 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         private static void CheckFightPreparation(List<string> failures)
         {
-            const long fighter = 302677754146L;   // the capture's character
+            const long fighter = 300000000001L;   // the capture's character
             const long mapId = 99222029L;
 
             long[] blue = { 285, 273, 317, 373, 413, 411, 368, 312, 271, 288, 298, 302, 382, 386, 397, 400 };
@@ -37,13 +37,13 @@ namespace Jondo.Unity.Server.Network
                  FightProtocol.BuildPlacementCells(blue, red));
 
             Same(failures, Op.Jzu,
-                 "12091a0710a28280c8e708120d1a0b10ffffffffffffffffff01",
+                 "12091a071081f092cbdd08120d1a0b10ffffffffffffffffff01",
                  FightProtocol.BuildTeams(new[] { fighter, FightProtocol.Nobody }));
 
             // And with four monsters there are FIVE blocks, each with its own negative, which is what
             // takes apart the "one block per team" reading.
             Same(failures, "jzu (four monsters)",
-                 "12091a0710a28280c8e708120d1a0b10ffffffffffffffffff01120d1a0b10feffffffffffffffff01"
+                 "12091a071081f092cbdd08120d1a0b10ffffffffffffffffff01120d1a0b10feffffffffffffffff01"
                  + "120d1a0b10fdffffffffffffffff01120d1a0b10fcffffffffffffffff01",
                  FightProtocol.BuildTeams(new[] { fighter, -1L, -2L, -3L, -4L }));
 
@@ -75,13 +75,13 @@ namespace Jondo.Unity.Server.Network
                 }
             }
 
-            Same(failures, Op.Kah, "08a28280c8e7081801", FightProtocol.BuildReadyAck(fighter));
+            Same(failures, Op.Kah, "0881f092cbdd081801", FightProtocol.BuildReadyAck(fighter));
 
             // A cast, byte by byte. What matters here is the inner f7: the spell goes
             // in TWO numbers, 25188 (the spell) and 63926 (its grade), and f8 is one and is not
             // the spell. When this was sent wrong, the client drew a punch.
             Same(failures, "jwe (casting a spell)",
-                 "18a28280c8e7083a1f10a28280c8e708220720a28280c8e708308f023a0810e4c40118b6f303"
+                 "1881f092cbdd083a1f1081f092cbdd0822072081f092cbdd08308f023a0810e4c40118b6f303"
                  + "400170ac02",
                  FightProtocol.BuildAction(
                      fighter, FightProtocol.Cast,
@@ -90,7 +90,7 @@ namespace Jondo.Unity.Server.Network
 
             // Placing: the cell left goes with -1 and the one taken, with who takes it.
             Same(failures, Op.Kmk,
-                 "1210088e02100118ffffffffffffffffff01120c088f02100518a28280c8e708",
+                 "1210088e02100118ffffffffffffffffff01120c088f0210051881f092cbdd08",
                  FightProtocol.BuildFightersPlaced(new[]
                  {
                      (270, 1, FightProtocol.Nobody),
@@ -99,19 +99,19 @@ namespace Jondo.Unity.Server.Network
 
             // The hit, with its erosion, and the point removal. Both from the duel capture.
             Same(failures, "jwe (damage with erosion)",
-                 "18a282f0a6c4087060c2020e10a28280c8e70818ce032003282e",
-                 FightProtocol.BuildDamage(293213045026, 96, 302677754146, 462, 3, 46));
+                 "1883a8e3aab8087060c2020e1081f092cbdd0818ce032003282e",
+                 FightProtocol.BuildDamage(290000000003, 96, 300000000001, 462, 3, 46));
 
             // The cast's own cost, which is 102 and goes with the same author and victim id.
             Same(failures, "jwe (spends four AP on casting)",
-                 "18a282f0a6c4087066a2011208fcffffffffffffffff0110a282f0a6c408",
-                 FightProtocol.BuildPointsLost(293213045026, 102, 293213045026, -4));
+                 "1883a8e3aab8087066a2011208fcffffffffffffffff011083a8e3aab808",
+                 FightProtocol.BuildPointsLost(290000000003, 102, 290000000003, -4));
 
             // The sheet with the life the player is missing, from the level 75 poutch capture:
             // he is missing 104 and carries 208 eroded.
             Same(failures, "jxw (life the player is missing)",
-                 "08a28280c8e7081a1e18022a1a086122161098ffffffffffffffff0140b0feffffffffffffff01",
-                 FightProtocol.BuildLifeSheet(302677754146, -104, 208));
+                 "0881f092cbdd081a1e18022a1a086122161098ffffffffffffffff0140b0feffffffffffffff01",
+                 FightProtocol.BuildLifeSheet(300000000001, -104, 208));
 
             CheckChallenges(failures);
             CheckFightResults(failures, fighter);
@@ -223,7 +223,7 @@ namespace Jondo.Unity.Server.Network
             };
 
             Same(failures, "jyg (end of fight)",
-                 "123212001a2c08a28280c8e70812210a1c121a109e88dc93591801200128b38bd2d15830eeaaada558"
+                 "123212001a2c0881f092cbdd0812210a1c121a109e88dc93591801200128b38bd2d15830eeaaada558"
                  + "4001480110e20218012002121112001a0d08ffffffffffffffffff01180120cdb303"
                  + "40ffffffffffffffffff01",
                  FightProtocol.BuildFightResults(results, durationMs: 55757));
@@ -308,23 +308,23 @@ namespace Jondo.Unity.Server.Network
                  }, Managers.Zaapis.Teleporter));
 
             // The parties, with the bytes of the "recibir invitacion de grupo y aceptar" capture:
-            // Leader (293213045026) invites Hero-Example (302677754146) to party 71272.
+            // Leader (290000000003) invites Hero-Example (300000000001) to party 71272.
             Same(failures, "ijz (te invitan)",
-                 "08a28280c8e70810a282f0a6c408180828e8ac0430013a064c6561646572",
+                 "0881f092cbdd081083a8e3aab808180828e8ac0430013a064c6561646572",
                  ConnectionProtocol.BuildPartyInvitation(
-                     302677754146, 293213045026, "Leader", 71272, 8));
+                     300000000001, 290000000003, "Leader", 71272, 8));
 
             // And the decline ones, from the koliseo capture and the inviter's.
-            Same(failures, "ilo (invitation closed)", "08d8af0410a28280c8e708",
-                 ConnectionProtocol.BuildInvitationClosed(71640, 302677754146));
-            Same(failures, "iko (guest out)", "08a282a8ffa40e10999c04",
-                 ConnectionProtocol.BuildInvitationWithdrawn(490967007522, 69145));
+            Same(failures, "ilo (invitation closed)", "08d8af041081f092cbdd08",
+                 ConnectionProtocol.BuildInvitationClosed(71640, 300000000001));
+            Same(failures, "iko (guest out)", "088cc89ab2a10e10999c04",
+                 ConnectionProtocol.BuildInvitationWithdrawn(490000000012, 69145));
             Same(failures, "imy (party broken up)", "08999c04",
                  ConnectionProtocol.BuildPartyDissolved(69145));
             Same(failures, "ils (you have left)", "08c29c04",
                  ConnectionProtocol.BuildPartyLeft(69186));
-            Same(failures, "ilx (new leader)", "08a282acf7bd1a10a69c04",
-                 ConnectionProtocol.BuildPartyLeader(909978042658, 69158));
+            Same(failures, "ilx (new leader)", "088ad0b8e1981a10a69c04",
+                 ConnectionProtocol.BuildPartyLeader(900000000010, 69158));
 
             // The last connection notice. Without an IP it has to come out byte for byte the same as the one
             // the recorded block brings: 9 August 2026 at 18:53. It is what pins the order of
@@ -340,12 +340,12 @@ namespace Jondo.Unity.Server.Network
                  ConnectionProtocol.BuildLastConnection(
                      new DateTimeOffset(2026, 8, 9, 18, 53, 0, TimeSpan.Zero), "127.0.0.1"));
 
-            // The private message, just as the real server sent it on whispering to Hiierbita-Xx.
+            // The private message, just as the real server sent it on whispering to Player-Alpha.
             Same(failures, "kth (private message)",
-                 "0a19323032362d30382d31325432323a35343a32392b30323a3030220028a282acfea805"
-                 + "320c4869696572626974612d58783a04686f6c61",
+                 "0a19323032362d30382d31325432323a35343a32392b30323a30302200288590d8c69e05"
+                 + "320c506c617965722d416c7068613a04686f6c61",
                  ConnectionProtocol.BuildPrivateMessage(
-                     "2026-08-12T22:54:29+02:00", 182801072418, "Hiierbita-Xx", "hola"));
+                     "2026-08-12T22:54:29+02:00", 180000000005, "Player-Alpha", "hola"));
 
             // The level-up window, just as it comes out in the tutorial.
             Same(failures, "kua (nivel 2)", "0802", ConnectionProtocol.BuildLevelUp(2));

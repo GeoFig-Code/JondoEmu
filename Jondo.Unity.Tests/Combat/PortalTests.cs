@@ -22,7 +22,7 @@ namespace Jondo.Unity.Tests.Combat
     [Collection("MapManager")]
     public class PortalTests
     {
-        private const long Selatrop = 53721694307;
+        private const long Selatrop = 53000000027;
 
         private static byte[] Hex(string hex) => Convert.FromHexString(hex);
 
@@ -79,13 +79,13 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void A_portal_is_its_jwe_401()
         {
-            Assert.Equal(Hex("18e380c090c8017091038202230a210a0610ff0118ac0210b2da02180220012803300348ee7150ac0260e380c090c801"),
+            Assert.Equal(Hex("189ba4afb8c5017091038202230a210a0610ff0118ac0210b2da02180220012803300348ee7150ac02609ba4afb8c501"),
                          FightProtocol.BuildPortal(Selatrop, 1, 300, 2, 44338, 3, 14574, active: false));
-            Assert.Equal(Hex("18e380c090c8017091038202250a230a0610ff01188f0310b2da02180220022803300348ee71508f03580160e380c090c801"),
+            Assert.Equal(Hex("189ba4afb8c5017091038202250a230a0610ff01188f0310b2da02180220022803300348ee71508f035801609ba4afb8c501"),
                          FightProtocol.BuildPortal(Selatrop, 2, 399, 2, 44338, 3, 14574, active: true));
-            Assert.Equal(Hex("18e380c090c8017091038202240a220a0610ff0118a90310b2da02180220032803300148acf20150a90360e380c090c801"),
+            Assert.Equal(Hex("189ba4afb8c5017091038202240a220a0610ff0118a90310b2da02180220032803300148acf20150a903609ba4afb8c501"),
                          FightProtocol.BuildPortal(Selatrop, 3, 425, 2, 44338, 1, 31020, active: false));
-            Assert.Equal(Hex("18e380c090c8017091038202260a240a0610ff0118f30210b2da021802200e2803300148adf20150f302580160e380c090c801"),
+            Assert.Equal(Hex("189ba4afb8c5017091038202260a240a0610ff0118f30210b2da021802200e2803300148adf20150f3025801609ba4afb8c501"),
                          FightProtocol.BuildPortal(Selatrop, 14, 371, 2, 44338, 1, 31021, active: true));
         }
 
@@ -93,8 +93,8 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void A_portal_s_state_is_its_jwe_1181()
         {
-            Assert.Equal(Hex("18e380c090c801709d098a01020801"), FightProtocol.BuildPortalState(Selatrop, 1, active: false));
-            Assert.Equal(Hex("18e380c090c801709d098a010408011001"), FightProtocol.BuildPortalState(Selatrop, 1, active: true));
+            Assert.Equal(Hex("189ba4afb8c501709d098a01020801"), FightProtocol.BuildPortalState(Selatrop, 1, active: false));
+            Assert.Equal(Hex("189ba4afb8c501709d098a010408011001"), FightProtocol.BuildPortalState(Selatrop, 1, active: true));
             Assert.Equal(Hex("18ffffffffffffffffff01709d098a010408071001"), FightProtocol.BuildPortalState(-1, 7, active: true));
         }
 
@@ -107,17 +107,17 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void A_cast_through_the_portals_names_them()
         {
-            Assert.Equal(Hex("18e380c090c8013a212209100120e380c090c801280130d8023a0d0a040a09080710817218eeda02400170ac02"),
+            Assert.Equal(Hex("189ba4afb8c5013a2122091001209ba4afb8c501280130d8023a0d0a040a09080710817218eeda02400170ac02"),
                          FightProtocol.BuildAction(Selatrop, FightProtocol.Cast,
                              FightProtocol.CastAt(Selatrop, 0, 344, 14593, 44398, critical: true, esteTurno: 1,
                                                   noTarget: true, portals: new[] { 10, 9, 8, 7 }),
                              FightProtocol.CastDetail));
-            Assert.Equal(Hex("18e380c090c8013a3910ffffffffffffffffff0122180a0d080110ffffffffffffffffff01100120e380c090c8013081043a0d0a040305060410ad7218abfb04400170ac02"),
+            Assert.Equal(Hex("189ba4afb8c5013a3910ffffffffffffffffff0122180a0d080110ffffffffffffffffff011001209ba4afb8c5013081043a0d0a040305060410ad7218abfb04400170ac02"),
                          FightProtocol.BuildAction(Selatrop, FightProtocol.Cast,
                              FightProtocol.CastAt(Selatrop, -1, 513, 14637, 81323, critical: false, sobreEseObjetivo: 1,
                                                   esteTurno: 1, noTarget: false, portals: new[] { 3, 5, 6, 4 }),
                              FightProtocol.CastDetail));
-            Assert.Equal(Hex("18e380c090c8013a192209100120e380c090c80130ac023a0710ee7118b5da02400170ac02"),
+            Assert.Equal(Hex("189ba4afb8c5013a1922091001209ba4afb8c50130ac023a0710ee7118b5da02400170ac02"),
                          FightProtocol.BuildAction(Selatrop, FightProtocol.Cast,
                              FightProtocol.CastAt(Selatrop, 0, 300, 14574, 44341, critical: false, esteTurno: 1,
                                                   noTarget: true),
@@ -460,13 +460,13 @@ namespace Jondo.Unity.Tests.Combat
 
             var frames = await wire.Drain();
             Assert.Equal(new[] { "jwe", "jwe", "jwe", "jwe", "jwe", "jwe", "jwe", "jwe" }, frames.Select(f => f.Op));
-            Assert.Equal(Hex("18e380c090c8017091038202230a210a0610ff0118ac0210b2da02180220012803300348ee7150ac0260e380c090c801"), frames[0].Payload);
-            Assert.Equal(Hex("18e380c090c801709d098a01020801"), frames[1].Payload);
-            Assert.Equal(Hex("18e380c090c8017091038202250a230a0610ff01188f0310b2da02180220022803300348ee71508f03580160e380c090c801"), frames[2].Payload);
-            Assert.Equal(Hex("18e380c090c801709d098a010408011001"), frames[3].Payload);
+            Assert.Equal(Hex("189ba4afb8c5017091038202230a210a0610ff0118ac0210b2da02180220012803300348ee7150ac02609ba4afb8c501"), frames[0].Payload);
+            Assert.Equal(Hex("189ba4afb8c501709d098a01020801"), frames[1].Payload);
+            Assert.Equal(Hex("189ba4afb8c5017091038202250a230a0610ff01188f0310b2da02180220022803300348ee71508f035801609ba4afb8c501"), frames[2].Payload);
+            Assert.Equal(Hex("189ba4afb8c501709d098a010408011001"), frames[3].Payload);
             // The third and the fourth, on, with nothing else changing (181, 193).
-            StealTests.SameFields(Hex("18e380c090c80170b602b201020801"), frames[6].Payload);     // 234
-            Assert.Equal(Hex("18e380c090c8017091038202250a230a0610ff0118da0210b2da02180220052803300348ee7150da02580160e380c090c801"), frames[7].Payload); // 235
+            StealTests.SameFields(Hex("189ba4afb8c50170b602b201020801"), frames[6].Payload);     // 234
+            Assert.Equal(Hex("189ba4afb8c5017091038202250a230a0610ff0118da0210b2da02180220052803300348ee7150da025801609ba4afb8c501"), frames[7].Payload); // 235
             Assert.Equal(new[] { 2, 3, 4, 5 }, fight.Portales.All.Select(p => p.Id).OrderBy(i => i));
         }
 
@@ -491,12 +491,12 @@ namespace Jondo.Unity.Tests.Combat
             var frames = await wire.Drain();
             Assert.Equal(new[] { "jto", "jsj", "jto", "jxw", "jwi", "jwe", "jwe", "jwe", "jwe", "jwe", "jwe", "jwi" },
                          frames.Select(f => f.Op));
-            Assert.Equal(Hex("0a04bd02af02100728e380c090c801"), frames[1].Payload);                        // 180
-            Assert.Equal(Hex("18e380c090c8014a0c08af0210e380c090c801200a70b302"), frames[6].Payload);    // 185
-            Assert.Equal(Hex("18e380c090c801709d098a0102080a"), frames[7].Payload);                      // 186
-            Assert.Equal(Hex("18e380c090c801709d098a01020807"), frames[8].Payload);                      // 187
-            Assert.Equal(Hex("18e380c090c80170049a020a08900310e380c090c801"), frames[9].Payload);        // 188
-            Assert.Equal(Hex("18e380c090c8014a0c08900310e380c090c801200770b302"), frames[10].Payload);   // 189
+            Assert.Equal(Hex("0a04bd02af021007289ba4afb8c501"), frames[1].Payload);                        // 180
+            Assert.Equal(Hex("189ba4afb8c5014a0c08af02109ba4afb8c501200a70b302"), frames[6].Payload);    // 185
+            Assert.Equal(Hex("189ba4afb8c501709d098a0102080a"), frames[7].Payload);                      // 186
+            Assert.Equal(Hex("189ba4afb8c501709d098a01020807"), frames[8].Payload);                      // 187
+            Assert.Equal(Hex("189ba4afb8c50170049a020a089003109ba4afb8c501"), frames[9].Payload);        // 188
+            Assert.Equal(Hex("189ba4afb8c5014a0c089003109ba4afb8c501200770b302"), frames[10].Payload);   // 189
 
             // He walks off the portal he came out of (frames 192-199) -- crossed this turn, it stays
             // off -- and the turn of -1 brings the two back, in his name, in a sequence of kind 2
@@ -555,10 +555,10 @@ namespace Jondo.Unity.Tests.Combat
 
             var frames = await wire.Drain();
             Assert.Equal(new[] { "jwe", "jwe", "jto", "jwe", "jwe", "jwi" }, frames.Select(f => f.Op));
-            Assert.Equal(Hex("18e380c090c801709d098a01020807"), frames[0].Payload);                       // 7
-            Assert.Equal(Hex("08e380c090c8011002"), frames[2].Payload);                                   // 69
-            Assert.Equal(Hex("18e380c090c801709d098a010408071001"), frames[3].Payload);                   // 70
-            Assert.Equal(Hex("18e380c090c801709d098a010408081001"), frames[4].Payload);                   // 71
+            Assert.Equal(Hex("189ba4afb8c501709d098a01020807"), frames[0].Payload);                       // 7
+            Assert.Equal(Hex("089ba4afb8c5011002"), frames[2].Payload);                                   // 69
+            Assert.Equal(Hex("189ba4afb8c501709d098a010408071001"), frames[3].Payload);                   // 70
+            Assert.Equal(Hex("189ba4afb8c501709d098a010408081001"), frames[4].Payload);                   // 71
         }
 
         /// <summary>
@@ -581,12 +581,12 @@ namespace Jondo.Unity.Tests.Combat
 
             Assert.Equal(526, enemy.CellId);
             var frames = await wire.Drain();
-            Assert.Equal(Hex("18e380c090c8017091038202240a220a0610ff0118a90310b2da02180220032803300148acf20150a90360e380c090c801"), frames[0].Payload);
-            Assert.Equal(Hex("18e380c090c801709d098a01020803"), frames[1].Payload);
-            Assert.Equal(Hex("18e380c090c801709d098a01020802"), frames[2].Payload);
+            Assert.Equal(Hex("189ba4afb8c5017091038202240a220a0610ff0118a90310b2da02180220032803300148acf20150a903609ba4afb8c501"), frames[0].Payload);
+            Assert.Equal(Hex("189ba4afb8c501709d098a01020803"), frames[1].Payload);
+            Assert.Equal(Hex("189ba4afb8c501709d098a01020802"), frames[2].Payload);
             Assert.Equal(Hex("18ffffffffffffffffff0170049a020e088e0410ffffffffffffffffff01"), frames[3].Payload);
-            Assert.Equal(Hex("18e380c090c801709d098a01020801"), frames[4].Payload);
-            Assert.Equal(Hex("18e380c090c8014a10088e0410ffffffffffffffffff01200270b302"), frames[5].Payload);
+            Assert.Equal(Hex("189ba4afb8c501709d098a01020801"), frames[4].Payload);
+            Assert.Equal(Hex("189ba4afb8c5014a10088e0410ffffffffffffffffff01200270b302"), frames[5].Payload);
             Assert.Equal(6, frames.Count);
         }
 
@@ -609,10 +609,10 @@ namespace Jondo.Unity.Tests.Combat
 
             var frames = await wire.Drain();
             Assert.Equal(4, frames.Count);
-            StealTests.SameFields(Hex("18e380c090c80170b602b20102080a"), frames[0].Payload);                  // 11
-            Assert.Equal(Hex("18e380c090c8017091038202260a240a0610ff0118f30210b2da021802200e2803300148adf20150f302580160e380c090c801"), frames[1].Payload); // 12
-            Assert.Equal(Hex("18e380c090c801709d098a0102080e"), frames[2].Payload);                          // 13
-            Assert.Equal(Hex("18e380c090c801709d098a0104080e1001"), frames[3].Payload);                      // 15
+            StealTests.SameFields(Hex("189ba4afb8c50170b602b20102080a"), frames[0].Payload);                  // 11
+            Assert.Equal(Hex("189ba4afb8c5017091038202260a240a0610ff0118f30210b2da021802200e2803300148adf20150f3025801609ba4afb8c501"), frames[1].Payload); // 12
+            Assert.Equal(Hex("189ba4afb8c501709d098a0102080e"), frames[2].Payload);                          // 13
+            Assert.Equal(Hex("189ba4afb8c501709d098a0104080e1001"), frames[3].Payload);                      // 15
         }
 
         /// <summary>
@@ -633,9 +633,9 @@ namespace Jondo.Unity.Tests.Combat
 
             Assert.Equal(427, selatrop.CellId);
             var frames = await wire.Drain();
-            Assert.Equal(Hex("18e380c090c8014a0c08d70110e380c090c801201270b302"), frames[0].Payload);      // 93
-            Assert.Equal(Hex("18e380c090c801709d098a01020812"), frames[1].Payload);                      // 94
-            Assert.Equal(Hex("18e380c090c801709d098a0102080f"), frames[2].Payload);                      // 95
+            Assert.Equal(Hex("189ba4afb8c5014a0c08d701109ba4afb8c501201270b302"), frames[0].Payload);      // 93
+            Assert.Equal(Hex("189ba4afb8c501709d098a01020812"), frames[1].Payload);                      // 94
+            Assert.Equal(Hex("189ba4afb8c501709d098a0102080f"), frames[2].Payload);                      // 95
         }
 
         /// <summary>
@@ -660,9 +660,9 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Equal(Selatrop, fight.Portales.ById(7).NeutralisedBy);
             var frames = await wire.Drain();
             Assert.Equal(new[] { "jwe", "jto", "jxw", "jwi", "jwe" }, frames.Select(f => f.Op));
-            Assert.Equal(Hex("18e380c090c801709d098a01020807"), frames[0].Payload);                   // 7
-            Assert.Equal(Hex("08e380c090c8011003"), frames[1].Payload);                               // 8
-            Assert.Equal(Hex("18e380c090c8017078a20109080110e380c090c801"), frames[4].Payload);       // 11
+            Assert.Equal(Hex("189ba4afb8c501709d098a01020807"), frames[0].Payload);                   // 7
+            Assert.Equal(Hex("089ba4afb8c5011003"), frames[1].Payload);                               // 8
+            Assert.Equal(Hex("189ba4afb8c5017078a201090801109ba4afb8c501"), frames[4].Payload);       // 11
         }
 
         /// <summary>
@@ -685,12 +685,12 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Equal(427, selatrop.CellId);
             var frames = await wire.Drain();
             Assert.Equal(new[] { "jwe", "jwe", "jwe", "jwe", "jwe", "jwe" }, frames.Select(f => f.Op));
-            Assert.Equal(Hex("18e380c090c8013a1d10e380c090c801220720e380c090c80130f3023a0810adf2011888810570ac02"), frames[0].Payload); // 10
-            StealTests.SameFields(Hex("18e380c090c80170b602b20102080a"), frames[1].Payload);                                          // 11
-            Assert.Equal(Hex("18e380c090c8017091038202260a240a0610ff0118f30210b2da021802200e2803300148adf20150f302580160e380c090c801"), frames[2].Payload); // 12
-            Assert.Equal(Hex("18e380c090c801709d098a0102080e"), frames[3].Payload);                                                  // 13
-            Assert.Equal(Hex("18e380c090c80170049a020a08ab0310e380c090c801"), frames[4].Payload);                                    // 14
-            Assert.Equal(Hex("18e380c090c801709d098a0104080e1001"), frames[5].Payload);                                              // 15
+            Assert.Equal(Hex("189ba4afb8c5013a1d109ba4afb8c5012207209ba4afb8c50130f3023a0810adf2011888810570ac02"), frames[0].Payload); // 10
+            StealTests.SameFields(Hex("189ba4afb8c50170b602b20102080a"), frames[1].Payload);                                          // 11
+            Assert.Equal(Hex("189ba4afb8c5017091038202260a240a0610ff0118f30210b2da021802200e2803300148adf20150f3025801609ba4afb8c501"), frames[2].Payload); // 12
+            Assert.Equal(Hex("189ba4afb8c501709d098a0102080e"), frames[3].Payload);                                                  // 13
+            Assert.Equal(Hex("189ba4afb8c50170049a020a08ab03109ba4afb8c501"), frames[4].Payload);                                    // 14
+            Assert.Equal(Hex("189ba4afb8c501709d098a0104080e1001"), frames[5].Payload);                                              // 15
         }
 
         /// <summary>
@@ -717,7 +717,7 @@ namespace Jondo.Unity.Tests.Combat
             await FightHandler.AplicarEfectosAsync(null, fight, selatrop, 14611, 2, enemy, EffectEngine.AlLanzar, 425);
             var cast = await wire.Drain();
             Assert.Equal(new[] { "jxm" }, cast.Select(f => f.Op));
-            Assert.Equal(Hex("0a490a3d10ffffffffffffffffff0118112002320210063a0149408cda1850eb30621610ffffffffffffffffff0118ffffffffffffffffff01709372780280010110e380c090c80118b607"), cast[0].Payload);
+            Assert.Equal(Hex("0a490a3d10ffffffffffffffffff0118112002320210063a0149408cda1850eb30621610ffffffffffffffffff0118ffffffffffffffffff017093727802800101109ba4afb8c50118b607"), cast[0].Payload);
 
             var blow = new SpellEffect { EffectId = 97, EffectUid = 900004, DiceNum = 121, DiceSide = 121, Element = 1, TargetMask = "a,A" };
             await FightHandler.HurtAsync(null, fight, selatrop, 14583, 3, enemy, 425, tirada: new[] { blow });
@@ -726,15 +726,15 @@ namespace Jondo.Unity.Tests.Combat
             var frames = (await wire.Drain()).Where(f => f.Op is "jwe" or "jya").ToList();
             Assert.Equal(new[] { "jwe", "jwe", "jya", "jwe", "jwe", "jwe", "jwe", "jwe", "jwe", "jwe" },
                          frames.Select(f => f.Op));
-            Assert.Equal(Hex("18e380c090c8013a2110ffffffffffffffffff01220720e380c090c80130a9033a0810acf2011886810570ac02"), frames[1].Payload); // 219
+            Assert.Equal(Hex("189ba4afb8c5013a2110ffffffffffffffffff012207209ba4afb8c50130a9033a0810acf2011886810570ac02"), frames[1].Payload); // 219
             Assert.Equal(Hex("08ffffffffffffffffff011011"), frames[2].Payload);                                                           // 220
-            StealTests.SameFields(Hex("18e380c090c8017096038a021010937220ffffffffffffffffff012801"), frames[3].Payload);                  // 223
-            Assert.Equal(Hex("18e380c090c8017091038202240a220a0610ff0118a90310b2da02180220032803300148acf20150a90360e380c090c801"), frames[4].Payload); // 224
-            Assert.Equal(Hex("18e380c090c801709d098a01020803"), frames[5].Payload);                                                       // 225
-            Assert.Equal(Hex("18e380c090c801709d098a01020802"), frames[6].Payload);                                                       // 226
+            StealTests.SameFields(Hex("189ba4afb8c5017096038a021010937220ffffffffffffffffff012801"), frames[3].Payload);                  // 223
+            Assert.Equal(Hex("189ba4afb8c5017091038202240a220a0610ff0118a90310b2da02180220032803300148acf20150a903609ba4afb8c501"), frames[4].Payload); // 224
+            Assert.Equal(Hex("189ba4afb8c501709d098a01020803"), frames[5].Payload);                                                       // 225
+            Assert.Equal(Hex("189ba4afb8c501709d098a01020802"), frames[6].Payload);                                                       // 226
             Assert.Equal(Hex("18ffffffffffffffffff0170049a020e088e0410ffffffffffffffffff01"), frames[7].Payload);                         // 227
-            Assert.Equal(Hex("18e380c090c801709d098a01020801"), frames[8].Payload);                                                       // 228
-            Assert.Equal(Hex("18e380c090c8014a10088e0410ffffffffffffffffff01200270b302"), frames[9].Payload);                             // 229
+            Assert.Equal(Hex("189ba4afb8c501709d098a01020801"), frames[8].Payload);                                                       // 228
+            Assert.Equal(Hex("189ba4afb8c5014a10088e0410ffffffffffffffffff01200270b302"), frames[9].Payload);                             // 229
         }
 
         // ─── The engine ──────────────────────────────────────────────────────────────────────

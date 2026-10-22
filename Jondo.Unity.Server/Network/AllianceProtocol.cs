@@ -8,7 +8,7 @@ namespace Jondo.Unity.Server.Network
     /// <summary>
     /// The alliance frames. Their shapes are read off the client's message classes (clientscan
     /// proto) and checked against the one capture that has an alliance, "entrar en alianza y salir
-    /// de alianza": the directory (mcv), joining «A B S I N T O» (mbm, mbz, mcx, mca, mcm, mcr)
+    /// de alianza": the directory (mcv), joining «E X A M P L E» (mbm, mbz, mcx, mca, mcm, mcr)
     /// and leaving it (khj, lqn 410, mbt).
     /// </summary>
     public static class AllianceProtocol
@@ -18,7 +18,7 @@ namespace Jondo.Unity.Server.Network
 
         /// <summary>
         /// The second field of a member's line (lmr.f2) and of his details (lon.f5): -1 for every
-        /// one of the 46 members of «A B S I N T O». Not understood; sent as measured.
+        /// one of the 46 members of «E X A M P L E». Not understood; sent as measured.
         /// </summary>
         private const int MeasuredMinusOne = -1;
 
@@ -118,7 +118,7 @@ namespace Jondo.Unity.Server.Network
 
         /// <summary>
         /// The alliance block (len): f2 the emblem, f3 the name, f4 the uuid, f5 the tag, and f6
-        /// the card when the frame shows one. Byte for byte the shape of «A B S I N T O»'s.
+        /// the card when the frame shows one. Byte for byte the shape of «E X A M P L E»'s.
         /// </summary>
         public static Pb Block(AllianceStore.Alliance alliance, Pb card = null)
         {
@@ -137,7 +137,7 @@ namespace Jondo.Unity.Server.Network
         /// f5 how many members.
         /// </summary>
         /// <remarks>
-        /// From the directory: «A B S I N T O» {f2 1774821557, f5 46}, «RIGHT» {f2 1785200130, f4 3,
+        /// From the directory: «E X A M P L E» {f2 1774821557, f5 46}, «Another» {f2 1785200130, f4 3,
         /// f5 27}. The client reads them so (Ghidra): ks.ffk puts the f3 in the directory's
         /// «Territorios» column (fnx.bhcy), and fgv.bexk hands the f4 to the card's «Recaudadores
         /// recolectando» (AllianceCardUI). The f4 was taken for the prisms, so a prism counted as a
@@ -193,13 +193,13 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildMembership(AllianceStore.Alliance alliance, int rank)
             => Pb.New().Var(2, rank).Msg(3, Block(alliance)).Build();
 
-        /// <summary>Joining an alliance (mca): f1 the rank, f2 the alliance. {4, «A B S I N T O»} in the capture.</summary>
+        /// <summary>Joining an alliance (mca): f1 the rank, f2 the alliance. {4, «E X A M P L E»} in the capture.</summary>
         public static byte[] BuildJoined(AllianceStore.Alliance alliance, int rank)
             => Pb.New().Var(1, rank).Msg(2, Block(alliance)).Build();
 
         /// <summary>
         /// The alliance's ranks (mbm): one f1 each, { f2 name, f3 { f1 modifiable, f3 rights },
-        /// f4 { f2 icon, f3 order }, f5 id }. The four of «A B S I N T O» have that shape.
+        /// f4 { f2 icon, f3 order }, f5 id }. The four of «E X A M P L E» have that shape.
         /// </summary>
         public static byte[] BuildRanks(IReadOnlyList<AllianceStore.Rank> ranks)
         {
@@ -227,7 +227,7 @@ namespace Jondo.Unity.Server.Network
 
         /// <summary>
         /// The alliance's sheet (mcx): f1 its tax collectors, f2 its prisms, f3 the alliance with its
-        /// card and f4 one line per member. The capture's is 3,471 bytes: «A B S I N T O» and its 46.
+        /// card and f4 one line per member. The capture's is 3,471 bytes: «E X A M P L E» and its 46.
         /// </summary>
         public static byte[] BuildInformation(AllianceStore.Alliance alliance, Pb card, IEnumerable<MemberRow> members,
                                               IEnumerable<Pb> taxCollectors = null, IEnumerable<Pb> prisms = null)
@@ -319,7 +319,7 @@ namespace Jondo.Unity.Server.Network
         /// <summary>
         /// The alliance message (mcm) and the bulletin (mcr), each a leg { f1 text, f2 when in
         /// seconds, f3 author, f4 author's id } -- the four fields fgv copies into the alliance
-        /// service. On joining «A B S I N T O» both came with only the date, which was the
+        /// service. On joining «E X A M P L E» both came with only the date, which was the
         /// alliance's founding.
         /// </summary>
         public static byte[] BuildNotice(AllianceStore.Notice notice)

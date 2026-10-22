@@ -16,7 +16,7 @@ namespace Jondo.Unity.Server.Handlers
     /// deletion. The client asks three times and the real server answers with five frames:
     ///
     /// <code>
-    ///   C-&gt;S  kwa  10de82c08e8a02                       f2: the character id
+    ///   C-&gt;S  kwa  10928cb8bf8802                       f2: the character id
     ///   C-&gt;S  kvu  08&lt;id&gt; 1220 "9cdab917cc3d5a4a33..."  f1: the id, f2: 32 hex characters
     ///   C-&gt;S  kvh  (empty)
     ///

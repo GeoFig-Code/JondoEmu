@@ -16,8 +16,7 @@ namespace Jondo.Unity.Tests.Network
     /// <c>content/world/entry.json</c>, one row per frame with the protobuf fields written out. The
     /// point of that change is reviewability — the quest journal and the achievements of the
     /// recorded account travelled for months because nobody can diff a blob. The .bin files
-    /// themselves are no longer in the repository: they were a recorded account's own session, and
-    /// nothing reads them any more.
+    /// themselves are no longer in the repository: nothing reads them any more.
     /// </remarks>
     // WorldEntryContent.Load empties the blocks and fills them again: whoever reads them meanwhile
     // finds them half there. Every test class that loads the manifest goes in this collection.

@@ -11,7 +11,7 @@ namespace Jondo.Unity.Server.Network
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Measured: the map actor (a jss of «Busqueda grupo/busqueda automatica...», «Bloodbath»'s
+    /// Measured: the map actor (a jss of «Busqueda grupo/busqueda automatica...», «Alliance2»'s
     /// tax collector on cell 352), the talk (ioc + ion) and the whole attack of «Gremio/atacar a
     /// recaudador y perder», and the lea of the 20 tax collectors of the hks in «Alianzas/ir a
     /// templo alianza». The rest is read off the client: the shapes with clientscan proto and the
@@ -101,8 +101,8 @@ namespace Jondo.Unity.Server.Network
         /// two colours of the emblem -- 8 the emblem's f5, 7 its f3 --, at its scale.
         /// </summary>
         /// <remarks>
-        /// Both looks of the captures: «Bloodbath» (symbol 104, f5 11862276, no f3) dresses its tax
-        /// collector with skin 1647 and colours 0x08b50104 and 0x07000000; «Orifl-Ames» (136,
+        /// Both looks of the captures: «Alliance2» (symbol 104, f5 11862276, no f3) dresses its tax
+        /// collector with skin 1647 and colours 0x08b50104 and 0x07000000; «Alliance-3» (136,
         /// f3 1002575, f5 16630094) with 1762 and 0x08fdc14e, 0x070f4c4f. 1647 and 1762 are the
         /// skins of those two symbols in the client's EmblemSymbols.
         /// </remarks>
@@ -128,7 +128,7 @@ namespace Jondo.Unity.Server.Network
         ///        f3 the look }
         ///   f3 its actor id
         ///
-        /// Byte for byte «Bloodbath»'s tax collector of the party search capture.
+        /// Byte for byte «Alliance2»'s tax collector of the party search capture.
         /// </summary>
         /// <remarks>
         /// The last name goes first. gjc.bkiy, which writes this block back from the client's
@@ -426,7 +426,7 @@ namespace Jondo.Unity.Server.Network
         ///   f4 how many tax collectors the alliance has (#5)      f5 its prospecting (#3)
         ///   f7 what what it carries is worth (#7)
         ///
-        /// {429, 1000, «Orifl-Ames», 20, 200, 23836} in the capture. The pods it can carry and its
+        /// {429, 1000, «Alliance-3», 20, 200, 23836} in the capture. The pods it can carry and its
         /// prospecting are its own, with what its saddlebags and chests add.
         /// </summary>
         public static byte[] BuildDialog(AllianceStore.Alliance alliance, int pods, int taxCollectors, long worth,

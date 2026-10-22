@@ -17,7 +17,7 @@ namespace Jondo.Unity.Tests.World
 {
     /// <summary>
     /// Alliances: the frames against the one capture that has one, "entrar en alianza y salir de
-    /// alianza" -- a character joining «A B S I N T O» and leaving it --, and the store underneath.
+    /// alianza" -- a character joining «E X A M P L E» and leaving it --, and the store underneath.
     /// </summary>
     /// <remarks>
     /// The store points at a temp database for the whole class; its tests share one collection
@@ -41,12 +41,12 @@ namespace Jondo.Unity.Tests.World
             try { File.Delete(_file); } catch (IOException) { }
         }
 
-        /// <summary>«A B S I N T O» as the capture shows it.</summary>
-        private static readonly AllianceStore.Alliance Absinto = new()
+        /// <summary>«E X A M P L E» as the capture shows it.</summary>
+        private static readonly AllianceStore.Alliance SampleAlliance = new()
         {
-            Uuid = "76715ab4-8f9b-46d6-9227-db680514382d",
-            Name = "A B S I N T O",
-            Tag = "ABS",
+            Uuid = "00000000-0000-4000-8000-000000000004",
+            Name = "E X A M P L E",
+            Tag = "EXA",
             EmblemSymbol = 408,
             EmblemSymbolColor = 27,
             EmblemBackground = 3116544,
@@ -62,29 +62,29 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void Joining_and_belonging_match_the_capture()
         {
-            const string block = "120f089803101b18809cbe012887fec7071a0d41204220532049204e2054204f2224" +
-                                 "37363731356162342d386639622d343664362d393232372d6462363830353134333832642a03414253";
-            Assert.Equal(Hex("0804124b" + block), AllianceProtocol.BuildJoined(Absinto, 4));
-            Assert.Equal(Hex("10041a4b" + block), AllianceProtocol.BuildMembership(Absinto, 4));
+            const string block = "120f089803101b18809cbe012887fec7071a0d4520582041204d2050204c20452224" +
+                                 "30303030303030302d303030302d343030302d383030302d3030303030303030303030342a03455841";
+            Assert.Equal(Hex("0804124b" + block), AllianceProtocol.BuildJoined(SampleAlliance, 4));
+            Assert.Equal(Hex("10041a4b" + block), AllianceProtocol.BuildMembership(SampleAlliance, 4));
         }
 
-        /// <summary>The four ranks of «A B S I N T O» (mbm), with their own names, rights and icons.</summary>
+        /// <summary>The four ranks of «E X A M P L E» (mbm), with their own names, rights and icons.</summary>
         [Fact]
         public void The_ranks_match_the_capture()
         {
             var ranks = new List<AllianceStore.Rank>
             {
-                new() { Id = 1, Name = "JAEGER MIESTER", Icon = 116, Order = 0,
+                new() { Id = 1, Name = "Rank Number 01", Icon = 116, Order = 0,
                         Rights = new() { 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 21 } },
-                new() { Id = 2, Name = "Pingola Master", Flag = true, Icon = 23, Order = 1,
+                new() { Id = 2, Name = "Rank Number 02", Flag = true, Icon = 23, Order = 1,
                         Rights = new() { 1, 2, 3, 4, 6, 7, 8, 9, 10, 12, 13, 15, 16, 17, 18, 21 } },
-                new() { Id = 3, Name = "Bebado Pingusso", Flag = true, Icon = 45, Order = 2,
+                new() { Id = 3, Name = "Rank Number 003", Flag = true, Icon = 45, Order = 2,
                         Rights = new() { 18, 9, 10, 12 } },
-                new() { Id = 4, Name = "Vira Lata", Icon = 117, Order = 3 },
+                new() { Id = 4, Name = "Rank No 4", Icon = 117, Order = 3 },
             };
 
             Assert.Equal(Hex(
-                "0a2c120e4a4145474552204d4945535445521a141a1201020304060708090a0b0c0d0f10111213152202107428010a2e120e50696e676f6c61204d61737465721a1408011a1001020304060708090a0c0d0f1011121522041017180128020a23120f42656261646f2050696e677573736f1a0808011a0412090a0c2204102d180228030a15120956697261204c6174611a002204107518032804"),
+                "0a2c120e52616e6b204e756d6265722030311a141a1201020304060708090a0b0c0d0f10111213152202107428010a2e120e52616e6b204e756d6265722030321a1408011a1001020304060708090a0c0d0f1011121522041017180128020a23120f52616e6b204e756d626572203030331a0808011a0412090a0c2204102d180228030a15120952616e6b204e6f20341a002204107518032804"),
                 AllianceProtocol.BuildRanks(ranks));
         }
 
@@ -105,27 +105,27 @@ namespace Jondo.Unity.Tests.World
         {
             var profile = new AllianceStore.Profile
             {
-                Recruitment = 1, MinLevel = 200, Description = "ABSINTO = DEATH", Title = "ABSINTO",
+                Recruitment = 1, MinLevel = 200, Description = "EXAMPLE = MOTTO", Title = "EXAMPLE",
                 WhenMs = 1774821658515,
                 Tags = new() { 4, 5, 7, 8, 9, 10, 11, 17, 19, 20, 21, 22, 23, 24, 25, 26 },
                 Languages = new() { 8, 7, 0, 4, 5, 9, 3, 6, 2, 1 },
             };
-            var card = AllianceProtocol.Card(Absinto, profile, "Kyuu-Lord", 46);
+            var card = AllianceProtocol.Card(SampleAlliance, profile, "Lead-Name", 46);
             var rows = new[]
             {
                 new AllianceProtocol.MemberRow(
-                    new AllianceStore.Member { CharacterId = 124446834978, Rank = 4, JoinedUtcMs = 1779463581262 },
-                    "Zob-Bilher", 290, 86536171, 14, 1, 1893, false),
+                    new AllianceStore.Member { CharacterId = 120000000016, Rank = 4, JoinedUtcMs = 1779463581262 },
+                    "Member-One", 290, 60000004, 14, 1, 1893, false),
                 new AllianceProtocol.MemberRow(
-                    new AllianceStore.Member { CharacterId = 140435849506, Rank = 4, JoinedUtcMs = 1782776697319 },
-                    "Mascu-okres", 224, 35125886, 9, 0, 759, false),
+                    new AllianceStore.Member { CharacterId = 140000000015, Rank = 4, JoinedUtcMs = 1782776697319 },
+                    "Second-Mate", 224, 60000005, 9, 0, 759, false),
             };
 
             Assert.Equal(Hex(
-                "1acf01120f089803101b18809cbe012887fec7071a0d41204220532049204e2054204f222437363731356162342d386639622d343664362d393232372d6462363830353134333832642a034142533281010a770a094b7975752d4c6f7264100120c8012a0f414253494e544f203d204445415448321004050708090a0b11131415161718191a4a07414253494e544f50939ff5dcd3335801622437363731356162342d386639622d343664362d393232372d6462363830353134333832646a0a0807000405090306020110b5c1a6ce06282e" +
-                "224910ffffffffffffffffff011a3c0a33120a5a6f622d42696c68657218a2022a2208e50e100420cedcad82e53328ffffffffffffffffff01300e4200480150ebdfa12910a282f0cccf03" +
-                "224810ffffffffffffffffff011a3b0a32120b4d617363752d6f6b72657318e0012a2008f705100420e7a396aef13328ffffffffffffffffff013009420050fef4df1010a28284958b04"),
-                AllianceProtocol.BuildInformation(Absinto, card, rows));
+                "1acf01120f089803101b18809cbe012887fec7071a0d4520582041204d2050204c2045222430303030303030302d303030302d343030302d383030302d3030303030303030303030342a034558413281010a770a094c6561642d4e616d65100120c8012a0f4558414d504c45203d204d4f54544f321004050708090a0b11131415161718191a4a074558414d504c4550939ff5dcd3335801622430303030303030302d303030302d343030302d383030302d3030303030303030303030346a0a0807000405090306020110b5c1a6ce06282e" +
+                "224910ffffffffffffffffff011a3c0a33120a4d656d6265722d4f6e6518a2022a2208e50e100420cedcad82e53328ffffffffffffffffff01300e4200480150848ece1c1090e0ba84bf03" +
+                "224810ffffffffffffffffff011a3b0a32120b5365636f6e642d4d61746518e0012a2008f705100420e7a396aef13328ffffffffffffffffff013009420050858ece1c108ff099c58904"),
+                AllianceProtocol.BuildInformation(SampleAlliance, card, rows));
         }
 
         /// <summary>The requests are read where the capture writes them: the uuid in mac, the character in mcc.</summary>
@@ -211,7 +211,7 @@ namespace Jondo.Unity.Tests.World
         // ─── Founding's rules ────────────────────────────────────────────────────
 
         [Theory]
-        [InlineData("A B S I N T O", true)]
+        [InlineData("E X A M P L E", true)]
         [InlineData("Jondo Unidos", true)]
         [InlineData("L'Alliance", true)]
         [InlineData("Ab", false)]
@@ -223,7 +223,7 @@ namespace Jondo.Unity.Tests.World
             => Assert.Equal(valid, AllianceHandler.IsValidName(name));
 
         [Theory]
-        [InlineData("ABS", true)]
+        [InlineData("EXA", true)]
         [InlineData("BLOOD", true)]
         [InlineData("AB", false)]
         [InlineData("SIXSIX", false)]
@@ -262,13 +262,13 @@ namespace Jondo.Unity.Tests.World
         public void An_allied_actor_carries_its_alliance()
         {
             var alliance = AllianceStore.Create(8401, "Jondo Unidos", "JON", 408, 27, 3116544, 0, 15859463);
-            var member = new DatabaseManager.DbCharacter { Id = 8401, Name = "Hiper-master", Level = 200, Breed = 2 };
+            var member = new DatabaseManager.DbCharacter { Id = 8401, Name = "Member-Three", Level = 200, Breed = 2 };
             var loner = new DatabaseManager.DbCharacter { Id = 8402, Name = "Solo", Level = 200, Breed = 2 };
 
-            var option = AllianceOption(ConnectionProtocol.BuildPlayerActorBlock(member, 341, 5, 65924386));
+            var option = AllianceOption(ConnectionProtocol.BuildPlayerActorBlock(member, 341, 5, 60000001));
             Assert.NotNull(option);
             Assert.Equal(AllianceProtocol.Block(alliance).Build(), option);
-            Assert.Null(AllianceOption(ConnectionProtocol.BuildPlayerActorBlock(loner, 341, 5, 65924386)));
+            Assert.Null(AllianceOption(ConnectionProtocol.BuildPlayerActorBlock(loner, 341, 5, 60000001)));
         }
 
         /// <summary>
@@ -306,7 +306,7 @@ namespace Jondo.Unity.Tests.World
 
             foreach (var shownRank in new[] { rank, null })
             {
-                var mcl = ProtoMessage.Parse(AllianceProtocol.BuildCardView(Absinto, Pb.New(), new[] { (leader, shownRank) }));
+                var mcl = ProtoMessage.Parse(AllianceProtocol.BuildCardView(SampleAlliance, Pb.New(), new[] { (leader, shownRank) }));
                 var person = ProtoMessage.Parse(mcl.Fields.Single(f => f.FieldNumber == 1).BytesValue);
                 Assert.Equal(8412, person.Fields.Single(f => f.FieldNumber == 2).VarIntValue);
                 var entry = ProtoMessage.Parse(person.Fields.Single(f => f.FieldNumber == 1).BytesValue);
@@ -326,14 +326,14 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_card_counts_where_the_client_reads_them()
         {
-            var card = ProtoMessage.Parse(AllianceProtocol.Card(Absinto, new AllianceStore.Profile(), "L", 3,
+            var card = ProtoMessage.Parse(AllianceProtocol.Card(SampleAlliance, new AllianceStore.Profile(), "L", 3,
                                                                 territories: 2, taxCollectors: 1).Build());
             Assert.Equal(2, card.Fields.Single(f => f.FieldNumber == 3).VarIntValue);
             Assert.Equal(1, card.Fields.Single(f => f.FieldNumber == 4).VarIntValue);
             Assert.Equal(3, card.Fields.Single(f => f.FieldNumber == 5).VarIntValue);
 
             var mcl = ProtoMessage.Parse(AllianceProtocol.BuildCardView(
-                Absinto, Pb.New(), Array.Empty<(AllianceProtocol.MemberRow, AllianceStore.Rank)>(), new[] { 178, 179 }, 8412));
+                SampleAlliance, Pb.New(), Array.Empty<(AllianceProtocol.MemberRow, AllianceStore.Rank)>(), new[] { 178, 179 }, 8412));
             Assert.Equal(new byte[] { 0xB2, 0x01, 0xB3, 0x01 }, mcl.Fields.Single(f => f.FieldNumber == 2).BytesValue);
             Assert.Equal(8412, mcl.Fields.Single(f => f.FieldNumber == 4).VarIntValue);
         }
@@ -352,12 +352,12 @@ namespace Jondo.Unity.Tests.World
             AllianceStore.SetTakesPartInAva(8413, true);
             Assert.Equal(AllianceProtocol.AvaNotAggressable, AllianceProtocol.AggressableStatus(8413));
             Assert.Equal(Hex("2804"), AllianceProtocol.BuildAggressableStatus(AllianceProtocol.AggressableStatus(8413)));
-            Assert.Equal(AllianceProtocol.AvaNotAggressable, AllianceStatusOption(ConnectionProtocol.BuildPlayerActorBlock(member, 341, 5, 65924386)));
+            Assert.Equal(AllianceProtocol.AvaNotAggressable, AllianceStatusOption(ConnectionProtocol.BuildPlayerActorBlock(member, 341, 5, 60000001)));
 
             AllianceStore.SetTakesPartInAva(8413, false);
             Assert.Equal(AllianceProtocol.NotAggressable, AllianceProtocol.AggressableStatus(8413));
             Assert.Empty(AllianceProtocol.BuildAggressableStatus(AllianceProtocol.AggressableStatus(8413)));
-            Assert.Equal(0, AllianceStatusOption(ConnectionProtocol.BuildPlayerActorBlock(member, 341, 5, 65924386)));
+            Assert.Equal(0, AllianceStatusOption(ConnectionProtocol.BuildPlayerActorBlock(member, 341, 5, 60000001)));
         }
 
         /// <summary>The f1 of the actor's alliance option, f5 { f5 { f1 ... } }, or 0.</summary>

@@ -55,7 +55,7 @@ namespace Jondo.Unity.Tests.Combat
         public void Sacrificio_puts_its_row_on_the_allies_around()
         {
             var fight = new FightInstance(1, 1);
-            var sacro = Character(56098422883, 0, 300);
+            var sacro = Character(56000000020, 0, 300);
             var ally = Character(2, 0, Beside(300, 1, 0));
             fight.AddPlayer(sacro); fight.AddPlayer(ally);
 
@@ -121,7 +121,7 @@ namespace Jondo.Unity.Tests.Combat
         public async Task A_shared_blow_is_cut_in_equal_shares()
         {
             var fight = new FightInstance(1, 1);
-            var sadida = Character(54063726691, 0, 300);
+            var sadida = Character(54000000021, 0, 300);
             var a = Character(2, 0, Beside(300, 1, 0));
             var b = Character(3, 0, Beside(300, -1, 0));
             var other = Character(4, 0, Beside(300, 0, 1));
@@ -154,7 +154,7 @@ namespace Jondo.Unity.Tests.Combat
         {
             var fight = new FightInstance(1, 1);
             int tree = 300;
-            var sadida = Character(54063726691, 0, Beside(tree, 2, 0));
+            var sadida = Character(54000000021, 0, Beside(tree, 2, 0));
             var ally = Character(2, 0, 100);
             var enemy = Monster(-1, Beside(tree, -1, 0));
             var bush = new Fighter { Id = -7, TeamId = 0, CellId = Beside(tree, 0, 1), MaxHP = 300, CurrentHP = 300, IsMonster = true, MonsterId = 5894 };

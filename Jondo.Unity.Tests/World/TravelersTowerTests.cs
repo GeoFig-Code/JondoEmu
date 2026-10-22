@@ -106,7 +106,7 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_messages_go_as_the_capture_has_them()
         {
-            Assert.Equal("08a282849bce19108a04", Hex(TravelersTowerHandler.BuildPutBack(879988113698, 522)));
+            Assert.Equal("0884f8a980a919108a04", Hex(TravelersTowerHandler.BuildPutBack(870000000004, 522)));
             Assert.Equal("0864106418" + "04", Hex(GuildRaidStagings.BuildPlay(4, GuildRaidStagings.AtEnd)));
 
             Interactives.Initialize();

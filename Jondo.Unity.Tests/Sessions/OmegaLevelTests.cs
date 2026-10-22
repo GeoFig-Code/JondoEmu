@@ -63,7 +63,7 @@ namespace Jondo.Unity.Tests.Sessions
                 Id = 7101, Name = "Omega", Level = level, Breed = 7,
             };
 
-            var root = ProtoMessage.Parse(ConnectionProtocol.BuildPlayerActorBlock(character, 341, 5, 65924386));
+            var root = ProtoMessage.Parse(ConnectionProtocol.BuildPlayerActorBlock(character, 341, 5, 60000001));
             var details = ProtoMessage.Parse(root.Fields.Single(f => f.FieldNumber == 2).BytesValue);
             var kind = ProtoMessage.Parse(details.Fields.Single(f => f.FieldNumber == 1).BytesValue);
             var humanoid = ProtoMessage.Parse(kind.Fields.Single(f => f.FieldNumber == 5).BytesValue);

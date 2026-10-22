@@ -65,7 +65,7 @@ namespace Jondo.Unity.Server.Handlers
         ///
         /// And IT IS A TOGGLE: the same message goes in and out, and the server decides by where the
         /// player is. Measured in «Movimiento/ir al merkasako y volver.pcapng»: the player's requests #1
-        /// and #8 are the same jbn with the body 10a28280c8e708 byte for byte; to the first it answers
+        /// and #8 are the same jbn with the body 1081f092cbdd08 byte for byte; to the first it answers
         /// with map 162795538 -- subarea 851, the bags' one -- and to the second with 217056262, a normal
         /// world map. There is no third opcode: a sweep of the captures finds jbn in five files and jbl in
         /// one, and the empty jbl is decor 0, not the exit.

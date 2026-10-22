@@ -45,7 +45,7 @@ namespace Jondo.Unity.Tests.Combat
         // The frames the surrender sequence is made of, against the bytes the real server sent.
         // Taken from "Combate/aceptar desafio-combate completo-abandonar al final.pcapng", frames
         // 6006, 6009 and 6010, which are the last three before the fight ends.
-        private const long DuelAuthor = 293213045026;   // a282f0a6c408
+        private const long DuelAuthor = 290000000003;   // 83a8e3aab808
 
         private static string Hex(byte[] frame)
             => System.Convert.ToHexString(frame).ToLowerInvariant();
@@ -53,9 +53,9 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void The_wrapper_says_kind_five_and_not_the_everyday_three()
         {
-            // jto 08a282f0a6c408 1005. Kind 3 is the ordinary action wrapper and is what this
+            // jto 0883a8e3aab808 1005. Kind 3 is the ordinary action wrapper and is what this
             // was built with; 5 appears exactly once per capture and only here.
-            Assert.Equal("08a282f0a6c4081005",
+            Assert.Equal("0883a8e3aab8081005",
                          Hex(FightProtocol.BuildSequenceStart(DuelAuthor, FightProtocol.SurrenderSequence)));
 
             Assert.NotEqual(FightProtocol.SurrenderSequence, FightProtocol.ActionSequence);
@@ -64,34 +64,34 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void The_closing_frame_carries_the_same_kind_and_the_action_id()
         {
-            // jwi 0802 10a282f0a6c408 1805.
-            Assert.Equal("080210a282f0a6c4081805",
+            // jwi 0802 1083a8e3aab808 1805.
+            Assert.Equal("08021083a8e3aab8081805",
                          Hex(FightProtocol.BuildSequenceEnd(2, DuelAuthor, FightProtocol.SurrenderSequence)));
         }
 
         [Fact]
         public void And_a_jxh_follows_it()
         {
-            // jxh 10a282f0a6c408. In this capture the client answers it with jwz and NO jti
+            // jxh 1083a8e3aab808. In this capture the client answers it with jwz and NO jti
             // arrives at all, so waiting only on jti would leave the result screen stuck.
-            Assert.Equal("10a282f0a6c408", Hex(FightProtocol.BuildConfirmTurn(DuelAuthor)));
+            Assert.Equal("1083a8e3aab808", Hex(FightProtocol.BuildConfirmTurn(DuelAuthor)));
         }
 
         [Fact]
         public void The_wrapper_belongs_to_the_fighter_whose_turn_it_is()
         {
             // The two captures look contradictory until you see who dies inside. In the duel the
-            // wrapper is a282f0a6c408 and the jwe kills a28280c8e708 -- our own character, the one
+            // wrapper is 83a8e3aab808 and the jwe kills 81f092cbdd08 -- our own character, the one
             // who pressed surrender. So the author is the current fighter and the quitter is the
             // one in the death frame, and using the quitter for both is contradicted by the data.
-            const long quitter = 302677754146;   // a28280c8e708
+            const long quitter = 300000000001;   // 81f092cbdd08
 
             Assert.NotEqual(DuelAuthor, quitter);
 
             // The death frame from the same capture, byte for byte: jwe (18)
-            // 18a28280c8e708 220708a28280c8e708 7067 -- author and victim both the quitter, and
+            // 1881f092cbdd08 22070881f092cbdd08 7067 -- author and victim both the quitter, and
             // 0x67 is the "died" reason.
-            Assert.Equal("18a28280c8e708220708a28280c8e7087067",
+            Assert.Equal("1881f092cbdd0822070881f092cbdd087067",
                          Hex(FightProtocol.BuildDeath(quitter, quitter)));
         }
 

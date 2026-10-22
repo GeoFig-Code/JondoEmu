@@ -279,7 +279,7 @@ namespace Jondo.Unity.Server.Network
         /// the same number twice -{10, 10} after one contribution, {20, 20} after two- and empty
         /// before any; f7.f8 is the note, { f1 text, f2 when }, and empty without a note. The
         /// f8 { f1: 1 } means he is connected; when offline the server sends f8 empty and an
-        /// f9 = 1 behind it, which is how the four disconnected members of «Hezbola» come out.
+        /// f9 = 1 behind it, which is how the four disconnected members of «Guild-A» come out.
         /// </remarks>
         private static Pb MemberEntry(GuildStore.Member member, string name, int level, long accountId,
                                       int breed, int achievementPoints, int contributed, bool online)

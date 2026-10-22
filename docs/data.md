@@ -142,9 +142,8 @@ Measured on the files as they stand:
 |---|---|
 | `world_entering_3_6_10_10.bin` (raw, not published) | 13, across 11 families: `kub`×2, `jhh`×2, `jhe`, `jhk`, `ife`, `jgu`, `jaa`, `lyt`, `hhy`, `ihb`, `jjs` |
 
-The carved blocks are gone from the repository as well. Nothing read them once the world entry
-moved to `content/world/entry.json`, and a recorded session has no business being published, so
-`.gitignore` now keeps every `*.bin` out.
+The carved blocks are gone from the repository as well: nothing read them once the world entry
+moved to `content/world/entry.json`, and `.gitignore` keeps every `*.bin` out.
 
 `kub` is the one exception in that list: it is not dropped, it is replaced. The captured `kub` is a
 level-154 character sheet, and the emulator builds its own from the database.
@@ -259,8 +258,7 @@ effect field map (`item_effect_fields.json`) and the world entry manifest
 (`content/world/entry.json`).
 
 The manifest was decoded from three blocks carved out of a capture by `extraer_world.py` and
-cleaned by `sanear_world.py`. Those blocks are not in the repository: they are a recorded session.
-If you re-cut them from a new capture, keep them out of git.
+cleaned by `sanear_world.py`. Those blocks are not in the repository.
 
 ### The order
 

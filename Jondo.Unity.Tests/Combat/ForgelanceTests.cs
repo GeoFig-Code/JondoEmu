@@ -13,7 +13,7 @@ namespace Jondo.Unity.Tests.Combat
     [Collection("MapManager")]
     public class ForgelanceTests
     {
-        private const long Player = 54064316515;
+        private const long Player = 54000000022;
         // LancePierre packets 20 and 55, including colours, equipment and a follower.
         private const string DisarmedLook = "0a18e8b6960fa9fedc13c182851aaaafa72795ab9e2cbffa8032100318012a0137320c95199218be1a870dd313b1283a0c0a08100318bb0b2a01552001";
         private const string ArmedLook = "0a18e8b6960fa9fedc13c182851aaaafa72795ab9e2cbffa8032100318012a0137320e95199218be1a870dd313b128c21c3a0c0a08100318bb0b2a01552001";
@@ -45,8 +45,8 @@ namespace Jondo.Unity.Tests.Combat
             => ProtoMessage.Parse(body).Fields.First(f => f.FieldNumber == field).BytesValue;
 
         [Theory]
-        [InlineData(true, 437, "18e380f0b3c90170d01dca010f0801100318b50320e1b60128cea401")]
-        [InlineData(false, 411, "18e380f0b3c90170d01dca010d1003189b0320e1b60128cea401")]
+        [InlineData(true, 437, "1896b89a95c90170d01dca010f0801100318b50320e1b60128cea401")]
+        [InlineData(false, 411, "1896b89a95c90170d01dca010d1003189b0320e1b60128cea401")]
         public void Script_action_matches_Trident_capture_bytes(bool critical, int cell, string hex)
             => Assert.Equal(Convert.FromHexString(hex), ForgelanceProtocol.Script(Player, 23393, 3, cell, 21070, critical));
 

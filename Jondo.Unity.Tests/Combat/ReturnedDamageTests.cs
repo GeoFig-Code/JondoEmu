@@ -41,7 +41,7 @@ namespace Jondo.Unity.Tests.Combat
         public void Masacre_returns_thirty_percent_of_the_blow_in_its_element_in_the_Yopukas_name()
         {
             var fight = new FightInstance(1, 1);
-            var yopuka = Character(53721170019, 0, 300);
+            var yopuka = Character(53000000026, 0, 300);
             var target = Monster(-1, 330);
             var ally = Monster(-2, Beside(330, 1, 0));
             fight.AddPlayer(yopuka); fight.AddOpponent(target); fight.AddOpponent(ally);
@@ -71,7 +71,7 @@ namespace Jondo.Unity.Tests.Combat
         public void The_complice_returns_its_summoners_spell_damage()
         {
             var fight = new FightInstance(1, 1);
-            var xelor = Character(53720973411, 0, 300);
+            var xelor = Character(53000000025, 0, 300);
             var complice = new Fighter
             {
                 Id = -5, TeamId = 0, CellId = 330, MaxHP = 600, CurrentHP = 600, Level = 200,

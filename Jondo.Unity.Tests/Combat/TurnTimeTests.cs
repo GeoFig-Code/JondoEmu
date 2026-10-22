@@ -29,11 +29,11 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void The_kept_time_travels_in_the_jzcs_f4()
         {
-            var jzc = ProtoMessage.Parse(FightProtocol.BuildTurnStart(879988113698, 360, 0, 2, carried: 41));
+            var jzc = ProtoMessage.Parse(FightProtocol.BuildTurnStart(870000000004, 360, 0, 2, carried: 41));
             long Field(int n) => jzc.Fields.Single(f => f.FieldNumber == n).VarIntValue;
-            Assert.Equal((879988113698L, 360L, 41L, 2L), (Field(1), Field(2), Field(4), Field(8)));
+            Assert.Equal((870000000004L, 360L, 41L, 2L), (Field(1), Field(2), Field(4), Field(8)));
 
-            var jyt = ProtoMessage.Parse(FightProtocol.BuildTurnEnd(879988113698, 41));
+            var jyt = ProtoMessage.Parse(FightProtocol.BuildTurnEnd(870000000004, 41));
             Assert.Equal(41, jyt.Fields.Single(f => f.FieldNumber == 1).VarIntValue);
         }
 

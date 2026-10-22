@@ -336,10 +336,10 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void The_summons_spell_bar_is_the_owners()
         {
-            byte[] jyy = FightProtocol.BuildSummonSpellBar(-12, 53721497699,
+            byte[] jyy = FightProtocol.BuildSummonSpellBar(-12, 53000000024,
                 new[] { (13451, 3), (13452, 3), (30938, 1), (13453, 3) });
 
-            Assert.Equal("18f4ffffffffffffffff0120e380b490c80132070803188b69200632070803188c6920063208080118daf1" +
+            Assert.Equal("18f4ffffffffffffffff012098a4afb8c50132070803188b69200632070803188c6920063208080118daf1" +
                          "01200632070803188d6920063a053203108b693a0710013203108c693a081002320410daf1013a0710033203108d69",
                          string.Concat(jyy.Select(b => b.ToString("x2"))));
         }

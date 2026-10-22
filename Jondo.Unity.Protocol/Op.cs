@@ -354,7 +354,7 @@ public static class Op
     /// </summary>
     /// <remarks>
     /// 954 entries in the capture, and the 954 ids of f3 are real achievements. f2 is a big
-    /// number, constant in batches —302677754146, 879988113698— that looks like a date.
+    /// number, constant in batches —300000000001, 870000000004— that looks like a date.
     ///
     /// It is the pair of <see cref="Mfu"/>, which announces ONE freshly earned.
     /// </remarks>
@@ -1951,7 +1951,7 @@ public static class Op
 
     /// <summary>
     /// Entering a house. It is the dwellings' jru, but it is NOT the jru: the map goes in field
-    /// 1, not in 2. Measured from «entrar en mi casa»: jqw { f1: 213124106, f3: 35226522202 }. The f3
+    /// 1, not in 2. Measured from «entrar en mi casa»: jqw { f1: 213124106, f3: 35000000019 }. The f3
     /// could not be explained —it is not the map, nor the character, nor the element— and there is only one
     /// sample in the nine house captures, so it is not sent.
     /// </summary>
@@ -2939,7 +2939,7 @@ public static class Op
     // Measured in "crear personaje - borrar personaje.pcapng", which records one deletion from
     // end to end. The client sends three messages and the server answers with five frames:
     //
-    //   C->S  kwa  10de82c08e8a02                       f2: the character id
+    //   C->S  kwa  10928cb8bf8802                       f2: the character id
     //   C->S  kvu  08<id> 1220 "9cdab917cc3d5a4a33..."  f1: the id, f2: 32 hex characters
     //   C->S  kvh  (empty)
     //
@@ -3230,7 +3230,7 @@ public static class Op
     /// <summary>C→S: listening to the alliance's applications (dqk) {1 bool, 2 lzz}; nothing is answered in the capture.</summary>
     public const string Mab = "mab";
 
-    /// <summary>C→S: joining an alliance from its directory card (dpy) {1 uuid}. «A B S I N T O» took the character at once.</summary>
+    /// <summary>C→S: joining an alliance from its directory card (dpy) {1 uuid}. «E X A M P L E» took the character at once.</summary>
     public const string Mac = "mac";
 
     /// <summary>S→C, empty: the directory's request was heard; the capture answers the mba with it.</summary>

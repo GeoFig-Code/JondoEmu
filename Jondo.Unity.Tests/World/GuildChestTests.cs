@@ -80,10 +80,10 @@ namespace Jondo.Unity.Tests.World
                 Assert.Equal(rank.Id <= 2, all);
             }
 
-            // Hezbola's rank 2 at the 9 August login: tab 1 yes, tab 2 no -- frames 38-39.
-            var hezbola = GuildChests.RightsOf(new byte[] { 1, 2, 5, 6, 7, 8, 13, 14, 15, 23, 24, 25, 26 });
-            Assert.Contains(GuildChests.Tabs[0].ConsultRight, hezbola);
-            Assert.DoesNotContain(GuildChests.Tabs[1].ConsultRight, hezbola);
+            // Guild-A's rank 2 at the 9 August login: tab 1 yes, tab 2 no -- frames 38-39.
+            var rankTwo = GuildChests.RightsOf(new byte[] { 1, 2, 5, 6, 7, 8, 13, 14, 15, 23, 24, 25, 26 });
+            Assert.Contains(GuildChests.Tabs[0].ConsultRight, rankTwo);
+            Assert.DoesNotContain(GuildChests.Tabs[1].ConsultRight, rankTwo);
         }
 
         // ─── At the chest ───────────────────────────────────────────────────────

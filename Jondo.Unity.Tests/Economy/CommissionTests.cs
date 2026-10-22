@@ -17,16 +17,16 @@ namespace Jondo.Unity.Tests.Economy
     public class CommissionTests
     {
         private static byte[] Hex(string hex) => Convert.FromHexString(hex);
-        private const long Magus = 302677754146, Customer = 293213045026;
+        private const long Magus = 300000000001, Customer = 290000000003;
 
         [Fact]
         public void An_invitation_waits_with_both_roles()
         {
             // The magus invites (kbl f3 = 10) and gets his kgu: the other, his role, himself.
-            Assert.Equal(Hex("08a282f0a6c408100a18a28280c8e708"),
+            Assert.Equal(Hex("0883a8e3aab808100a1881f092cbdd08"),
                          WorkshopProtocol.BuildCommissionRequested(Customer, WorkshopProtocol.CrafterRole, Magus));
             // The one invited to have a jewel maged gets role 11, with the magus as sender twice.
-            Assert.Equal(Hex("08a282f0a6c408100b18a282f0a6c408"),
+            Assert.Equal(Hex("0883a8e3aab808100b1883a8e3aab808"),
                          WorkshopProtocol.BuildCommissionRequested(Customer, WorkshopProtocol.CustomerRole, Customer));
         }
 
@@ -35,7 +35,7 @@ namespace Jondo.Unity.Tests.Economy
         {
             Assert.Equal(Hex("10a601"), WorkshopProtocol.BuildCrafterOpened(166));
             // The customer is told the magus' job: level 15 joyeromago, 2,307 experience.
-            Assert.Equal(Hex("0a0d083f10e012180f20b41028831210a282f0a6c408"),
+            Assert.Equal(Hex("0a0d083f10e012180f20b4102883121083a8e3aab808"),
                          WorkshopProtocol.BuildOtherJob(63, 2400, 15, 2100, 2307, Customer));
             Assert.Equal(Hex("080f10a801"), WorkshopProtocol.BuildCustomerOpened(15, 168));
         }
@@ -49,8 +49,8 @@ namespace Jondo.Unity.Tests.Economy
             Assert.Equal(Hex("1a1c083f2a1808b74012042012587d1205200158a60318012090c9fafc01"),
                          WorkshopProtocol.BuildOffered(8247, hat, 1, 530490512, remote: false));
             Assert.Equal(Hex("0890c9fafc01"), WorkshopProtocol.BuildUnoffered(530490512));
-            Assert.Equal(Hex("180120a282f0a6c408"), WorkshopProtocol.BuildReady(true, Customer));
-            Assert.Equal(Hex("20a282f0a6c408"), WorkshopProtocol.BuildReady(false, Customer));
+            Assert.Equal(Hex("18012083a8e3aab808"), WorkshopProtocol.BuildReady(true, Customer));
+            Assert.Equal(Hex("2083a8e3aab808"), WorkshopProtocol.BuildReady(false, Customer));
             Assert.Equal(Hex("08904e"), WorkshopProtocol.BuildPayment(10000));
             Assert.Empty(WorkshopProtocol.BuildPayment(0));
             Assert.Equal(Hex("0803"), WorkshopProtocol.BuildCommissionImpossible(WorkshopProtocol.TooFar));

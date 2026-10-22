@@ -25,7 +25,7 @@ namespace Jondo.Unity.Server.Managers
     /// The rights are the ranks' own (<see cref="GuildStore.Rank.Rights"/>), three per tab, and
     /// they are the client's table (GuildRightsDataRoot) and the ivl alike: tab 1 is 8 look, 24
     /// put in, 23 take out; tab 2 31, 30, 29; tab 3 32, 33, 34; tab 4 35, 36, 37. In the capture
-    /// the player -- rank 2 of Hezbola, whose rights the 9 August login lists as 1 2 5 6 7 8 13 14
+    /// the player -- rank 2 of Guild-A, whose rights the 9 August login lists as 1 2 5 6 7 8 13 14
     /// 15 23 24 25 26 -- opens tab 1, puts in and takes out, and is refused tab 2 (jll { f2: 2 }
     /// answered lqn 1/654 "No tienes el derecho de consultar el cofre de gremio", frames 38-39).
     /// </para>

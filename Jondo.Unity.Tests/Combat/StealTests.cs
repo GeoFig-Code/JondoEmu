@@ -68,7 +68,7 @@ namespace Jondo.Unity.Tests.Combat
         public void Estafa_takes_agility_off_the_enemy_and_gives_it_to_the_Sram()
         {
             var fight = AtRound(5);
-            var sram = Player(53720907875, 0, 300);
+            var sram = Player(53000000031, 0, 300);
             var enemy = Monster(-2, 301);
             fight.AddPlayer(sram); fight.AddOpponent(enemy);
 
@@ -80,9 +80,9 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Equal(-100, enemy.Buffs.De(Agility, 5));
             Assert.Equal(100, sram.Buffs.De(Agility, 5));
 
-            Assert.Equal(Hex("0a440a38086410feffffffffffffffff01189d012003320210083a014940b0d916621610ffffffffffffffffff0118ffffffffffffffffff0170ef6410e3809090c801189a01"),
+            Assert.Equal(Hex("0a440a38086410feffffffffffffffff01189d012003320210083a014940b0d916621610ffffffffffffffffff0118ffffffffffffffffff0170ef64109fa4afb8c501189a01"),
                          AsItGoesOut(malus, sram, number: 157));
-            Assert.Equal(Hex("0a3f0a34086410e3809090c801189e012003320210083a014940b0d916621610ffffffffffffffffff0118ffffffffffffffffff0170ef6410e3809090c8011877"),
+            Assert.Equal(Hex("0a3f0a340864109fa4afb8c501189e012003320210083a014940b0d916621610ffffffffffffffffff0118ffffffffffffffffff0170ef64109fa4afb8c5011877"),
                          AsItGoesOut(bonus, sram, number: 158));
         }
 
@@ -94,7 +94,7 @@ namespace Jondo.Unity.Tests.Combat
         public void Desecacion_steals_range()
         {
             var fight = AtRound(3);
-            var hipermago = Player(879988113698, 0, 300);
+            var hipermago = Player(870000000004, 0, 300);
             var enemy = Monster(-2, 301);
             fight.AddPlayer(hipermago); fight.AddOpponent(enemy);
 

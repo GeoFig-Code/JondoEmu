@@ -97,7 +97,7 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void El_pozo_se_suelta_antes_de_ensenar_la_ventana()
         {
-            // The capture's iwn, field by field: «080110e0f72020b80128a28280c8e708».
+            // The capture's iwn, field by field: «080110e0f72020b8012881f092cbdd08».
             byte[] iwn = Jondo.Unity.Server.Network.ConnectionProtocol.BuildElementInUse(
                 Dreams.ElementoDelPozo, Dreams.HabilidadDelPozo, 0x1c8e00280a2);
 

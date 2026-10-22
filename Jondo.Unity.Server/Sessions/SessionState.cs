@@ -263,7 +263,7 @@ namespace Jondo.Unity.Server
         /// <remarks>
         /// It is needed because the client sends THE SAME message to enter and to leave: in
         /// «Movimiento/ir al merkasako y volver.pcapng» the player's two requests, #1 and
-        /// #8, are a jbn with the body 10a28280c8e708 byte for byte, and the server answers the
+        /// #8, are a jbn with the body 1081f092cbdd08 byte for byte, and the server answers the
         /// first with the bag's map and the second with a world map. So whoever
         /// decides the direction is the server, looking at where the player is, and for that one has to
         /// know where he came from.

@@ -54,13 +54,13 @@ namespace Jondo.Unity.Tests.Social
         [Fact]
         public void A_koliseo_line_and_a_woman_s_experience_line_are_the_capture_s()
         {
-            var barry = new Ladders.Person(10236891, 294, 9, 0, "Barry-ll", 345);
-            Assert.Equal("0801104e1a1710a6021809220842617272792d6c6c30d90238dbe7f004202e28bf1e",
-                         Hex(LadderProtocol.KoliseoLine(new Ladders.KoliseoLine(1, barry, 78, 46, 3903)).Build()));
+            var ladderOne = new Ladders.Person(60000007, 294, 9, 0, "Ladder-1", 345);
+            Assert.Equal("0801104e1a1710a602180922084c61646465722d3130d90238878ece1c202e28bf1e",
+                         Hex(LadderProtocol.KoliseoLine(new Ladders.KoliseoLine(1, ladderOne, 78, 46, 3903)).Build()));
 
-            var george = new Ladders.Person(4784683, 290, 16, 1, "George", 968);
-            Assert.Equal("08e9daa8fa9ab0021a1710a2021810220647656f726765280130c80738ab84a4022001",
-                         Hex(LadderProtocol.ExperienceLine(new Ladders.ExperienceLine(1, george, 10452596305257)).Build()));
+            var ladderTwo = new Ladders.Person(6000008, 290, 16, 1, "Rank-2", 968);
+            Assert.Equal("08e9daa8fa9ab0021a1710a2021810220652616e6b2d32280130c80738889bee022001",
+                         Hex(LadderProtocol.ExperienceLine(new Ladders.ExperienceLine(1, ladderTwo, 10452596305257)).Build()));
         }
 
         /// <summary>iqn: f1 only for the dreamer, then intensity, rank, the character, turn, when and waves.</summary>

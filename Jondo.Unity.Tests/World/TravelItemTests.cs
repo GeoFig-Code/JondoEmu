@@ -38,9 +38,9 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_home_potions_delay_is_the_captures()
         {
-            Assert.Equal("08ee13108bbac4d8fe33180128a28280c8e708",
-                         Hex(TravelProtocol.BuildDelayedUse(2542, 1786355195147, 302677754146)));
-            Assert.Equal("08a28280c8e7081001", Hex(TravelProtocol.BuildDelayFinished(302677754146)));
+            Assert.Equal("08ee13108bbac4d8fe3318012881f092cbdd08",
+                         Hex(TravelProtocol.BuildDelayedUse(2542, 1786355195147, 300000000001)));
+            Assert.Equal("0881f092cbdd081001", Hex(TravelProtocol.BuildDelayFinished(300000000001)));
         }
 
         // ─── Where they go ──────────────────────────────────────────────────────

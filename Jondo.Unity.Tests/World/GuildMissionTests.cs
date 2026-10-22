@@ -44,8 +44,8 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void A_mission_goes_as_the_capture_carries_it()
         {
-            Assert.Equal("0a2461643932613534352d396463322d343638382d386463332d393166336534623063636466184122040a002041",
-                         Hex(GuildProtocol.Mission(new GuildMissions.Drawn(0, 65, "ad92a545-9dc2-4688-8dc3-91f3e4b0ccdf", 65)).Build()));
+            Assert.Equal("0a2430303030303030302d303030302d343030302d383030302d303030303030303030303038184122040a002041",
+                         Hex(GuildProtocol.Mission(new GuildMissions.Drawn(0, 65, "00000000-0000-4000-8000-000000000008", 65)).Build()));
             if (GuildMissions.All.Count == 0) return;   // no client data
             Assert.Equal(418, GuildMissions.FirstObjectiveOf(GuildMissions.MissionOf(417)));
             Assert.Equal(65, GuildMissions.FirstObjectiveOf(GuildMissions.MissionOf(65)));
@@ -181,7 +181,7 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void The_interested_members_ride_with_their_mission()
         {
-            var drawn = new GuildMissions.Drawn(0, 65, "ad92a545-9dc2-4688-8dc3-91f3e4b0ccdf", 65);
+            var drawn = new GuildMissions.Drawn(0, 65, "00000000-0000-4000-8000-000000000008", 65);
             var keka = new GuildProtocol.Subscriber(7105, "Keka", 18, 1, 200, true, true);
             Assert.Equal("080112044b656b61181228c8013001380140c137", Hex(GuildProtocol.SubscriberBlock(keka).Build()));
             var jdx = ProtoMessage.Parse(GuildProtocol.Mission(drawn, GuildMissions.Standing.None, new[] { keka }).Build());
@@ -219,7 +219,7 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void A_mission_carries_where_the_member_stands()
         {
-            var drawn = new GuildMissions.Drawn(0, 65, "ad92a545-9dc2-4688-8dc3-91f3e4b0ccdf", 65);
+            var drawn = new GuildMissions.Drawn(0, 65, "00000000-0000-4000-8000-000000000008", 65);
             Assert.Equal("0a002041", ObjectiveState(GuildProtocol.Mission(drawn).Build()));
             Assert.Equal("1a02080c2041", ObjectiveState(GuildProtocol.Mission(drawn, new GuildMissions.Standing(12, false)).Build()));
             Assert.Equal("12002041", ObjectiveState(GuildProtocol.Mission(drawn, new GuildMissions.Standing(50, true)).Build()));

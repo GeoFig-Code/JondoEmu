@@ -10,7 +10,7 @@ namespace Jondo.Unity.Server.Network
     /// </summary>
     /// <remarks>
     /// Measured: the map actor of two prisms (a jss of «Chats/hablar por canal Comunidad», of
-    /// «Bloodbath», and one of «ruta muy larga con autopilotaje-2»), the world's list at world entry
+    /// «Alliance2», and one of «ruta muy larga con autopilotaje-2»), the world's list at world entry
     /// (ife) and a prism changed (ifa) in «Emotes/usar emoticonos». The rest -- one gone (iew),
     /// attacked (iex), its fight's end (iev) -- is read off fgv's handlers (bewt, bewo, bewp).
     /// </remarks>
@@ -50,7 +50,7 @@ namespace Jondo.Unity.Server.Network
         /// first colour, and two colours of the emblem -- 9 its f3, 10 its f5 --.
         /// </summary>
         /// <remarks>
-        /// Both prisms of the captures go {2211, colours 1=0xc2e5ee, 9, 10}: «Bloodbath» (no f3, f5
+        /// Both prisms of the captures go {2211, colours 1=0xc2e5ee, 9, 10}: «Alliance2» (no f3, f5
         /// 0xb50104) with 9=0 and 10=0xb50104, and the other alliance (f3 0x1d1d1d, f5 0x3f3f3f)
         /// with those two. 2211 and 0xc2e5ee are the prism monster's own look. They also carry a
         /// skin, 2673 and 4793 for the symbols 104 and 434: no table of the client's says it, but

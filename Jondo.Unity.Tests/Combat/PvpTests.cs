@@ -33,10 +33,10 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void El_desafio_ofrecido_lleva_a_los_dos_y_su_id()
         {
-            // 08a28280c8e708 10a282f0a6c408 18ee03 from the capture, with that pair's ids.
-            byte[] hqc = FightProtocol.BuildChallengeOffered(302677754146L, 293213045026L, 494);
+            // 0881f092cbdd08 1083a8e3aab808 18ee03 from the capture, with that pair's ids.
+            byte[] hqc = FightProtocol.BuildChallengeOffered(300000000001L, 290000000003L, 494);
 
-            Assert.Equal("08a28280c8e70810a282f0a6c40818ee03",
+            Assert.Equal("0881f092cbdd081083a8e3aab80818ee03",
                          Convert.ToHexString(hqc).ToLowerInvariant());
         }
 
@@ -45,12 +45,12 @@ namespace Jondo.Unity.Tests.Combat
         {
             // The capture's two hpv, byte for byte. f3 is in the accepted one and not in the other,
             // and the challenged goes in FOUR: in the declined one the 20 goes stuck to the id.
-            byte[] aceptado = FightProtocol.BuildChallengeAnswered(302677754146L, 494, true, 293213045026L);
-            byte[] rechazado = FightProtocol.BuildChallengeAnswered(302677754146L, 489, false, 293213045026L);
+            byte[] aceptado = FightProtocol.BuildChallengeAnswered(300000000001L, 494, true, 290000000003L);
+            byte[] rechazado = FightProtocol.BuildChallengeAnswered(300000000001L, 489, false, 290000000003L);
 
-            Assert.Equal("08a28280c8e70810ee03180120a282f0a6c408",
+            Assert.Equal("0881f092cbdd0810ee0318012083a8e3aab808",
                          Convert.ToHexString(aceptado).ToLowerInvariant());
-            Assert.Equal("08a28280c8e70810e90320a282f0a6c408",
+            Assert.Equal("0881f092cbdd0810e9032083a8e3aab808",
                          Convert.ToHexString(rechazado).ToLowerInvariant());
         }
 

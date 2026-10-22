@@ -87,29 +87,29 @@ namespace Jondo.Unity.Tests.Combat
 
         // ─── The frames ──────────────────────────────────────────────────────────────────────
 
-        private const long TutorialPlayer = 80259055967;
+        private const long TutorialPlayer = 80000000017;
 
         [Fact]
         public void The_tackle_frame_is_the_capture_s()
         {
             // Tutorial 478: the player held by the monster -1.
-            Assert.Equal(Hex("18df82c0feaa025a0c0a0affffffffffffffffff017068"),
+            Assert.Equal(Hex("1891c0fc82aa025a0c0a0affffffffffffffffff017068"),
                          TackleProtocol.BuildTackled(TutorialPlayer, new long[] { -1 }));
             // Collector 367: the collector -1 held by the summon -2.
             Assert.Equal(Hex("18ffffffffffffffffff015a0c0a0afeffffffffffffffff017068"),
                          TackleProtocol.BuildTackled(-1, new long[] { -2 }));
             // Challenge 1600: the summon -1 held by a player.
-            Assert.Equal(Hex("18ffffffffffffffffff015a080a06a282f0a6c4087068"),
-                         TackleProtocol.BuildTackled(-1, new long[] { 293213045026 }));
+            Assert.Equal(Hex("18ffffffffffffffffff015a080a0683a8e3aab8087068"),
+                         TackleProtocol.BuildTackled(-1, new long[] { 290000000003 }));
         }
 
         [Fact]
         public void The_losses_are_the_catalogue_s_rows_in_his_own_name()
         {
             // Tutorial 482 and 486: -3 AP and -2 MP, author and victim the player himself.
-            Assert.Equal(Hex("18df82c0feaa027065a2011208fdffffffffffffffff0110df82c0feaa02"),
+            Assert.Equal(Hex("1891c0fc82aa027065a2011208fdffffffffffffffff011091c0fc82aa02"),
                          FightProtocol.BuildPointsLost(TutorialPlayer, FightProtocol.ActionPointsLost, TutorialPlayer, 3));
-            Assert.Equal(Hex("18df82c0feaa02707fa2011208feffffffffffffffff0110df82c0feaa02"),
+            Assert.Equal(Hex("1891c0fc82aa02707fa2011208feffffffffffffffff011091c0fc82aa02"),
                          FightProtocol.BuildPointsLost(TutorialPlayer, FightProtocol.MovementPointsLost, TutorialPlayer, 2));
         }
 
@@ -293,23 +293,23 @@ namespace Jondo.Unity.Tests.Combat
                 Assert.Equal(3, player.CurrentAP);
                 Assert.Equal(0, player.CurrentMP);
 
-                Assert.Equal(Hex("08df82c0feaa021004"), await Next(fromServer, Op.Jto));                        // 477
-                Assert.Equal(Hex("18df82c0feaa025a0c0a0affffffffffffffffff017068"), await Next(fromServer, Op.Jwe)); // 478
-                Assert.Equal(Hex("08df82c0feaa021003"), await Next(fromServer, Op.Jto));                        // 479
+                Assert.Equal(Hex("0891c0fc82aa021004"), await Next(fromServer, Op.Jto));                        // 477
+                Assert.Equal(Hex("1891c0fc82aa025a0c0a0affffffffffffffffff017068"), await Next(fromServer, Op.Jwe)); // 478
+                Assert.Equal(Hex("0891c0fc82aa021003"), await Next(fromServer, Op.Jto));                        // 479
                 await Next(fromServer, Op.Jxw);                                                                  // 480
                 SheetClose(await Next(fromServer, Op.Jwi));                                                      // 481
-                Assert.Equal(Hex("18df82c0feaa027065a2011208fdffffffffffffffff0110df82c0feaa02"),
+                Assert.Equal(Hex("1891c0fc82aa027065a2011208fdffffffffffffffff011091c0fc82aa02"),
                              await Next(fromServer, Op.Jwe));                                                    // 482
-                Assert.Equal(Hex("08df82c0feaa021003"), await Next(fromServer, Op.Jto));                        // 483
+                Assert.Equal(Hex("0891c0fc82aa021003"), await Next(fromServer, Op.Jto));                        // 483
                 await Next(fromServer, Op.Jxw);                                                                  // 484
                 SheetClose(await Next(fromServer, Op.Jwi));                                                      // 485
-                Assert.Equal(Hex("18df82c0feaa02707fa2011208feffffffffffffffff0110df82c0feaa02"),
+                Assert.Equal(Hex("1891c0fc82aa02707fa2011208feffffffffffffffff011091c0fc82aa02"),
                              await Next(fromServer, Op.Jwe));                                                    // 486
-                Assert.Equal(Hex("0a04ad02bb02100328df82c0feaa02"), await Next(fromServer, Op.Jsj));            // 487
-                Assert.Equal(Hex("08df82c0feaa021003"), await Next(fromServer, Op.Jto));                        // 488
+                Assert.Equal(Hex("0a04ad02bb0210032891c0fc82aa02"), await Next(fromServer, Op.Jsj));            // 487
+                Assert.Equal(Hex("0891c0fc82aa021003"), await Next(fromServer, Op.Jto));                        // 488
                 await Next(fromServer, Op.Jxw);                                                                  // 489
                 SheetClose(await Next(fromServer, Op.Jwi));                                                      // 490
-                Assert.Equal(Hex("18df82c0feaa02708101a2011208ffffffffffffffffff0110df82c0feaa02"),
+                Assert.Equal(Hex("1891c0fc82aa02708101a2011208ffffffffffffffffff011091c0fc82aa02"),
                              await Next(fromServer, Op.Jwe));                                                    // 491
                 var close = ProtoMessage.Parse(await Next(fromServer, Op.Jwi)).Fields;                           // 492
                 Assert.Equal(TutorialPlayer, (long)close.Single(f => f.FieldNumber == 2).VarIntValue);

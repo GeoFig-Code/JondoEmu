@@ -17,18 +17,18 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void The_turn_in_progress_says_what_is_left_of_it()
         {
-            byte[] jzc = FightProtocol.BuildTurnResumed(302677754146, 350, remaining: 132, round: 1);
+            byte[] jzc = FightProtocol.BuildTurnResumed(300000000001, 350, remaining: 132, round: 1);
 
-            Assert.Equal("08a28280c8e70810de023084014001", Hex(jzc));
+            Assert.Equal("0881f092cbdd0810de023084014001", Hex(jzc));
         }
 
         /// <summary>And the ordinary jzc is untouched by it: the one at 9.09 s.</summary>
         [Fact]
         public void An_ordinary_turn_start_carries_no_f6()
         {
-            byte[] jzc = FightProtocol.BuildTurnStart(302677754146, 350, index: 0, round: 1);
+            byte[] jzc = FightProtocol.BuildTurnStart(300000000001, 350, index: 0, round: 1);
 
-            Assert.Equal("08a28280c8e70810de024001", Hex(jzc));
+            Assert.Equal("0881f092cbdd0810de024001", Hex(jzc));
         }
 
         /// <summary>
@@ -60,7 +60,7 @@ namespace Jondo.Unity.Tests.Combat
         public void What_is_left_of_a_turn_is_counted_in_tenths()
         {
             var started = new DateTime(2026, 8, 9, 21, 0, 0, DateTimeKind.Utc);
-            var turn = new FightInstance.AnnouncedTurn(302677754146, 0, 1, 350, started);
+            var turn = new FightInstance.AnnouncedTurn(300000000001, 0, 1, 350, started);
 
             Assert.Equal(132, turn.RemainingDeciseconds(started.AddMilliseconds(21800)));
             Assert.Equal(350, turn.RemainingDeciseconds(started));
@@ -80,7 +80,7 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void The_buff_sync_is_the_jxm_bodies_in_a_row()
         {
-            byte[] one = FightProtocol.BuildBuff(-3, 302677754146, 1, 950, 299043, 3793, 0, 0, 25188, "I", -1, 0, 2);
+            byte[] one = FightProtocol.BuildBuff(-3, 300000000001, 1, 950, 299043, 3793, 0, 0, 25188, "I", -1, 0, 2);
 
             Assert.Empty(FightProtocol.BuildBuffSync(Array.Empty<byte[]>()));
             byte[] jwq = FightProtocol.BuildBuffSync(new[] { one, one });

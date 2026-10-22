@@ -93,7 +93,7 @@ namespace Jondo.Unity.Server.Handlers
             // Release the element first. In the Nightmare II capture the order is exact:
             //
             //   C->S iwo  0887a20110e0f720
-            //   S->C iwn  080110e0f72020b80128a28280c8e708
+            //   S->C iwn  080110e0f72020b8012881f092cbdd08
             //   S->C iyj  (618 B)
             //
             // And the order matters: without the iwn the client still considers the well busy and

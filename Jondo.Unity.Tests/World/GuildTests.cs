@@ -156,20 +156,20 @@ namespace Jondo.Unity.Tests.World
 
         /// <summary>
         /// «You are invited to a guild» (jiq), byte for byte against the capture of receiving an
-        /// invitation to the guild «Hezbola» from «Leader».
+        /// invitation to the guild «Guild-A» from «Leader».
         /// </summary>
         [Fact]
         public void The_invitation_is_the_capture()
         {
-            var hezbola = new GuildStore.Guild
+            var invitingGuild = new GuildStore.Guild
             {
-                Id = 6846, Name = "Hezbola", Level = 5,
+                Id = 6846, Name = "Guild-A", Level = 5,
                 EmblemSymbol = 334, EmblemSymbolColor = 34,
                 EmblemBackground = 16511237, EmblemSymbolRgb = 2140438,
             };
 
-            Assert.Equal("0a210a111a0f08ce0210221885e2ef072896d2820110be351a0748657a626f6c61200512064c6561646572",
-                         Hex(GuildProtocol.BuildInvitation(hezbola, "Leader")));
+            Assert.Equal("0a210a111a0f08ce0210221885e2ef072896d2820110be351a074775696c642d41200512064c6561646572",
+                         Hex(GuildProtocol.BuildInvitation(invitingGuild, "Leader")));
         }
 
         /// <summary>
@@ -307,10 +307,10 @@ namespace Jondo.Unity.Tests.World
             {
                 var guild = GuildStore.Create(7001, "Jondo", 165, 8, 16744448, 9476018);
 
-                GuildStore.Apply(7002, guild.Id, "Hola dame gremio o te baneo");
+                GuildStore.Apply(7002, guild.Id, "Hello, may I join the guild");
                 var application = Assert.Single(GuildStore.Applications(guild.Id));
                 Assert.Equal(7002, application.CharacterId);
-                Assert.Equal("Hola dame gremio o te baneo", application.Message);
+                Assert.Equal("Hello, may I join the guild", application.Message);
                 Assert.NotNull(GuildStore.ApplicationOf(guild.Id, 7002));
 
                 GuildStore.Join(7002, guild.Id);

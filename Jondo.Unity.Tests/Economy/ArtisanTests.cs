@@ -54,13 +54,13 @@ namespace Jondo.Unity.Tests.Economy
         public void An_artisan_in_the_list()
         {
             var session = GameSession.SinSocket();
-            session.State.CharacterId = 901880676642;
-            session.State.CharacterName = "Geno-Spear";
+            session.State.CharacterId = 900000000011;
+            session.State.CharacterName = "Artisan-01";
             session.State.Breed = 20;
             session.State.MapId = 212600322;
             session.State.Jobs[28] = new JobExperience.Progress { JobId = 28, Experience = JobExperience.Floor(20) };
 
-            Assert.Equal(Hex("0a08101c1801200128141220" + "0a020801120a47656e6f2d5370656172181420a2829ce29f1a3a0508828cb065"),
+            Assert.Equal(Hex("0a08101c1801200128141220" + "0a020801120a4172746973616e2d30311814208bd0b8e1981a3a0508828cb065"),
                          ArtisanHandler.Entry(session, 28).Build());
         }
     }

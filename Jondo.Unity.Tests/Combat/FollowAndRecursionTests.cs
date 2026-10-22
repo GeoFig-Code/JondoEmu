@@ -16,7 +16,7 @@ namespace Jondo.Unity.Tests.Combat
     [Collection("MapManager")]
     public class FollowAndRecursionTests
     {
-        private const long Osamodas = 53720776803;
+        private const long Osamodas = 53000000032;
 
         private static byte[] Hex(string hex) => Convert.FromHexString(hex);
 
@@ -72,10 +72,10 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void A_state_trigger_goes_out_bare()
         {
-            Assert.Equal(Hex("0a4f0a4308daf30110e3808890c8011892012001320210093a03454f4e409ee21850e707621610ffffffffffffffffff0118ffffffffffffffffff01680670daf301780780010110e3808890c801188809"),
+            Assert.Equal(Hex("0a4f0a4308daf30110a0a4afb8c5011892012001320210093a03454f4e409ee21850e707621610ffffffffffffffffff0118ffffffffffffffffff01680670daf301780780010110a0a4afb8c501188809"),
                          Jondo.Unity.Server.Network.FightProtocol.BuildBuff(Osamodas, Osamodas, 146, 1160, 405790, 999, 31194, 6, 31194,
                                                                             "EON8", 9, 2, 7, grado: 1));
-            Assert.Equal(Hex("0a500a4408daf30110e3808890c8011893012001320210093a04454f4646409ee21850e707621610ffffffffffffffffff0118ffffffffffffffffff01680670daf301780780010110e3808890c801188809"),
+            Assert.Equal(Hex("0a500a4408daf30110a0a4afb8c5011893012001320210093a04454f4646409ee21850e707621610ffffffffffffffffff0118ffffffffffffffffff01680670daf301780780010110a0a4afb8c501188809"),
                          Jondo.Unity.Server.Network.FightProtocol.BuildBuff(Osamodas, Osamodas, 147, 1160, 405790, 999, 31194, 6, 31194,
                                                                             "EOFF8", 9, 2, 7, grado: 1));
             Assert.Equal("EK", Jondo.Unity.Server.Network.FightProtocol.WireTrigger("EK:m"));
@@ -113,7 +113,7 @@ namespace Jondo.Unity.Tests.Combat
         public void A_turret_in_contact_throws_the_enemy_over()
         {
             var fight = new FightInstance(1, 1);
-            var steamer = Character(359450607906, 0, 100);
+            var steamer = Character(350000000013, 0, 100);
             var enemy = Character(-1, 1, 300);
             fight.AddPlayer(steamer); fight.AddOpponent(enemy);
             int turretCell = Beside(300, 1, 0);

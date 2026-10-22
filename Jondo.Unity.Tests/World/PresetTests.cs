@@ -169,7 +169,7 @@ namespace Jondo.Unity.Tests.World
                 {
                     // itz { 2 { 2 18, 4 { 2 uuid } } }, byte for byte the capture's, echoed in ivk.
                     byte[] itz = Convert.FromHexString(
-                        "122a10122226122464643436353661392d653134372d343036652d626565652d613038376332356531633461");
+                        "122a10122226122430303030303030302d303030302d343030302d383030302d303030303030303030303039");
                     await ItemBarHandler.SetAsync(pipe.ToClient, itz);
                     Assert.Equal(itz, await pipe.Next("ivk"));
                     Assert.Equal(new[] { 18 }, ItemShortcuts.Of(character).Keys);
@@ -184,7 +184,7 @@ namespace Jondo.Unity.Tests.World
                     // On entering the world: the bar, with the build in it.
                     var bar = Fields(ItemShortcuts.BuildBar(character));
                     Assert.Single(bar);
-                    Assert.Equal("dd4656a9-e147-406e-beee-a087c25e1c4a", Text(Sub(bar[0].BytesValue, 4), 2));
+                    Assert.Equal("00000000-0000-4000-8000-000000000009", Text(Sub(bar[0].BytesValue, 4), 2));
 
                     // iul { 2 3 }: ivr { 2 3 }, the bar's 0 left out.
                     await ItemBarHandler.RemoveAsync(pipe.ToClient, 3);

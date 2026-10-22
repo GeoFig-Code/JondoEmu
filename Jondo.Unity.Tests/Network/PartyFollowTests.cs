@@ -19,7 +19,7 @@ namespace Jondo.Unity.Tests.Network
     /// <remarks>
     /// Every hex string here is a whole frame copied out of "Grupos/con grupo seguir
     /// desplazamiento del lider en mapas cercanos y a traves de un zaap", recorded from the
-    /// member's client: Leader (293213045026) leads, the member is 302677754146. The frame numbers
+    /// member's client: Leader (290000000003) leads, the member is 300000000001. The frame numbers
     /// are those of <c>hilo.tramas</c> on that file. The one 1663 comes from the leader's side, in
     /// "Grupos/invitar otro jugador a mi grupo y que acepte invitacion".
     ///
@@ -28,8 +28,8 @@ namespace Jondo.Unity.Tests.Network
     /// </remarks>
     public class PartyFollowTests
     {
-        private const long Leader = 293213045026;
-        private const long Member = 302677754146;
+        private const long Leader = 290000000003;
+        private const long Member = 300000000001;
 
         private static string Hex(byte[] bytes) => Convert.ToHexString(bytes).ToLowerInvariant();
 
@@ -42,19 +42,19 @@ namespace Jondo.Unity.Tests.Network
         [Theory]
         // frame 2: the answer to the first imh, the leader standing on 415 of [1,-32]
         [InlineData(120062979L, 1, -32, 30, 415,
-            "0a390a370a13747970652e616e6b616d612e636f6d2f696b76122008a282f0a6c4081a14088388a0391001201e28e0ffffffffffffffff01209f03")]
+            "0a390a370a13747970652e616e6b616d612e636f6d2f696b7612200883a8e3aab8081a14088388a0391001201e28e0ffffffffffffffff01209f03")]
         // frame 33: behind his jsj 406 -> 46, same map as the member
         [InlineData(120063491L, 2, -32, 30, 46,
-            "0a380a360a13747970652e616e6b616d612e636f6d2f696b76121f08a282f0a6c4081a1408838ca0391002201e28e0ffffffffffffffff01202e")]
+            "0a380a360a13747970652e616e6b616d612e636f6d2f696b76121f0883a8e3aab8081a1408838ca0391002201e28e0ffffffffffffffff01202e")]
         // frame 103: behind the jsd (up) and kmu, landed on 538 of [2,-33]
         [InlineData(120063490L, 2, -33, 30, 538,
-            "0a390a370a13747970652e616e6b616d612e636f6d2f696b76122008a282f0a6c4081a1408828ca0391002201e28dfffffffffffffffff01209a04")]
+            "0a390a370a13747970652e616e6b616d612e636f6d2f696b7612200883a8e3aab8081a1408828ca0391002201e28dfffffffffffffffff01209a04")]
         // frame 182: behind the jsd (left) and kmu, landed on 265 of [1,-33]
         [InlineData(120062978L, 1, -33, 30, 265,
-            "0a390a370a13747970652e616e6b616d612e636f6d2f696b76122008a282f0a6c4081a14088288a0391001201e28dfffffffffffffffff01208902")]
+            "0a390a370a13747970652e616e6b616d612e636f6d2f696b7612200883a8e3aab8081a14088288a0391001201e28dfffffffffffffffff01208902")]
         // frame 271: after the zaap, the leader at [5,-18] in another subarea
         [InlineData(191105026L, 5, -18, 95, 260,
-            "0a390a370a13747970652e616e6b616d612e636f6d2f696b76122008a282f0a6c4081a14088290905b1005205f28eeffffffffffffffff01208402")]
+            "0a390a370a13747970652e616e6b616d612e636f6d2f696b7612200883a8e3aab8081a14088290905b1005205f28eeffffffffffffffff01208402")]
         public void The_leader_position_is_the_captured_ikv(long mapId, int x, int y, int subArea,
                                                               int cell, string captured)
         {
@@ -96,7 +96,7 @@ namespace Jondo.Unity.Tests.Network
                          Hex(PartyFollowProtocol.BuildFollowing("Leader")));
             Assert.Equal("0a240a220a13747970652e616e6b616d612e636f6d2f6c716e120b10fd0c22064c6561646572",
                          Hex(PartyFollowProtocol.BuildStoppedFollowing("Leader")));
-            Assert.Equal("0a200a1e0a13747970652e616e6b616d612e636f6d2f696b61120708a28280c8e708",
+            Assert.Equal("0a200a1e0a13747970652e616e6b616d612e636f6d2f696b6112070881f092cbdd08",
                          Hex(PartyFollowProtocol.BuildFollowEnded(Member)));
 
             // frame 10 of "invitar otro jugador a mi grupo y que acepte invitacion", leader's side
@@ -109,17 +109,17 @@ namespace Jondo.Unity.Tests.Network
         {
             // frames 101-102: up (6); frame 156: down (2); frames 5-6: east, which is 0 and so no
             // f3 at all -- the leader walking from [1,-32] to [2,-32].
-            Assert.Equal("0a220a200a13747970652e616e6b616d612e636f6d2f6a7364120910a282f0a6c4081806",
+            Assert.Equal("0a220a200a13747970652e616e6b616d612e636f6d2f6a736412091083a8e3aab8081806",
                          Hex(ConnectionProtocol.BuildActorLeft(Leader, 6)));
-            Assert.Equal("0a220a200a13747970652e616e6b616d612e636f6d2f6a7364120910a282f0a6c4081802",
+            Assert.Equal("0a220a200a13747970652e616e6b616d612e636f6d2f6a736412091083a8e3aab8081802",
                          Hex(ConnectionProtocol.BuildActorLeft(Leader, 2)));
-            Assert.Equal("0a200a1e0a13747970652e616e6b616d612e636f6d2f6a7364120710a282f0a6c408",
+            Assert.Equal("0a200a1e0a13747970652e616e6b616d612e636f6d2f6a736412071083a8e3aab808",
                          Hex(ConnectionProtocol.BuildActorLeft(Leader, 0)));
-            Assert.Equal("0a200a1e0a13747970652e616e6b616d612e636f6d2f6b6d75120710a282f0a6c408",
+            Assert.Equal("0a200a1e0a13747970652e616e6b616d612e636f6d2f6b6d7512071083a8e3aab808",
                          Hex(ConnectionProtocol.BuildActorRemoved(Leader)));
 
             // And the member's own, before his jru: frame 110, the same way out.
-            Assert.Equal("0a220a200a13747970652e616e6b616d612e636f6d2f6a7364120910a28280c8e7081806",
+            Assert.Equal("0a220a200a13747970652e616e6b616d612e636f6d2f6a736412091081f092cbdd081806",
                          Hex(ConnectionProtocol.BuildActorLeft(Member, 6)));
         }
 
@@ -131,8 +131,8 @@ namespace Jondo.Unity.Tests.Network
             var notices = SessionRegistry.LeaveNotices(Leader, partyMate: true, porDonde: 6);
             Assert.Equal(new[]
             {
-                "0a220a200a13747970652e616e6b616d612e636f6d2f6a7364120910a282f0a6c4081806",
-                "0a200a1e0a13747970652e616e6b616d612e636f6d2f6b6d75120710a282f0a6c408",
+                "0a220a200a13747970652e616e6b616d612e636f6d2f6a736412091083a8e3aab8081806",
+                "0a200a1e0a13747970652e616e6b616d612e636f6d2f6b6d7512071083a8e3aab808",
             }, notices.Select(Hex).ToArray());
         }
 
@@ -142,7 +142,7 @@ namespace Jondo.Unity.Tests.Network
             // frames 245-246: the leader takes the zaap and the member gets the empty imk and the
             // kmu; the imk is the follow handler's, and from the map there is only the kmu.
             var notices = SessionRegistry.LeaveNotices(Leader, partyMate: true, porDonde: null);
-            Assert.Equal(new[] { "0a200a1e0a13747970652e616e6b616d612e636f6d2f6b6d75120710a282f0a6c408" },
+            Assert.Equal(new[] { "0a200a1e0a13747970652e616e6b616d612e636f6d2f6b6d7512071083a8e3aab808" },
                          notices.Select(Hex).ToArray());
         }
 
@@ -192,7 +192,7 @@ namespace Jondo.Unity.Tests.Network
             Assert.Equal(new[] { member, member, member, leader }, plan.Select(d => d.To).ToArray());
             Assert.Equal("0a240a220a13747970652e616e6b616d612e636f6d2f6c716e120b10fe0c22064c6561646572",
                          Hex(plan[0].Frame));
-            Assert.Equal("0a390a370a13747970652e616e6b616d612e636f6d2f696b76122008a282f0a6c4081a1408838ca0391002201e28e0ffffffffffffffff01209603",
+            Assert.Equal("0a390a370a13747970652e616e6b616d612e636f6d2f696b7612200883a8e3aab8081a1408838ca0391002201e28e0ffffffffffffffff01209603",
                          Hex(PartyFollowProtocol.BuildLeaderPosition(Leader, 120063491, where.Map, 406)));
             Assert.Equal(Hex(PartyFollowProtocol.BuildLeaderPosition(leader, 120063491, where.Map, 406)),
                          Hex(plan[1].Frame));
@@ -378,12 +378,12 @@ namespace Jondo.Unity.Tests.Network
 
             var captured = new Dictionary<long, (int Cell, string Frame)>
             {
-                [120062979] = (415, "0a390a370a13747970652e616e6b616d612e636f6d2f696b76122008a282f0a6c4081a14088388a0391001201e28e0ffffffffffffffff01209f03"),
-                [120063491] = (46, "0a380a360a13747970652e616e6b616d612e636f6d2f696b76121f08a282f0a6c4081a1408838ca0391002201e28e0ffffffffffffffff01202e"),
-                [120063490] = (538, "0a390a370a13747970652e616e6b616d612e636f6d2f696b76122008a282f0a6c4081a1408828ca0391002201e28dfffffffffffffffff01209a04"),
-                [120063489] = (538, "0a390a370a13747970652e616e6b616d612e636f6d2f696b76122008a282f0a6c4081a1408818ca0391002201e28deffffffffffffffff01209a04"),
-                [120062978] = (265, "0a390a370a13747970652e616e6b616d612e636f6d2f696b76122008a282f0a6c4081a14088288a0391001201e28dfffffffffffffffff01208902"),
-                [191105026] = (260, "0a390a370a13747970652e616e6b616d612e636f6d2f696b76122008a282f0a6c4081a14088290905b1005205f28eeffffffffffffffff01208402"),
+                [120062979] = (415, "0a390a370a13747970652e616e6b616d612e636f6d2f696b7612200883a8e3aab8081a14088388a0391001201e28e0ffffffffffffffff01209f03"),
+                [120063491] = (46, "0a380a360a13747970652e616e6b616d612e636f6d2f696b76121f0883a8e3aab8081a1408838ca0391002201e28e0ffffffffffffffff01202e"),
+                [120063490] = (538, "0a390a370a13747970652e616e6b616d612e636f6d2f696b7612200883a8e3aab8081a1408828ca0391002201e28dfffffffffffffffff01209a04"),
+                [120063489] = (538, "0a390a370a13747970652e616e6b616d612e636f6d2f696b7612200883a8e3aab8081a1408818ca0391002201e28deffffffffffffffff01209a04"),
+                [120062978] = (265, "0a390a370a13747970652e616e6b616d612e636f6d2f696b7612200883a8e3aab8081a14088288a0391001201e28dfffffffffffffffff01208902"),
+                [191105026] = (260, "0a390a370a13747970652e616e6b616d612e636f6d2f696b7612200883a8e3aab8081a14088290905b1005205f28eeffffffffffffffff01208402"),
             };
 
             var rows = new Dictionary<long, MapInfo>();

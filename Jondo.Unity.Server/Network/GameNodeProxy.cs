@@ -2506,7 +2506,7 @@ namespace Jondo.Unity.Server.Network
         ///
         /// The shape was right: the real server sends here a GUID WITH HYPHENS, 36 characters
         /// —«desde world a eleccion servidor.pcapng» opens with
-        /// <c>kqr (40) 0a24 b00dae9b-e88d-4b5c-9110-e54f3ffaeb40 2001</c>— and we sent
+        /// <c>kqr (40) 0a24 00000000-0000-4000-8000-00000000000a 2001</c>— and we sent
         /// one just like it. What was missing is that nobody knew ours afterwards.
         ///
         /// What the client does with it is measured in the player's log: it closes the

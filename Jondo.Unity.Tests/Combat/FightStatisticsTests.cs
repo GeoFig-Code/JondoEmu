@@ -24,10 +24,10 @@ namespace Jondo.Unity.Tests.Combat
                 DirectDamage = 100, ActionPointsSpent = 6, ActionPointsOnDamage = 6, TurnsPlayed = 1,
             };
 
-            byte[] frame = FightProtocol.BuildFightStatistics(53721235555, s, enemiesDefeated: 1);
+            byte[] frame = FightProtocol.BuildFightStatistics(53000000029, s, enemiesDefeated: 1);
 
             Assert.Equal(
-                "0a3d08e380a490c80112340a09120020e380a490c8011204100120011a05250000c04022002a00320042004a0052005a0e1d555585412064350000c84248641204080128" + "64",
+                "0a3d089da4afb8c50112340a091200209da4afb8c5011204100120011a05250000c04022002a00320042004a0052005a0e1d555585412064350000c84248641204080128" + "64",
                 Hex(frame));
         }
 
@@ -46,10 +46,10 @@ namespace Jondo.Unity.Tests.Combat
                 ActionPointsSpent = 82, MovementPointsSpent = 21, TurnsPlayed = 28,
             };
 
-            byte[] frame = FightProtocol.BuildFightStatistics(53721497699, s, enemiesDefeated: 4);
+            byte[] frame = FightProtocol.BuildFightStatistics(53000000024, s, enemiesDefeated: 4);
 
             Assert.Equal(
-                "0a4f08e380b490c80112460a09120020e380b490c8011204100420041a0525b76d3b4022002a00320808f80a1d000048424205250000403f4a0052005a1310f70c1d0080ac4320d00f356edb8e4238d9021208080428d00f40f80a",
+                "0a4f0898a4afb8c50112460a0912002098a4afb8c5011204100420041a0525b76d3b4022002a00320808f80a1d000048424205250000403f4a0052005a1310f70c1d0080ac4320d00f356edb8e4238d9021208080428d00f40f80a",
                 Hex(frame));
         }
 

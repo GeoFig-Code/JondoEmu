@@ -21,14 +21,14 @@ namespace Jondo.Unity.Tests.Sessions
     /// the frames the captures have for them.
     /// </summary>
     /// <remarks>
-    /// The character is the one of the captures — 302677754146, account 65924386 — so that what
+    /// The character is the one of the captures — 300000000001, account 60000001 — so that what
     /// comes out can be compared byte for byte with what the real server sent to it.
     /// </remarks>
     [Collection(Jondo.Unity.Tests.Quests.AlmanaxTests.AlmanaxClock)]
     public class ProgressionFlowTests
     {
-        private const long Character = 302677754146;
-        private const long Account = 65924386;
+        private const long Character = 300000000001;
+        private const long Account = 60000001;
 
         private static bool Available
             => File.Exists(Paths.WorldDb) && File.Exists(Paths.AchievementsJson) && File.Exists(Paths.EmotesJson);
@@ -344,7 +344,7 @@ namespace Jondo.Unity.Tests.Sessions
 
                     // Emotes\usar emote malabares, frames 4-5, byte for byte.
                     await EmoteHandler.PlayAsync(at.ToClient, ConnectionProtocol.Push(Op.Khl, Hex("081d")));
-                    Assert.Equal(Hex("08a28280c8e708181d28a2dab71f320f416e696d456d6f74654a7567676c65"),
+                    Assert.Equal(Hex("0881f092cbdd08181d28818ece1c320f416e696d456d6f74654a7567676c65"),
                         await at.NextAsync(Op.Khh));
 
                     // Sitting straight after is refused as the capture refuses it: no answer.

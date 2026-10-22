@@ -179,10 +179,10 @@ namespace Jondo.Unity.Tests.Combat
         public void A_bomb_announces_the_combo_it_casts_on_itself()
         {
             byte[] paquete = FightProtocol.BuildComboCast(
-                bomb: -5, owner: 53721497699, cell: 216, spell: 20497, levelId: 54099);
+                bomb: -5, owner: 53000000024, cell: 216, spell: 20497, levelId: 54099);
 
             Assert.Equal("18fbffffffffffffffff013a2e10fbffffffffffffffff01220b20fbffffffff" +
-                         "ffffffff01220720e380b490c80130d8013a081091a00118d3a60370ac02",
+                         "ffffffff0122072098a4afb8c50130d8013a081091a00118d3a60370ac02",
                          Hex(paquete));
         }
 
@@ -191,10 +191,10 @@ namespace Jondo.Unity.Tests.Combat
         public void And_the_bonus_spell_right_behind_it()
         {
             byte[] paquete = FightProtocol.BuildComboCast(
-                bomb: -5, owner: 53721497699, cell: 216, spell: 20500, levelId: 54103);
+                bomb: -5, owner: 53000000024, cell: 216, spell: 20500, levelId: 54103);
 
             Assert.Equal("18fbffffffffffffffff013a2e10fbffffffffffffffff01220b20fbffffffff" +
-                         "ffffffff01220720e380b490c80130d8013a081094a00118d7a60370ac02",
+                         "ffffffff0122072098a4afb8c50130d8013a081094a00118d7a60370ac02",
                          Hex(paquete));
         }
 

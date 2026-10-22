@@ -12,7 +12,6 @@ namespace Jondo.Unity.Server
     {
         private static readonly string[] ForbiddenLiterals = new string[]
         {
-            "670668947750",
             "-20003",
             "\"Fortellon\""
         };
@@ -150,7 +149,7 @@ namespace Jondo.Unity.Server
         {
             // A kvw like the one the client sends: the character's id in f1.
             byte[] kvw = Network.ConnectionProtocol.Push(
-                Protocol.Op.Kvw, Network.Pb.New().Var(1, 302677754146L).Build());
+                Protocol.Op.Kvw, Network.Pb.New().Var(1, 300000000001L).Build());
 
             if (Handlers.CharacterSelectionHandler.HandleCharacterSelectionRequest(kvw, 0))
                 throw new InvalidOperationException(

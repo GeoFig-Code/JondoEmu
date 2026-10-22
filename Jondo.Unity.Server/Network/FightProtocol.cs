@@ -534,9 +534,9 @@ namespace Jondo.Unity.Server.Network
         /// <remarks>
         /// Measured in the three captures carrying a kme, and it is not the normal action one. In
         /// «combate contra poutch nivel 75 ... hechizos sacro-rendirse.pcapng» the jto answering
-        /// the kme is 08a28280c8e7081005 —f2 = 5— and its jwi is 080410a28280c8e7081805 —f3 = 5—; in
-        /// «aceptar desafio-combate completo-abandonar al final.pcapng», 08a282f0a6c4081005 and
-        /// 080210a282f0a6c4081805. The 5 appears exactly once per capture and only there.
+        /// the kme is 0881f092cbdd081005 —f2 = 5— and its jwi is 08041081f092cbdd081805 —f3 = 5—; in
+        /// «aceptar desafio-combate completo-abandonar al final.pcapng», 0883a8e3aab8081005 and
+        /// 08021083a8e3aab8081805. The 5 appears exactly once per capture and only there.
         /// </remarks>
         public const int SurrenderSequence = 5;
 
@@ -715,7 +715,7 @@ namespace Jondo.Unity.Server.Network
         /// two of the four real samples are minus one.
         ///
         ///   08ffffffffffffffffff01 10ca63   =  at fighter −1, spell 12746
-        ///   08a28280c8e708 10b21b           =  at oneself, spell 3506
+        ///   0881f092cbdd08 10b21b           =  at oneself, spell 3506
         /// </summary>
         public static (long Fighter, int Spell) ReadCastAtFighter(byte[] payload)
         {
@@ -894,8 +894,8 @@ namespace Jondo.Unity.Server.Network
         ///
         ///   f3: who cast the 406     f33 { f2: the spell whose rows went, f4: off whom }
         ///
-        /// Behind the jya of each row. Measured on the Furor capture -- "jwe f3=53721170019
-        /// f14=406 f33{f2=28604 f4=53721170019}" after jya 36, 37 and 38 -- and eleven times
+        /// Behind the jya of each row. Measured on the Furor capture -- "jwe f3=53000000026
+        /// f14=406 f33{f2=28604 f4=53000000026}" after jya 36, 37 and 38 -- and eleven times
         /// on Tempestad de Potencia's, on the enemies.
         /// </summary>
         /// <param name="grade">
@@ -965,8 +965,8 @@ namespace Jondo.Unity.Server.Network
         /// inside a jwe f14 = 401, ONE PER CELL. Two in a row of the fire wall:
         ///
         /// <code>
-        ///   f3=53721497699 f14=401 f32{f1{f1{f2=16711680 f3=260} f4=1 f5=2 f6=3
-        ///                                 f9=13458 f10=260 f11=1 f12=53721497699}}
+        ///   f3=53000000024 f14=401 f32{f1{f1{f2=16711680 f3=260} f4=1 f5=2 f6=3
+        ///                                 f9=13458 f10=260 f11=1 f12=53000000024}}
         ///   ... the next one the same with f3=274, f4=2 and f10=274
         /// </code>
         ///
@@ -1110,8 +1110,8 @@ namespace Jondo.Unity.Server.Network
         /// <code>
         ///   jzc  f1=-1 f2=290 f7=1 f8=14           the turn of -1 begins
         ///   jto  f1=-1 f2=2                        opens the sequence, IN THE VICTIM NAME
-        ///   jwe  f3=53721497699 f14=307 f9{f1=274 f2=-1 f4=6}
-        ///   jwe  f3=53721497699 f14=99  f40{f2=-1 f3=44 f4=2 f5=4}
+        ///   jwe  f3=53000000024 f14=307 f9{f1=274 f2=-1 f4=6}
+        ///   jwe  f3=53000000024 f14=99  f40{f2=-1 f3=44 f4=2 f5=4}
         ///   jwi  f1=3 f2=-1 f3=2                   and closes it
         /// </code>
         ///
@@ -1241,7 +1241,7 @@ namespace Jondo.Unity.Server.Network
         ///   3a 2e                             f7
         ///      10 fbffffffffffffffff01        f2  = -5, itself
         ///      22 0b 20 fbffffffffffffffff01  f4 { f4 = -5 }
-        ///      22 07 20 e380b490c801          f4 { f4 = the Rogue }
+        ///      22 07 20 98a4afb8c501          f4 { f4 = the Rogue }
         ///      30 d801                        f6  = 216, its cell
         ///      3a 08 10 91a001 18 d3a603      f7 { f2 = 20497, f3 = 54099 }
         ///   70 ac02                           f14 = 300
@@ -1417,7 +1417,7 @@ namespace Jondo.Unity.Server.Network
         /// points mould —f5 { f1 }— and 97 uses its own. It is only sent to the character the
         /// client controls; see <see cref="TemporaryLifeMalus"/>.
         ///
-        ///   08a28280c8e708 1a1e 1802 2a1a 0861 2216 1098ffffffffffffffff01 40b0feffffffffffffff01
+        ///   0881f092cbdd08 1a1e 1802 2a1a 0861 2216 1098ffffffffffffffff01 40b0feffffffffffffff01
         ///   = to the player, he is missing 104 life and carries 208 eroded
         /// </summary>
         public static byte[] BuildLifeSheet(long fighterId, long deficit, long erosion)
@@ -1478,7 +1478,7 @@ namespace Jondo.Unity.Server.Network
             // not from the current life. It appears in 977 of the 986 damage blocks of the captures, and in 727
             // of them it is exactly a tenth of the damage:
             //
-            //   c2020e 10a28280c8e708 18ce03 2003 282e   =  462 damage, 46 erosion
+            //   c2020e 1081f092cbdd08 18ce03 2003 282e   =  462 damage, 46 erosion
             //
             // The server already computed it —it is in Fighter.Erosionar— and did not send it, so the
             // client never found out that the cap had gone down.
@@ -1573,7 +1573,7 @@ namespace Jondo.Unity.Server.Network
         ///
         /// The quantity goes as a NEGATIVE, in 64-bit two's complement:
         ///
-        ///   a20112 08fcffffffffffffffff01 10a282f0a6c408   =  minus four AP
+        ///   a20112 08fcffffffffffffffff01 1083a8e3aab808   =  minus four AP
         ///
         /// This is what brings up the little number floating over the fighter, just like with
         /// life. Without it, the server removed the points internally and on screen nothing
@@ -1707,7 +1707,7 @@ namespace Jondo.Unity.Server.Network
         ///   f5 { f2 { f1: name, f2: level } }
         ///
         /// -- and the sheet in the monsters' mould, as for any summon. Frame 16 of "sram-doble":
-        /// the Sram's look and "KTAS5625" at 200, on 258 facing 5, as -4.
+        /// the Sram's look and "Fighter2" at 200, on 258 facing 5, as -4.
         /// </summary>
         public static byte[] BuildDouble(long quienInvoca, long quienEs, int celda, int orientacion,
                                          byte[] look, string nombre, int nivel,
@@ -2364,7 +2364,7 @@ namespace Jondo.Unity.Server.Network
         /// Byte by byte from the four challenge captures. The four measured hqc have the same
         /// shape and their three fields always set:
         ///
-        ///   08a28280c8e708 10a282f0a6c408 18ee03    challenger, challenged, 494
+        ///   0881f092cbdd08 1083a8e3aab808 18ee03    challenger, challenged, 494
         /// </remarks>
         public static byte[] BuildChallengeOffered(long challengerId, long targetId, int challengeId)
             => Pb.New().Var(1, challengerId).Var(2, targetId).Var(3, challengeId).Build();
@@ -2375,8 +2375,8 @@ namespace Jondo.Unity.Server.Network
         /// <remarks>
         /// And that is the whole difference between the two endings, measured in the four captures:
         ///
-        ///   accepted   08a28280c8e708 10ee03 1801 20a282f0a6c408
-        ///   declined   08a28280c8e708 10e903      20a282f0a6c408
+        ///   accepted   0881f092cbdd08 10ee03 1801 2083a8e3aab808
+        ///   declined   0881f092cbdd08 10e903      2083a8e3aab808
         ///
         /// The challenged one's field is FOUR, not three, and that is not a misreading: in
         /// the two declined ones the 20 goes right after the id, with nothing in between.

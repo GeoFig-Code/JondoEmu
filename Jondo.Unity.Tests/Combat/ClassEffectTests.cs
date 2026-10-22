@@ -55,7 +55,7 @@ namespace Jondo.Unity.Tests.Combat
         public void Aguja_takes_one_grade_of_its_poison_off()
         {
             var fight = new FightInstance(1, 1);
-            var xelor = Character(53720973411, 0, 300);
+            var xelor = Character(53000000025, 0, 300);
             var enemy = Monster(-3, 301);
             fight.AddPlayer(xelor); fight.AddOpponent(enemy);
             int n = 0;
@@ -69,7 +69,7 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Single(Assert.Single(outcomes).BuffsQuitados);
             Assert.False(enemy.Buffs.TieneEstado(2328));
             Assert.Single(enemy.Buffs.Puestos);
-            StealTests.SameFields(StealTests.Hex("18e3809490c80170fe0a8a021110faf001180620fdffffffffffffffff01"),
+            StealTests.SameFields(StealTests.Hex("1899a4afb8c50170fe0a8a021110faf001180620fdffffffffffffffff01"),
                                   FightProtocol.BuildSpellEffectsRemoved(xelor.Id, 30842, enemy.Id, grade: 6,
                                                                          effect: EffectEngine.QuitaUnGradoDeUnHechizo));
         }

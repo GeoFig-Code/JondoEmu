@@ -147,23 +147,23 @@ namespace Jondo.Unity.Tests.World
             // "desde dentro de casa salir a fuera", frame 14: a neighbour's instance 16.
             var plaque = new HouseProtocol.Plaque
             {
-                Instance = 16, OwnerName = "UnDanielableToBeStopped", OwnerTag = "7888", Locked = true,
+                Instance = 16, OwnerName = "ExampleHouseOwnerNumber", OwnerTag = "0003", Locked = true,
             };
-            Assert.Equal(Hex("0a2920012801421f0a17556e44616e69656c61626c65546f426553746f7070656412043738383848016010109cf31f1a039df31f"),
+            Assert.Equal(Hex("0a2920012801421f0a174578616d706c65486f7573654f776e65724e756d62657212043030303348016010109cf31f1a039df31f"),
                          HouseProtocol.BuildChanged(House, new long[] { Door }, plaque));
         }
 
         [Fact]
         public void A_house_on_its_street_is_the_jss_f9()
         {
-            // Pandala, frame 3867: house 519513, model 407, door 520644, MerkShadow's instance 4,
-            // shared with the guild "Arma de Dios" -- a block Jondo does not send, given here as captured.
-            byte[] guild = Hex("0a0c1a0a08e7011020288fd2bf0710982c1a0c41726d612064652044696f73200f");
+            // Pandala, frame 3867: house 519513, model 407, door 520644, HouseOwner's instance 4,
+            // shared with the guild "Guild-Sample" -- a block Jondo does not send, given here as captured.
+            byte[] guild = Hex("0a0c1a0a08e7011020288fd2bf0710982c1a0c4775696c642d53616d706c65200f");
             var plaque = new HouseProtocol.Plaque
             {
-                Instance = 4, OwnerName = "MerkShadow", OwnerTag = "4649", Locked = true, GuildBlock = guild,
+                Instance = 4, OwnerName = "HouseOwner", OwnerTag = "0004", Locked = true, GuildBlock = guild,
             };
-            Assert.Equal(Hex("10d9da1f2097033a460a03c4e31f123f1a210a0c1a0a08e7011020288fd2bf0710982c1a0c41726d612064652044696f73200f2001280142120a0a4d65726b536861646f7712043436343948016004"),
+            Assert.Equal(Hex("10d9da1f2097033a460a03c4e31f123f1a210a0c1a0a08e7011020288fd2bf0710982c1a0c4775696c642d53616d706c65200f2001280142120a0a486f7573654f776e657212043030303448016004"),
                          HouseProtocol.BuildOnMap(519513, 407, new long[] { 520644 }, new[] { plaque }).Build());
         }
 
@@ -193,8 +193,8 @@ namespace Jondo.Unity.Tests.World
         public void The_house_one_is_inside_is_the_jss_f7()
         {
             // "entrar en mi casa", frame 16: the street's -30,-53, the plaque, the house and its model.
-            byte[] guild = Hex("0a111a0f08ce0210221885e2ef072896d2820110be351a0748657a626f6c612004");
-            Assert.Equal(Hex("0a640a5b0a1608e2ffffffffffffffff0110cbffffffffffffffff0112411a210a111a0f08ce0210221885e2ef072896d2820110be351a0748657a626f6c6120042001280142140a0c4f776e65724163636f756e7412043030303148016016109cf31f20ba03"),
+            byte[] guild = Hex("0a111a0f08ce0210221885e2ef072896d2820110be351a074775696c642d412004");
+            Assert.Equal(Hex("0a640a5b0a1608e2ffffffffffffffff0110cbffffffffffffffff0112411a210a111a0f08ce0210221885e2ef072896d2820110be351a074775696c642d4120042001280142140a0c4f776e65724163636f756e7412043030303148016016109cf31f20ba03"),
                          HouseProtocol.BuildInterior(House, 442, -30, -53, CapturedPlaque(locked: true, guild: guild)).Build());
         }
 
@@ -213,8 +213,8 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(Hex("0802"), ConnectionProtocol.BuildDialogClosed(HouseProtocol.CodeClosed));
 
             // The chest's iwn on "Poner el cerrojo", "poner cerrojo al cofre", frame 3.
-            Assert.Equal(Hex("080110edf11f206928a28280c8e708"),
-                         ConnectionProtocol.BuildElementInUse(522477, Houses.ChestLockSkill, 302677754146));
+            Assert.Equal(Hex("080110edf11f20692881f092cbdd08"),
+                         ConnectionProtocol.BuildElementInUse(522477, Houses.ChestLockSkill, 300000000001));
         }
 
         [Theory]

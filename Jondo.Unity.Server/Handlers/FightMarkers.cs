@@ -13,7 +13,7 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         /// <remarks>
         /// MEASURED in «Combate/combate contra poutch nivel 75…-marcadores permanentes»: kmh 10 a0 02,
-        /// cell 288, answered kmj { 302677754146, 288 }. The client's fight frame (fml) sends it from
+        /// cell 288, answered kmj { 300000000001, 288 }. The client's fight frame (fml) sends it from
         /// five places, each with the cell. Only his own side gets it, as the side's own messages go
         /// (ASuBandoAsync); out of a fight there is nothing to mark.
         /// </remarks>

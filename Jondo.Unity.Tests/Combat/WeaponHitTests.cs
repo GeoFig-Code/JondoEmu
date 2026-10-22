@@ -92,11 +92,11 @@ namespace Jondo.Unity.Tests.Combat
         {
             string Hex(Jondo.Unity.Server.Network.Pb pb) => System.Convert.ToHexString(pb.Build()).ToLowerInvariant();
 
-            Assert.Equal("10ffffffffffffffffff012209100120e3809490c80130e701400150aaf801",
-                         Hex(Jondo.Unity.Server.Network.FightProtocol.CastAt(53720973411, -1, 231, 0, 0, false,
+            Assert.Equal("10ffffffffffffffffff01220910012099a4afb8c50130e701400150aaf801",
+                         Hex(Jondo.Unity.Server.Network.FightProtocol.CastAt(53000000025, -1, 231, 0, 0, false,
                                                                              esteTurno: 1, arma: 31786)));
             Assert.Equal("10ffffffffffffffffff0130830240015000",
-                         Hex(Jondo.Unity.Server.Network.FightProtocol.CastAt(53721170019, -1, 259, 0, 0, false)));
+                         Hex(Jondo.Unity.Server.Network.FightProtocol.CastAt(53000000026, -1, 259, 0, 0, false)));
         }
     }
 }

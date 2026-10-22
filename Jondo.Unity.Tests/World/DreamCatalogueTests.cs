@@ -209,7 +209,7 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public async Task The_every_spell_hnd_is_the_capture_s()
         {
-            var fighter = new Fighter { Id = 879988113698 };
+            var fighter = new Fighter { Id = 870000000004 };
             fighter.EverySpell[SpellAspect.AlcanceMaximo] = 1;
             fighter.EverySpell[SpellAspect.CastIntervalDown] = 1;
             var sent = new List<byte[]>();
@@ -218,7 +218,7 @@ namespace Jondo.Unity.Tests.World
 
             Assert.Equal(2, sent.Count);
             var first = ConnectionProtocol.ReadPayload(sent[0], Op.Hnd);
-            Assert.Equal("0a0910011801200c28f00210a282849bce19", Convert.ToHexString(first!).ToLowerInvariant());
+            Assert.Equal("0a0910011801200c28f0021084f8a980a919", Convert.ToHexString(first!).ToLowerInvariant());
         }
 
         /// <summary>Vent Arrière: the dream's side plays first, whatever the monsters' initiative.</summary>

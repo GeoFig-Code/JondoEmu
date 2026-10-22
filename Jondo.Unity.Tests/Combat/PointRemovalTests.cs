@@ -147,8 +147,8 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void The_dodge_frame_is_the_captures()
         {
-            byte[] frame = FightProtocol.BuildPointsDodged(53721104483, 23, -5, 1);
-            Assert.Equal("18e3809c90c80170b502e2010d080118fbffffffffffffffff01",
+            byte[] frame = FightProtocol.BuildPointsDodged(53000000030, 23, -5, 1);
+            Assert.Equal("189ea4afb8c50170b502e2010d080118fbffffffffffffffff01",
                          string.Concat(frame.Select(b => b.ToString("x2"))));
         }
     }

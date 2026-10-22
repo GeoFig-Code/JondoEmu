@@ -2446,8 +2446,8 @@ namespace Jondo.Unity.Server.Network
         /// directions (0 right, 2 down, 4 left, 6 up). The client takes the
         /// figure out walking towards that side and then deletes it.
         ///
-        ///   10 a282f0a6c408 18 06     who, and he left through the top
-        ///   10 a282f0a6c408           who, and he left to the east (0, off the wire)
+        ///   10 83a8e3aab808 18 06     who, and he left through the top
+        ///   10 83a8e3aab808           who, and he left to the east (0, off the wire)
         /// </summary>
         /// <remarks>
         /// The one without f3 is direction 0, east, which proto3 leaves off the wire; it is not an
@@ -2672,7 +2672,7 @@ namespace Jondo.Unity.Server.Network
             }
 
             // The alliance, right behind the guild: f5 { f5 { f1 status, f2 alliance } }, as the jsn
-            // that redraws the character on joining «A B S I N T O» carries it. It is what puts the
+            // that redraws the character on joining «E X A M P L E» carries it. It is what puts the
             // alliance's tag by his name, and its f1 is his aggressable status: the client sets the
             // alliance window's «Alliance fight» switch from it on every map (ees.wue).
             var alliance = Managers.AllianceStore.AllianceOf(characterId);
@@ -2898,8 +2898,8 @@ namespace Jondo.Unity.Server.Network
         ///   f1: who is invited    f2: who invites   f3: places
         ///   f5: the party         f6: ?             f7: the inviter's name
         ///
-        /// Measured: 08a28280c8e708 10a282f0a6c408 1808 28e8ac04 3001 3a064c6561646572, that is
-        /// invitee 302677754146, host 293213045026, eight places, party 71272, and «Leader».
+        /// Measured: 0881f092cbdd08 1083a8e3aab808 1808 28e8ac04 3001 3a064c6561646572, that is
+        /// invitee 300000000001, host 290000000003, eight places, party 71272, and «Leader».
         /// f6 is 1 in one capture and 2 in another and what distinguishes them has not been worked out; 1 is sent,
         /// which is that of the invitation that gets accepted.
         /// </summary>
@@ -2941,10 +2941,10 @@ namespace Jondo.Unity.Server.Network
         /// A private message (kth): { f1: date, f4: empty, f5: the other's id, f6: his name,
         /// f7: the text }.
         ///
-        /// Measured from the guild capture, where the whisper to «Hiierbita-Xx» DID arrive:
+        /// Measured from the guild capture, where the whisper to «Player-Alpha» DID arrive:
         ///
-        ///   0a19 «2026-08-12T22:54:29+02:00»  2200  28 a282acfea805
-        ///   320c «Hiierbita-Xx»  3a04 «hola»
+        ///   0a19 «2026-08-12T22:54:29+02:00»  2200  28 8590d8c69e05
+        ///   320c «Player-Alpha»  3a04 «hola»
         ///
         /// Mind two things. It carries no CHANNEL: the client knows it is private by the message
         /// itself, and that is why sending it as a kti through channel 9 draws nothing. And what it carries is

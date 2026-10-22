@@ -1085,7 +1085,7 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>
         /// A member's rank from the members window (jgv): f2 the member, f4 the rank. Read off the client
         /// (GuildMemberRightsUI.OnModifyRank, ffr.beet), which never fills the f3. Measured in
-        /// «...-intentar asignar rango a otro»: "10a282acfea8052001", rank 1 to a member who had just
+        /// «...-intentar asignar rango a otro»: "108590d8c69e052001", rank 1 to a member who had just
         /// joined, refused with the lqn 740 and its "24" -- a member has to have been in the guild a day.
         /// </summary>
         public static async Task AssignRankAsync(NetworkStream stream, byte[] frame)
@@ -1659,7 +1659,7 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>
         /// Answering an application (jlt): f1 whether it is accepted -- absent when it is refused --,
         /// f2 the applicant. Read off the client: GuildApplicationsUI.ReplyToApplication(applicant,
-        /// accept) sends it. Measured on refusing one, "10a282acfea805", the applicant alone,
+        /// accept) sends it. Measured on refusing one, "108590d8c69e05", the applicant alone,
         /// answered at once with the jly that takes it off the list. An accepted applicant joins at
         /// rank 4 and is sent his whole guild.
         /// </summary>
@@ -1793,7 +1793,7 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>
         /// Inviting somebody from the client (jjn): f2 the character. A player's menu sends it
         /// (PlayerMenuMaker.OnGuildInvite), and it was taken for accepting an application, which is
-        /// the jlt. Measured in «...-rechazarla-invitar a gremio»: the jjn "10a282acfea805" and a jin
+        /// the jlt. Measured in «...-rechazarla-invitar a gremio»: the jjn "108590d8c69e05" and a jin
         /// at 1 back at once.
         /// </summary>
         public static async Task InviteFromClientAsync(NetworkStream stream, byte[] frame)

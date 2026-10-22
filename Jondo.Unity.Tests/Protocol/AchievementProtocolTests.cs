@@ -29,14 +29,14 @@ namespace Jondo.Unity.Tests.Protocol
         public void An_achievement_earned_on_the_rat_hunt_is_the_captured_mfu()
         {
             // Misiones\mision matarratas completa, frame 76: 423 "Taberna", at level 200.
-            Assert.Equal("0a0d08c80110a282849bce1918a703", Hex(AchievementProtocol.BuildEarned(200, 879988113698, 423)));
+            Assert.Equal("0a0d08c8011084f8a980a91918a703", Hex(AchievementProtocol.BuildEarned(200, 870000000004, 423)));
         }
 
         [Fact]
         public void The_tutorial_achievement_is_the_captured_mfu()
         {
             // Autenticacion-Servidor-Personaje\eleccion personaje-carga world-tutorial completo, frame 1502.
-            Assert.Equal("0a0c080110df82c0feaa0218c642", Hex(AchievementProtocol.BuildEarned(1, 80259055967, 8518)));
+            Assert.Equal("0a0c08011091c0fc82aa0218c642", Hex(AchievementProtocol.BuildEarned(1, 80000000017, 8518)));
         }
 
         [Fact]
@@ -81,10 +81,10 @@ namespace Jondo.Unity.Tests.Protocol
         public void The_list_on_entering_the_world_is_the_captured_mft()
         {
             // Special Servidor Torneos\desde seleccion personaje-entrar a world, frame 9: the 66
-            // achievements of character 53721694307, all paid for, in the order the server sent
+            // achievements of character 53000000027, all paid for, in the order the server sent
             // them. Read with the independent parser and written back with the builder.
             const string captured =
-                "0a0a10e380c090c8011881030a0a10e380c090c8011883020a0910e380c090c80118030a0a10e380c090c8011884020a0910e380c090c80118040a0910e380c090c80118050a0910e380c090c80118060a0910e380c090c80118070a0a10e380c090c8011888030a0a10e380c090c8011888020a0910e380c090c80118080a0910e380c090c80118090a0910e380c090c801180a0a0910e380c090c801180b0a0910e380c090c801180c0a0910e380c090c801180d0a0910e380c090c801180e0a0a10e380c090c801188e030a0910e380c090c801180f0a0a10e380c090c801188f030a0910e380c090c80118100a0a10e380c090c8011891030a0a10e380c090c8011895030a0a10e380c090c8011895020a0a10e380c090c8011896030a0a10e380c090c8011899030a0a10e380c090c801189a020a0a10e380c090c801189b020a0a10e380c090c801189c020a0a10e380c090c801189d030a0a10e380c090c80118a6070a0a10e380c090c80118a8030a0a10e380c090c80118b4020a0a10e380c090c80118b5020a0a10e380c090c80118b9280a0a10e380c090c80118ba280a0a10e380c090c80118bb280a0a10e380c090c80118bc280a0a10e380c090c80118bd020a0a10e380c090c80118bf280a0a10e380c090c80118c0280a0a10e380c090c80118c1280a0a10e380c090c80118c1100a0a10e380c090c80118c2280a0a10e380c090c80118c6420a0a10e380c090c80118c7420a0a10e380c090c80118c8420a0a10e380c090c80118c9080a0a10e380c090c80118cf020a0a10e380c090c80118d4080a0a10e380c090c80118d4020a0a10e380c090c80118d5020a0a10e380c090c80118dc080a0a10e380c090c80118e1300a0a10e380c090c80118ec170a0a10e380c090c80118ef010a0a10e380c090c80118f5110a0a10e380c090c80118f5010a0910e380c090c80118760a0a10e380c090c80118f9010a0a10e380c090c80118fa010a0a10e380c090c80118fb010a0a10e380c090c80118fd010a0a10e380c090c80118fe050a0a10e380c090c80118ff050a0a10e380c090c80118ff01";
+                "0a0a109ba4afb8c5011881030a0a109ba4afb8c5011883020a09109ba4afb8c50118030a0a109ba4afb8c5011884020a09109ba4afb8c50118040a09109ba4afb8c50118050a09109ba4afb8c50118060a09109ba4afb8c50118070a0a109ba4afb8c5011888030a0a109ba4afb8c5011888020a09109ba4afb8c50118080a09109ba4afb8c50118090a09109ba4afb8c501180a0a09109ba4afb8c501180b0a09109ba4afb8c501180c0a09109ba4afb8c501180d0a09109ba4afb8c501180e0a0a109ba4afb8c501188e030a09109ba4afb8c501180f0a0a109ba4afb8c501188f030a09109ba4afb8c50118100a0a109ba4afb8c5011891030a0a109ba4afb8c5011895030a0a109ba4afb8c5011895020a0a109ba4afb8c5011896030a0a109ba4afb8c5011899030a0a109ba4afb8c501189a020a0a109ba4afb8c501189b020a0a109ba4afb8c501189c020a0a109ba4afb8c501189d030a0a109ba4afb8c50118a6070a0a109ba4afb8c50118a8030a0a109ba4afb8c50118b4020a0a109ba4afb8c50118b5020a0a109ba4afb8c50118b9280a0a109ba4afb8c50118ba280a0a109ba4afb8c50118bb280a0a109ba4afb8c50118bc280a0a109ba4afb8c50118bd020a0a109ba4afb8c50118bf280a0a109ba4afb8c50118c0280a0a109ba4afb8c50118c1280a0a109ba4afb8c50118c1100a0a109ba4afb8c50118c2280a0a109ba4afb8c50118c6420a0a109ba4afb8c50118c7420a0a109ba4afb8c50118c8420a0a109ba4afb8c50118c9080a0a109ba4afb8c50118cf020a0a109ba4afb8c50118d4080a0a109ba4afb8c50118d4020a0a109ba4afb8c50118d5020a0a109ba4afb8c50118dc080a0a109ba4afb8c50118e1300a0a109ba4afb8c50118ec170a0a109ba4afb8c50118ef010a0a109ba4afb8c50118f5110a0a109ba4afb8c50118f5010a09109ba4afb8c50118760a0a109ba4afb8c50118f9010a0a109ba4afb8c50118fa010a0a109ba4afb8c50118fb010a0a109ba4afb8c50118fd010a0a109ba4afb8c50118fe050a0a109ba4afb8c50118ff050a0a109ba4afb8c50118ff01";
 
             var entries = new List<(int, int)>();
             long character = 0;
@@ -100,7 +100,7 @@ namespace Jondo.Unity.Tests.Protocol
             }
 
             Assert.Equal(66, entries.Count);
-            Assert.Equal(53721694307, character);
+            Assert.Equal(53000000027, character);
             Assert.Equal(captured, Hex(AchievementProtocol.BuildList(character, entries)));
         }
 
@@ -109,8 +109,8 @@ namespace Jondo.Unity.Tests.Protocol
         {
             // INFERRED: the one thing that tells an unpaid entry apart. It is the same record as
             // mfu's, level first.
-            Assert.Equal("0a0c080210df82c0feaa0218c742",
-                Hex(AchievementProtocol.BuildList(80259055967, new[] { (8519, 2) })));
+            Assert.Equal("0a0c08021091c0fc82aa0218c742",
+                Hex(AchievementProtocol.BuildList(80000000017, new[] { (8519, 2) })));
         }
 
         // ─── The window ───────────────────────────────────────────────────────────

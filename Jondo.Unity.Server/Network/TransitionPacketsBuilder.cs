@@ -123,7 +123,7 @@ namespace Jondo.Unity.Server.Network
             using var f2Ms = new MemoryStream();
             var f2Out = new CodedOutputStream(f2Ms);
             f2Out.WriteTag((uint)((1 << 3) | 2));
-            f2Out.WriteString("f6e20e09-19d9-4b1a-9170-6d2d089127c5");
+            f2Out.WriteString("00000000-0000-4000-8000-00000000000b");
             f2Out.Flush();
 
             output.WriteTag((uint)((2 << 3) | 2));

@@ -543,7 +543,7 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// The guild a house is shared with, as the plaque carries it (f3): the guild block of the
-        /// guild messages -- emblem, id, name, level --, the same as Pandala's «Arma de Dios».
+        /// guild messages -- emblem, id, name, level --, the same as Pandala's «Guild-Sample».
         /// </summary>
         public static byte[]? GuildBlockOf(HouseStore.House house)
         {

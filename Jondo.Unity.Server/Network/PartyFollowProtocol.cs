@@ -7,8 +7,8 @@ namespace Jondo.Unity.Server.Network
     /// </summary>
     /// <remarks>
     /// Measured in "Grupos/con grupo seguir desplazamiento del lider en mapas cercanos y a traves
-    /// de un zaap", recorded from the member's client (Leader leads, 293213045026; the member is
-    /// 302677754146), and in "Combate/entrar a combate ... siguiendo a lider de grupo", same pair:
+    /// de un zaap", recorded from the member's client (Leader leads, 290000000003; the member is
+    /// 300000000001), and in "Combate/entrar a combate ... siguiendo a lider de grupo", same pair:
     ///
     /// <code>
     ///   C imh {}                         the member asks to follow           frames 0, 10, 269

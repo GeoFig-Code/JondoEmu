@@ -18,7 +18,7 @@ namespace Jondo.Unity.Server.Managers
     /// 15 applications and invitations, 16 expel a member, 21 the recruitment.
     ///
     /// And the emblem symbols' skins: a tax collector wears its alliance's symbol as a skin, 1647
-    /// for the symbol 104 of «Bloodbath» and 1762 for the 136 of «Orifl-Ames» in the captures.
+    /// for the symbol 104 of «Alliance2» and 1762 for the 136 of «Alliance-3» in the captures.
     /// </remarks>
     public static class AllianceData
     {

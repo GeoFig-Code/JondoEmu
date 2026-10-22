@@ -43,7 +43,7 @@ namespace Jondo.Unity.Server.Handlers
     ///   kth { f1: date, f4: empty, f5: the other's id, f6: his name, f7: the text }
     ///
     /// And what it carries is not who speaks, but THE OTHER: in the sender's copy goes whom it is said
-    /// to. It is measured in the guild capture, where the whisper to «Hiierbita-Xx» did reach its
+    /// to. It is measured in the guild capture, where the whisper to «Player-Alpha» did reach its
     /// destination and the server answered with this kth.
     ///
     /// From the side of WHOEVER RECEIVES IT there is no capture -- it would need recording as the

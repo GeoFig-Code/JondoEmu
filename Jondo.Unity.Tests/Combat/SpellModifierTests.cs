@@ -15,7 +15,7 @@ namespace Jondo.Unity.Tests.Combat
     public class SpellModifierTests
     {
         private const int Bestialidad = 13746;
-        private const long Uginak = 54064250979;
+        private const long Uginak = 54000000023;
 
         private static Fighter Player(long id, int cell) => new()
         {
@@ -62,7 +62,7 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Equal((2, 4), (tibia.Buff.Cuanto, tibia.Buff.CaducaEnRonda));
 
             // Frame 243, the row of 13756, but for its number: family 4, value 2, until round 4.
-            Assert.Equal(StealTests.Hex("0a470a3b08bc6b10e380ecb3c901182b2001320210043a014940eeaf185002621610ffffffffffffffffff0118ffffffffffffffffff0170b26b780480010210e380ecb3c90118d916"),
+            Assert.Equal(StealTests.Hex("0a470a3b08bc6b1097b89a95c901182b2001320210043a014940eeaf185002621610ffffffffffffffffff0118ffffffffffffffffff0170b26b78048001021097b89a95c90118d916"),
                          StealTests.AsItGoesOut(tibia, me, number: 43));
 
             // 13791: pinned to zero both ways, and a zero is a value.
@@ -91,14 +91,14 @@ namespace Jondo.Unity.Tests.Combat
             Assert.Equal((19, SpellModifiers.Add), SpellModifiers.OnTheWire(SpellAspect.BaseHeal));
             Assert.Equal((3, SpellModifiers.Add), SpellModifiers.OnTheWire(SpellAspect.DanoBase));
 
-            Assert.Equal(StealTests.Hex("0a0910031802200c28bc6b10e380ecb3c901"),
+            Assert.Equal(StealTests.Hex("0a0910031802200c28bc6b1097b89a95c901"),
                          FightProtocol.BuildSpellModifier(Uginak, 12, 13756, 2, SpellModifiers.Set));
-            Assert.Equal(StealTests.Hex("0a071003200c28df6b10e380ecb3c901"),
+            Assert.Equal(StealTests.Hex("0a071003200c28df6b1097b89a95c901"),
                          FightProtocol.BuildSpellModifier(Uginak, 12, 13791, 0, SpellModifiers.Set));
-            Assert.Equal(StealTests.Hex("0a071003200d28df6b10e380ecb3c901"),
+            Assert.Equal(StealTests.Hex("0a071003200d28df6b1097b89a95c901"),
                          FightProtocol.BuildSpellModifier(Uginak, 13, 13791, 0, SpellModifiers.Set));
-            Assert.Equal(StealTests.Hex("0a0910021801200528ed6310e380b090c801"),
-                         FightProtocol.BuildSpellModifier(53721432163, 5, 12781, 1, SpellModifiers.Subtract));
+            Assert.Equal(StealTests.Hex("0a0910021801200528ed63109ca4afb8c501"),
+                         FightProtocol.BuildSpellModifier(53000000028, 5, 12781, 1, SpellModifiers.Subtract));
         }
 
         /// <summary>

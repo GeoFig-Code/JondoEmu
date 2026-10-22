@@ -43,8 +43,8 @@ namespace Jondo.Unity.Tests.World
         [Fact]
         public void Whose_bag_has_the_capture_s_shape()
         {
-            Assert.Equal(Hex("10201804" + "2a1a0a11120c4865726f2d4578616d706c6518e202" + "10a28280c8e708"),
-                         ConnectionProtocol.HavenBagInfo(0, 32, 4, 302677754146, "Hero-Example", 354).Build());
+            Assert.Equal(Hex("10201804" + "2a1a0a11120c4865726f2d4578616d706c6518e202" + "1081f092cbdd08"),
+                         ConnectionProtocol.HavenBagInfo(0, 32, 4, 300000000001, "Hero-Example", 354).Build());
         }
 
         /// <summary>Every character has every theme and the four rooms; a room keeps the theme it is given.</summary>

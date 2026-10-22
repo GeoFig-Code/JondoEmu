@@ -16,7 +16,7 @@ namespace Jondo.Unity.Server.Handlers
     /// </summary>
     /// <remarks>
     /// What is measured comes from the two captures of Alianzas/: the temple's door refusing a
-    /// character without the alliance gem, and a character joining «A B S I N T O» from the
+    /// character without the alliance gem, and a character joining «E X A M P L E» from the
     /// directory and leaving it. What no capture shows -- founding, expelling someone else -- is
     /// built from the client's own frames and texts: the editor it opens (mcw), the request it sends
     /// (mdk) and the results its editor knows how to say (mch).
@@ -392,7 +392,7 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Joining from the directory (mac): f1 the alliance's uuid. «A B S I N T O» took the
+        /// Joining from the directory (mac): f1 the alliance's uuid. «E X A M P L E» took the
         /// character at once, as an alliance with an open recruitment does.
         /// </summary>
         public static async Task JoinAsync(NetworkStream stream, byte[] frame)
@@ -426,7 +426,7 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// Expelling (mcc): f1 the member. With one's own id it is leaving, which is how the capture
-        /// leaves «A B S I N T O». Anybody else takes the right to expel.
+        /// leaves «E X A M P L E». Anybody else takes the right to expel.
         /// </summary>
         public static async Task ExpelAsync(NetworkStream stream, byte[] frame)
         {

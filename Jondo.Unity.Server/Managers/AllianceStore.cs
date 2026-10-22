@@ -31,7 +31,7 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>
             /// The emblem, the five numbers of the creation's lld: the symbol, the symbol's colour
             /// index, the background colour (RGB), the background shape and the symbol's colour (RGB).
-            /// «A B S I N T O» is {408, 27, 3116544, 0, 15859463}.
+            /// «E X A M P L E» is {408, 27, 3116544, 0, 15859463}.
             /// </summary>
             public int EmblemSymbol { get; init; }
             public int EmblemSymbolColor { get; init; }
@@ -84,7 +84,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The leader's rank, «General de alianza».</summary>
         public const int RankLeader = 1;
 
-        /// <summary>The newcomers' rank, «Bisoño»: what «A B S I N T O» gave the character who joined.</summary>
+        /// <summary>The newcomers' rank, «Bisoño»: what «E X A M P L E» gave the character who joined.</summary>
         public const int RankNewcomer = 4;
 
         /// <summary>
@@ -93,7 +93,7 @@ namespace Jondo.Unity.Server.Managers
         /// </summary>
         public const int MinimumLevel = 50;
 
-        /// <summary>Recruitment through the directory without applying: «A B S I N T O»'s, joined by a mac.</summary>
+        /// <summary>Recruitment through the directory without applying: «E X A M P L E»'s, joined by a mac.</summary>
         public const int RecruitmentOpen = 1;
 
         public static void EnsureTables(SqliteConnection world)
@@ -649,7 +649,7 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>
         /// An alliance's notice of a kind. One never written has no text and the alliance's founding
-        /// date, which is what joining «A B S I N T O» brought.
+        /// date, which is what joining «E X A M P L E» brought.
         /// </summary>
         public static Notice NoticeOf(Alliance alliance, int kind)
         {

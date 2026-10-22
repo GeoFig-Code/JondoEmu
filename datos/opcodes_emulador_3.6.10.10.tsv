@@ -463,7 +463,7 @@ jzy	read	Jondo.Unity.Launcher/Network/FightProtocol.cs	1179	byte[]? jzy = Connec
 kaa	push	Jondo.Unity.Launcher/Handlers/FightHandler.cs	408	await WriteFrameAsync(stream, ConnectionProtocol.Push("kaa",	ConnectionProtocol.Push("xxx", ...)
 kae	descartado	Jondo.Unity.Protocol/OpcodeRegistry.cs	35	public const string GameFightShowFighter = "kae";	DESCARTADO: OpcodeRegistry no lo referencia nadie (0 usos fuera del propio fichero); codigo muerto
 kae	push	Jondo.Unity.Launcher/Handlers/FightHandler.cs	449	await WriteFrameAsync(stream, ConnectionProtocol.Push("kae",	ConnectionProtocol.Push("xxx", ...)
-kah	descartado	Jondo.Unity.Launcher/Network/ConnectionProtocolSelfTest.cs	77	Same(failures, "kah", "08a28280c8e7081801", FightProtocol.BuildReadyAck(fighter));	DESCARTADO: etiqueta de ConnectionProtocolSelfTest.Same(), no viaja
+kah	descartado	Jondo.Unity.Launcher/Network/ConnectionProtocolSelfTest.cs	77	Same(failures, "kah", "0881f092cbdd081801", FightProtocol.BuildReadyAck(fighter));	DESCARTADO: etiqueta de ConnectionProtocolSelfTest.Same(), no viaja
 kah	push	Jondo.Unity.Launcher/Handlers/FightHandler.cs	1231	await WriteFrameAsync(stream, ConnectionProtocol.Push("kah",	ConnectionProtocol.Push("xxx", ...)
 kai	push	Jondo.Unity.Launcher/Handlers/FightHandler.cs	1259	await WriteFrameAsync(stream, ConnectionProtocol.Push("kai",	ConnectionProtocol.Push("xxx", ...)
 kam	push	Jondo.Unity.Launcher/Handlers/FightHandler.cs	401	await WriteFrameAsync(stream, ConnectionProtocol.Push("kam",	ConnectionProtocol.Push("xxx", ...)

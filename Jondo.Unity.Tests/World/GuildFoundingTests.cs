@@ -75,14 +75,14 @@ namespace Jondo.Unity.Tests.World
             var founder = new DatabaseManager.DbCharacter { Id = 7001, Name = "Hero-Example", Level = 200, Breed = 11 };
             var loner = new DatabaseManager.DbCharacter { Id = 7002, Name = "Solo", Level = 200, Breed = 11 };
 
-            var withGuild = GuildOption(ConnectionProtocol.BuildPlayerActorBlock(founder, 341, 5, 65924386));
+            var withGuild = GuildOption(ConnectionProtocol.BuildPlayerActorBlock(founder, 341, 5, 60000001));
             Assert.NotNull(withGuild);
             Assert.Equal(guild.Id, Field(withGuild!, 2));
             Assert.Equal("Jondo", System.Text.Encoding.UTF8.GetString(
                 withGuild!.Fields.Single(f => f.FieldNumber == 3 && f.WireType == 2).BytesValue));
             Assert.Equal(1, Field(withGuild!, 4));
 
-            Assert.Null(GuildOption(ConnectionProtocol.BuildPlayerActorBlock(loner, 341, 5, 65924386)));
+            Assert.Null(GuildOption(ConnectionProtocol.BuildPlayerActorBlock(loner, 341, 5, 60000001)));
         }
 
         /// <summary>The f5 { f4 { ... } } of the actor's humanoid body, or null if it does not carry it.</summary>

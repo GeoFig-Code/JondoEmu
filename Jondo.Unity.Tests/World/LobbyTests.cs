@@ -21,22 +21,22 @@ namespace Jondo.Unity.Tests.World
         private static byte[] Bytes(string hex) => Enumerable.Range(0, hex.Length / 2)
             .Select(i => Convert.ToByte(hex.Substring(i * 2, 2), 16)).ToArray();
 
-        private const string MyLobby = "b93afbdc-405f-48c8-aa02-caf93091c790";
-        private const string OtherLobby = "4a7a479f-20b6-434f-a1fe-84002b3dfcd0";
-        private const string MyUid = "6917336a-8a21-44bd-b866-da4099fabd14";
+        private const string MyLobby = "00000000-0000-4000-8000-000000000002";
+        private const string OtherLobby = "00000000-0000-4000-8000-000000000003";
+        private const string MyUid = "00000000-0000-4000-8000-000000000001";
 
         /// <summary>The capture's own announcement, as the board carried it.</summary>
         private const string CapturedJos =
-            "0801105c20022801322462393361666264632d343035662d343863382d616130322d636166393330393163373930" +
-            "3a02c0054201024a1e323032362d30382d31325432323a34303a32312e3934383931383536315a50145a6008a282" +
-            "80c8e708121e323032362d30382d31325432323a34303a32312e3934383930383035385a180b20e2022a24363931" +
-            "37333336612d386132312d343462642d623836362d6461343039396661626431343a0c4865726f2d4578616d706c" +
-            "65626008a28280c8e708121e323032362d30382d31325432323a34303a32312e3934383930383035385a180b20e2" +
-            "022a2436393137333336612d386132312d343462642d623836362d6461343039396661626431343a0c4865726f2d" +
+            "0801105c20022801322430303030303030302d303030302d343030302d383030302d303030303030303030303032" +
+            "3a02c0054201024a1e323032362d30382d31325432323a34303a32312e3934383931383536315a50145a600881f0" +
+            "92cbdd08121e323032362d30382d31325432323a34303a32312e3934383930383035385a180b20e2022a24303030" +
+            "30303030302d303030302d343030302d383030302d3030303030303030303030313a0c4865726f2d4578616d706c" +
+            "6562600881f092cbdd08121e323032362d30382d31325432323a34303a32312e3934383930383035385a180b20e2" +
+            "022a2430303030303030302d303030302d343030302d383030302d3030303030303030303030313a0c4865726f2d" +
             "4578616d706c65";
 
         private static Lobbies.Player Recorder(DateTime since)
-            => new(302677754146, MyUid, "Hero-Example", 11, 354, 0, since);
+            => new(300000000001, MyUid, "Hero-Example", 11, 354, 0, since);
 
         private static Lobbies.Player Player(long id, int level = 100)
             => new(id, Lobbies.UidOf(id), "P" + id, 1, level, 0, DateTime.UtcNow);
@@ -106,7 +106,7 @@ namespace Jondo.Unity.Tests.World
             var jpk = ProtoMessage.Parse(LobbyProtocol.BuildMemberIn(Recorder(DateTime.UtcNow), OtherLobby));
             Assert.Equal(new[] { 1, 2 }, jpk.Fields.Select(f => f.FieldNumber));
             Assert.Equal(OtherLobby, System.Text.Encoding.UTF8.GetString(jpk.Fields[1].BytesValue));
-            SameButDates(Bytes("08a28280c8e708121e323032362d30382d31325432323a34303a34352e3531363539363534325a180b20e2022a24" +
+            SameButDates(Bytes("0881f092cbdd08121e323032362d30382d31325432323a34303a34352e3531363539363534325a180b20e2022a24" +
                                Hex(System.Text.Encoding.UTF8.GetBytes(MyUid)) + "3a0c4865726f2d4578616d706c65"),
                          jpk.Fields[0].BytesValue, isPlayer: true);
         }
