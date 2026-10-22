@@ -2019,6 +2019,13 @@ namespace Jondo.Unity.Server.Managers
         public static string AlPonerseElEstado(int estado) => "EON" + estado;
         public static string AlQuitarseElEstado(int estado) => "EOFF" + estado;
 
+        /// <summary>
+        /// A state comes into force on the bearer (EACT&lt;n&gt;): set off with EON, as nothing here
+        /// puts a state on without it being in force. 30 rows of the client wait on it, Osavora's
+        /// season reactions on 6157 among them.
+        /// </summary>
+        public static string AlActivarseElEstado(int estado) => "EACT" + estado;
+
         /// <summary>The bearer is pushed or pulled (P), teleported (TP), or moved at all by an effect (M).</summary>
         public const string AlSerEmpujado = "P";
         public const string AlSerTeletransportado = "TP";
@@ -2177,6 +2184,8 @@ namespace Jondo.Unity.Server.Managers
             {
             if (nearestChainBudget < 0)
                 nearestChainBudget = Todos(combate).Count(fighter => fighter != null && fighter.IsAlive);
+            // A spell only the server has, which the client's rows call by its number (OsavoraFights).
+            efectosSorteados ??= OsavoraFights.ServerRows(combate, hechizo);
             return ResolveEffects(combate, quienLanza, hechizo, grado, objetivo, disparador, ronda,
                                   efectosSorteados ?? EfectosDeLaTirada(hechizo, grado, critico), hondo,
                                   celdaApuntada, critical: critico,

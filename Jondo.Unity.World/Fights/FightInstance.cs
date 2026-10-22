@@ -322,6 +322,12 @@ namespace Jondo.Unity.World.Fights
         /// scene's spells and is the one "Sce" names (the Santuario's Vigilante and Guardián).
         /// </summary>
         public Fighter SceneStandIn { get; set; }
+
+        /// <summary>
+        /// The states the fight's scene carries, whoever stands for it: Osabana's season
+        /// (Managers.OsavoraFights), which its monsters' spells read off the scene.
+        /// </summary>
+        public HashSet<int> SceneStates { get; } = new HashSet<int>();
         public long ArenaMapId { get; set; }
 
         /// <summary>

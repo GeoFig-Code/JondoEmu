@@ -227,7 +227,8 @@ Built with **Avalonia**, the same toolkit as the Studio.
   the dimension's maps
 - ✅ Osavora's weekly quests come with their season, once a week each: the season is the game's world
   event and the quest's marker says when you last did it
-- ❌ What the seasons change in Osavora's monsters
+- ✅ The seasons change Osavora's monsters: +1 MP in the Naissance, more damage in the Chasse, more life in
+  the Repos, and every fifth blow they take, the season's own reaction
 - ✅ **16 temporal anomalies** with their 120-minute countdown
 - ✅ Their guardians: each anomaly opens on one of eleven places — Noximilian's workshop, Kelba's
   market, Bonta's palace, Brâkmar… — where its guardian waits with his brutoforme, cublaforme and

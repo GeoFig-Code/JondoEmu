@@ -5224,9 +5224,26 @@ namespace Jondo.Unity.Server.Handlers
         /// A monster's behaviour spell, cast when the fight begins or when it comes in: a cast
         /// like any other on the wire, and its triggered rows armed for good on whoever they name.
         /// </summary>
-        internal static async Task LanzarLaConductaAsync(NetworkStream stream, FightInstance fight, Fighter quien)
+        /// <summary>
+        /// A fight of Osabana: its scene carries the week's season, its first monster stands for the
+        /// scene -- the rows of the seasons' reactions aim at "Sce" --, and casts on everybody its
+        /// «Temporada de …», the way a scene's spell would be (OsavoraFights).
+        /// </summary>
+        private static async Task LaTemporadaDeOsavoraAsync(NetworkStream stream, FightInstance fight)
         {
-            var (hechizo, grado) = quien.Conducta;
+            int subArea = fight.RoleplayMapId > 0 ? DatabaseManager.SubAreaOfMap(fight.RoleplayMapId) : 0;
+            int season = Managers.OsavoraFights.SetTheScene(fight, subArea);
+            if (season == 0) return;
+            var monster = fight.Azul.Concat(fight.Rojo).FirstOrDefault(f => f != null && f.IsAlive && f.MonsterId > 0);
+            if (monster == null) return;
+            fight.SceneStandIn ??= monster;
+            await LanzarLaConductaAsync(stream, fight, monster, (season, 1));
+        }
+
+        internal static async Task LanzarLaConductaAsync(NetworkStream stream, FightInstance fight, Fighter quien,
+                                                         (int Spell, int Grade)? otra = null)
+        {
+            var (hechizo, grado) = otra ?? quien.Conducta;
             if (hechizo == 0 || !quien.IsAlive) return;
             int nivelId = LimitesDeGrado(hechizo, grado).LevelId;
 
@@ -7029,7 +7046,10 @@ namespace Jondo.Unity.Server.Handlers
                     && !(c.Relevados?.Any(r => r.Estado == c.Buff.Estado) ?? false)
                     && c.Sobre.Buffs.Puestos.Count(b => b.Estado == c.Buff.Estado
                                                        && b.EffectId == Jondo.Unity.World.Combat.EffectSupport.AddState) == 1)
+                {
                     Disparo(c.Sobre, Managers.EffectEngine.AlPonerseElEstado(c.Buff.Estado), quienLanza);
+                    Disparo(c.Sobre, Managers.EffectEngine.AlActivarseElEstado(c.Buff.Estado), quienLanza);
+                }
 
                 if (Managers.ForgelanceCombat.Is(c.Sobre)
                     && c.Buff.Estado == Managers.ForgelanceCombat.Disarmed
@@ -7254,6 +7274,9 @@ namespace Jondo.Unity.Server.Handlers
             {
                 if (luchador != null && luchador.CasillaAlEmpezarCombate < 0) luchador.CasillaAlEmpezarCombate = luchador.CellId;
             }
+
+            // Osabana's season on the scene and on everybody, before the monsters' spells read it.
+            await LaTemporadaDeOsavoraAsync(stream, fight);
 
             // Both sides: the red one too, whose monsters bring their behaviour spells and whose
             // player, in a duel, his passives. Only the blue side's ever went off.

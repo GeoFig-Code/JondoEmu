@@ -754,6 +754,7 @@ namespace Jondo.Unity.Server.Managers
                 who.Buffs.PonerEstado(state);
                 _undo.Push(() => who.Buffs.QuitarEstado(state));
                 Fire(who, EffectEngine.AlPonerseElEstado(state), depth);
+                Fire(who, EffectEngine.AlActivarseElEstado(state), depth);
             }
 
             private void RemoveState(Fighter who, int state, int depth = 0)

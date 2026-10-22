@@ -40,7 +40,8 @@ monsters'. So no class capture changes.
 Fired now: `I`, `TB`, `TE`, `X` (death, with the killer as `O`), `DBE`, `DM`, `DR`, `D`, `DN DE DF DW
 DA` (damage by element), `DBA` (by an ally), `DCAC` (melee), `DI` (by a summon), `CDN CDE CDF CDW CDA`
 and `CDM` (the bearer deals damage), `H` / `CH` (healed / heals), `EON<n>` / `EOFF<n>` (a state goes on
-/ comes off, including by expiry and by its caster's death), `P` (pushed), `TP` (teleported), `M`
+/ comes off, including by expiry and by its caster's death), `EACT<n>` (with `EON<n>`: nothing here
+puts a state on without it being in force), `P` (pushed), `TP` (teleported), `M`
 (moved), `PD` (collision, pushed), `PPD` / `PMD` (somebody pushed into him), `APA` / `MPA` (AP / MP
 lost), `TR<spell>` (a life threshold reached), `EK:<mask>` (someone the mask names died),
 `EC:<op><n>:<mask>` (the count of what the mask names came true), `CCMPARR`, `Y`.
@@ -50,7 +51,7 @@ invulnerable all fight and it is being hit that lifts it. Not `DBE`, which the I
 shows untouched.
 
 Not fired yet: `DTB`, `DTE` (as triggers), `DS`, `DG`, `DT`, `DV`, `VE`, `CI`, `MS`, `MA`, `R`,
-`EACT<n>`, `SREF`, `CMPARR`, `CDS`, `CC`, `DIS`, `CT`, `CDBE`, `XDM`, `CDCAC`, `DCCBE`, `LPU`.
+`SREF`, `CMPARR`, `CDS`, `CC`, `DIS`, `CT`, `CDBE`, `XDM`, `CDCAC`, `DCCBE`, `LPU`.
 
 Meanings that are **inferred**, not measured: `PMD` taken as the same collision as `PPD` (Obsidiantre's
 lift is written on it and the guide lifts him by pushing into him); `DCAC` read as melee.
@@ -103,6 +104,13 @@ The kind letters `m`/`M` do not include the caster.
 - A monster's summons play their own turns.
 - When a monster dies, the rows it put on others and the rows it armed go.
 - A Pacifista deals no damage.
+- **Osavora's seasons** (`Managers.OsavoraFights`): a fight of Osabana (subarea 1040) gives its scene
+  the week's season -- states 6245 Naissance, 6246 Chasse, 6247 Repos -- and its first monster stands
+  for the scene and casts «Temporada de …» (31050-31052) on everybody. The monsters' starting spells
+  cast «[!] Initial Saison» (30992): its server rows give them the three states and then 31553, a
+  spell the client lacks, which here takes off those the scene does not carry -- what its client
+  rows say the spell does. Then their own rows: +1 MP in the Naissance, +20 % final damage in the
+  Chasse, +20 % vitality in the Repos (31293), and each fifth blow taken the season's reaction.
 
 ## Zones
 
