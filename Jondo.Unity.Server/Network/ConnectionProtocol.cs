@@ -1865,7 +1865,7 @@ namespace Jondo.Unity.Server.Network
                 .Msg(1, Pb.New().Var(1, cell).Var(2, facing))
                 .Msg(2, Pb.New()
                     .Msg(1, Pb.New().Msg(5, humanoid))
-                    .Bytes(3, BreedLookTable.BuildLook(character)))
+                    .Bytes(3, BreedLookTable.MapLook(character)))
                 .Var(3, character.Id);
         }
 
@@ -2623,6 +2623,16 @@ namespace Jondo.Unity.Server.Network
                 humanoidBody.Msg(5, Pb.New().Msg(9, Pb.New()
                     .Var(1, level)
                     .Var(4, ornament)));
+            }
+
+            // Who follows him (SlotLooks): f6 { f1 { f1 look, f2 index } }, one per follower.
+            var followers = Managers.SlotLooks.FollowerLooks(Managers.SlotLooks.Of(characterId));
+            if (followers.Count > 0)
+            {
+                var lhz = Pb.New();
+                for (int index = 0; index < followers.Count; index++)
+                    lhz.Msg(1, Pb.New().Msg(1, MonsterLook(followers[index], false)).VarIfNotZero(2, index));
+                humanoidBody.Msg(5, Pb.New().Msg(6, lhz));
             }
         }
 

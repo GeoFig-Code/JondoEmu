@@ -29,8 +29,9 @@ namespace Jondo.Unity.Server.Managers
     ///   ERROR [Hyperlink] Error while trying to convert an hyperlink of type spellNoLvl,
     ///   parameters , and text .
     ///
-    /// The table learnt from the capture (item_effect_fields.json, 121 effects) always rules when it has an
-    /// entry. For the rest it is decided with the Effects table itself, and the rule was checked against the
+    /// The table learnt from the capture (item_effect_fields.json: 121 effects of the captured inventory, plus
+    /// 197, the mutation's «f6 { f2: monster, f3: grade }» of the orbalantir's iua, and 148, the follower's,
+    /// whose first number says what follows) always rules when it has an entry. For the rest it is decided with the Effects table itself, and the rule was checked against the
     /// 670 effects of the captured inventory.
     /// </summary>
     public static class EffectFields

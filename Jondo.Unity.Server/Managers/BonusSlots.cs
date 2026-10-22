@@ -23,8 +23,10 @@ namespace Jondo.Unity.Server.Managers
     /// <para>
     /// The boost food and the blessings are placed as they are: they do nothing but add
     /// characteristics. The mutation goes through MutationHandler, which tells the client its spells,
-    /// look and sheet. The roleplay buff and the follower, which change the look, are not placed, and
-    /// the curses have nothing that gives them.
+    /// look and sheet. The curses (the «Pergamino del desánimo», the «Botella de Zampaburg»...), the
+    /// roleplay buffs (the camouflages, the disguise potions) and the followers (the balloons, the
+    /// golden larva) are placed too, and the character is drawn again when they change his look
+    /// (SlotLooks, SlotLookHandler).
     /// </para>
     /// </remarks>
     public static class BonusSlots
@@ -38,6 +40,9 @@ namespace Jondo.Unity.Server.Managers
         public const int MutationType = 27;
         public const int BoostFoodType = 28;
         public const int BlessingType = 29;
+        public const int CurseType = 30;
+        public const int RoleplayBuffType = 31;
+        public const int FollowerType = 32;
 
         /// <summary>The item types that go to a bonus slot, placed or not.</summary>
         private static readonly HashSet<int> SlotTypes = new() { 27, 28, 29, 30, 31, 32 };
@@ -53,6 +58,9 @@ namespace Jondo.Unity.Server.Managers
             MutationType => new[] { Mutations.Slot },
             BoostFoodType => new[] { BoostFood },
             BlessingType => new[] { 22, 23 },
+            CurseType => new[] { 24, 25 },
+            RoleplayBuffType => new[] { SlotLooks.RoleplayBuffer },
+            FollowerType => new[] { SlotLooks.Follower },
             _ => Array.Empty<int>(),
         };
 

@@ -95,6 +95,7 @@ namespace Jondo.Unity.Server.Handlers
             var (listed, spent) = Alterations.CountFight(character, won);
 
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Lzp, AlterationProtocol.BuildList(listed, now)));
+            await SlotLookHandler.TellTakenOffAsync(stream);
             await CountSlotsDownAsync(stream, character, won);
 
             foreach (var gone in expired.Concat(spent)) await TellLostAsync(stream, gone, now);
@@ -145,6 +146,7 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static async Task CountSlotsDownAsync(NetworkStream stream, long character, bool won)
         {
+            bool redraw = false;
             foreach (var item in Equipment.All.Where(i => BonusSlots.IsBonusSlot(i.Position)).ToList())
             {
                 var counted = BonusSlots.CountDown(item.Effects, won);
@@ -159,6 +161,7 @@ namespace Jondo.Unity.Server.Handlers
                 }
                 if (isSpent)
                 {
+                    if (SlotLooks.ChangesTheLook(item.Effects)) redraw = true;
                     await RemoveSlotItemAsync(stream, character, item);
                     continue;
                 }
@@ -166,6 +169,8 @@ namespace Jondo.Unity.Server.Handlers
                 Equipment.RememberWorn(item.Uid, item.Position, item.Effects);
                 await WriteAsync(stream, ConnectionProtocol.Push(Op.Iuj, AlterationProtocol.BuildSlotItemChanged(item)));
             }
+            // A follower or a disguise gone: the others on his map see him without it.
+            if (redraw) await SlotLookHandler.RedrawAsync(stream);
         }
 
         /// <summary>A bonus slot's item gone: out of the base, the bag, the sheet's cache, and the client (ium).</summary>
@@ -181,6 +186,7 @@ namespace Jondo.Unity.Server.Handlers
             if (!DatabaseManager.DestroyCharacterItem(character, item.Uid, item.Quantity)) return false;
             Equipment.Remove(item.Uid, item.Quantity);
             Equipment.RememberWorn(item.Uid, Equipment.Bag, (string?)null);
+            SlotLooks.Current();
             return true;
         }
 

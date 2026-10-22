@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Jondo.Unity.Server.Network;
@@ -50,9 +49,6 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>A mutation: the monster, its grade from 1, and its look.</summary>
         public sealed record Mutation(int Monster, int Grade, string Look);
 
-        /// <summary>What a character's mutation slot holds, by character: read once, kept up to date here.</summary>
-        private static readonly ConcurrentDictionary<long, Mutation?> _known = new();
-
         /// <summary>The mutation some effects make, or null.</summary>
         public static Mutation? Of(IEnumerable<Equipment.ItemEffect> effects)
         {
@@ -70,23 +66,17 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The mutation of the character in session, from his slot.</summary>
         public static Mutation? Current()
         {
-            long me = SessionContext.State.CharacterId;
             var item = Equipment.InSlot(Slot);
-            var mutation = item == null ? null : Of(item.Effects);
-            if (me != 0) _known[me] = mutation;
-            return mutation;
+            return item == null ? null : Of(item.Effects);
         }
 
-        /// <summary>Any character's mutation: his session's when it is his, else what was read of his slot.</summary>
+        /// <summary>Any character's mutation: his session's when it is his, else what is known of his slots (SlotLooks).</summary>
         public static Mutation? OfCharacter(long characterId)
         {
             if (characterId == 0) return null;
             if (characterId == SessionContext.State.CharacterId) return Current();
-            return _known.GetOrAdd(characterId, Read);
+            return Of(SlotLooks.Of(characterId).Where(w => w.Position == Slot).SelectMany(w => w.Effects));
         }
-
-        /// <summary>Forgets what was known of a character's slot: it has changed.</summary>
-        public static void Forget(long characterId) => _known.TryRemove(characterId, out _);
 
         /// <summary>The spells a mutation casts, at the grades of its monster's grade: not the ones it has not at that grade.</summary>
         public static List<(int Spell, int Grade)> SpellsOf(Mutation mutation)
@@ -102,24 +92,5 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The sheet of a mutation's monster grade.</summary>
         public static MonsterGradeStats? SheetOf(Mutation mutation)
             => DatabaseManager.GetMonsterGradeStats(mutation.Monster, mutation.Grade - 1);
-
-        private static Mutation? Read(long characterId)
-        {
-            try
-            {
-                using var connection = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.WorldConnectionString);
-                connection.Open();
-                var command = connection.CreateCommand();
-                command.CommandText = "SELECT Effects FROM CharacterItems WHERE CharacterId = $id AND Position = $slot LIMIT 1;";
-                command.Parameters.AddWithValue("$id", characterId);
-                command.Parameters.AddWithValue("$slot", Slot);
-                return command.ExecuteScalar() is string effects ? Of(Equipment.ParseEffects(effects)) : null;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[Mutations] Could not read {characterId}'s mutation slot: {ex.Message}");
-                return null;
-            }
-        }
     }
 }

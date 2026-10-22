@@ -602,7 +602,12 @@ namespace Jondo.Unity.Server.Network
                     // half done. And on top of that it made unreachable the jrw branch that already existed inside
                     // the fight handler.
                     if (GameState.IsInFight) await FightHandler.HandleFightMessageAsync(stream, payload, payloadStr);
-                    else await WorldMoveHandler.ConfirmMovementAsync(stream, payload);
+                    else
+                    {
+                        // What «desaparece al desplazarse» goes with the first step (SlotLookHandler).
+                        await SlotLookHandler.OnMovingAsync(stream);
+                        await WorldMoveHandler.ConfirmMovementAsync(stream, payload);
+                    }
                 }
                 else if (payloadStr.Contains("type.ankama.com/hir"))
                 {

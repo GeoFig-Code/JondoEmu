@@ -198,6 +198,20 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>Rebuild a character with their persisted palette and current equipment.</summary>
+        /// <summary>
+        /// A character's look on the map: a disguise's bones when he wears one and is not mutated
+        /// (SlotLooks), else his look. Not in his fights, where a disguise does not go.
+        /// </summary>
+        public static byte[] MapLook(DatabaseManager.DbCharacter character)
+        {
+            if (Mutations.OfCharacter(character.Id) == null)
+            {
+                int bones = SlotLooks.DisguiseBones(SlotLooks.Of(character.Id));
+                if (bones > 0) return ConnectionProtocol.MonsterLook("{" + bones + "}", false).Build();
+            }
+            return BuildLook(character);
+        }
+
         public static byte[] BuildLook(DatabaseManager.DbCharacter character,
                                        bool paraLaVentana = false, bool onFoot = false)
             => Mutations.OfCharacter(character.Id) is { } mutation && !paraLaVentana

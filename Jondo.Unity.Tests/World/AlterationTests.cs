@@ -222,15 +222,15 @@ namespace Jondo.Unity.Tests.World
         // ─── The bonus slots ───────────────────────────────────────────────────────────
 
         /// <summary>
-        /// A boost food goes to 21, a blessing to 22 or 23; the slots that change the look are not
-        /// placed, and the items that are no slot's go to the bag.
+        /// A boost food goes to 21, a blessing to 22 or 23, a follower to 27 (SlotLooks); the items
+        /// that are no slot's go to the bag.
         /// </summary>
         [Fact]
         public void Each_slot_takes_its_type()
         {
             Assert.Equal(new[] { 21 }, BonusSlots.SlotsFor(BonusSlots.BoostFoodType));
             Assert.Equal(new[] { 22, 23 }, BonusSlots.SlotsFor(BonusSlots.BlessingType));
-            Assert.Empty(BonusSlots.SlotsFor(32));
+            Assert.Equal(new[] { 27 }, BonusSlots.SlotsFor(32));
             Assert.True(BonusSlots.IsSlotType(32));
             Assert.False(BonusSlots.IsSlotType(42));
 

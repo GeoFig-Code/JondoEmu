@@ -29,9 +29,10 @@ namespace Jondo.Unity.Server.Handlers
     /// sense of the replacing: without it, those criteria would ask for nothing a full slot did not.
     /// </para>
     /// <para>
-    /// A mutation given goes through <see cref="MutationHandler"/>. Not handled, and logged: an item
-    /// for a slot that changes the look (a follower, a roleplay transformation), a boost food that
-    /// lasts minutes instead of fights (the perlequines'), and anything mixed with other effects.
+    /// A mutation given goes through <see cref="MutationHandler"/>; a curse, a roleplay buff or a
+    /// follower that changes the look draws the character again (<see cref="SlotLookHandler"/>). Not
+    /// handled, and logged: a boost food that lasts minutes instead of fights (the perlequines'), and
+    /// anything mixed with other effects.
     /// </para>
     /// </remarks>
     public static class BonusItemHandler
@@ -142,7 +143,7 @@ namespace Jondo.Unity.Server.Handlers
             if (!await ItemUseHandler.SpendOneAsync(stream, item.Uid, weigh: false)) return true;
             if (typed.Any(g => g.Type == BonusSlots.BoostFoodType)) await AlterationHandler.DropCandyEffectsAsync(stream);
 
-            bool placed = false;
+            bool placed = false, redraw = false;
             foreach (var (template, quantity, type) in typed)
             {
                 if (type == BonusSlots.MutationType)
@@ -153,7 +154,9 @@ namespace Jondo.Unity.Server.Handlers
                 var slots = BonusSlots.SlotsFor(type);
                 if (slots.Count > 0)
                 {
-                    if (await PlaceAsync(stream, template, slots) != null) placed = true;
+                    var put = await PlaceAsync(stream, template, slots);
+                    if (put != null) placed = true;
+                    if (put != null && SlotLooks.ChangesTheLook(put.Effects)) redraw = true;
                     continue;
                 }
                 if (!await WorkshopHandler.GiveAsync(stream, template, quantity)) continue;
@@ -163,6 +166,7 @@ namespace Jondo.Unity.Server.Handlers
 
             if (placed) await WriteAsync(stream, ConnectionProtocol.Push(Op.Kub, ConnectionProtocol.BuildCharacteristics()));
             await ItemUseHandler.WeighAsync(stream);
+            if (redraw) await SlotLookHandler.RedrawAsync(stream);
 
             Console.WriteLine($"[Items] {me.CharacterName} uses {item.Template}: " +
                               string.Join(", ", typed.Select(g => $"{g.Quantity} x {g.Template}")) + ".");
@@ -195,6 +199,7 @@ namespace Jondo.Unity.Server.Handlers
             var legacy = GameState.GetInventoryItem(created.Uid);
             if (legacy != null) legacy.Position = slot;
             Equipment.RememberWorn(created.Uid, slot, created.Effects);
+            SlotLooks.Current();
 
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Iua, AlterationProtocol.BuildSlotItemPlaced(created)));
             return created;
