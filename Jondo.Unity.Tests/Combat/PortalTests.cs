@@ -791,6 +791,9 @@ namespace Jondo.Unity.Tests.Combat
                 wire._session = new GameSession(wire._server.GetStream());
                 wire._session.BindAccount(8_900_000_000 + (characterId & 0xFFFF), 1);
                 wire._session.State.CharacterId = characterId;
+                // A map of its own, no world's: on map 0 it heard every fight the tests running
+                // beside it held there (GuildWindowTests caught their jxm).
+                wire._session.State.MapId = 9_000_000_000 + characterId;
                 wire._session.EnterWorld();
                 Assert.True(SessionRegistry.Register(wire._session));
                 return wire;
