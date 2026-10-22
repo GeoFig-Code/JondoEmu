@@ -1642,6 +1642,11 @@ namespace Jondo.Unity.Server.Network
                     // The aura.
                     await AppearanceHandler.AuraAsync(stream, payload);
                 }
+                else if (payloadStr.Contains(Op.Uri(Op.Lww)))
+                {
+                    // The cosmetics window's draft switch.
+                    await AppearanceHandler.DraftAsync(stream);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Lze)))
                 {
                     // Choosing a title in the appearance window. It only touches the draft.

@@ -20,6 +20,7 @@ namespace Jondo.Unity.Server.Handlers
     ///   client  lyf { f3: slot }        take off the slot        → server lxc + lyj { f3: 1 }
     ///   client  lxg { f1: slot, f3: 1 } hide                     → server lxc + lxk { f1: 1 }
     ///   client  lxs                     SAVE                     → server jsn + kmb + lxc, and lyu
+    ///   client  lww { f1: 1 }           the draft switch         → server lxc + lwq { f1: outfit }
     ///
     /// The difference between the two ways of putting on: `lys` lets the server choose the slot --
     /// and gives it back in the `lwz` -- and accepts a variant, which is what the "living items" use
@@ -55,6 +56,21 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Answer(Op.Lxo,
                     ConnectionProtocol.BuildAppearanceState(character, DraftIdOf(character.Id)),
                     ConnectionProtocol.RequestId(frame)));
+        }
+
+        /// <summary>
+        /// The draft switch (lww): the window takes the outfit being drafted from the lwq's f1 and
+        /// redraws it, with the preview look in front of it. Every change here is already a draft
+        /// until the lxs, so the draft is the outfit as it stands.
+        /// </summary>
+        public static async Task DraftAsync(NetworkStream stream)
+        {
+            var character = DatabaseManager.GetCharacterById(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
+            if (character == null) return;
+
+            await PreviewAsync(stream);
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Lwq, ConnectionProtocol.BuildDraftOutfit(character, DraftIdOf(character.Id))));
         }
 
         /// <summary>Putting on a garment and letting the server work out the slot.</summary>

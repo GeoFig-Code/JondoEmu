@@ -1983,6 +1983,10 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildAppearanceState(DatabaseManager.DbCharacter character, string draftId)
             => Pb.New().Var(1, 1).Bytes(3, AppearanceBody(character, draftId)).Build();
 
+        /// <summary>lwq { f1: the outfit being drafted }, the same block the lxo carries in its f3.</summary>
+        public static byte[] BuildDraftOutfit(DatabaseManager.DbCharacter character, string draftId)
+            => Pb.New().Bytes(1, AppearanceBody(character, draftId)).Build();
+
         /// <summary>
         /// A wardrobe OUTFIT: the same block that goes inside the lxo, and that is why it is here
         /// apart. The lyt repeats it —one per outfit stored in f1, and in f2 the one that is

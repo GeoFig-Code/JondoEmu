@@ -3194,6 +3194,18 @@ public static class Op
     /// <summary>Your look has changed: the panel's preview, which nobody else sees. f1 is a uuid constant within the session and different per character; where the client learns it has not been found.</summary>
     public const string Lxc = "lxc";
 
+    /// <summary>
+    /// C→S: the cosmetics window's draft switch (CosmeticUi.OnDraftToggle sends { f1: 1 }; the
+    /// builds' frame sends it too). Answered with lxc and lwq.
+    /// </summary>
+    public const string Lww = "lww";
+
+    /// <summary>
+    /// S→C: the outfit being drafted { f1 lzc, f2 a result }. eqq::bbew keeps f1 as the window's
+    /// draft and redraws it; f2 is not read there.
+    /// </summary>
+    public const string Lwq = "lwq";
+
     /// <summary>Unidentified. 3 uses in the emulator.</summary>
     public const string Lxd = "lxd";
 
