@@ -239,6 +239,20 @@ namespace Jondo.Unity.Server.Managers
             var regrowth = _byElement.TryGetValue(clave, out var resource) && GuildRaidSaltDeposits.IsDeposit(resource)
                 ? GuildRaidSaltDeposits.Regrowth(Random.Shared)
                 : Regrowth;
+
+            // Today's Almanax may make it come back sooner: «La velocidad de aparición de madera de
+            // todo tipo aumenta en un 100%» (type 8), here, for its job or its skill.
+            if (resource != null)
+            {
+                int subarea = MapManager.GetMapInfo(mapId)?.SubAreaId ?? 0;
+                var where = Almanax.Where.AtWork(resource.JobId, resource.SkillId) with
+                {
+                    Subarea = subarea,
+                    Area = subarea > 0 ? Interactives.AreaOfSubArea(subarea) : -1,
+                };
+                int faster = Almanax.BonusPercent(Almanax.BonusType.ResourceRespawn, where);
+                if (faster > 0) regrowth = TimeSpan.FromTicks(regrowth.Ticks * 100 / (100 + faster));
+            }
             _spent[clave] = DateTime.UtcNow + regrowth;
             _busy.TryRemove(clave, out _);
         }

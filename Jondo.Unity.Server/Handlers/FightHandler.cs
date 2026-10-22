@@ -9650,7 +9650,7 @@ namespace Jondo.Unity.Server.Handlers
             // Regeneration begins again, right behind the roleplay context: "kml kmp ktz" in all
             // 143 captures of it. The world entry replays the captured one; here it is built.
             await WriteFrameAsync(stream, ConnectionProtocol.BuildRegenerationStarted(
-                ConnectionProtocol.RegenerationRate));
+                ConnectionProtocol.RegenerationRateNow()));
             Network.SessionContext.State.RegenerationStartedUtc = DateTime.UtcNow;
 
             await WriteFrameAsync(stream, ConnectionProtocol.BuildLoadMap(back));

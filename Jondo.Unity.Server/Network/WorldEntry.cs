@@ -868,6 +868,12 @@ namespace Jondo.Unity.Server.Network
                     toSend = ConnectionProtocol.Push(Op.Jru, Pb.New().Var(2, mapId).Build());
                 }
 
+                // The regeneration's rate is today's, not the capture's: the Almanax may quicken it.
+                if (fightToRejoin == null && ConnectionProtocol.ReadPayload(frame, Op.Ktz) != null)
+                {
+                    toSend = ConnectionProtocol.BuildRegenerationStarted(ConnectionProtocol.RegenerationRateNow());
+                }
+
                 if (fightToRejoin != null)
                 {
                     if (ConnectionProtocol.ReadPayload(frame, Op.Ktz) != null

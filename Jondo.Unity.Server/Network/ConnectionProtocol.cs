@@ -781,6 +781,17 @@ namespace Jondo.Unity.Server.Network
         public const int RegenerationTickMs = RegenerationRate * 100;
 
         /// <summary>
+        /// The rate handed out now: <see cref="RegenerationRate"/>, faster on a day the Almanax says
+        /// «La regeneración de puntos de vida aumenta un 300%» -- 5 tenths become 1, the rate eight of
+        /// the captures' ktz carry.
+        /// </summary>
+        public static int RegenerationRateNow()
+        {
+            int bonus = Managers.Almanax.BonusPercent(Managers.Almanax.BonusType.LifeRegeneration, Managers.Almanax.Where.Anywhere);
+            return bonus <= 0 ? RegenerationRate : Math.Max(1, (int)Math.Round(RegenerationRate * 100.0 / (100 + bonus)));
+        }
+
+        /// <summary>
         /// Life regeneration begins (ktz): f1 the rate. Right behind every "kml kmp" back to
         /// roleplay -- the world entry replays the captured one, and the fight end builds this.
         /// </summary>
@@ -808,7 +819,7 @@ namespace Jondo.Unity.Server.Network
         public static int RegenerationTicksSince(DateTime startedUtc, DateTime nowUtc)
         {
             if (startedUtc == default || nowUtc <= startedUtc) return 0;
-            return (int)Math.Min(int.MaxValue, (long)(nowUtc - startedUtc).TotalMilliseconds / RegenerationTickMs);
+            return (int)Math.Min(int.MaxValue, (long)(nowUtc - startedUtc).TotalMilliseconds / (RegenerationRateNow() * 100));
         }
 
         // ─── World: actors on the map ───────────────────────────────────────────

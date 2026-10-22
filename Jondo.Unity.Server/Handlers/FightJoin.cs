@@ -925,7 +925,7 @@ namespace Jondo.Unity.Server.Handlers
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Jxa, FightJoinProtocol.BuildLeftFight()));
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kml));
             await WriteFrameAsync(stream, ConnectionProtocol.Push(Op.Kmp));
-            await WriteFrameAsync(stream, ConnectionProtocol.BuildRegenerationStarted(ConnectionProtocol.RegenerationRate));
+            await WriteFrameAsync(stream, ConnectionProtocol.BuildRegenerationStarted(ConnectionProtocol.RegenerationRateNow()));
             suyo.RegenerationStartedUtc = DateTime.UtcNow;
             await WriteFrameAsync(stream, ConnectionProtocol.BuildLoadMap(suyo.MapId));
             await WriteFrameAsync(stream, ConnectionProtocol.BuildMapClock());

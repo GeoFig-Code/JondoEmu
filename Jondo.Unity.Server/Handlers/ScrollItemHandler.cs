@@ -130,7 +130,7 @@ namespace Jondo.Unity.Server.Handlers
 
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Kub, ConnectionProtocol.BuildCharacteristics()));
             if (life > 0)
-                await WriteAsync(stream, ConnectionProtocol.BuildRegenerationStarted(ConnectionProtocol.RegenerationRate));
+                await WriteAsync(stream, ConnectionProtocol.BuildRegenerationStarted(ConnectionProtocol.RegenerationRateNow()));
             foreach (var (characteristic, before, after) in gains)
                 await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
                     ConnectionProtocol.BuildSystemMessage(characteristic.Gained, (after - before).ToString())));

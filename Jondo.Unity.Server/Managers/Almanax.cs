@@ -188,6 +188,12 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>"Los escultomagos tienen un 15% de probabilidad de no consumir ninguna runa".</summary>
             public const int RuneKept = 31;
 
+            /// <summary>"La velocidad de aparición de madera de todo tipo aumenta en un 100%" (by area, subarea or job).</summary>
+            public const int ResourceRespawn = 8;
+
+            /// <summary>"La regeneración de puntos de vida aumenta un 300% (fuera de combate)".</summary>
+            public const int LifeRegeneration = 20;
+
             /// <summary>"Las monturas que nazcan este día tendrán la capacidad Resistente": its 17 names the capacity.</summary>
             public const int NewbornCapacity = 37;
 

@@ -85,7 +85,7 @@ namespace Jondo.Unity.Server.Handlers
 
             bool levelled = await CharacterRewards.GiveExperienceAsync(stream, experience, serverBonus: false);
             if (life > 0)
-                await WriteAsync(stream, ConnectionProtocol.BuildRegenerationStarted(ConnectionProtocol.RegenerationRate));
+                await WriteAsync(stream, ConnectionProtocol.BuildRegenerationStarted(ConnectionProtocol.RegenerationRateNow()));
             if (gained > 0)
                 await WriteAsync(stream, ConnectionProtocol.Push(Op.Lqn,
                     ConnectionProtocol.BuildSystemMessage(InfoMessages.EnergyRecovered, gained.ToString())));
