@@ -191,6 +191,91 @@ namespace Jondo.Unity.Server.Handlers
             Console.WriteLine($"[Party] {SessionContext.State.CharacterName} turns down party {partyId}.");
         }
 
+        // ─── Withdrawing an invitation ──────────────────────────────────────────
+
+        /// <summary>
+        /// A pending invitation withdrawn from the invitee's menu, «Cancelar la invitación»:
+        /// <c>inq { 1 party, 2 invitee }</c>, by whoever invited him or the leader.
+        /// </summary>
+        /// <remarks>
+        /// Read in the client, which no capture records. Its party frame (ffl) answers two messages
+        /// with exactly this: <c>ilo { 1 party, 2 who withdrew }</c> takes the «partyInvit_» popup
+        /// away and writes «ui.party.invitationCancelledForGuest» -- the same ilo the capture sends
+        /// whoever declines --, and <c>ind { 1 party, 2 who withdrew, 3 invitee }</c> writes
+        /// «ui.party.invitationCancelled» with both names and takes the invitee off the party's
+        /// list. A party left with nobody but its leader and no invitation open breaks up, as on a
+        /// refusal.
+        /// </remarks>
+        public static async Task CancelInvitationAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? inq = ConnectionProtocol.ReadPayload(payload, "inq");
+            if (inq == null) return;
+
+            int partyId = (int)VarField(inq, 1);
+            long guestId = VarField(inq, 2);
+            var party = Parties.Get(partyId);
+            long meId = SessionContext.State.CharacterId;
+            if (party == null || !Parties.MembersOf(party).Contains(meId)) return;
+
+            long hostId;
+            lock (party.Gate)
+            {
+                if (!party.Pending.TryGetValue(guestId, out hostId)) return;
+            }
+            if (hostId != meId && party.LeaderId != meId) return;
+            Parties.Refuse(party, guestId);
+
+            var guest = SessionRegistry.FindByCharacter(guestId);
+            if (guest != null)
+                await guest.SendAsync(ConnectionProtocol.Push(Op.Ilo, ConnectionProtocol.BuildInvitationClosed(partyId, meId)));
+
+            byte[] cancelled = ConnectionProtocol.Push("ind", Pb.New().Var(1, partyId).Var(2, meId).Var(3, guestId).Build());
+            foreach (long member in Parties.MembersOf(party))
+            {
+                var session = SessionRegistry.FindByCharacter(member);
+                if (session != null) await session.SendAsync(cancelled);
+            }
+
+            bool alone;
+            lock (party.Gate) alone = party.Pending.Count == 0;
+            if (alone && Parties.MembersOf(party).Count <= 1)
+            {
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Imy, ConnectionProtocol.BuildPartyDissolved(partyId)));
+                Parties.Dissolve(party);
+            }
+            Console.WriteLine($"[Party] {SessionContext.State.CharacterName} withdraws the invitation of {guestId} to party {partyId}.");
+        }
+
+        // ─── Loyalty ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The party window's lock, «no aceptar más invitaciones»: <c>ila { 2 party, 4 on }</c>, read
+        /// off the client's party actions (ffd). The answer is <c>ilj { 1 on, 2 party }</c>, which
+        /// its party frame keeps and hands the window (PartyDisplayWindowHookHandler
+        /// .OnPartyLoyaltyStatus), the old game's PartyLoyaltyStatus: the member's own pledge to stay.
+        /// Kept with the party; nobody in a party can be invited to another here anyway.
+        /// </summary>
+        public static async Task PledgeLoyaltyAsync(NetworkStream stream, byte[] payload)
+        {
+            byte[]? ila = ConnectionProtocol.ReadPayload(payload, "ila");
+            if (ila == null) return;
+
+            int partyId = (int)VarField(ila, 2);
+            bool loyal = VarField(ila, 4) != 0;
+            var party = Parties.Get(partyId);
+            long meId = SessionContext.State.CharacterId;
+            if (party == null || !Parties.MembersOf(party).Contains(meId)) return;
+
+            lock (party.Gate)
+            {
+                if (loyal) party.Loyal.Add(meId);
+                else party.Loyal.Remove(meId);
+            }
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push("ilj", Pb.New().VarIfNotZero(1, loyal ? 1 : 0).Var(2, partyId).Build()));
+        }
+
         // ─── The invitation's details ───────────────────────────────────────────
 
         /// <summary>

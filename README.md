@@ -324,6 +324,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
   group or is put out of one
 - ✅ A group of the search short of players can ask to be completed: the newcomers join it in its room
 - ✅ The party invitation's *Details* button
+- ✅ Withdrawing an invitation still open, and the party window's lock
 - ✅ The ladders window: experience, achievements, Koliseo (by mode, class and level band) and Infinite
   Dreams, the top 100 with your own place, and a search by name
 

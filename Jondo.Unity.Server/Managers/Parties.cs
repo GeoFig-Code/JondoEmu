@@ -55,6 +55,9 @@ namespace Jondo.Unity.Server.Managers
             /// </summary>
             public HashSet<long> Followers { get; } = new();
 
+            /// <summary>The members who pledged to stay, the window's lock (ila).</summary>
+            public HashSet<long> Loyal { get; } = new();
+
             public object Gate { get; } = new();
         }
 

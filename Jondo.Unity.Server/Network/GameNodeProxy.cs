@@ -668,6 +668,9 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr == Op.Uri("ikb")) await Handlers.PartyFollowHandler.LeaderSwitchAsync(stream, payload);
                 // A cell marked for one's side in a fight.
                 else if (payloadStr == Op.Uri("kmh")) await FightHandler.MarkCellAsync(stream, payload);
+                // A party invitation withdrawn, and the party window's lock.
+                else if (payloadStr == Op.Uri("inq")) await PartyHandler.CancelInvitationAsync(stream, payload);
+                else if (payloadStr == Op.Uri("ila")) await PartyHandler.PledgeLoyaltyAsync(stream, payload);
                 // A guild's new name or emblem, with its potion.
                 else if (payloadStr == Op.Uri(Op.Jhv)) await GuildHandler.RenameAsync(stream, payload);
                 else if (payloadStr == Op.Uri(Op.Jhz)) await GuildHandler.ReEmblemAsync(stream, payload);
