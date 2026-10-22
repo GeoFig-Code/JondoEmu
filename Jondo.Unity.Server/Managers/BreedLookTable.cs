@@ -393,6 +393,15 @@ namespace Jondo.Unity.Server.Managers
         /// every look of ours carries; both on foot, without mount or pet. The skins of f1 are the
         /// breed's, the head and the build's equipment; those of f3 replace what a garment covers.
         /// </remarks>
+        /// <summary>
+        /// The character with nothing on, his body and head: the player card's f8, which in the
+        /// capture carries only skins [110, 5312] beside the full look of its f14.
+        /// </summary>
+        public static byte[] BareLook(DatabaseManager.DbCharacter character)
+            => BuildBodyLook(character.Breed, character.Sex, character.HeadId, SavedColors(character),
+                             riding: false, appearance: null, character.Id,
+                             worn: Array.Empty<(int Slot, int Template)>()).Build();
+
         public static (byte[] Equipment, byte[] Appearance) PresetLooks(DatabaseManager.DbCharacter character,
                                                                         IReadOnlyList<(int Slot, int Template)> worn)
         {
