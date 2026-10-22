@@ -110,15 +110,15 @@ namespace Jondo.Unity.Tests.Combat
         [Fact]
         public void The_enemy_side_gets_the_copy_dressed_as_him()
         {
-            var identity = FightProtocol.PlayerIdentity(13, "Tymaviejas", 0, 200);
+            var identity = FightProtocol.PlayerIdentity(13, "Illusion-1", 0, 200);
 
             byte[] dressed = FightProtocol.BuildIllusion(Rogue, -8, 259, 1, 230, 3,
                                                          new[] { (1, 7L, 0L), (0, 2387L, 0L) }, CapturedLook, identity);
             byte[] bare = FightProtocol.BuildIllusion(Rogue, -8, 259, 1, 230, 3,
                                                       new[] { (1, 7L, 0L), (0, 2387L, 0L) }, CapturedLook);
 
-            Assert.Contains("Tymaviejas", System.Text.Encoding.UTF8.GetString(dressed));
-            Assert.DoesNotContain("Tymaviejas", System.Text.Encoding.UTF8.GetString(bare));
+            Assert.Contains("Illusion-1", System.Text.Encoding.UTF8.GetString(dressed));
+            Assert.DoesNotContain("Illusion-1", System.Text.Encoding.UTF8.GetString(bare));
             Assert.Equal(Hex(FightProtocol.BuildIllusion(Rogue, -8, 259, 1, 230, 3,
                                                          FightProtocol.IllusionSheet(200), CapturedLook)),
                          Hex(FightProtocol.BuildIllusion(Rogue, -8, 259, 1, 230, 3,

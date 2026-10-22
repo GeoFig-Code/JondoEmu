@@ -31,7 +31,7 @@ namespace Jondo.Unity.Server.Handlers
     /// client: in the 34 folders there is not a single time anybody kicks anybody.
     ///
     /// Two misleading things worth keeping in mind. One invites by NAME and accepts by PARTY ID: the
-    /// ime carries «Uber-Black» in text and the ijx carries 71272. And the party is created ON INVITING,
+    /// ime carries «Follower-1» in text and the ijx carries 71272. And the party is created ON INVITING,
     /// before the other answers, which is why the ing with a single member arrives right away; if the
     /// other says no, it undoes itself.
     ///

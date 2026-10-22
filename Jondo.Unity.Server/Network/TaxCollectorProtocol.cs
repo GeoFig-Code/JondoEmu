@@ -194,7 +194,7 @@ namespace Jondo.Unity.Server.Network
         /// Read off kx.nxi, which builds the client's view of one: the first name from f4, the last
         /// from f10, the subarea from f11, the pods and worth from the f2 of case 4. The twenty of
         /// the hks have this shape -- f1 the same character for the two tax collectors of
-        /// «Malfas-El-Dictador», f6 his name, f2 {f4 {160, 622691}} --.
+        /// «Attacker-Character», f6 his name, f2 {f4 {160, 622691}} --.
         /// </remarks>
         public static Pb Information(TaxCollectorStore.TaxCollector tc, AllianceStore.Alliance alliance, int state,
                                      Details details = null)

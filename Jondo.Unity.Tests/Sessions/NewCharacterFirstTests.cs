@@ -13,7 +13,7 @@ namespace Jondo.Unity.Tests.Sessions
     /// The client does not ask which one you want: it takes the first of the list and sends its selection
     /// instantly. In the log it is seen with five milliseconds of difference:
     ///
-    ///   00:16:05.798  Creado Tymaviejas (id 13825564)
+    ///   00:16:05.798  Creado Illusion-1 (id 13825564)
     ///   00:16:05.803  Selected character 13825558     <- the previous one
     ///
     /// Our list comes from an «ORDER BY Id», so the freshly created one —the highest id— went
@@ -21,7 +21,7 @@ namespace Jondo.Unity.Tests.Sessions
     /// screen and pick it by hand.
     ///
     /// That the new one goes in front is measured in «crear personaje - borrar personaje»: the kvi that
-    /// follows the kvb carries «Vos-Xx», the one just created, ahead of «Berru».
+    /// follows the kvb carries «Gone-1», the one just created, ahead of «Elder».
     /// </remarks>
     public class NewCharacterFirstTests
     {

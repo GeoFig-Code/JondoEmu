@@ -196,7 +196,7 @@ namespace Jondo.Unity.Server.Handlers
             // left the client with the list from BEFORE the creation; that was already fixed. But the old
             // character still went into the world, and the log shows it beyond doubt:
             //
-            //   00:16:05.798  Creado Tymaviejas (id 13825564)
+            //   00:16:05.798  Creado Illusion-1 (id 13825564)
             //   00:16:05.803  Selected character 13825558     <- five milliseconds later
             //
             // So the client does not choose: it takes THE FIRST one on the list and sends its selection
@@ -204,7 +204,7 @@ namespace Jondo.Unity.Server.Handlers
             // highest id, went last.
             //
             // That the new one goes first is measured in «crear personaje - borrar personaje»: the kvi
-            // that follows the kvb carries «Vos-Xx», the one just created, ahead of «Berru», who was
+            // that follows the kvb carries «Gone-1», the one just created, ahead of «Elder», who was
             // already there. It is reordered only here and not in GetCharactersByAccountId, because the
             // order of the normal selection screen is something else and has not been measured.
             var characters = DatabaseManager.GetCharactersByAccountId(accountId, serverId);

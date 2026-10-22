@@ -20,7 +20,7 @@ namespace Jondo.Unity.Server.Handlers
     ///   C-&gt;S  kvu  08&lt;id&gt; 1220 "9cdab917cc3d5a4a33..."  f1: the id, f2: 32 hex characters
     ///   C-&gt;S  kvh  (empty)
     ///
-    ///   S-&gt;C  kvn  0a06 "Vos-Xx"                        f1: the name of what is gone
+    ///   S-&gt;C  kvn  0a06 "Gone-1"                        f1: the name of what is gone
     ///   S-&gt;C  kqp kqp kqp  kvi  jtg                     the list again
     ///   S-&gt;C  kvm  (empty)
     /// </code>

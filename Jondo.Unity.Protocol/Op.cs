@@ -490,7 +490,7 @@ public static class Op
     // the inviter records and in others the invitee, and the messages are not the same.
     //
     // One invites by NAME and accepts by PARTY ID, which is what is most confusing: the ime carries
-    // "Uber-Black" as text and the ijx carries 71272. The party has its own identifier, a server
+    // "Follower-1" as text and the ijx carries 71272. The party has its own identifier, a server
     // counter -69145, 69158, 69186, 71272 in the four captures-.
 
     /// <summary>Inviting someone to the party, BY NAME: { f1 { f4 { f1: name } }, f3: true }.</summary>
@@ -2943,7 +2943,7 @@ public static class Op
     //   C->S  kvu  08<id> 1220 "9cdab917cc3d5a4a33..."  f1: the id, f2: 32 hex characters
     //   C->S  kvh  (empty)
     //
-    //   S->C  kvn  0a06 "Vos-Xx"                        f1: the name of what is gone
+    //   S->C  kvn  0a06 "Gone-1"                        f1: the name of what is gone
     //   S->C  kqp kqp kqp  kvi  jtg                     the list again, framed as always
     //   S->C  kvm  (empty)
     //
