@@ -135,14 +135,17 @@ They now go in the right order.
 
 ## 6. What is missing
 
-Not missing any more: the dungeon challenges. The 684 flagged `solo_mazmorra` all name a monster, and
-the boss room imposes those of the monsters in front (`ChallengeHandler.ImposeAsync`), bonus at zero, as
-the anomaly's capture shows.
+Not missing any more:
+- the dungeon challenges. The 684 flagged `solo_mazmorra` all name a monster, and the boss room imposes
+  those of the monsters in front (`ChallengeHandler.ImposeAsync`), bonus at zero, as the anomaly's
+  capture shows;
+- the guardian's replies: only the key's and the keyring's let one in (`DungeonHandler.DoorReplies`,
+  `DungeonDoor`), any other answer leaves the player outside;
+- the group search: the announcements and the automatic matchmaking of the dungeons' lobby.
 
 - **The internal passages**, in part. The 2.73 world graph's cell passages no route covered -- 510 stairs,
   holes and doorways drawn into dungeons' and caves' maps -- are floor passages since 22/10
   (`datos/floor_passages_worldgraph_2.73.json`, tools/extraer_pasos_de_casilla.py), with an approximate
   arrival cell and their criterion. Doors the graph does not have are still missing.
-- **The guardian's dialog tree**, with the confirmation and a «no, thanks» that does not let you in.
-- **The waves** of some new dungeons (Despedazadora, Venerable, Bzupervibzor) and the hunting altar.
-- **Automatic matchmaking** and the lobby. There is nothing, and the data already carries the flags.
+- **The waves** of some new dungeons (Despedazadora, Venerable, Bzupervibzor) and the hunting altar: the
+  client has their arrival (`jyb`, done for the dreams) but not which monsters come in which wave.
