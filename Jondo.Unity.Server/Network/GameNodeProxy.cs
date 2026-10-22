@@ -668,6 +668,9 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr == Op.Uri("ikb")) await Handlers.PartyFollowHandler.LeaderSwitchAsync(stream, payload);
                 // A cell marked for one's side in a fight.
                 else if (payloadStr == Op.Uri("kmh")) await FightHandler.MarkCellAsync(stream, payload);
+                // A swap of cells with an ally during the placement, accepted or refused.
+                else if (payloadStr == Op.Uri(Op.Kap)) await FightHandler.AcceptSwapAsync(stream, payload);
+                else if (payloadStr == Op.Uri(Op.Kav)) await FightHandler.RefuseSwapAsync(stream, payload);
                 // A player's card («Mostrar perfil»).
                 else if (payloadStr == Op.Uri("kxh")) await PlayerCardHandler.ShowAsync(stream, payload);
                 // The chat's community, acknowledged.

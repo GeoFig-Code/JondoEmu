@@ -2666,6 +2666,24 @@ public static class Op
     /// <summary>Server to client: a fighter taken off the board during the placement.</summary>
     public const string Kar = "kar";
 
+    /// <summary>
+    /// Server to client: an ally asked to swap cells during the placement, { f2: the one asked,
+    /// f3: the request, f5: who asks } (FightHandler.OfferSwapAsync).
+    /// </summary>
+    public const string Kad = "kad";
+
+    /// <summary>Server to client: a swap of cells turned down, { f1: who did, f2: the request }.</summary>
+    public const string Kac = "kac";
+
+    /// <summary>Server to client: a swap of cells that could not be, «ui.fight.swapPositionRequestError».</summary>
+    public const string Jzz = "jzz";
+
+    /// <summary>Client to server: a swap of cells accepted, { f1: the request }.</summary>
+    public const string Kap = "kap";
+
+    /// <summary>Client to server: a swap of cells refused or withdrawn, { f1: the request }.</summary>
+    public const string Kav = "kav";
+
     /// <summary>Server to client: a kay turned down, { f1: the fighter named, f2: why }.</summary>
     public const string Jxs = "jxs";
 

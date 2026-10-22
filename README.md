@@ -720,6 +720,7 @@ One fight engine serves four kinds of fight:
 <img width="2560" height="1510" alt="image" src="https://github.com/user-attachments/assets/d5fdf2d1-0244-4529-b2b9-06cf3dcdc1e5" />
 
 - ✅ Tactical arenas, placement phase and cell swapping
+- ✅ Swapping places with an ally during the placement: he is asked and accepts or refuses
 - ✅ Line of sight, turns with their timer, AP and MP; unused turn time partly kept
 - ✅ Movement, tackle and escape
 - ✅ Loot, victory and defeat screens, experience over **1,889 levels**, group respawn

@@ -2628,13 +2628,22 @@ namespace Jondo.Unity.Server.Handlers
 
             // The client sends jzy, not jyz: the three letters were transposed in the old code, so
             // the branch was never entered.
-            var (_, newCell) = Network.FightProtocol.ReadPlacementMove(payload);
+            var (who, newCell) = Network.FightProtocol.ReadPlacementMove(payload);
             if (newCell == 0) return;
 
             // On whichever team. It was only looked for on blue, so in a challenge the challenged
             // player could not reposition: his request fell here without a word.
             var player = fight.Buscar(GameState.CharacterId);
             if (player == null) return;
+
+            // An ally named, by his menu's «Cambiar de sitio», or the cell of one picked: a swap.
+            var ally = (who != 0 && who != player.Id ? fight.Buscar(who) : null)
+                       ?? fight.Todos.FirstOrDefault(o => o != player && o.IsAlive && o.CellId == newCell);
+            if (ally != null && ally.IsAlive && ally.TeamId == player.TeamId && ally.CellId == newCell)
+            {
+                await OfferSwapAsync(fight, player, ally);
+                return;
+            }
 
             // And each on the cells of HIS side. It was always checked against the blue ones, which
             // against monsters is the same since there is only one person on blue.
@@ -2651,6 +2660,7 @@ namespace Jondo.Unity.Server.Handlers
             if (oldCell == newCell) return;
 
             fight.ChangePlacementCell(GameState.CharacterId, newCell);
+            if (player.CellId == newCell) ForgetSwapsOf(fight, player.Id);
 
             // The kmk says WHERE EACH ONE IS; it is not "this cell is freed". Everybody's position is
             // sent, which is what the real server does.

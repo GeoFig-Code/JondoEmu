@@ -147,6 +147,25 @@ one taken.
 `jzy { f1: fighter, f2: cell }` is the player dragging themselves onto another
 blue cell. `kaq { f1: 1 }` is the ready button; the server answers `kah`.
 
+### Swapping cells with an ally
+
+Read in the client (placement frames `fju`/`fjw`, `SwapPositionHandler`); no capture has it.
+An ally's menu, «Cambiar de sitio», sends the same `jzy` with **the ally's** id and cell; a
+cell picked that an ally stands on asks him too (`FightPlacementSwaps.cs`).
+
+```
+C->S  jzy  { 1 ally, 2 his cell }
+S->C  kad  { 1 cell*, 2 the one asked, 3 request, 4 cell*, 5 who asks }   to the two
+C->S  kap  { 1 request }        accepted -> everybody's cells in a kmk
+C->S  kav  { 1 request }        refused  -> kac { 1 who refused, 2 request } to the two
+S->C  jzz  {}                   «ui.fight.swapPositionRequestError»
+```
+
+The one asked sees the notification «ui.fight.swapPositionRequest» with accept and refuse;
+whoever asked keeps the request and, refused, reads «ui.fight.swapPositionRequestRefused».
+The client drops every request of a fighter a kmk moves. `*` the client does not read them;
+inferred as the two cells. An ally nobody plays (a JondoBot) swaps at once.
+
 ### `jyy` — the spell bar
 
 ```

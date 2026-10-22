@@ -2314,6 +2314,27 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildFighterPlaced(int cell, int orientation, long fighter)
             => BuildFightersPlaced(new[] { (cell, orientation, fighter) });
 
+        // ─── Swapping cells with an ally ────────────────────────────────────────
+
+        /// <summary>
+        /// A swap asked for (kad): f2 the one asked, f3 the request, f5 who asks, read so by the
+        /// client's placement frame (fjw); f1 and f4 the two cells, which it does not read (INFERRED).
+        /// </summary>
+        public static byte[] BuildSwapOffer(int request, long requester, int requesterCell, long requested, int requestedCell)
+            => Pb.New().VarIfNotZero(1, requesterCell).Var(2, requested).Var(3, request)
+                       .VarIfNotZero(4, requestedCell).Var(5, requester).Build();
+
+        /// <summary>A swap turned down (kac): f1 who did, f2 the request.</summary>
+        public static byte[] BuildSwapRefused(long who, int request) => Pb.New().Var(1, who).Var(2, request).Build();
+
+        /// <summary>The request a kap or a kav answers: f1.</summary>
+        public static int ReadSwapRequest(byte[] payload, string opcode)
+        {
+            byte[]? body = ConnectionProtocol.ReadPayload(payload, opcode);
+            if (body == null) return 0;
+            return (int)(ProtoMessage.Parse(body).Fields.FirstOrDefault(f => f.FieldNumber == 1 && f.WireType == 0)?.VarIntValue ?? 0);
+        }
+
         // ─── Ready ──────────────────────────────────────────────────────────────
 
         /// <summary>
