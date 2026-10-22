@@ -1488,6 +1488,12 @@ public static class Op
     public const string Jci = "jci";
 
     /// <summary>
+    /// C→S: joining a guild of automatic recruitment, { f4 the guild } -- «Unirse al gremio» in its
+    /// social menu (fvl, ffr.beeq). No answer of its own: the guild arrives as on any joining.
+    /// </summary>
+    public const string Jhn = "jhn";
+
+    /// <summary>
     /// C→S: a guild's card, { f1 the guild } -- its name clicked in a chat link (HyperlinkShowGuild)
     /// or in the friends list. Answered with <see cref="Jie"/>.
     /// </summary>

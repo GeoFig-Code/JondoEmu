@@ -1704,6 +1704,44 @@ namespace Jondo.Unity.Server.Handlers
             }
         }
 
+        /// <summary>The sheet's recruitment that lets anybody join at once (<see cref="GuildStore.Profile.F5"/>).</summary>
+        public const int AutomaticRecruitment = 1;
+
+        /// <summary>
+        /// «Unirse al gremio» (jhn: f4 the guild), offered by a guild whose sheet recruits
+        /// automatically: in at once, if he has no guild and reaches the sheet's minimum level --
+        /// the two things the client's card checks (GuildCardUI.CanJoinGuild). His applications
+        /// elsewhere go; the guild arrives as on accepting an invitation.
+        /// </summary>
+        public static async Task JoinDirectlyAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[] jhn = ConnectionProtocol.ReadPayload(frame, Op.Jhn);
+            long who = SessionContext.State.CharacterId;
+            if (jhn == null || who == 0 || GuildStore.GuildOf(who) != null) return;
+            var guild = GuildStore.ById(FieldValue(jhn, 4));
+            var profile = guild == null ? null : GuildStore.ProfileOf(guild.Id);
+            if (guild == null || profile == null || profile.WhenMs == 0 || profile.F5 != AutomaticRecruitment)
+            {
+                Console.WriteLine($"[Guild] {SessionContext.State.CharacterName} may not join guild {FieldValue(jhn, 4)} directly.");
+                return;
+            }
+            if (SessionContext.State.CharacterLevel < profile.MinLevel) return;
+
+            foreach (var application in GuildStore.ApplicationsBy(who))
+            {
+                GuildStore.DropApplication(application.GuildId, who);
+                var other = GuildStore.ById(application.GuildId);
+                if (other != null) await ApplicationMovedAsync(other, application, GuildProtocol.ApplicationGone, who);
+            }
+
+            GuildStore.Join(who, guild.Id);
+            await SendGuildToOwnerAsync(stream, guild, who);
+            await RedrawAsync(stream, who);
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Jij, GuildProtocol.BuildJoinDone()));
+            await RefreshEveryoneAsync(guild, who);
+            Console.WriteLine($"[Guild] {SessionContext.State.CharacterName} joins «{guild.Name}» directly.");
+        }
+
         /// <summary>Sends the whole guild to whoever has just joined, if he is connected.</summary>
         private static async Task SendGuildToNewMemberAsync(long characterId, GuildStore.Guild guild)
         {

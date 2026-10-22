@@ -122,8 +122,15 @@ namespace Jondo.Unity.Server.Managers
             public long WhenMs { get; set; }
             public string Description { get; set; } = "";
             public int MinLevel { get; set; }
+
+            /// <summary>The sheet's f9, which the client's card (jm.npn) reads as the minimum achievement points.</summary>
             public int MaxLevel { get; set; }
             public byte[] Tags { get; set; } = Array.Empty<byte>();
+
+            /// <summary>
+            /// The recruitment, the sheet's f5 (jm.npn → GuildCardUI): 1 lets anybody join at once
+            /// («Unirse»), 0 and 2 take applications -- 2 the unwritten sheet's, as measured.
+            /// </summary>
             public int F5 { get; set; }
             public byte[] F6 { get; set; } = Array.Empty<byte>();
             public string Title { get; set; } = "";

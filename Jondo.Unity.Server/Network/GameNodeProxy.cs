@@ -1035,6 +1035,8 @@ namespace Jondo.Unity.Server.Network
                     await Handlers.GuildHandler.WarnConnectionsAsync(true);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jhf)))
                     await Handlers.GuildHandler.WarnConnectionsAsync(false);
+                else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jhn)))
+                    await Handlers.GuildHandler.JoinDirectlyAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jhp)))
                     await Handlers.GuildHandler.ShowGuildAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jey)))

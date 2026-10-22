@@ -417,6 +417,29 @@ namespace Jondo.Unity.Tests.World
             }
         }
 
+        /// <summary>
+        /// «Unirse al gremio» (jhn f4) lets one in at once when the sheet recruits automatically (f5
+        /// 1), and not when it takes applications.
+        /// </summary>
+        [Fact]
+        public async Task A_guild_of_automatic_recruitment_lets_one_join_at_once()
+        {
+            var open = GuildStore.Create(7003, "Abierto", 165, 8, 16744448, 9476018);
+            GuildStore.SaveProfile(new GuildStore.Profile { GuildId = open.Id, WhenMs = 1, F5 = GuildHandler.AutomaticRecruitment });
+            var closed = GuildStore.Create(7005, "Cerrado", 165, 8, 16744448, 9476018);
+            GuildStore.SaveProfile(new GuildStore.Profile { GuildId = closed.Id, WhenMs = 1, F5 = 2 });
+
+            await using var wire = await global::Jondo.Unity.Tests.Combat.PortalTests.Wire.Open(7004);
+            using (SessionContext.Push(wire.Session))
+            {
+                await GuildHandler.JoinDirectlyAsync(wire.Session.Stream!, ConnectionProtocol.Push(Op.Jhn, Pb.New().Var(4, closed.Id).Build()));
+                Assert.Null(GuildStore.GuildOf(7004));
+                await GuildHandler.JoinDirectlyAsync(wire.Session.Stream!, ConnectionProtocol.Push(Op.Jhn, Pb.New().Var(4, open.Id).Build()));
+            }
+            Assert.Equal(open.Id, GuildStore.GuildOf(7004)?.Id);
+            Assert.Contains(Op.Jij, (await wire.Drain()).Select(f => f.Op));
+        }
+
         /// <summary>The guild coins come from the contributions: ten for each one, in total.</summary>
         [Fact]
         public void Contributions_become_gremichas()
