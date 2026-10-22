@@ -733,7 +733,7 @@ Ranked PvP through a queue. Open the window, pick a format, get matched, fight, 
 - ✅ The ladder: hidden rating, the client's **26 leagues**, placement fights, seasons
 - 🟡 The payout is fixed amounts, not the game's formula
 - 🟡 The rating curve and the season length are this server's own
-- 🚧 The *match found* popup with accept and refuse
+- ✅ The *match found* popup with accept and refuse, and the sanction for letting it run out
 - ✅ The ranking lists, per mode, class and level band, in the ladders window
 
 ### ✨ Spell effect engine
