@@ -41,6 +41,14 @@ namespace Jondo.Unity.Tests
         }
 
         /// <summary>
+        /// No traffic log for the tests: every frame a handler writes went into logs/ as «S->C», and a
+        /// test run is enough of them to rotate the real sessions out of the files
+        /// TrafficLogAgainstTheRealFileTests reads.
+        /// </summary>
+        [ModuleInitializer]
+        internal static void NoTrafficLog() => Environment.SetEnvironmentVariable("JONDO_SIN_REGISTRO_DE_TRAFICO", "1");
+
+        /// <summary>
         /// The server's settings at their defaults, whatever the machine's config/server_settings.json
         /// says: a raid minimum of one saved from the settings window made the raid board's test start
         /// a raid of three, which CI, with no such file, would never see.

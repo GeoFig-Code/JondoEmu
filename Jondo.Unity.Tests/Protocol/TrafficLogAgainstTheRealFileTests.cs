@@ -50,12 +50,20 @@ namespace Jondo.Unity.Tests.Protocol
                 var reader = new TrafficLogReader(path);
                 reader.SeekToStart();
 
-                while (all.Count < 60_000)
+                var file = new List<TrafficEntry>();
+                while (all.Count + file.Count < 60_000)
                 {
                     var batch = reader.ReadNew(10_000);
                     if (batch.Count == 0) break;
-                    all.AddRange(batch);
+                    file.AddRange(batch);
                 }
+
+                // A file without a single row the log marks as the client's is no play session: it
+                // is the test run's own frames, which went into logs/ until TestDatabases switched
+                // the traffic log off for the tests, and rotated the real sessions out. The marker
+                // is the log's text, not the envelope reader's verdict, so a reader that cannot
+                // open client frames still fails below.
+                if (file.Exists(entry => entry.FromClient)) all.AddRange(file);
             }
 
             // Too little to say anything with. A ratio over a couple of thousand frames is noise
