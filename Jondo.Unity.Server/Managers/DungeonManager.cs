@@ -86,20 +86,48 @@ namespace Jondo.Unity.Server.Managers
             public long FirstRoom => Rooms.Count == 0 ? 0 : Rooms[0];
         }
 
-        private static readonly Dictionary<int, Dungeon> _byId = new Dictionary<int, Dungeon>();
+        /// <summary>
+        /// The dungeons as one set: <see cref="Initialize"/> fills a new one on its own thread and
+        /// publishes it whole, so a reader meanwhile sees the old dungeons or the new ones. It used
+        /// to empty them in place, and a search window opened in that moment listed none.
+        /// </summary>
+        private sealed class Tables
+        {
+            public readonly Dictionary<int, Dungeon> ById = new();
+            public readonly Dictionary<long, List<Dungeon>> ByRoom = new();
+        }
+
+        private static volatile Tables _published = new();
+        [ThreadStatic] private static Tables? _building;
+        private static Tables Current => _building ?? _published;
+
+        private static Dictionary<int, Dungeon> _byId => Current.ById;
 
         /// <summary>Every dungeon a map belongs to. A map can be a room of more than one.</summary>
-        private static readonly Dictionary<long, List<Dungeon>> _byRoom = new Dictionary<long, List<Dungeon>>();
+        private static Dictionary<long, List<Dungeon>> _byRoom => Current.ByRoom;
 
         public static IReadOnlyDictionary<int, Dungeon> All => _byId;
         public static bool IsLoaded => _byId.Count > 0;
 
         public static void Initialize()
         {
-            _byId.Clear();
-            _byRoom.Clear();
+            var fresh = new Tables();
+            _building = fresh;
+            try
+            {
+                if (!Fill()) return;
+            }
+            finally
+            {
+                _building = null;
+            }
+            _published = fresh;
+        }
 
-            if (!Read()) return;
+        /// <summary>The loading proper, into the set being built. False when there was nothing to read.</summary>
+        private static bool Fill()
+        {
+            if (!Read()) return false;
             int reordenadas = OrderRooms();
             Store();
 
@@ -111,6 +139,7 @@ namespace Jondo.Unity.Server.Managers
             foreach (var dungeon in _byId.Values) rooms += dungeon.Rooms.Count;
             Console.WriteLine($"[DungeonManager] {_byId.Count} dungeons, {rooms} rooms, " +
                               $"{_byRoom.Count} maps that are one.");
+            return true;
         }
 
         /// <summary>
