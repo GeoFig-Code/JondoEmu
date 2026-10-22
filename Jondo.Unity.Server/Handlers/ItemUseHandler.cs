@@ -69,6 +69,9 @@ namespace Jondo.Unity.Server.Handlers
             // A book: its document opens, and the book stays.
             if (await ReadingItemHandler.TryReadAsync(stream, item)) return;
 
+            // A face, a body or a pose for the appearance window: unlocked for the account.
+            if (await AppearanceUnlockItemHandler.TryUseAsync(stream, item)) return;
+
             // An attitude scroll or potion: the attitude learnt.
             if (await AttitudeItemHandler.TryUseAsync(stream, item)) return;
 

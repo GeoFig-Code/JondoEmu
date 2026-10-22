@@ -58,6 +58,10 @@ namespace Jondo.Unity.Server.Managers
             return idles;
         }
 
+        /// <summary>Whether that idle is one of that breed's, or one every breed may take.</summary>
+        public static bool Fits(int idleId, int breedId)
+            => _idles.Value.TryGetValue(idleId, out var idle) && (idle.Breed == breedId || idle.Breed == 0);
+
         /// <summary>Whether that breed may take that idle with nothing unlocked: the plain one, or its own known one.</summary>
         public static bool OfferedFreely(int idleId, int breedId)
             => idleId == Plain && _idles.Value.ContainsKey(Plain)

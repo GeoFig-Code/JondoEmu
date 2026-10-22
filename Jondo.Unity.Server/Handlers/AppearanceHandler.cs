@@ -87,6 +87,10 @@ namespace Jondo.Unity.Server.Handlers
         private static bool Owns(int gid)
             => CosmeticCollection.Has(Jondo.Unity.Server.Network.SessionContext.Current.AccountId, gid);
 
+        /// <summary>Whether the account has unlocked that face, body or pose with its item (<see cref="AppearanceUnlocks"/>).</summary>
+        private static bool Unlocked(AppearanceUnlocks.Kind kind, int id)
+            => AppearanceUnlocks.Has(Jondo.Unity.Server.Network.SessionContext.Current.AccountId, kind, id);
+
         /// <summary>
         /// A face from the faces tab (lwl { f1: head }). Only the heads the tab offers with nothing
         /// unlocked -- the creation screen's, of the character's breed and sex
@@ -102,7 +106,9 @@ namespace Jondo.Unity.Server.Handlers
                 .FirstOrDefault(f => f.FieldNumber == 1 && f.WireType == 0)?.VarIntValue ?? 0);
 
             var character = DatabaseManager.GetCharacterById(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
-            bool taken = character != null && HeadTable.OfferedFreely(head, character.Breed, character.Sex)
+            bool taken = character != null
+                         && (HeadTable.OfferedFreely(head, character.Breed, character.Sex)
+                             || Unlocked(AppearanceUnlocks.Kind.Head, head) && HeadTable.Fits(head, character.Breed, character.Sex))
                          && DatabaseManager.SetCharacterHead(character.Id, head);
             if (taken) await PreviewAsync(stream);
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
@@ -125,7 +131,9 @@ namespace Jondo.Unity.Server.Handlers
                 .FirstOrDefault(f => f.FieldNumber == 2 && f.WireType == 0)?.VarIntValue ?? 0);
 
             var character = DatabaseManager.GetCharacterById(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
-            bool taken = character != null && BodyTable.OfferedFreely(body, character.Breed, character.Sex);
+            bool taken = character != null
+                         && (BodyTable.OfferedFreely(body, character.Breed, character.Sex)
+                             || Unlocked(AppearanceUnlocks.Kind.Body, body) && BodyTable.SkinFor(body, character.Breed, character.Sex) > 0);
             if (taken)
             {
                 Wardrobe.SaveBody(character!.Id, body);
@@ -152,7 +160,9 @@ namespace Jondo.Unity.Server.Handlers
                 .FirstOrDefault(f => f.FieldNumber == 1 && f.WireType == 0)?.VarIntValue ?? 0);
 
             var character = DatabaseManager.GetCharacterById(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
-            bool taken = character != null && IdleTable.OfferedFreely(idle, character.Breed);
+            bool taken = character != null
+                         && (IdleTable.OfferedFreely(idle, character.Breed)
+                             || Unlocked(AppearanceUnlocks.Kind.Idle, idle) && IdleTable.Fits(idle, character.Breed));
             if (taken) Wardrobe.SaveIdle(character!.Id, idle);
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Answer(Op.Lwn, Pb.New().VarIfNotZero(2, taken ? 1 : 0).Build(),
