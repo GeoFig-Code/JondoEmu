@@ -234,6 +234,15 @@ namespace Jondo.Unity.Server.Managers
             candidates.AddRange(book.WaitingOn("Pm", mapId));
             candidates.AddRange(book.WaitingOn("PO"));
 
+            // A map some achievement asks to have been on (BI): Incarnam's «A lo largo y a lo
+            // ancho», 421 objectives. Only those maps are written down, once.
+            var onTheMap = book.WaitingOn(VisitedKind, mapId);
+            if (onTheMap.Count > 0 && Tally(VisitedKind, mapId) == 0)
+            {
+                SetTally(VisitedKind, mapId, 1);
+                candidates.AddRange(onTheMap);
+            }
+
             // And whatever the last fight set aside.
             candidates.AddRange(state.AchievementsPending);
             state.AchievementsPending.Clear();
@@ -331,6 +340,48 @@ namespace Jondo.Unity.Server.Managers
         }
 
         /// <summary>
+        /// The Infinite Dreams' tallies, «en intensidad X o superior»: kept per difficulty, a term's
+        /// key the lowest one it takes (<c>ET&gt;4,999</c>, a Paradoja I or harder).
+        /// </summary>
+        private static readonly HashSet<string> FromIntensity = new() { "ET", "EY", "EW", "EZ", "Et", "Ez" };
+
+        /// <summary>
+        /// A dream's fight over, at its difficulty: the monsters and dungeon guardians it beat, and
+        /// the dream fragments it paid -- counted too as «sin utilizar ninguna arena de Draconiros»
+        /// and «sin comprar nada en la fuente» when the dream was so played. Looked at back on the map.
+        /// </summary>
+        public static void AfterDream(int difficulty, int monsters, int guardians, int fragments,
+                                      bool spentSands, bool bought)
+        {
+            var book = _book;
+            var state = SessionContext.State;
+            if (book == null || Log == null || difficulty <= 0) return;
+
+            void Add(string kind, int by)
+            {
+                if (by <= 0) return;
+                SetTally(kind, difficulty, Tally(kind, difficulty) + by);
+                for (int key = 1; key <= difficulty; key++) state.AchievementsPending.UnionWith(book.WaitingOn(kind, key));
+            }
+
+            Add("Et", monsters);
+            Add("Ez", guardians);
+            Add("ET", fragments);
+            if (!spentSands) Add("EY", fragments);
+            if (!bought) Add("EW", fragments);
+            if (!spentSands && !bought) Add("EZ", fragments);
+        }
+
+        /// <summary>A dream tally at this intensity or a harder one.</summary>
+        private static long AtIntensityOrHarder(string kind, long lowest)
+        {
+            long total = 0;
+            for (int difficulty = (int)Math.Max(1, lowest); difficulty <= Dreams.MaximaDificultad; difficulty++)
+                total += Tally(kind, difficulty);
+            return total;
+        }
+
+        /// <summary>
         /// Something the achievements count happened -- the kind and key their criteria name:
         /// <c>EB</c> 0 a mount born, <c>HD</c> a ride caught (its item), <c>NC</c> a guild mission
         /// done (its super category), <c>NT</c> guild tokens obtained, <c>EI</c> an item used,
@@ -375,6 +426,9 @@ namespace Jondo.Unity.Server.Managers
             var hall = GuildHalls.OfRoom(state.MapId);
             return guild != null && hall != null && GuildHalls.ChoiceOf(guild.Id)?.HallId == hall.Id;
         }
+
+        /// <summary>A map been on, by its id: <c>BI=85983744</c>.</summary>
+        private const string VisitedKind = "BI";
 
         /// <summary>The tally kind for monsters beaten in their dungeon: EM with the "d" flag.</summary>
         private const string DungeonKind = "EMd";
@@ -630,7 +684,8 @@ namespace Jondo.Unity.Server.Managers
                 "EM" => Tally(flag == "d" ? DungeonKind : "EM", key),
                 "Ef" => Tally("Ef", key),
                 "EH" => S.ChallengesDone.Contains((int)key) ? 1 : 0,
-                "EB" or "HD" or "NC" or "EI" or "Eu" or "EJ" => Tally(op, key),
+                "EB" or "HD" or "NC" or "EI" or "Eu" or "EJ" or VisitedKind => Tally(op, key),
+                _ when FromIntensity.Contains(op) => AtIntensityOrHarder(op, key),
                 "EC" => Tally(AchievementCatalogue.CraftKey, 0),
                 "ES" => Tally(AchievementCatalogue.ExploreKey, key),
                 "HP" => key == 1 && InOwnGuildHall() ? 1 : 0,

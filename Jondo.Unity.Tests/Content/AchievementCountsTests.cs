@@ -52,6 +52,38 @@ namespace Jondo.Unity.Tests.Content
             }
         }
 
+        /// <summary>
+        /// Maps been on (BI), the dream trials won (EJ) and the Infinite Dreams' tallies «en
+        /// intensidad X o superior», kept per difficulty: 600 fragments in a Paradoja II are 600
+        /// «Paradoja I o superior» and none «Pesadilla I o superior».
+        /// </summary>
+        [Fact]
+        public void Maps_trials_and_dreams_answer_their_criteria()
+        {
+            var session = GameSession.SinSocket();
+            using (SessionContext.Push(session))
+            {
+                var tallies = session.State.AchievementTallies;
+                tallies[("BI", 85983744)] = 1;
+                tallies[("EJ", 9016)] = 1;
+                tallies[("ET", 5)] = 600;
+                tallies[("ET", 2)] = 500;
+                tallies[("Et", 9)] = 1000;
+
+                Assert.True(Judge("(BI=85983744)").Met);           // «A lo largo y a lo ancho»
+                Assert.False(Judge("(BI=85985792)").Met);
+                Assert.True(Judge("(BI=85985792)").FullyJudged);
+                Assert.True(Judge("EJ>9016,0").Met);               // «Prueba FONSOCAC»
+                Assert.False(Judge("EJ>9017,0").Met);
+                Assert.True(Judge("ET>1,999").Met);                // 1100 at Sueño I or harder
+                Assert.False(Judge("ET>4,999").Met);               // 600 at Paradoja I or harder
+                Assert.True(Judge("ET>4,499").Met);
+                Assert.False(Judge("ET>8,0").Met);
+                Assert.True(Judge("Et>8,999").Met);                // «Pesadilla monstruosa»
+                Assert.True(Judge("EZ>1,499").FullyJudged);
+            }
+        }
+
         [Fact]
         public void Where_one_stands_and_one_s_league_are_judged_too()
         {

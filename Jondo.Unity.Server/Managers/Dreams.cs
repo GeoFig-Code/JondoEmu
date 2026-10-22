@@ -773,6 +773,15 @@ namespace Jondo.Unity.Server.Managers
             /// </remarks>
             public int Arena { get; set; }
 
+            /// <summary>
+            /// Whether a Draconiros arena was used in it -- a training dream's too, which spends
+            /// none --: the achievements' «sin utilizar ninguna arena de Draconiros».
+            /// </summary>
+            public bool SpentSands { get; set; }
+
+            /// <summary>Whether anything was bought at one of its fountains: «sin comprar nada en la fuente».</summary>
+            public bool BoughtAtFountain { get; set; }
+
             /// <summary>The boosters already collected, in the order they fell.</summary>
             /// <remarks>
             /// It is collected ON ENTERING the room, not on winning it: the guide says bonuses are picked up on
@@ -1548,6 +1557,7 @@ namespace Jondo.Unity.Server.Managers
             }
 
             dream.DreamPoints -= offer.Price;
+            if (!favour) dream.BoughtAtFountain = true;
             Pay(dream, offer);
             int place = room.Offers.IndexOf(offer);
             room.Offers.Remove(offer);

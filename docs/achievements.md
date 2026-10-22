@@ -25,7 +25,7 @@ parentheses and `!` included, so the same evaluator reads them.
 | Rewards | **6,394** |
 | Categories | 134 |
 | Objectives the client names and does not describe | **322 achievements**, 272 tied |
-| Achievements with all their objectives in terms this engine judges | **2,172** |
+| Achievements with all their objectives in terms this engine judges | **2,390** |
 
 ---
 
@@ -105,7 +105,20 @@ the middle of the end of the fight, where no capture has it.
 
 The counters nothing else keeps are kept in `CharacterAchievementCounters` (monsters defeated,
 defeated with a challenge, areas visited, items crafted, the day of the last Almanax offering,
-challenges won, mounts born, rides caught, guild missions and tokens, items used and broken).
+challenges won, mounts born, rides caught, guild missions and tokens, items used and broken,
+maps been on, dream trials won and the dreams' tallies per difficulty).
+
+`BI=map` is «has been on that map»: the 421 objectives of Incarnam's «A lo largo y a lo ancho» and its
+kind. Only the maps some objective names are written down, once each, on arriving.
+
+`EJ>achievement,0` is a dream trial won, «Vencer en el combate final de la prueba FONSOCAC»: counted
+for whoever fought the trial's Fin du rêve.
+
+The Infinite Dreams' own are «en intensidad X o superior», the term's key the lowest difficulty:
+`ET` dream fragments obtained, `EY` the same without using a Draconiros arena in the dream, `EW`
+without buying at a fountain, `EZ` neither, `Et` monsters beaten and `Ez` dungeon guardians beaten.
+They are kept per difficulty and added up from the key: 600 fragments of a Paradoja II are worth
+«Paradoja I o superior» and nothing «Pesadilla I o superior».
 
 `HP=1,1` is read as «standing in one's own guild's hall»: the three achievements that use it are «Estás en tu
 casa» alone and two with the hall's merchants' and activities' rooms (`Pm`). `lB` is the best league

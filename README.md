@@ -341,7 +341,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
   and chest tabs reached, weekly milestones, the tier and missions changed, missions done and
   rerolled, raids bought, captained, described, left and finished
 - ✅ Dream-trial missions, done by finishing the trial
-- ❌ Anomaly missions (the server has no anomalies)
+- ❌ Anomaly missions: the uchronic elixirs and the anomalies' guardians are not there yet
 
 **Raids** — the Eternal Gardens Sanctuary and the Gigalodón Abyss — run on the client's own screens.
 
@@ -575,12 +575,13 @@ Full workings in **`docs/quests.md`**.
 
 - ✅ The achievement window with each objective's progress
 - ✅ Earned by quests, exploration, levels, crafting, monsters, dungeon challenges and items —
-  **2,172 of 2,780** fully judged
+  **2,390 of 2,780** fully judged
 - ✅ Rewards claimed from the window: kamas, experience, items and emotes
 - ✅ Breeding, ride hunting, sweets, breaking items, Koliseo leagues, guild missions and tokens, challenge
   tallies and the guild hall's achievements
 - ✅ Players nearby read in their chat the achievements one unlocks
-- ❌ Alignment and tutorial achievements
+- ✅ Incarnam's maps, the Infinite Dreams' fragments, monsters and guardians, and the dream trials
+- ❌ Alignment achievements: the server has no alignment ranks
 
 Full workings in **`docs/achievements.md`**.
 

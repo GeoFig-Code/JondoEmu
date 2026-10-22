@@ -701,6 +701,9 @@ namespace Jondo.Unity.Server.Managers
 
         public static bool IsRoom(long mapId) => _byRoom.ContainsKey(mapId);
 
+        /// <summary>Whether a monster is a dungeon's guardian: one of the bosses of any of them.</summary>
+        public static bool IsBoss(int monsterId) => _byId.Values.Any(d => d.Bosses.Contains(monsterId));
+
         /// <summary>
         /// The dungeon whose door is on this map, or null.
         /// </summary>

@@ -1117,6 +1117,7 @@ namespace Jondo.Unity.Server.Handlers
             {
                 // A training dream's sands are never spent: "un nombre infini".
                 if (!sueno.Training) sueno.Arena--;
+                sueno.SpentSands = true;
                 Persist(sueno);
                 return (0, 0, CommandTexts.Get("dream.arena"), false, null);
             }
