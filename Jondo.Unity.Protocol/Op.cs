@@ -471,8 +471,17 @@ public static class Op
     /// </summary>
     public const string Ijm = "ijm";
 
-    /// <summary>Unidentified. 1 use in the emulator.</summary>
+    /// <summary>
+    /// S→C: the pings standing over entities of the map { 3: { entity: kind } }; it goes empty
+    /// before a fight. See Handlers.EntityPingHandler.
+    /// </summary>
     public const string Ijq = "ijq";
+
+    /// <summary>C→S: a ping on an entity of the map { 1: the kind, 2: the entity }.</summary>
+    public const string Ijg = "ijg";
+
+    /// <summary>S→C: an entity was pinged { 1: the entity, 3: who pinged it }.</summary>
+    public const string Ijf = "ijf";
 
     /// <summary>Only called from the kkn branch, which never arrives. 5 messages in 3 files.</summary>
     public const string Ilc = "ilc";
