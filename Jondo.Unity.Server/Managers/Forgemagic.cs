@@ -248,6 +248,9 @@ namespace Jondo.Unity.Server.Managers
         /// </param>
         public static List<Equipment.ItemEffect> Roll(Template template, Random dice, int quality = 0)
         {
+            // A pet comes into the world at level 0, and grows (Pets).
+            if (Pets.IsPet(template.Gid)) return Pets.Fresh(template.Gid);
+
             var effects = new List<Equipment.ItemEffect>();
             foreach (var line in template.Lines)
             {
@@ -302,7 +305,7 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>Whether two copies of this template can share a stack: nothing in it rolls.</summary>
         public static bool Stacks(Template template)
-            => template.Lines.All(l => l.Min == l.Max || InfoOf(l.Effect).IsWeaponDamage);
+            => !Pets.IsPet(template.Gid) && template.Lines.All(l => l.Min == l.Max || InfoOf(l.Effect).IsWeaponDamage);
 
         // ─── The rune ───────────────────────────────────────────────────────────────────────
 

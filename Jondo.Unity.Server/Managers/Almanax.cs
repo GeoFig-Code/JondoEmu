@@ -217,6 +217,9 @@ namespace Jondo.Unity.Server.Managers
             /// </summary>
             public const int CraftQuality = 11;
 
+            /// <summary>Day 341: «La ganancia de experiencia de las mascotas aumenta un 50%».</summary>
+            public const int PetExperience = 30;
+
             /// <summary>"En los apareamientos de monturas, se añade un bonus del 20% a la probabilidad de obtener la generación objetivo".</summary>
             public const int TargetGeneration = 38;
         }

@@ -1598,6 +1598,11 @@ namespace Jondo.Unity.Server.Network
                     // Using an item: a box, an alliance's potion or prism, a travel item.
                     await ItemUseHandler.UseAsync(stream, payload);
                 }
+                else if (payloadStr.Contains(Op.Uri(Op.Itw)))
+                {
+                    // A pet fed from the «Alimentar» window.
+                    await PetFeedHandler.FeedAsync(stream, payload);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Kso)))
                 {
                     // The option chosen in a choice: a fight's -- a trial's guardian or hero -- or

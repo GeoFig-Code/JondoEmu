@@ -728,6 +728,12 @@ public static class Op
     public const string Itu = "itu";
 
     /// <summary>
+    /// C→S: a pet fed from the «Alimentar» window, { f1: the pet's uid, f2 (repeated) { f2: a
+    /// food's uid, f3: how many } } (FeedUI.OnConfirmFeed, efm.xgk); see PetFeedHandler.
+    /// </summary>
+    public const string Itw = "itw";
+
+    /// <summary>
     /// Removing a shortcut from a bar (right-click). Proto and captures: f1 is which bar,
     /// f2 is the slot — the reverse of the first wiring guess.
     /// </summary>

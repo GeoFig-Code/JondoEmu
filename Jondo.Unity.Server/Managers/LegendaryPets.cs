@@ -79,7 +79,13 @@ namespace Jondo.Unity.Server.Managers
         public static string? WhyNotFeed(Equipment.Item? pet, Food food)
         {
             if (pet == null || !IsPet(pet.Template)) return "no pet worn";
-            if (food.GivesStatus) return IsLegendary(pet) ? "the pet is legendary already" : null;
+            if (food.GivesStatus)
+            {
+                if (IsLegendary(pet)) return "the pet is legendary already";
+                // «Pour faire évoluer vos familiers ... ils doivent être de niveau 100» (Pets).
+                return Pets.IsPet(pet.Template) && Pets.LevelOf(pet.Effects) < Pets.TopLevel
+                    ? $"the pet is not at level {Pets.TopLevel}" : null;
+            }
             return IsLegendary(pet) ? null : "the pet is not legendary";
         }
 
@@ -92,6 +98,8 @@ namespace Jondo.Unity.Server.Managers
             if (food.GivesStatus)
             {
                 fed.Add(new Equipment.ItemEffect(LegendaryStatus, 0, 0, 0));
+                // A growing pet goes past its last level: the type's top, 101.
+                if (fed.Any(e => e.Effect == Pets.Level)) fed = Rides.With(fed, Pets.Level, Pets.MaxLevel);
                 return fed;
             }
             fed.RemoveAll(e => e.Effect is PowerCategory or PowerSpell);

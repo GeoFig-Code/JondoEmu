@@ -541,6 +541,9 @@ namespace Jondo.Unity.Server.Managers
         {
             if (!DatabaseManager.TryGetItemTemplateEffects(gid, out string effects)) return null;
 
+            // A pet comes into the world at level 0, and grows (Pets).
+            if (Pets.IsPet(gid)) effects = Forgemagic.Serialize(Pets.Fresh(gid));
+
             long uid = DatabaseManager.NextItemUid();
             if (!DatabaseManager.InsertCharacterItem(uid, SessionContext.State.CharacterId, gid, quantity,
                                                      Bag, effects))

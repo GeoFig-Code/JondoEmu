@@ -453,6 +453,8 @@ An alliance is made of characters, not guilds.
 - ✅ Candies and blessings in their bonus slots
 - ✅ Spell scrolls: the special spells are learnt for good
 - ✅ The guild hall and guild house potions
+- ✅ Pets grow from level 0 to 100 fed with resources from their «Alimentar» window, each resource worth
+  what the client says, their characteristics growing with the level; the Almanax's day 341 feeds them more
 - ✅ Legendary pets: the bebemot's reflection makes a pet legendary, an impregnated croquette gives it a
   power, and the power is a spell in your fights
 - ❌ The bonus slots that change the look
@@ -595,7 +597,7 @@ Full workings in **`docs/achievements.md`**.
   dungeon, monster family or item worn), the Koliseo, quests, jobs, harvests, crafting (ingredients
   saved, a second item, runes kept), tax collectors, breeding and paddock items, resources' respawn, life
   regeneration and healing consumables, resource protectors, archmonsters and the quality of what a city crafts
-- 🟡 The bonuses to pets and wanted monsters are not applied yet
+- 🟡 The bonus to wanted monsters is not applied yet
 
 ### 🏰 Dungeons
 <img width="2550" height="1498" alt="image" src="https://github.com/user-attachments/assets/f79f7881-c68e-45b5-ae29-b4aaba928a1d" />

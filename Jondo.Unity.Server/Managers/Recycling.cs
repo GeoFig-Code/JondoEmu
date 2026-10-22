@@ -79,6 +79,29 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Whether something is worth recycling at all.</summary>
         public static bool Recyclable(int gid) => NuggetsOf(gid, 1, 0) > 0;
 
+        /// <summary>A pet food's bonuses (me.oht): a boss's drop and a recipe's item.</summary>
+        public const double PetFoodBossBonus = 5.0, PetFoodCraftBonus = 1.5;
+
+        /// <summary>
+        /// What one of an item is worth to a pet before its boost (me.ohq): its base resources'
+        /// nuggets, ×5 for one only bosses drop and ×1.5 when the item has a recipe, with no zone's
+        /// bonus; rounded down to five decimals, as the client keeps it.
+        /// </summary>
+        public static double PetFoodWorth(int gid)
+        {
+            bool isCraft = RecipeManager.TryGetByResult(gid, out _);
+            double total = 0;
+            foreach (var (resource, count) in BaseResourcesOf(gid, 1))
+            {
+                var data = Of(resource);
+                if (data.Nuggets <= 0) continue;
+                total += count * data.Nuggets
+                         * (DroppedByBossesOnly(data) ? PetFoodBossBonus : 1.0)
+                         * (isCraft ? PetFoodCraftBonus : 1.0);
+            }
+            return Math.Floor((float)(total * 100000.0)) / 100000.0;
+        }
+
         /// <summary>
         /// The base resources some items break down into: an item with a recipe into its
         /// ingredients, each into its own, down to what no recipe makes (me.ohr).
