@@ -30,9 +30,10 @@ namespace Jondo.Unity.Server.Handlers
     /// </para>
     /// <para>
     /// A mutation given goes through <see cref="MutationHandler"/>; a curse, a roleplay buff or a
-    /// follower that changes the look draws the character again (<see cref="SlotLookHandler"/>). Not
-    /// handled, and logged: a boost food that lasts minutes instead of fights (the perlequines'), and
-    /// anything mixed with other effects.
+    /// follower that changes the look draws the character again (<see cref="SlotLookHandler"/>). A
+    /// boost food that lasts minutes instead of fights -- the perlequines' «Sabor de perlequín», 60 --
+    /// is placed with the moment it ends and goes on the clock (AlterationHandler.TickAsync). Not
+    /// handled, and logged: anything mixed with other effects.
     /// </para>
     /// </remarks>
     public static class BonusItemHandler
@@ -89,16 +90,14 @@ namespace Jondo.Unity.Server.Handlers
 
         /// <summary>
         /// Why an item given cannot go where it belongs, or null when it can: a bonus slot this server
-        /// does not place, or a boost food that lasts minutes.
+        /// does not place.
         /// </summary>
         private static string? WhyNotPlaced(int template)
         {
             int type = DatabaseManager.GetItemTemplateType(template);
             if (!BonusSlots.IsSlotType(type)) return null;
             if (BonusSlots.SlotsFor(type).Count == 0) return $"goes to a bonus slot that changes the look (type {type})";
-            if (!DatabaseManager.TryGetItemTemplateEffects(template, out string json)) return "is not in the data";
-            if (Equipment.ParseEffects(json).Any(e => e.Effect == AlterationCatalogue.Expiry))
-                return "lasts minutes, not fights";
+            if (!DatabaseManager.TryGetItemTemplateEffects(template, out _)) return "is not in the data";
             return null;
         }
 

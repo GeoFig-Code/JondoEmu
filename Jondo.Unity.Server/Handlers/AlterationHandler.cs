@@ -112,10 +112,17 @@ namespace Jondo.Unity.Server.Handlers
 
             var now = DateTime.UtcNow;
             var expired = Alterations.Expire(me.CharacterId, now);
-            if (expired.Count == 0) return;
 
+            // And the bonus slots' items that count minutes, a perlequín's flavour, whose end has come.
+            long seconds = new DateTimeOffset(now).ToUnixTimeSeconds();
+            var ended = Equipment.All.Where(i => BonusSlots.IsBonusSlot(i.Position))
+                                     .Where(i => BonusSlots.EndsAt(i.Effects) is > 0 and var end && end <= seconds)
+                                     .ToList();
+            foreach (var item in ended) await RemoveSlotItemAsync(stream, me.CharacterId, item);
+
+            if (expired.Count == 0 && ended.Count == 0) return;
             foreach (var gone in expired) await TellLostAsync(stream, gone, now);
-            if (expired.Any(GivesCharacteristics))
+            if (ended.Count > 0 || expired.Any(GivesCharacteristics))
                 await WriteAsync(stream, ConnectionProtocol.Push(Op.Kub, ConnectionProtocol.BuildCharacteristics()));
         }
 

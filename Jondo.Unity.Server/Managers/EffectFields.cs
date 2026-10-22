@@ -123,6 +123,10 @@ namespace Jondo.Unity.Server.Managers
         {
             _kind.TryGetValue(effect, out var kind);
 
+            // «Expiración: #1» on a placed item is the moment it ends, which travels as a date, as
+            // the alterations' does (AlterationProtocol).
+            if (effect == AlterationCatalogue.Expiry && value >= DatedSince) return (AsDate, value, 0, 0);
+
             if (_fields.TryGetValue(effect, out int learned))
             {
                 switch (learned)

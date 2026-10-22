@@ -66,13 +66,22 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>
         /// An item's effects as it is placed: its fights and victories as left, total and total, the way
-        /// the captured blessing carries them. The template has the count alone.
+        /// the captured blessing carries them, and its minutes -- «Expiración: #1», the perlequines' 60 --
+        /// as the moment it ends, in seconds, the date the effect shows. The template has the count alone.
         /// </summary>
-        public static List<Equipment.ItemEffect> Fresh(IEnumerable<Equipment.ItemEffect> effects)
+        public static List<Equipment.ItemEffect> Fresh(IEnumerable<Equipment.ItemEffect> effects, DateTime? nowUtc = null)
             => effects.Select(e => IsCount(e.Effect)
                     ? Counted(e.Effect, Alterations.CountOf(e), Alterations.CountOf(e))
-                    : e)
+                    : e.Effect == AlterationCatalogue.Expiry
+                        ? new Equipment.ItemEffect(e.Effect,
+                              new DateTimeOffset(nowUtc ?? DateTime.UtcNow).ToUnixTimeSeconds() + Alterations.CountOf(e) * 60L, 0, 0)
+                        : e)
                 .ToList();
+
+        /// <summary>When a placed item ends, in seconds, or zero when it lasts no time.</summary>
+        public static long EndsAt(IEnumerable<Equipment.ItemEffect> effects)
+            => effects.Where(e => e.Effect == AlterationCatalogue.Expiry && e.Value >= EffectFields.DatedSince)
+                      .Select(e => e.Value).DefaultIfEmpty(0).Min();
 
         /// <summary>
         /// One fight over for an item: its fights one fewer, and its victories if it was won. Null when

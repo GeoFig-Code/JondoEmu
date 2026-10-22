@@ -479,6 +479,7 @@ An alliance is made of characters, not guilds.
 - ✅ Experience and job scrolls
 - ✅ Alterations, with their own window, and the items that grant them
 - ✅ Candies and blessings in their bonus slots
+- ✅ Perlequines: their flavour lasts its hour on the clock
 - ✅ Spell scrolls: the special spells are learnt for good
 - ✅ The guild hall and guild house potions
 - ✅ Pets grow from level 0 to 100 fed with resources from their «Alimentar» window, each resource worth
