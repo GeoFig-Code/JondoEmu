@@ -1,0 +1,688 @@
+{
+ "bodies": {
+  "2": {
+   "skin": 10,
+   "breed": 1,
+   "gender": 0,
+   "creation": 1
+  },
+  "3": {
+   "skin": 11,
+   "breed": 1,
+   "gender": 1,
+   "creation": 1
+  },
+  "4": {
+   "skin": 3633,
+   "breed": 20,
+   "gender": 1,
+   "creation": 1
+  },
+  "5": {
+   "skin": 3221,
+   "breed": 20,
+   "gender": 0,
+   "creation": 1
+  },
+  "6": {
+   "skin": 20,
+   "breed": 2,
+   "gender": 0,
+   "creation": 1
+  },
+  "7": {
+   "skin": 21,
+   "breed": 2,
+   "gender": 1,
+   "creation": 1
+  },
+  "8": {
+   "skin": 30,
+   "breed": 3,
+   "gender": 0,
+   "creation": 1
+  },
+  "9": {
+   "skin": 31,
+   "breed": 3,
+   "gender": 1,
+   "creation": 1
+  },
+  "10": {
+   "skin": 40,
+   "breed": 4,
+   "gender": 0,
+   "creation": 1
+  },
+  "11": {
+   "skin": 41,
+   "breed": 4,
+   "gender": 1,
+   "creation": 1
+  },
+  "12": {
+   "skin": 50,
+   "breed": 5,
+   "gender": 0,
+   "creation": 1
+  },
+  "13": {
+   "skin": 51,
+   "breed": 5,
+   "gender": 1,
+   "creation": 1
+  },
+  "14": {
+   "skin": 60,
+   "breed": 6,
+   "gender": 0,
+   "creation": 1
+  },
+  "16": {
+   "skin": 61,
+   "breed": 6,
+   "gender": 1,
+   "creation": 1
+  },
+  "17": {
+   "skin": 70,
+   "breed": 7,
+   "gender": 0,
+   "creation": 1
+  },
+  "18": {
+   "skin": 71,
+   "breed": 7,
+   "gender": 1,
+   "creation": 1
+  },
+  "19": {
+   "skin": 80,
+   "breed": 8,
+   "gender": 0,
+   "creation": 1
+  },
+  "20": {
+   "skin": 81,
+   "breed": 8,
+   "gender": 1,
+   "creation": 1
+  },
+  "21": {
+   "skin": 90,
+   "breed": 9,
+   "gender": 0,
+   "creation": 1
+  },
+  "22": {
+   "skin": 91,
+   "breed": 9,
+   "gender": 1,
+   "creation": 1
+  },
+  "23": {
+   "skin": 100,
+   "breed": 10,
+   "gender": 0,
+   "creation": 1
+  },
+  "25": {
+   "skin": 101,
+   "breed": 10,
+   "gender": 1,
+   "creation": 1
+  },
+  "26": {
+   "skin": 110,
+   "breed": 11,
+   "gender": 0,
+   "creation": 1
+  },
+  "27": {
+   "skin": 111,
+   "breed": 11,
+   "gender": 1,
+   "creation": 1
+  },
+  "28": {
+   "skin": 120,
+   "breed": 12,
+   "gender": 0,
+   "creation": 1
+  },
+  "29": {
+   "skin": 121,
+   "breed": 12,
+   "gender": 1,
+   "creation": 1
+  },
+  "30": {
+   "skin": 1405,
+   "breed": 13,
+   "gender": 0,
+   "creation": 1
+  },
+  "31": {
+   "skin": 1407,
+   "breed": 13,
+   "gender": 1,
+   "creation": 1
+  },
+  "32": {
+   "skin": 1437,
+   "breed": 14,
+   "gender": 0,
+   "creation": 1
+  },
+  "33": {
+   "skin": 1438,
+   "breed": 14,
+   "gender": 1,
+   "creation": 1
+  },
+  "34": {
+   "skin": 1663,
+   "breed": 15,
+   "gender": 0,
+   "creation": 1
+  },
+  "35": {
+   "skin": 1664,
+   "breed": 15,
+   "gender": 1,
+   "creation": 1
+  },
+  "36": {
+   "skin": 3179,
+   "breed": 16,
+   "gender": 0,
+   "creation": 1
+  },
+  "37": {
+   "skin": 3180,
+   "breed": 16,
+   "gender": 1,
+   "creation": 1
+  },
+  "38": {
+   "skin": 3285,
+   "breed": 17,
+   "gender": 0,
+   "creation": 1
+  },
+  "39": {
+   "skin": 3286,
+   "breed": 17,
+   "gender": 1,
+   "creation": 1
+  },
+  "40": {
+   "skin": 3498,
+   "breed": 18,
+   "gender": 0,
+   "creation": 1
+  },
+  "42": {
+   "skin": 3499,
+   "breed": 18,
+   "gender": 1,
+   "creation": 1
+  },
+  "46": {
+   "skin": 5941,
+   "breed": 1,
+   "gender": 0,
+   "creation": 0
+  },
+  "47": {
+   "skin": 5942,
+   "breed": 1,
+   "gender": 1,
+   "creation": 0
+  },
+  "48": {
+   "skin": 5943,
+   "breed": 2,
+   "gender": 0,
+   "creation": 0
+  },
+  "49": {
+   "skin": 5944,
+   "breed": 2,
+   "gender": 1,
+   "creation": 0
+  },
+  "50": {
+   "skin": 5945,
+   "breed": 3,
+   "gender": 0,
+   "creation": 0
+  },
+  "51": {
+   "skin": 5946,
+   "breed": 3,
+   "gender": 1,
+   "creation": 0
+  },
+  "52": {
+   "skin": 5947,
+   "breed": 4,
+   "gender": 0,
+   "creation": 0
+  },
+  "53": {
+   "skin": 5948,
+   "breed": 4,
+   "gender": 1,
+   "creation": 0
+  },
+  "54": {
+   "skin": 5949,
+   "breed": 5,
+   "gender": 0,
+   "creation": 0
+  },
+  "55": {
+   "skin": 5950,
+   "breed": 5,
+   "gender": 1,
+   "creation": 0
+  },
+  "56": {
+   "skin": 5951,
+   "breed": 6,
+   "gender": 0,
+   "creation": 0
+  },
+  "57": {
+   "skin": 5952,
+   "breed": 6,
+   "gender": 1,
+   "creation": 0
+  },
+  "58": {
+   "skin": 5953,
+   "breed": 7,
+   "gender": 0,
+   "creation": 0
+  },
+  "59": {
+   "skin": 5954,
+   "breed": 7,
+   "gender": 1,
+   "creation": 0
+  },
+  "60": {
+   "skin": 5955,
+   "breed": 8,
+   "gender": 0,
+   "creation": 0
+  },
+  "61": {
+   "skin": 5956,
+   "breed": 8,
+   "gender": 1,
+   "creation": 0
+  },
+  "62": {
+   "skin": 5957,
+   "breed": 9,
+   "gender": 0,
+   "creation": 0
+  },
+  "63": {
+   "skin": 5958,
+   "breed": 9,
+   "gender": 1,
+   "creation": 0
+  },
+  "64": {
+   "skin": 5959,
+   "breed": 10,
+   "gender": 0,
+   "creation": 0
+  },
+  "65": {
+   "skin": 5960,
+   "breed": 10,
+   "gender": 1,
+   "creation": 0
+  },
+  "66": {
+   "skin": 5961,
+   "breed": 11,
+   "gender": 0,
+   "creation": 0
+  },
+  "67": {
+   "skin": 5962,
+   "breed": 11,
+   "gender": 1,
+   "creation": 0
+  },
+  "68": {
+   "skin": 5963,
+   "breed": 12,
+   "gender": 0,
+   "creation": 0
+  },
+  "69": {
+   "skin": 5964,
+   "breed": 12,
+   "gender": 1,
+   "creation": 0
+  },
+  "70": {
+   "skin": 5965,
+   "breed": 13,
+   "gender": 0,
+   "creation": 0
+  },
+  "71": {
+   "skin": 5966,
+   "breed": 13,
+   "gender": 1,
+   "creation": 0
+  },
+  "72": {
+   "skin": 5967,
+   "breed": 14,
+   "gender": 0,
+   "creation": 0
+  },
+  "73": {
+   "skin": 5968,
+   "breed": 14,
+   "gender": 1,
+   "creation": 0
+  },
+  "74": {
+   "skin": 5969,
+   "breed": 15,
+   "gender": 0,
+   "creation": 0
+  },
+  "75": {
+   "skin": 5970,
+   "breed": 15,
+   "gender": 1,
+   "creation": 0
+  },
+  "76": {
+   "skin": 5971,
+   "breed": 16,
+   "gender": 0,
+   "creation": 0
+  },
+  "77": {
+   "skin": 5972,
+   "breed": 16,
+   "gender": 1,
+   "creation": 0
+  },
+  "78": {
+   "skin": 5973,
+   "breed": 17,
+   "gender": 0,
+   "creation": 0
+  },
+  "79": {
+   "skin": 5974,
+   "breed": 17,
+   "gender": 1,
+   "creation": 0
+  },
+  "80": {
+   "skin": 5975,
+   "breed": 18,
+   "gender": 0,
+   "creation": 0
+  },
+  "81": {
+   "skin": 5976,
+   "breed": 18,
+   "gender": 1,
+   "creation": 0
+  },
+  "82": {
+   "skin": 5977,
+   "breed": 20,
+   "gender": 0,
+   "creation": 0
+  },
+  "83": {
+   "skin": 5978,
+   "breed": 20,
+   "gender": 1,
+   "creation": 0
+  },
+  "90": {
+   "skin": 5861,
+   "breed": 1,
+   "gender": 0,
+   "creation": 1
+  },
+  "91": {
+   "skin": 5862,
+   "breed": 1,
+   "gender": 1,
+   "creation": 1
+  },
+  "92": {
+   "skin": 5863,
+   "breed": 2,
+   "gender": 0,
+   "creation": 1
+  },
+  "93": {
+   "skin": 5864,
+   "breed": 2,
+   "gender": 1,
+   "creation": 1
+  },
+  "94": {
+   "skin": 5865,
+   "breed": 3,
+   "gender": 0,
+   "creation": 1
+  },
+  "95": {
+   "skin": 5866,
+   "breed": 3,
+   "gender": 1,
+   "creation": 1
+  },
+  "96": {
+   "skin": 5867,
+   "breed": 4,
+   "gender": 0,
+   "creation": 1
+  },
+  "97": {
+   "skin": 5868,
+   "breed": 4,
+   "gender": 1,
+   "creation": 1
+  },
+  "98": {
+   "skin": 5869,
+   "breed": 5,
+   "gender": 0,
+   "creation": 1
+  },
+  "99": {
+   "skin": 5870,
+   "breed": 5,
+   "gender": 1,
+   "creation": 1
+  },
+  "100": {
+   "skin": 5871,
+   "breed": 6,
+   "gender": 0,
+   "creation": 1
+  },
+  "101": {
+   "skin": 5872,
+   "breed": 6,
+   "gender": 1,
+   "creation": 1
+  },
+  "102": {
+   "skin": 5873,
+   "breed": 7,
+   "gender": 0,
+   "creation": 1
+  },
+  "103": {
+   "skin": 5874,
+   "breed": 7,
+   "gender": 1,
+   "creation": 1
+  },
+  "104": {
+   "skin": 5875,
+   "breed": 8,
+   "gender": 0,
+   "creation": 1
+  },
+  "105": {
+   "skin": 5876,
+   "breed": 8,
+   "gender": 1,
+   "creation": 1
+  },
+  "106": {
+   "skin": 5877,
+   "breed": 9,
+   "gender": 0,
+   "creation": 1
+  },
+  "107": {
+   "skin": 5878,
+   "breed": 9,
+   "gender": 1,
+   "creation": 1
+  },
+  "108": {
+   "skin": 5879,
+   "breed": 10,
+   "gender": 0,
+   "creation": 1
+  },
+  "109": {
+   "skin": 5880,
+   "breed": 10,
+   "gender": 1,
+   "creation": 1
+  },
+  "110": {
+   "skin": 5881,
+   "breed": 11,
+   "gender": 0,
+   "creation": 1
+  },
+  "111": {
+   "skin": 5882,
+   "breed": 11,
+   "gender": 1,
+   "creation": 1
+  },
+  "112": {
+   "skin": 5883,
+   "breed": 12,
+   "gender": 0,
+   "creation": 1
+  },
+  "113": {
+   "skin": 5884,
+   "breed": 12,
+   "gender": 1,
+   "creation": 1
+  },
+  "114": {
+   "skin": 5885,
+   "breed": 13,
+   "gender": 0,
+   "creation": 1
+  },
+  "115": {
+   "skin": 5886,
+   "breed": 13,
+   "gender": 1,
+   "creation": 1
+  },
+  "116": {
+   "skin": 5887,
+   "breed": 14,
+   "gender": 0,
+   "creation": 1
+  },
+  "117": {
+   "skin": 5888,
+   "breed": 14,
+   "gender": 1,
+   "creation": 1
+  },
+  "118": {
+   "skin": 5889,
+   "breed": 15,
+   "gender": 0,
+   "creation": 1
+  },
+  "119": {
+   "skin": 5890,
+   "breed": 15,
+   "gender": 1,
+   "creation": 1
+  },
+  "120": {
+   "skin": 5891,
+   "breed": 16,
+   "gender": 0,
+   "creation": 1
+  },
+  "121": {
+   "skin": 5892,
+   "breed": 16,
+   "gender": 1,
+   "creation": 1
+  },
+  "122": {
+   "skin": 5893,
+   "breed": 17,
+   "gender": 0,
+   "creation": 1
+  },
+  "123": {
+   "skin": 5894,
+   "breed": 17,
+   "gender": 1,
+   "creation": 1
+  },
+  "124": {
+   "skin": 5895,
+   "breed": 18,
+   "gender": 0,
+   "creation": 1
+  },
+  "125": {
+   "skin": 5896,
+   "breed": 18,
+   "gender": 1,
+   "creation": 1
+  },
+  "126": {
+   "skin": 5897,
+   "breed": 20,
+   "gender": 0,
+   "creation": 1
+  },
+  "127": {
+   "skin": 5898,
+   "breed": 20,
+   "gender": 1,
+   "creation": 1
+  }
+ }
+}

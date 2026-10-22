@@ -22,6 +22,7 @@ namespace Jondo.Unity.Server.Handlers
     ///   client  lxs                     SAVE                     → server jsn + kmb + lxc, and lyu
     ///   client  lww { f1: 1 }           the draft switch         → server lxc + lwq { f1: outfit }
     ///   client  lwl { f1: head }        a face                   → server lxc + lye { f2: 1 }
+    ///   client  lyo { f2: body }        a body                   → server lxc + lyz { f1: 1 }
     ///
     /// The difference between the two ways of putting on: `lys` lets the server choose the slot --
     /// and gives it back in the `lwz` -- and accepts a variant, which is what the "living items" use
@@ -104,6 +105,32 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Answer(Op.Lye, Pb.New().VarIfNotZero(2, taken ? 1 : 0).Build(),
                                           ConnectionProtocol.RequestId(frame)));
             Console.WriteLine(taken ? $"[Appearances] Head {head}." : $"[Appearances] Head {head} is not offered.");
+        }
+
+        /// <summary>
+        /// A body from the bodies tab (lyo { f2: body }), the first skin of the look: the breed's
+        /// «base» or «retro» of the character's sex (<see cref="BodyTable.OfferedFreely"/>). The
+        /// answer is lyz { f1: 1 }, which makes the client copy the body into its drafted outfit,
+        /// and lyz without it otherwise. INFERRED from the client: no capture changes a body.
+        /// </summary>
+        public static async Task BodyAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[]? lyo = ConnectionProtocol.ReadPayload(frame, Op.Lyo);
+            if (lyo == null) return;
+            int body = (int)(ProtoMessage.Parse(lyo).Fields
+                .FirstOrDefault(f => f.FieldNumber == 2 && f.WireType == 0)?.VarIntValue ?? 0);
+
+            var character = DatabaseManager.GetCharacterById(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
+            bool taken = character != null && BodyTable.OfferedFreely(body, character.Breed, character.Sex);
+            if (taken)
+            {
+                Wardrobe.SaveBody(character!.Id, body);
+                await PreviewAsync(stream);
+            }
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Answer(Op.Lyz, Pb.New().VarIfNotZero(1, taken ? 1 : 0).Build(),
+                                          ConnectionProtocol.RequestId(frame)));
+            Console.WriteLine(taken ? $"[Appearances] Body {body}." : $"[Appearances] Body {body} is not offered.");
         }
 
         /// <summary>Putting on a garment and letting the server work out the slot.</summary>

@@ -445,6 +445,14 @@ namespace Jondo.Unity.Server.Managers
             var skins = new List<long>();
             if (baseLook != null) skins.AddRange(baseLook.Skins);
 
+            // The body picked in the appearance window takes the breed's own place, first.
+            int bodySkin = quien > 0 ? BodyTable.SkinFor(Wardrobe.BodyOf(quien), breedId, sex) : 0;
+            if (bodySkin > 0)
+            {
+                if (skins.Count > 0) skins[0] = bodySkin;
+                else skins.Add(bodySkin);
+            }
+
             int headSkin = HeadTable.SkinFor(headId, breedId, sex);
             if (headSkin > 0) skins.Add(headSkin);
 

@@ -73,6 +73,19 @@ namespace Jondo.Unity.Server.Managers
                 {
                     // it was already there
                 }
+
+                // The body picked in the appearance window's bodies tab (lyo); 0 is the breed's own.
+                try
+                {
+                    var cuerpo = connection.CreateCommand();
+                    cuerpo.CommandText =
+                        "ALTER TABLE CharacterWardrobe ADD COLUMN BodyId INTEGER NOT NULL DEFAULT 0;";
+                    cuerpo.ExecuteNonQuery();
+                }
+                catch (Microsoft.Data.Sqlite.SqliteException)
+                {
+                    // it was already there
+                }
             }
             catch (Exception ex)
             {
@@ -123,6 +136,29 @@ namespace Jondo.Unity.Server.Managers
                 return None;
             }
         }
+
+        /// <summary>The body the appearance window picked; 0 for the breed's own.</summary>
+        public static int BodyOf(long characterId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT BodyId FROM CharacterWardrobe WHERE CharacterId = $id;";
+                command.Parameters.AddWithValue("$id", characterId);
+                return command.ExecuteScalar() is long body ? (int)body : None;
+            }
+            catch (Exception)
+            {
+                // the column comes with Initialize; before it there is no body to read
+                return None;
+            }
+        }
+
+        public static void SaveBody(long characterId, int bodyId)
+            => Save(characterId, "BodyId", bodyId);
 
         public static void SaveCardBackground(long characterId, int background)
             => Save(characterId, "CardBackground", background);

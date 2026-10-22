@@ -1657,6 +1657,11 @@ namespace Jondo.Unity.Server.Network
                     // The aura.
                     await AppearanceHandler.AuraAsync(stream, payload);
                 }
+                else if (payloadStr.Contains(Op.Uri(Op.Lyo)))
+                {
+                    // A body from the bodies tab.
+                    await AppearanceHandler.BodyAsync(stream, payload);
+                }
                 else if (payloadStr.Contains(Op.Uri(Op.Lwl)))
                 {
                     // A face from the faces tab.

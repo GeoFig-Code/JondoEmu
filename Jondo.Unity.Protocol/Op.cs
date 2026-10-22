@@ -3218,6 +3218,12 @@ public static class Op
     /// </summary>
     public const string Lye = "lye";
 
+    /// <summary>C→S: the appearance window's bodies tab picks a body { f2: the body } (AppearanceBodiesTab.AddBody).</summary>
+    public const string Lyo = "lyo";
+
+    /// <summary>S→C: the answer to a body picked { f1: taken }; eqq::bbfx copies it into the drafted outfit.</summary>
+    public const string Lyz = "lyz";
+
     /// <summary>C→S: a room clicked on the Infinite Dream's map { f1: the room id, as text }.</summary>
     public const string Ixn = "ixn";
 

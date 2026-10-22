@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Jondo.Unity.Protocol;
 using Jondo.Unity.Server;
 using Jondo.Unity.Server.Handlers;
+using Jondo.Unity.Server.Managers;
 using Jondo.Unity.Server.Network;
 using Jondo.Unity.Tests.Economy;
 using Xunit;
@@ -45,6 +46,46 @@ namespace Jondo.Unity.Tests.Social
             finally
             {
                 DatabaseManager.DeleteCharacter(character, Account);
+            }
+        }
+
+        /// <summary>
+        /// The bodies tab (lyo): the Sacrier's «retro» body (110, skin 5881) is taken and goes first
+        /// in the look; its payable one (66) and a Feca's (2) are answered lyz without f1.
+        /// </summary>
+        [Fact]
+        public async Task The_bodies_tab_puts_the_body_first_in_the_look()
+        {
+            const int Retro = 110, RetroSkin = 5881, Payable = 66, Feca = 2;
+            Wardrobe.Initialize();
+            long character = DatabaseManager.CreateCharacter(Account + 2, 1, "Cuerpo-Uno", 11, 0, 1,
+                new long[] { -1, -1, -1, -1, -1 }, 191105026, 50, 0, 0, Array.Empty<(int, int)>());
+            Assert.True(character > 0);
+            try
+            {
+                await using var pipe = await ClientPipe.OpenAsync(Account + 2, character, 990_100_074, "Cuerpo-Uno");
+                using (SessionContext.Push(pipe.Session))
+                {
+                    byte[] Lyo(int body) => ConnectionProtocol.Push(Op.Lyo, Pb.New().Var(2, body).Build());
+
+                    await AppearanceHandler.BodyAsync(pipe.ToClient, Lyo(Retro));
+                    await pipe.Next(Op.Lxc);
+                    Assert.Equal(1, Field(await pipe.Next(Op.Lyz), 1).VarIntValue);
+                    Assert.Equal(Retro, Wardrobe.BodyOf(character));
+                    string look = BreedLookTable.Drawable(DatabaseManager.GetCharacterById(character)!);
+                    Assert.StartsWith(RetroSkin + ",", look.Split('|')[1]);
+
+                    foreach (int refused in new[] { Payable, Feca })
+                    {
+                        await AppearanceHandler.BodyAsync(pipe.ToClient, Lyo(refused));
+                        Assert.DoesNotContain(ProtoMessage.Parse(await pipe.Next(Op.Lyz)).Fields, f => f.FieldNumber == 1);
+                        Assert.Equal(Retro, Wardrobe.BodyOf(character));
+                    }
+                }
+            }
+            finally
+            {
+                DatabaseManager.DeleteCharacter(character, Account + 2);
             }
         }
 
