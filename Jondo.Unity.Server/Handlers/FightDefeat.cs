@@ -33,11 +33,11 @@ namespace Jondo.Unity.Server.Handlers
     /// teletransportado a su última posición guardada" (Translations 1183174).
     /// </para>
     /// <para>
-    /// INFERRED: which save point. How a position is saved is in no capture -- the zaaps of
-    /// 3.6.10 offer skill 114 only, never 44 "Guardar la posición" -- so this server has no saved
-    /// position to keep, and every character's is the zaap it starts next to,
-    /// <see cref="CharacterCreationHandler.StartingMap"/>. The order of the zaap's neighbours
-    /// past the first two is inferred too.
+    /// How a position is saved is in no capture -- the zaaps of 3.6.10 offer skill 114 only, never 44
+    /// "Guardar la posición" --: it is the zaap window's «Guardar» button, hip, read in the client
+    /// (SavedPositions). Until a character presses it his save point is the zaap he starts next to,
+    /// <see cref="CharacterCreationHandler.StartingMap"/>. The order of the zaap's neighbours past
+    /// the first two is inferred.
     /// </para>
     /// <para>
     /// NOT DONE: the anomaly's defeat, which sends the loser back to the anomaly's vestige
@@ -80,12 +80,13 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
-        /// Where a character's position is saved: the zaap every character starts beside. See
-        /// the remarks above for why it is the same for everybody.
+        /// Where a character's position is saved: the zaap he saved it at from its window
+        /// (SavedPositions), or the one every character starts beside until he does.
         /// </summary>
         internal static (long Map, int Cell) SavePointOf(long characterId)
         {
-            long map = CharacterCreationHandler.StartingMap;
+            long map = Managers.SavedPositions.Of(characterId);
+            if (map <= 0 || MapManager.GetMapInfo(map) == null) map = CharacterCreationHandler.StartingMap;
             return (map, ZaapArrivalCell(map));
         }
 

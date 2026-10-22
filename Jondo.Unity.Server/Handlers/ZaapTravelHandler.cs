@@ -49,6 +49,24 @@ namespace Jondo.Unity.Server.Handlers
         private const int CostPerStep = 10;
 
         /// <summary>
+        /// hip: the zaap window's «Guardar», the position saved at the zaap whose window is open,
+        /// «Posición guardada.» and the list again with it as the saved one (SavedPositions).
+        /// </summary>
+        public static async Task SaveAsync(NetworkStream stream)
+        {
+            var state = SessionContext.State;
+            long here = state.OpenZaapMapId != 0 ? state.OpenZaapMapId : state.MapId;
+            if (Interactives.ZaapElements(here).Count == 0) return;
+
+            Managers.SavedPositions.Save(state.CharacterId, here);
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildSystemMessage(Managers.SavedPositions.SavedMessage)));
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Hjj, ConnectionProtocol.BuildZaapList(here, Destinations(here))));
+            Console.WriteLine($"[Zaap] {state.CharacterName} saves his position at map {here}.");
+        }
+
+        /// <summary>
         /// The client has clicked the zaap. He is answered that the element is in use and sent the list of
         /// destinations.
         /// </summary>
@@ -69,8 +87,10 @@ namespace Jondo.Unity.Server.Handlers
             bool vestige = Interactives.IsVestige(here, zaap);
             var destinations = vestige ? AnomalyDestinations(here) : Destinations(here);
 
+            // f2 is the character's saved zaap, the same wherever the window is opened (eight captures).
+            long saved = FightHandler.SavePointOf(SessionContext.State.CharacterId).Map;
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.Push(Op.Hjj, ConnectionProtocol.BuildZaapList(here, destinations)));
+                ConnectionProtocol.Push(Op.Hjj, ConnectionProtocol.BuildZaapList(saved, destinations)));
 
             Console.WriteLine($"[{(vestige ? "Vestige" : "Zaap")}] Opened on map {here}: " +
                               $"{destinations.Count} destinations.");
