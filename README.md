@@ -501,7 +501,7 @@ An alliance is made of characters, not guilds.
 - ✅ Appearance weapons and living objects
 - ✅ Mount and pet appearances are mutually exclusive
 - ✅ Real equipment renders too, and a cosmetic replaces it
-- ❌ Per-character colours
+- ✅ Per-character colours: the ones chosen at creation are kept in the look
 
 ### ⛏️ Professions
 
