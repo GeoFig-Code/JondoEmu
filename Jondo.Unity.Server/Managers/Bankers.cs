@@ -64,6 +64,22 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>What the client draws for the reply that opens the bank.</summary>
         public const string ConsultWording = "Quiero consultar mi cofre";
 
+        /// <summary>
+        /// The level the bank asks for: «Tu personaje debe tener nivel 10 como mínimo para poder acceder
+        /// a su cofre de banco» (the client's guide, 1119582).
+        /// </summary>
+        public const int MinimumLevel = 10;
+
+        /// <summary>
+        /// What the client draws for the banker's refusal: «Lo siento en el alma, pero no tienes el
+        /// estatus necesario para acceder a un cofre fuerte del banco. (El acceso a los cofres fuertes
+        /// está reservado a los jugadores con nivel superior a 10.)», the Bontarian's 47811.
+        /// </summary>
+        public const string RefusalWording = "Lo siento en el alma, pero no tienes el estatus necesario para acceder a un cofre fuerte del banco";
+
+        /// <summary>Whether a character of that level may have his chest.</summary>
+        public static bool MayOpen(int level) => level >= MinimumLevel;
+
         public sealed class Banker
         {
             public int NpcId { get; init; }
@@ -73,6 +89,9 @@ namespace Jondo.Unity.Server.Managers
 
             /// <summary>How many replies of this template carry that wording.</summary>
             public int Candidates { get; init; }
+
+            /// <summary>His message to a character under <see cref="MinimumLevel"/>, 0 when he has none.</summary>
+            public long Refusal { get; set; }
         }
 
         private static readonly Dictionary<int, Banker> _byNpc = new Dictionary<int, Banker>();
@@ -99,11 +118,14 @@ namespace Jondo.Unity.Server.Managers
                 Console.WriteLine("[Bank] No text says \"" + ConsultWording + "\": no banker will offer the bank.");
                 return;
             }
+            var refusals = TextKeysSaying(RefusalWording);
 
             foreach (var template in Npcs.Templates)
             {
                 var banker = Pick(template.Id, template.Replies, template.ReplyTexts, consult);
-                if (banker != null) _byNpc[template.Id] = banker;
+                if (banker == null) continue;
+                banker.Refusal = RefusalOf(template.Messages, template.MessageTexts, refusals);
+                _byNpc[template.Id] = banker;
             }
 
             Console.WriteLine($"[Bank] {_byNpc.Count} banker(s) standing in the world offer the bank: " +
@@ -130,6 +152,15 @@ namespace Jondo.Unity.Server.Managers
             }
 
             return chosen == 0 ? null : new Banker { NpcId = npcId, Consult = chosen, Candidates = found };
+        }
+
+        /// <summary>A template's refusal: the last of its messages with the refusal's wording, or 0.</summary>
+        public static long RefusalOf(long[] messages, long[] texts, ISet<long> refusalTexts)
+        {
+            long chosen = 0;
+            for (int i = 0; i < Math.Min(messages?.Length ?? 0, texts?.Length ?? 0); i++)
+                if (refusalTexts.Contains(texts![i])) chosen = messages![i];
+            return chosen;
         }
 
         /// <summary>The translation keys whose text starts with that sentence.</summary>

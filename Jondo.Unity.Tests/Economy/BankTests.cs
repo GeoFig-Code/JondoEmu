@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -101,6 +101,23 @@ namespace Jondo.Unity.Tests.Economy
             Assert.Contains(913010L, keys);
             Assert.Contains(913011L, keys);
             Assert.Contains(909688L, keys);   // the Brakmarian banker's
+        }
+
+        /// <summary>
+        /// «nivel 10 como mínimo»: under it the Bontarian says his 47811, «no tienes el estatus
+        /// necesario para acceder a un cofre fuerte del banco», found by its wording.
+        /// </summary>
+        [Fact]
+        public void Under_level_ten_the_banker_refuses_in_his_own_words()
+        {
+            Assert.False(Bankers.MayOpen(9));
+            Assert.True(Bankers.MayOpen(10));
+
+            var refusals = Bankers.TextKeysSaying(Bankers.RefusalWording);
+            Assert.Contains(913009L, refusals);
+            Assert.Equal(47811, Bankers.RefusalOf(new long[] { 47810, 47811, 47812 },
+                                                  new long[] { 913008, 913009, 913012 }, refusals));
+            Assert.Equal(0, Bankers.RefusalOf(new long[] { 47810 }, new long[] { 913008 }, refusals));
         }
 
         // ─── Storage ────────────────────────────────────────────────────────────
@@ -412,6 +429,7 @@ namespace Jondo.Unity.Tests.Economy
             player.State.CharacterId = character;
             player.State.MapId = 217059328;
             player.State.Kamas = 1_000;
+            player.State.CharacterLevel = Bankers.MinimumLevel;
             player.EnterWorld();
             Assert.True(SessionRegistry.Register(player));
             try
@@ -423,6 +441,12 @@ namespace Jondo.Unity.Tests.Economy
 
                     Assert.False(BankHandler.IsOpen);
                     Assert.False(await BankHandler.MoveAsync(null!, Kcr(1, uid)));
+
+                    // Under level 10 there is no chest.
+                    player.State.CharacterLevel = Bankers.MinimumLevel - 1;
+                    await BankHandler.OpenAsync(null!);
+                    Assert.False(BankHandler.IsOpen);
+                    player.State.CharacterLevel = Bankers.MinimumLevel;
 
                     await BankHandler.OpenAsync(null!);
                     Assert.True(BankHandler.IsOpen);

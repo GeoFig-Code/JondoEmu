@@ -273,7 +273,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The guild chest, in the 24 banks that have one, with the ranks' rights per tab and a new tab at
   guild levels 3, 7 and 11
 - ✅ The guild chest's history: every deposit and withdrawal in the logbook's chest tab
-- ❌ The bank's level condition
+- ✅ The bank from level 10: under it the banker says so and offers no chest
 - ✅ The seven marketplaces — resources, equipment, consumables, runes, creatures, souls and
   cosmetics — across **40 counters**, the breeders' village's four among them: browse, buy lots of 1, 10, 100 or 1000, sell for the 2 % tax,
   take a lot back, change its price, the sales history
@@ -386,7 +386,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The Princesa's second phase: healed and invulnerable, playing twice a round with the Volonté de la
   Reine; the Flor's purple glyph gives a one-use Encantamiento Floral, and two of them break her
   invulnerability
-- ❌ Podium ornaments and titles; guild experience moving the guild level
+- ✅ Guild experience from missions and the raids ladder raises the guild's level
 
 ### 🔱 Alliances
 
@@ -715,7 +715,7 @@ Ranked PvP through a queue. Open the window, pick a format, get matched, fight, 
 - 🟡 The payout is fixed amounts, not the game's formula
 - 🟡 The rating curve and the season length are this server's own
 - 🚧 The *match found* popup with accept and refuse
-- ❌ The Legend ranking lists
+- ✅ The ranking lists, per mode, class and level band, in the ladders window
 
 ### ✨ Spell effect engine
 

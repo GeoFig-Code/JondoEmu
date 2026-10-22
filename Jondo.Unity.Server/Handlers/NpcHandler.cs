@@ -266,7 +266,14 @@ namespace Jondo.Unity.Server.Handlers
             // And a banker offers the bank: his reply in front of the rest, the way the Bontarian
             // banker offers it in frame 74 of the bank capture. See BankHandler.
             var banker = Bankers.Of(npc.NpcId);
-            if (banker != null) respuestas = BankHandler.WithTheBankReply(banker, respuestas);
+            if (banker != null && !Bankers.MayOpen(SessionContext.State.CharacterLevel))
+            {
+                // Under level 10 he says so, in his own words, and offers no chest.
+                if (banker.Refusal != 0) pregunta = banker.Refusal;
+                respuestas = respuestas.Where(r => r != banker.Consult).ToArray();
+                banker = null;
+            }
+            else if (banker != null) respuestas = BankHandler.WithTheBankReply(banker, respuestas);
 
             // Where the conversation is going is noted. Without this the ioy that comes later cannot be
             // placed: it carries the answer's id and nothing else, not which NPC nor which sentence it

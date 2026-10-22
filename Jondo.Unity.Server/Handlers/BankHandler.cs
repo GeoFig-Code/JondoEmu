@@ -116,6 +116,11 @@ namespace Jondo.Unity.Server.Handlers
 
             long account = SessionContext.Current.AccountId;
             long character = SessionContext.State.CharacterId;
+            if (!Bankers.MayOpen(SessionContext.State.CharacterLevel))
+            {
+                Console.WriteLine($"[Bank] {character} is under level {Bankers.MinimumLevel}: no chest.");
+                return;
+            }
 
             var opening = await Bank.OpenAsync(account, character, SessionContext.State.Kamas);
             if (opening == null) return;

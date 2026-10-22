@@ -92,6 +92,12 @@ namespace Jondo.Unity.Server.Managers
             /// cannot be written down; the WORDING is fixed, so they can be looked up.
             /// </remarks>
             public long[] ReplyTexts = Array.Empty<long>();
+
+            /// <summary>Every message the template declares (dialogMessages), and the translation key of each.</summary>
+            public long[] Messages = Array.Empty<long>();
+
+            /// <summary>The translation key beside each message, in the same order as <see cref="Messages"/>.</summary>
+            public long[] MessageTexts = Array.Empty<long>();
         }
 
         /// <summary>Buy and sell: the action that answers with the catalogue.</summary>
@@ -837,6 +843,12 @@ namespace Jondo.Unity.Server.Managers
                     }
                 }
 
+                // dialogMessages, the same [messageId, textId] pairs: the banker's refusal is found by
+                // its wording among them (Bankers).
+                var (messages, messageTexts) = Pairs(root, "dialogMessages");
+                template.Messages = messages;
+                template.MessageTexts = messageTexts;
+
                 // dialogReplies is a list of [replyId, textId] pairs. BOTH are
                 // kept: the id is what one answers with, and the text key is the only thing saying
                 // which reply it is. See Template.ReplyTexts.
@@ -892,6 +904,28 @@ namespace Jondo.Unity.Server.Managers
                 if (value.ValueKind == JsonValueKind.Number) fuera.Add(value.GetInt32());
             }
             return fuera.ToArray();
+        }
+
+        /// <summary>A list of [id, textId] pairs (dialogMessages, dialogReplies): the ids and their keys.</summary>
+        private static (long[] Ids, long[] Texts) Pairs(JsonElement root, string name)
+        {
+            var ids = new List<long>();
+            var texts = new List<long>();
+            if (!root.TryGetProperty(name, out var holder) || !holder.TryGetProperty("Array", out var list)
+                || list.ValueKind != JsonValueKind.Array)
+                return (ids.ToArray(), texts.ToArray());
+
+            foreach (var entry in list.EnumerateArray())
+            {
+                if (!entry.TryGetProperty("values", out var values) || !values.TryGetProperty("Array", out var pair)
+                    || pair.ValueKind != JsonValueKind.Array)
+                    continue;
+                var numbers = pair.EnumerateArray().Where(v => v.ValueKind == JsonValueKind.Number).Select(v => v.GetInt64()).ToList();
+                if (numbers.Count == 0 || numbers[0] == 0) continue;
+                ids.Add(numbers[0]);
+                texts.Add(numbers.Count > 1 ? numbers[1] : 0);
+            }
+            return (ids.ToArray(), texts.ToArray());
         }
     }
 }
