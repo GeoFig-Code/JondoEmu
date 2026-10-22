@@ -765,13 +765,14 @@ namespace Jondo.Unity.Server.Network
         /// <summary>
         /// The sheet's alignment block (f9, Alignments): { f2: 2, f3 { f3: 500 }, f5: 1 } on a brand
         /// new character, { f1: 100, f2: 3, f3 { f3: 500 }, f5: 200 } on the level 200 Bontarian --
-        /// the side, the next grade's honour, the level.
+        /// the alignment level its quests raised, the side, the next grade's honour, the level.
         /// </summary>
         private static byte[] AlignmentSheet()
         {
             var state = Jondo.Unity.Server.Network.SessionContext.State;
             var alignment = Managers.Alignments.Of(state.CharacterId);
-            return Pb.New().Var(2, alignment.Side).Msg(3, Pb.New().Var(3, 500))
+            return Pb.New().VarIfNotZero(1, Managers.Alignments.Level())
+                     .Var(2, alignment.Side).Msg(3, Pb.New().Var(3, 500))
                      .VarIfNotZero(4, alignment.Grade)
                      .Var(5, Math.Max(1, Handlers.StatsHandler.StatLevel(state.CharacterLevel))).Build();
         }

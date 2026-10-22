@@ -5161,7 +5161,8 @@
        "v": 17
       }
      ]
-    }
+    },
+    "built": "AlignmentHandler.BuildRank"
    },
    {
     "opcode": "iun",

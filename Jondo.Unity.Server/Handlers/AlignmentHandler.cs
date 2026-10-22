@@ -92,7 +92,7 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             if (!mine.Sworn) return Close;
-            int step = Alignments.LeaveStep(mine);
+            int step = Alignments.LeaveStep(Alignments.Level());
             bool brakmar = mine.Side == Alignments.Brakmar;
             long fee = Alignments.LeaveCost(step);
 
@@ -122,15 +122,56 @@ namespace Jondo.Unity.Server.Handlers
             return Close;
         }
 
-        /// <summary>The side changed: kept, and the character drawn again with it, his sheet too.</summary>
+        /// <summary>
+        /// The side changed: kept, and the character drawn again with it, his sheet and rank too.
+        /// </summary>
+        /// <remarks>
+        /// Leaving a city forgets what was done for its militia, as Morry Gann warns before the
+        /// signature: «¡Perderás todo lo que has dedicado a la milicia de tu ciudad, ya sea Bonta o
+        /// Brakmar! No podrás dar marcha atrás.» -- «tu perdras ton grade au sein de ta milice et tous
+        /// les avantages qui sont liés». Its alignment and order quests go back to not done, so the
+        /// level and the rank start again from nothing if he ever swears to it again.
+        /// </remarks>
         private static async Task SwitchAsync(NetworkStream stream, int side)
         {
+            int left = Alignments.CriterionSide(Me);
+            if (side == Alignments.Neutral && left != 0)
+            {
+                foreach (int quest in Alignments.QuestsOfSide(left)) Quests.Forget(quest);
+            }
+
             Alignments.Set(Me, side, Now);
             await SlotLookHandler.RedrawAsync(stream);
             await WriteAsync(stream, ConnectionProtocol.Push(Op.Kub, ConnectionProtocol.BuildCharacteristics()));
+            await WriteAsync(stream, ConnectionProtocol.Push(Op.Hod, BuildRank(Alignments.Rank())));
             Console.WriteLine($"[Alignment] {SessionContext.State.CharacterName} is now " +
                               (side == Alignments.Bonta ? "Bontarian" : side == Alignments.Brakmar ? "Brakmarian" : "neutral") + ".");
         }
+
+        /// <summary>
+        /// A quest finished: an alignment quest raises the level the sheet shows, an order's
+        /// apprenticeship gives the rank its alignment tab shows (<see cref="Alignments.Progression"/>).
+        /// </summary>
+        public static async Task AfterQuestAsync(NetworkStream stream, int questId)
+        {
+            var (level, rank) = Alignments.Moves(questId);
+            if (level)
+            {
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Kub, ConnectionProtocol.BuildCharacteristics()));
+                Console.WriteLine($"[Alignment] {SessionContext.State.CharacterName}'s alignment level is {Alignments.Level()}.");
+            }
+            if (rank)
+            {
+                await WriteAsync(stream, ConnectionProtocol.Push(Op.Hod, BuildRank(Alignments.Rank())));
+                Console.WriteLine($"[Alignment] {SessionContext.State.CharacterName}'s rank is {Alignments.Rank()}.");
+            }
+        }
+
+        /// <summary>
+        /// The rank (hod): f1 the client's AlignmentRanks id, left out at 0 as on a new character.
+        /// f2, a map of bool to int, and f3, a bool, never travel in the captures; fhc reads f1 alone.
+        /// </summary>
+        public static byte[] BuildRank(int rank) => Pb.New().VarIfNotZero(1, rank).Build();
 
         private static Task WriteAsync(NetworkStream stream, byte[] frame)
             => Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, frame);

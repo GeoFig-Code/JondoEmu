@@ -190,10 +190,14 @@ namespace Jondo.Unity.Server.Managers
             var book = _book;
             if (book == null) return Task.CompletedTask;
 
+            // An alignment quest or an apprenticeship moves what «Pa>19» and «Pr=2|...» ask.
+            var (level, rank) = Alignments.Moves(questId);
             return CheckAsync(stream, book.WaitingOn("Qf", questId)
                 .Concat(book.WaitingOn("Qc", questId))
                 .Concat(book.WaitingOn("QF", questId))
-                .Concat(book.WaitingOn("QQ")));
+                .Concat(book.WaitingOn("QQ"))
+                .Concat(level ? book.WaitingOn("Pa") : Enumerable.Empty<int>())
+                .Concat(rank ? book.WaitingOn("Pr") : Enumerable.Empty<int>()));
         }
 
         /// <summary>
@@ -677,10 +681,11 @@ namespace Jondo.Unity.Server.Managers
                 // His class: «The Tymador Job» asks PG=13, the class quests and items theirs.
                 "PG" => S.Breed,
 
-                // His alignment's side (Alignments): 0 neutral, 1 Bonta, 2 Brakmar. Its level and
-                // rank are not earned here.
+                // His alignment (Alignments): the side, 0 neutral, 1 Bonta, 2 Brakmar; the level
+                // its quests have raised; the rank its orders' apprenticeships have given.
                 "Ps" => Alignments.CriterionSide(S.CharacterId),
-                "Pa" or "Pr" => 0,
+                "Pa" => Alignments.Level(),
+                "Pr" => Alignments.Rank(),
 
                 // Every account is subscribed here: its end date is a year away (Subscription).
                 "PZ" => 1,

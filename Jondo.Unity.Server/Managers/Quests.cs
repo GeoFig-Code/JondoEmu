@@ -1051,6 +1051,9 @@ namespace Jondo.Unity.Server.Managers
                 if (questId == Almanax.Dragon.Quest && !await Equipment.GiveAsync(stream, Almanax.Dolmanax, 1))
                     Console.WriteLine($"[Almanax] The Dolmanax {Almanax.Dolmanax} could not be given.");
 
+                // An alignment quest raises the alignment level, an order's apprenticeship the rank.
+                await Handlers.AlignmentHandler.AfterQuestAsync(stream, questId);
+
                 // And whatever that finished quest has earned. 259 achievements hang from finishing one, and
                 // the tutorial's 8518 «Primer tiempo» is literally (Qf=2511).
                 await Achievements.AfterQuestAsync(stream, questId);

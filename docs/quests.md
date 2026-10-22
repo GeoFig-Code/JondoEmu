@@ -148,7 +148,20 @@ than offering them early. The terms it does understand are still required.
 
 The alignment's side is the character's own: neutral until Chantal Inea has him swear to a city, so
 the Bontarian and Brakmarian quests (`Ps=1`, `Ps=2`) are for those who have. Its level and rank are
-never earned here.
+the quests' own (`Alignments.Progression`), read off the catalogue's conditions:
+
+- **The level** (`Pa`) is each side's chain of a hundred quests, each asking for the level it raises:
+  «Entraînement avec Tarche» asks `Ps=1&Pa=0`, «L'exorciste» `Ps=1&Pa=99`. Finishing the one that asks
+  `Pa=N` leaves the level at N + 1. The sheet shows it in its alignment block's f1, measured at 100 on a
+  level 200 Bontarian.
+- **The rank** (`Pr`, the client's AlignmentRanks) is the orders' «Apprentissage» quests: each asks for
+  the rank it leaves behind and the next one for the rank it gives (433 «Disciple de Ménalt» asks
+  `Pr=1`, 109 «Écuyer» `Pr=2&Qf=433`, so 433 gives 2); the last of an order gives the rank after its
+  own. A sworn character with no order is his side's Néophyte, 1 or 18. The client is told it in
+  `hod` f1, on entering the world and when it changes; the capture's was its capturer's 17,
+  «Maître des Illusions», and every character used to get it.
+- **Leaving the city** with Morry Gann forgets both, as he warns: «¡Perderás todo lo que has dedicado a
+  la milicia de tu ciudad!». His fee goes by the level, ten levels a step (inferred).
 
 Osavora's weekly quests ask for their season and a week since their marker: «Una pequeña comezón» is
 `PL>179&Qf=2515&(((WE=230|WE=255)&(DD>7,31582|PO!31582))|...)`, the Repos (world event 230) and not

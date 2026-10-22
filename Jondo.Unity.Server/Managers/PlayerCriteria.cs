@@ -85,6 +85,17 @@ namespace Jondo.Unity.Server.Managers
                 // His alignment's side: 0 neutral, 1 Bonta, 2 Brakmar (Alignments).
                 case "Ps": return facts.State == null ? Answer.Unknown : Compare(Alignments.CriterionSide(facts.State.CharacterId), op, value);
 
+                // Its level and rank, from the quests he finished (Alignments.Progression).
+                case "Pa":
+                case "Pr":
+                    if (facts.State == null || facts.Log == null) return Answer.Unknown;
+                    {
+                        var finished = facts.Log.Runs.Values.Where(r => r.Finished).Select(r => r.QuestId);
+                        int side = Alignments.CriterionSide(facts.State.CharacterId);
+                        return Compare(condition.Code == "Pa" ? Alignments.Index().Level(side, finished)
+                                                              : Alignments.Index().Rank(side, finished), op, value);
+                    }
+
                 case "PO": return Holding(condition, facts.Held);
 
                 case "Qa": return facts.Log == null ? Answer.Unknown : Truth(facts.Log.Active((int)value), op);

@@ -452,6 +452,13 @@ namespace Jondo.Unity.Server.Network
                 return ConnectionProtocol.Push(Op.Lty, Handlers.KoliseoHandler.BuildRanks(character.Id, character.Level));
             }
 
+            // The alignment rank. The captured hod was the capturer's 17, «Maître des Illusions»,
+            // and every character entered the world with it; this one's own, from his quests.
+            if (ConnectionProtocol.ReadPayload(frame, Op.Hod) != null)
+            {
+                return ConnectionProtocol.Push(Op.Hod, Handlers.AlignmentHandler.BuildRank(Managers.Alignments.Rank()));
+            }
+
             // The artisan settings of every job. The captured ones were the capturer's -- a
             // minimum level of 150 for the miner, 69 for the farmer -- handed to everybody.
             if (ConnectionProtocol.ReadPayload(frame, Op.Isd) != null)
