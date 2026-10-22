@@ -692,6 +692,7 @@ namespace Jondo.Unity.Server.Network
                 // The cosmetics collection: items into it and back out.
                 else if (payloadStr == Op.Uri("lyn")) await CosmeticCollectionHandler.AddAsync(stream, payload);
                 else if (payloadStr == Op.Uri("lxh")) await CosmeticCollectionHandler.RemoveAsync(stream, payload, sessionAccountId);
+                else if (payloadStr == Op.Uri(Op.Hmj)) await MimicryHandler.CreateAsync(stream, payload);
                 // The «Conjuntos» window: the character's builds.
                 else if (payloadStr == Op.Uri("ifg")) await PresetHandler.PlayerStateAsync(stream);
                 else if (payloadStr == Op.Uri("igp")) await PresetHandler.CreateAsync(stream, payload);

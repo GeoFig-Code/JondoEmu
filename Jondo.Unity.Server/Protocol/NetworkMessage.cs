@@ -340,7 +340,7 @@ namespace Jondo.Protocol
                 case Op.Lol: return ("World Loading", "Interfaces", "NotificationListMessage (Quest notifications)");
                 case "icg": return ("World Loading", "Inventory", "InventoryWeightMessage (Inventory carry pods)");
                 case Op.Ibo: return ("Guild", "Raids", "RaidInvitation (an invitation into a guild raid)");
-                case Op.Hmj: return ("World Loading", "Interfaces", "SocialGroupStatus (The player's guild status)");
+                case Op.Hmj: return ("Items", "Mimicry", "MimicryCreate (a real item into the cosmetics collection)");
                 case Op.Lxs: return ("World Loading", "Sync", "AlignmentSubAreaUpdate (PvP and sub-area alignment)");
                 case "hnq": return ("World Loading", "Sync", "SpouseStatusMessage (Marital status / marriage)");
                 case Op.Ksv: return ("World Loading", "Character", "CharacterCapabilitiesMessage (Stat caps and capabilities)");
