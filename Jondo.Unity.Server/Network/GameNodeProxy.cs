@@ -134,7 +134,9 @@ namespace Jondo.Unity.Server.Network
                                 {
                                     // Off the arena first. A client closed in the middle of a
                                     // fight was being saved on the tactical map, and came back
-                                    // to it on the next login, fight music and all.
+                                    // to it on the next login, fight music and all. A spectator
+                                    // too: he keeps his roleplay map where a fighter does.
+                                    FightHandler.ForgetSpectator(sesion);
                                     FightHandler.BackToRoleplayMap();
                                     DatabaseManager.SaveCurrentCharacter();
                                 }
@@ -432,6 +434,18 @@ namespace Jondo.Unity.Server.Network
                     hasSentMapBlock = false;
                     FightHandler.RejoinState(fightToRejoin);
                     if (!await EnterWorldAsync(stream)) return;
+                }
+                else if ((payloadStr.Contains(Op.Uri(Op.Ijm)) || payloadStr.Contains(Op.Uri(Op.Kmv)))
+                         && FightHandler.PendingSpectatorBoard() != null)
+                {
+                    // A spectator's client has the arena: the fight as it stands, once.
+                    var watched = FightHandler.PendingSpectatorBoard()!;
+                    await FightHandler.InTurnAsync(watched, () => FightHandler.SendSpectatorBoardAsync(stream, watched));
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kme)) && SessionContext.State.SpectatingFightId != 0)
+                {
+                    // «Abandonar el modo espectador»: home, as at the fight's end.
+                    await FightHandler.StopWatchingAsync(SessionContext.Current);
                 }
                 else if ((payloadStr.Contains(Op.Uri(Op.Ijm)) || payloadStr.Contains(Op.Uri(Op.Kmv)))
                          && FightHandler.PendingResume() != null)
@@ -1897,6 +1911,21 @@ namespace Jondo.Unity.Server.Network
                     // Attacking a monster group. It is what the real client sends on
                     // starting a fight: it carries the group's contextual id.
                     await FightHandler.AttackAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Jrv)))
+                {
+                    // The spectator window's list of the map's fights.
+                    await FightHandler.RunningFightsAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Jrz)))
+                {
+                    // And one of them, its people.
+                    await FightHandler.FightDetailsAsync(stream, payload);
+                }
+                else if (payloadStr.Contains(Op.Uri(Op.Kal)))
+                {
+                    // Watching a friend's, a guild mate's or an alliance mate's fight.
+                    await FightHandler.WatchCharacterAsync(stream, payload);
                 }
                 else if (payloadStr.Contains(Op.Uri(Op.Kay)))
                 {

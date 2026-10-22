@@ -5481,7 +5481,7 @@ namespace Jondo.Unity.Server.Handlers
         private static async Task ATodosAsync(FightInstance fight, byte[] frame)
         {
             await AbrirLoDebidoAsync(fight);
-            foreach (var sesion in Publico(fight))
+            foreach (var sesion in Publico(fight).Concat(SpectatorsOf(fight)))
             {
                 try
                 {

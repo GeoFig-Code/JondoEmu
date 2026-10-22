@@ -604,8 +604,32 @@ public static class Op
     /// <summary>A party mate has entered a fight. Unmeasured.</summary>
     public const string Ilh = "ilh";
 
-    /// <summary>Joining a party fight. Unmeasured.</summary>
+    /// <summary>
+    /// C→S: into a fight, { f1 a fighter of the side, f2 the fight }; without f1, to watch it
+    /// (SpectatorUi.JoinFightAsSpectator, fhs.bui).
+    /// </summary>
     public const string Kay = "kay";
+
+    /// <summary>C→S: watching a character's fight, { f2 the character } (fhs.egi: friends, guild, alliance).</summary>
+    public const string Kal = "kal";
+
+    /// <summary>C→S: the map's fights for the spectator window, empty (fhs.bffq). Answered with <see cref="Jyc"/>.</summary>
+    public const string Jrv = "jrv";
+
+    /// <summary>S→C: the map's fights, { f1 jwr each } -- gop.blai makes SpectatorUi's list of them.</summary>
+    public const string Jyc = "jyc";
+
+    /// <summary>C→S: one fight's people, { f1 the fight } (fhs.bffs). Answered with <see cref="Jqy"/>.</summary>
+    public const string Jrz = "jrz";
+
+    /// <summary>S→C: one fight's people, { f1 the fight, f2 the attackers, f3 the defenders } (fhs.bda, ff.mus).</summary>
+    public const string Jqy = "jqy";
+
+    /// <summary>
+    /// S→C: joining a fight as a spectator, { f1 the named teams, f2 ..., f3 the kaa } -- fff.bdzg
+    /// raises the spectator flag, fjq.bfuk marks the fight state watched.
+    /// </summary>
+    public const string Kab = "kab";
 
     /// <summary>Unidentified. 1 use in the emulator.</summary>
     public const string Ioc = "ioc";

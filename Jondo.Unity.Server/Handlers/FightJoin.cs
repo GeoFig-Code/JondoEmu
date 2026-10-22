@@ -372,6 +372,8 @@ namespace Jondo.Unity.Server.Handlers
             {
                 await ATodosAsync(fight, ConnectionProtocol.Push(Op.Lqn, ConnectionProtocol.BuildSystemMessage(ClosedMessage)));
             }
+            // No spectators: those watching go home.
+            if (option == FightInstance.OptionSecret && on) await SpectatorsOutAsync(fight);
             Program.LogDebug($"[Fight] {GameState.CharacterName} turns option {option} of side {side} " +
                              $"of fight #{fight.FightId} {(on ? "on" : "off")}.");
         }
@@ -458,6 +460,13 @@ namespace Jondo.Unity.Server.Handlers
             var (named, fightId) = FightJoinProtocol.ReadJoinRequest(payload);
             var me = SessionContext.Current;
             var fight = FightById(fightId);
+
+            // No fighter named: the map's fight list asks to watch it.
+            if (named == 0)
+            {
+                if (fight != null) await InTurnAsync(fight, () => WatchFromTheMapAsync(me, fightId));
+                return;
+            }
 
             // The check and the join under the fight's turn: two coming in for its last place at
             // once both found it free.
@@ -1028,6 +1037,7 @@ namespace Jondo.Unity.Server.Handlers
         {
             _activeFights.TryRemove(fight.FightId, out _);
             _onTheMap.TryRemove(fight.FightId, out var where);
+            await SpectatorsHomeAsync(fight);
             if (fight.Reglas.PagaElKoliseo) return;
 
             await SessionRegistry.BroadcastToMapAsync(fight.RoleplayMapId, ConnectionProtocol.Push(Op.Jqz,

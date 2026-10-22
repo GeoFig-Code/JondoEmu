@@ -221,6 +221,12 @@ namespace Jondo.Unity.Server
         /// <summary>Whether he wants to know when a member of his guild comes on line (jha/jhf).</summary>
         public bool WarnGuildConnections { get; set; }
 
+        /// <summary>The fight he watches, or 0 (FightHandler, FightSpectators.cs).</summary>
+        public long SpectatingFightId { get; set; }
+
+        /// <summary>Whether his client still waits for the board of the fight he watches.</summary>
+        public bool SpectatorBoardPending { get; set; }
+
         /// <summary>The house window this character has open -- a sale, a purchase, a code keypad -- if any.</summary>
         public Handlers.HouseHandler.Dialog? HouseDialog { get; set; }
 

@@ -172,6 +172,69 @@ namespace Jondo.Unity.Server.Network
         }
 
         /// <summary>
+        /// A team as the spectator window lists it (lgw with its f1 case, lcu): the map's team -- f2
+        /// the kind of side, f3 its leader, f4 1, f5 no members, f6 which team -- and f1 { f3 how
+        /// many it is, f8 their mean level }. gop.blaf reads the case and nothing without it.
+        /// </summary>
+        public static Pb LightTeam(int team, long leader, int sideKind, int members, int meanLevel)
+            => Pb.New()
+                .Msg(1, Pb.New().VarIfNotZero(3, members).VarIfNotZero(8, meanLevel))
+                .VarIfNotZero(2, sideKind)
+                .Var(3, leader)
+                .Var(4, 1)
+                .Msg(5, Pb.New())
+                .VarIfNotZero(6, team);
+
+        /// <summary>
+        /// A fight as the spectator window lists it (jwr { f2 jwv }): f1 the fight, f2 its kind, f3
+        /// when it started (an ISO date: gji.bkla parses it round trip), f4 whether it takes no
+        /// spectators, f5 each team with its options { f1 the team, f2 the options } -- the
+        /// options as the map's swords carry them, f4 a side restricted to its party.
+        /// </summary>
+        public static Pb RunningFight(long fightId, int kind, DateTime startedUtc, bool noSpectators,
+                                      IEnumerable<(Pb Team, bool PartyOnly)> teams)
+        {
+            var jwv = Pb.New()
+                .Var(1, fightId)
+                .VarIfNotZero(2, kind)
+                .Str(3, startedUtc.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture))
+                .VarIfNotZero(4, noSpectators ? 1 : 0);
+            foreach (var (team, partyOnly) in teams)
+                jwv.Msg(5, Pb.New().Msg(1, team).Msg(2, Pb.New().VarIfNotZero(4, partyOnly ? 1 : 0)));
+            return Pb.New().Msg(2, jwv);
+        }
+
+        /// <summary>The map's fights (jyc): { f1 each }.</summary>
+        public static byte[] BuildRunningFights(IEnumerable<Pb> fights)
+        {
+            var jyc = Pb.New();
+            foreach (var fight in fights) jyc.Msg(1, fight);
+            return jyc.Build();
+        }
+
+        /// <summary>
+        /// One fighter of a fight's details (lgr), as ff.mus reads it: f9 the level, f10 the fighter,
+        /// and in its oneof a monster's f2 { f1 the monster, f2 its grade } or a person's f6 { f1
+        /// the name }.
+        /// </summary>
+        public static Pb FighterInDetails(long id, int level, int monster, int grade, string name)
+        {
+            var lgr = Pb.New().VarIfNotZero(9, level).Var(10, id);
+            return monster != 0
+                ? lgr.Msg(2, Pb.New().Var(1, monster).VarIfNotZero(2, grade))
+                : lgr.Msg(6, Pb.New().Str(1, name ?? ""));
+        }
+
+        /// <summary>One fight's people (jqy): { f1 the fight, f2 each attacker, f3 each defender }.</summary>
+        public static byte[] BuildFightDetails(long fightId, IEnumerable<Pb> attackers, IEnumerable<Pb> defenders)
+        {
+            var jqy = Pb.New().Var(1, fightId);
+            foreach (var a in attackers) jqy.Msg(2, a);
+            foreach (var d in defenders) jqy.Msg(3, d);
+            return jqy.Build();
+        }
+
+        /// <summary>
         /// A team as it stands now (kae): { f1: the team, f2: the fight }. F 139-141, 153, 168.
         /// </summary>
         /// <remarks>
