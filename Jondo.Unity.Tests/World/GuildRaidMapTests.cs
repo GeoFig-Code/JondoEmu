@@ -246,7 +246,7 @@ namespace Jondo.Unity.Tests.World
                 foreach (int guardian in new[] { GuildRaidGuardians.Guardian, GuildRaidGuardians.Centinela, 8319 })
                     await Meet(GuildRaidGuardians.GoalOf(Raids.EternalGardens, guardian).Id);
                 Assert.True(Stands(raid, hub, GuildRaidGuardians.DoorDissolves));
-                Assert.Empty(GuildRaidGuardians.GuardianOfZone.Keys.Where(z => Stands(raid, hub, GuildRaidGuardians.HubLogo(z))));
+                Assert.DoesNotContain(GuildRaidGuardians.GuardianOfZone.Keys, z => Stands(raid, hub, GuildRaidGuardians.HubLogo(z)));
             }
             finally
             {

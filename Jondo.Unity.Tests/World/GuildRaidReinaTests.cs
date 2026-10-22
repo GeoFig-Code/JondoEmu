@@ -173,7 +173,7 @@ namespace Jondo.Unity.Tests.World
                 Assert.True(reina.Buffs.TieneEstado(6626));            // jail I taken
                 var floracle = fight.Rojo.Single(m => m.MonsterId == jail.Floracle);
                 Assert.True(floracle.Buffs.TieneEstado(6635));          // open to blows
-                Assert.True(jailed.Buffs.Puestos.Any(b => b.HechizoOrigen == 31942));
+                Assert.Contains(jailed.Buffs.Puestos, b => b.HechizoOrigen == 31942);
                 Assert.Equal(-1, fight.WonByEffect);                    // the other is still out
 
                 await FightHandler.CastAtAsync(null, fight, floracle, GuildRaidReina.FloracleThreshold, 1, floracle.CellId);
