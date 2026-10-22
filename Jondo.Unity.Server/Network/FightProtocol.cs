@@ -1332,8 +1332,12 @@ namespace Jondo.Unity.Server.Network
 
             var detalle = Pb.New();
             if (target != 0 || !noTarget) detalle.Var(2, target != 0 ? target : caster);
-            detalle.Msg(4, suyo)
-                .VarIfNotZero(5, critical ? 1 : 0)
+            // A punch carries no counters at all: every one of the captures' punches (the tutorial's,
+            // the Tymador's, the Yopuka's...) goes «f2, f6, f8 1, f10 0», where a weapon's blow carries
+            // f4 { f2 its hits this turn, f4 the caster }.
+            bool punch = spell == 0 && arma == 0;
+            if (!punch) detalle.Msg(4, suyo);
+            detalle.VarIfNotZero(5, critical ? 1 : 0)
                 .Var(6, cell);
             if (spell != 0)
             {

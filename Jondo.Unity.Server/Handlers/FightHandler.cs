@@ -4473,6 +4473,9 @@ namespace Jondo.Unity.Server.Handlers
                 Network.FightProtocol.BuildSequenceStart(caster.Id,
                                                          Network.FightProtocol.ActionSequence)));
 
+            // A weapon's blow always counts its hits this turn (f4 f2, 1 or 2 in every capture); a
+            // punch counts nothing.
+            int armaDelGolpe = spell == 0 ? ArmaEquipada(caster) : 0;
             await ATodosAsync(fight, ConnectionProtocol.Push(Op.Jwe,
                 Network.FightProtocol.BuildAction(
                     caster.Id,
@@ -4480,11 +4483,11 @@ namespace Jondo.Unity.Server.Handlers
                     Network.FightProtocol.CastAt(
                         caster.Id, aQuien, cell, spell, spellLevel, critico,
                         sobreEseObjetivo: porObjetivo > 0 ? sobreEse + 1 : 0,
-                        esteTurno: porTurno > 0 ? esteTurno + 1 : 0,
+                        esteTurno: porTurno > 0 || armaDelGolpe != 0 ? esteTurno + 1 : 0,
                         intervalo: intervalo,
                         // Only when the hit is the weapon's. A spell carries f10 at zero, the same as the
                         // punch: what the client looks at to put the name is this.
-                        arma: spell == 0 ? ArmaEquipada(caster) : 0,
+                        arma: armaDelGolpe,
                         noTarget: victim == null,
                         portals: proyeccion?.Chain.Select(p => p.Id).ToList()),
                     Network.FightProtocol.CastDetail)));

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Jondo.Unity.Server.Managers;
 using Xunit;
@@ -81,6 +81,22 @@ namespace Jondo.Unity.Tests.Combat
             var sword = new[] { new Line(99, Fire, 45, 50), new Line(94, Fire, 8, 10) };
 
             Assert.Equal(new[] { 99, 94 }, Hit(sword, Points(100, 600, 100, 100)));
+        }
+
+        /// <summary>
+        /// The blow's f7 byte for byte: a weapon's (the Xelor's Garra de Gargandias, 31786) with its
+        /// f4 { f2 hits this turn, f4 the caster }, and a punch (the Yopuka's) without any f4.
+        /// </summary>
+        [Fact]
+        public void A_weapon_blow_counts_its_hits_and_a_punch_does_not()
+        {
+            string Hex(Jondo.Unity.Server.Network.Pb pb) => System.Convert.ToHexString(pb.Build()).ToLowerInvariant();
+
+            Assert.Equal("10ffffffffffffffffff012209100120e3809490c80130e701400150aaf801",
+                         Hex(Jondo.Unity.Server.Network.FightProtocol.CastAt(53720973411, -1, 231, 0, 0, false,
+                                                                             esteTurno: 1, arma: 31786)));
+            Assert.Equal("10ffffffffffffffffff0130830240015000",
+                         Hex(Jondo.Unity.Server.Network.FightProtocol.CastAt(53721170019, -1, 259, 0, 0, false)));
         }
     }
 }
