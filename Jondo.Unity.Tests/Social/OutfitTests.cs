@@ -13,6 +13,7 @@ using Xunit;
 namespace Jondo.Unity.Tests.Social
 {
     /// <summary>The appearance window's outfits list: keeping, renaming, putting on, copying and throwing away.</summary>
+    [Collection("forgemagic")]
     public sealed class OutfitTests
     {
         private const long Account = 8_900_000_080;
@@ -123,6 +124,61 @@ namespace Jondo.Unity.Tests.Social
             finally
             {
                 DatabaseManager.DeleteCharacter(character, Account);
+            }
+        }
+
+        /// <summary>
+        /// A build given an outfit (ihg) names it in its f9 and puts it on with itself (iio); an
+        /// outfit that is not the character's is not linked.
+        /// </summary>
+        [Fact]
+        public async Task A_build_puts_on_the_outfit_it_was_given()
+        {
+            Wardrobe.Initialize();
+            Outfits.Initialize();
+            long character = DatabaseManager.CreateCharacter(Account + 1, 1, "Atuendo-Dos", 11, 0, 1,
+                new long[] { -1, -1, -1, -1, -1 }, 191105026, 50, 0, 0, Array.Empty<(int, int)>());
+            Assert.True(character > 0);
+            CharacterPresets.Forget(character);
+            try
+            {
+                await using var pipe = await ClientPipe.OpenAsync(Account + 1, character, 990_100_081, "Atuendo-Dos");
+                using (SessionContext.Push(pipe.Session))
+                {
+                    pipe.Session.State.CharacterLevel = 50;
+                    pipe.Session.State.Breed = 11;
+                    var me = DatabaseManager.GetCharacterById(character)!;
+                    var retro = Outfits.Create(character, "Retro", 2, Outfits.Worn(me) with { Body = Retro, Idle = RetroIdle })!;
+
+                    await PresetHandler.CreateAsync(pipe.ToClient, ConnectionProtocol.Push("igp",
+                        Pb.New().Msg(1, Pb.New().EmptyMsg(2)).Var(2, 4).Str(4, "Conjunto").Build()));
+                    string build = Text(Field(Field(await pipe.Next("igk"), 1)!.BytesValue, 1)!.BytesValue, 10);
+
+                    // Linked: the answer carries the build, naming the outfit.
+                    await PresetHandler.OutfitAsync(pipe.ToClient, ConnectionProtocol.Push("ihg",
+                        Pb.New().Str(1, retro.Uuid).Str(2, build).Build()));
+                    byte[] ihu = await pipe.Next("ihu");
+                    Assert.Equal(1, (int)Field(ihu, 1)!.VarIntValue);
+                    Assert.Equal(retro.Uuid, Text(Field(ihu, 2)!.BytesValue, 9));
+
+                    // Someone else's outfit is not linked.
+                    await PresetHandler.OutfitAsync(pipe.ToClient, ConnectionProtocol.Push("ihg",
+                        Pb.New().Str(1, Guid.NewGuid().ToString()).Str(2, build).Build()));
+                    Assert.Null(Field(await pipe.Next("ihu"), 1));
+                    Assert.Equal(retro.Uuid, CharacterPresets.Find(character, build)!.Outfit);
+
+                    // Put on, the build puts the outfit on.
+                    await PresetHandler.EquipAsync(pipe.ToClient, ConnectionProtocol.Push("iio", Pb.New().Str(1, build).Build()), Account + 1);
+                    await Until(pipe, "ihq");
+                    Assert.Equal(retro.Uuid, Outfits.EquippedOf(character));
+                    Assert.Equal(Retro, Wardrobe.BodyOf(character));
+                    Assert.Equal(RetroIdle, Wardrobe.IdleOf(character));
+                }
+            }
+            finally
+            {
+                CharacterPresets.Forget(character);
+                DatabaseManager.DeleteCharacter(character, Account + 1);
             }
         }
     }

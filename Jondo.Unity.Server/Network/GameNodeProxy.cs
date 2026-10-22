@@ -706,6 +706,7 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr == Op.Uri("iin")) await PresetHandler.UpdateAsync(stream, payload);
                 else if (payloadStr == Op.Uri("iiy")) await PresetHandler.DeleteAsync(stream, payload);
                 else if (payloadStr == Op.Uri("iio")) await PresetHandler.EquipAsync(stream, payload, sessionAccountId);
+                else if (payloadStr == Op.Uri("ihg")) await PresetHandler.OutfitAsync(stream, payload);
                 else if (payloadStr == Op.Uri("hom"))
                 {
                     // The spouse's information, asked with the contact lists: nobody here is

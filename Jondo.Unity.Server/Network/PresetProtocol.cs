@@ -52,8 +52,11 @@ namespace Jondo.Unity.Server.Network
                 pb.Msg(5, Pb.New().Var(1, position).Msg(2, ItemObject(item)));
             pb.Str(6, preset.Created);
             pb.Msg(7, Spells(preset.Spells));
-            // Only the character's own card names the outfit he has on: the captured builds carry none.
+            // The character's own card names the outfit he has on; a build, the one it puts on --
+            // the captured builds carry none, as nobody had picked one.
             if (playerState) pb.Str(9, Outfits.EquippedOf(character.Id));
+            else if (preset.Outfit.Length > 0 && Outfits.Of(character.Id).Exists(o => o.Uuid == preset.Outfit))
+                pb.Str(9, preset.Outfit);
             pb.Str(10, preset.Uuid);
             return pb.Build();
         }

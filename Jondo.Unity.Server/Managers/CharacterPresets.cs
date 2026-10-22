@@ -49,9 +49,12 @@ namespace Jondo.Unity.Server.Managers
             /// <summary>Spell -> the bar slots it sits in; 0 is the weapon.</summary>
             public SortedDictionary<int, List<int>> Spells { get; set; } = new();
 
+            /// <summary>The outfit put on with the build (its uuid); empty for none.</summary>
+            public string Outfit { get; set; } = "";
+
             public Preset Copy() => new Preset
             {
-                Uuid = Uuid, Name = Name, Icon = Icon, Created = Created, Position = Position,
+                Uuid = Uuid, Name = Name, Icon = Icon, Created = Created, Position = Position, Outfit = Outfit,
                 Items = new SortedDictionary<int, long>(Items),
                 Points = new SortedDictionary<int, int>(Points),
                 Spells = new SortedDictionary<int, List<int>>(Spells.ToDictionary(s => s.Key, s => s.Value.ToList())),
@@ -126,6 +129,19 @@ namespace Jondo.Unity.Server.Managers
             if (!_drafts.TryRemove((characterId, uuid), out var draft))
                 return Find(characterId, uuid) != null;
             return Write(characterId, draft);
+        }
+
+        /// <summary>
+        /// The outfit a build puts on, on the saved build and on its draft alike: it is picked
+        /// from the outfits list, not edited with the rest. Null when there is no such build.
+        /// </summary>
+        public static Preset? SetOutfit(long characterId, string uuid, string outfit)
+        {
+            var saved = Find(characterId, uuid);
+            if (saved == null) return null;
+            saved.Outfit = outfit;
+            if (_drafts.TryGetValue((characterId, uuid), out var draft)) draft.Outfit = outfit;
+            return Write(characterId, saved) ? saved : null;
         }
 
         /// <summary>The window's edits thrown away (igo).</summary>

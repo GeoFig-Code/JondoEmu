@@ -27,6 +27,8 @@ namespace Jondo.Unity.Server.Handlers
     ///   iiy            1 uuid: deleted                      -> ihc { 1 true }
     ///   iio            1 uuid: put on, from the window or the item bar
     ///                  -> kub, hng per variant, itg, ivq per item, kub, ihq { 2 0 }
+    ///   ihg            1 outfit uuid, 2 uuid: the outfit the build puts on
+    ///                  -> ihu { 1 true, 2 build } as the request's answer
     /// </code>
     /// All measured in «Conjuntos/crear nuevo conjunto…» and «Conjuntos/eliminar conjunto» but
     /// igp's other two sources, iid and igo, which no capture presses: their shape and the hook
@@ -323,6 +325,28 @@ namespace Jondo.Unity.Server.Handlers
             await SendAsync(stream, "iic", Pb.New().Msg(2, body).VarIfNotZero(4, placed ? 1 : 0).Build());
         }
 
+        /// <summary>
+        /// ihg: the outfit a build puts on, picked from the outfits list (OutfitChoiceListUi,
+        /// action dfj); an empty one unlinks it. eql::bbag keeps the pair under the request's id,
+        /// and eqq::bbfd finds it again by that id on ihu { 1: done, 2: the build }, so ihu is
+        /// the request's answer. INFERRED from the client: no capture links an outfit.
+        /// </summary>
+        public static async Task OutfitAsync(NetworkStream stream, byte[] payload)
+        {
+            var fields = Fields(payload, "ihg");
+            string outfit = Text(fields, 1), uuid = Text(fields, 2);
+            var character = Character();
+
+            CharacterPresets.Preset? preset = null;
+            if (character != null && (outfit.Length == 0 || Outfits.Of(character.Id).Exists(o => o.Uuid == outfit)))
+                preset = CharacterPresets.SetOutfit(Me, uuid, outfit);
+
+            var ihu = Pb.New();
+            if (character != null && preset != null) ihu.Var(1, 1).Bytes(2, PresetProtocol.BuildPreset(character, preset));
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Answer("ihu", ihu.Build(), ConnectionProtocol.RequestId(payload)));
+        }
+
         // ─── Putting a build on ─────────────────────────────────────────────────
 
         /// <summary>
@@ -394,6 +418,17 @@ namespace Jondo.Unity.Server.Handlers
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream, StatsHandler.BuildKrbPacket(state.CharacterRemainingPoints));
             await SendAsync(stream, Op.Kub, ConnectionProtocol.BuildCharacteristics());
+
+            // The outfit the build puts on, if it has one and it is not the one worn.
+            var character = Character();
+            if (character != null && preset.Outfit.Length > 0 && preset.Outfit != Outfits.EquippedOf(character.Id)
+                && Outfits.Equip(character, preset.Outfit, gid => CosmeticCollection.Has(accountId, gid)))
+            {
+                state.IsWardrobeDraftLoaded = false;
+                await WardrobeHandler.AnnounceAsync(stream, accountId);
+                await SlotLookHandler.RedrawAsync(stream);
+            }
+
             await SendAsync(stream, "ihq", PresetProtocol.BuildEquipped());
             Console.WriteLine($"[Presets] {state.CharacterName} put on «{preset.Name}»: {changed} variant(s), {moved} item move(s).");
         }
