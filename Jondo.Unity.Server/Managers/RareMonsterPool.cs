@@ -25,6 +25,13 @@ namespace Jondo.Unity.Server.Managers
 
         private readonly TimeSpan _respawn;
 
+        /// <summary>
+        /// How fast one comes out today, in percent (100 = as ever): the Almanax's «la velocidad de
+        /// aparición ... aumenta un 200%» is 300. It multiplies the draw's odds and divides the
+        /// respawn time.
+        /// </summary>
+        private readonly Func<int, int>? _speedPercent;
+
         /// <summary>id -> the subareas it belongs to.</summary>
         private readonly Dictionary<int, List<int>> _zones = new Dictionary<int, List<int>>();
 
@@ -37,7 +44,13 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>Killed ones, and when they may stand again.</summary>
         private readonly Dictionary<int, DateTime> _respawnAt = new Dictionary<int, DateTime>();
 
-        public RareMonsterPool(TimeSpan respawn) => _respawn = respawn;
+        public RareMonsterPool(TimeSpan respawn, Func<int, int>? speedPercent = null)
+        {
+            _respawn = respawn;
+            _speedPercent = speedPercent;
+        }
+
+        private int Speed(int id) => Math.Max(100, _speedPercent?.Invoke(id) ?? 100);
 
         public int ZoneCount => _zones.Count;
 
@@ -82,7 +95,8 @@ namespace Jondo.Unity.Server.Managers
             if (!IsUp(id)) return false;
 
             // Mixing the group and the monster keeps two groups on the same map from drawing alike.
-            return !draw || Draw(groupId, id) % OneInHowMany == 0;
+            // One in ten, three in ten on a day the Almanax triples the speed.
+            return !draw || Draw(groupId, id) % (OneInHowMany * 100) < Speed(id);
         }
 
         public void Reserve(long mapId, int id)
@@ -104,7 +118,8 @@ namespace Jondo.Unity.Server.Managers
                 _busyMaps.Remove(mapId);
 
                 int spread = Random.Shared.Next(-RespawnSpreadMinutes, RespawnSpreadMinutes + 1);
-                _respawnAt[id] = Clock() + _respawn + TimeSpan.FromMinutes(spread);
+                var away = _respawn + TimeSpan.FromMinutes(spread);
+                _respawnAt[id] = Clock() + TimeSpan.FromTicks(away.Ticks * 100 / Speed(id));
             }
         }
 

@@ -39,7 +39,9 @@ namespace Jondo.Unity.Server.Managers
     /// </summary>
     public static class Archimonsters
     {
-        private static readonly RareMonsterPool _pool = new RareMonsterPool(TimeSpan.FromHours(2));
+        /// <summary>2 h ± 15 min away once beaten; the Almanax's day 292 triples the speed.</summary>
+        private static readonly RareMonsterPool _pool = new RareMonsterPool(TimeSpan.FromHours(2),
+            _ => (int)Almanax.WithBonus(Almanax.BonusType.Archmonsters, 100));
 
         /// <summary>archmonster id -> the ordinary monster it is the rare version of.</summary>
         private static readonly Dictionary<int, int> _ordinary = new Dictionary<int, int>();

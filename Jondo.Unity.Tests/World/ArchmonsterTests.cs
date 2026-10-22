@@ -111,5 +111,38 @@ namespace Jondo.Unity.Tests.World
             create.ExecuteNonQuery();
             Archimonsters.Initialize(empty);
         }
+
+        /// <summary>
+        /// A day the Almanax triples the speed («aumenta un 200%»): three groups in ten keep one, and
+        /// a beaten one is back in a third of the time.
+        /// </summary>
+        [Fact]
+        public void The_almanax_s_speed_triples_the_odds_and_shortens_the_wait()
+        {
+            var now = new DateTime(2026, 10, 22, 12, 0, 0, DateTimeKind.Utc);
+            var normal = new RareMonsterPool(TimeSpan.FromHours(2));
+            var tripled = new RareMonsterPool(TimeSpan.FromHours(2), _ => 300);
+            int keptNormal = 0, keptTripled = 0;
+            for (long group = 1; group <= 3000; group++)
+            {
+                if (normal.MayStand(group, group, Rare, draw: true)) keptNormal++;
+                if (tripled.MayStand(group, group, Rare, draw: true)) keptTripled++;
+            }
+            Assert.InRange(keptNormal, 240, 360);
+            Assert.InRange(keptTripled, 780, 1020);
+
+            try
+            {
+                RareMonsterPool.Clock = () => now;
+                tripled.Reserve(1, Rare);
+                tripled.Release(1, new[] { Rare });
+                RareMonsterPool.Clock = () => now.AddMinutes(46);   // (2 h + 15 min) / 3 = 45 min
+                Assert.True(tripled.IsUp(Rare));
+            }
+            finally
+            {
+                RareMonsterPool.Clock = () => DateTime.UtcNow;
+            }
+        }
     }
 }

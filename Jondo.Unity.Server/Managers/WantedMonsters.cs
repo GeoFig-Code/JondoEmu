@@ -5,10 +5,12 @@ using Microsoft.Data.Sqlite;
 namespace Jondo.Unity.Server.Managers
 {
     /// <summary>
-    /// The wanted monsters: the templates with isBounty, 87 of them, Akornaddikt the Squirrel in
-    /// Astrub among them. They are not archmonsters -- nobody's rare version -- but they are just
-    /// as rare: one per group, one per map, one group in ten when the world is loaded, and one of
-    /// each in the world.
+    /// The wanted monsters no wanted poster asks for: the templates with isBounty, 87 of them, but
+    /// not the 81 criminals of a quest, which WantedPosters places, takes and hands to their jailers.
+    /// Two of the six left stand in the world -- the «Jabalí agresivo» (366) and the «Colmillo blando
+    /// rabioso» (397) --. They are not archmonsters -- nobody's rare version -- but they are just as
+    /// rare: one per group, one per map, one group in ten when the world is loaded, and one of each
+    /// in the world.
     ///
     /// The database ships them in 6.352 groups across 3.724 maps, Akornaddikt in every group of
     /// 4,-18; they are thinned as they are read, like the archmonsters.
@@ -24,14 +26,26 @@ namespace Jondo.Unity.Server.Managers
     {
         private const int MaxGroupSize = 8;
 
-        private static readonly RareMonsterPool _pool = new RareMonsterPool(TimeSpan.FromHours(3));
+        /// <summary>3 h ± 15 min away once beaten; the Almanax's day 51 triples the speed of its race's.</summary>
+        private static readonly RareMonsterPool _pool = new RareMonsterPool(TimeSpan.FromHours(3),
+            id => 100 + Almanax.BonusPercent(Almanax.BonusType.WantedSpawn,
+                Almanax.Where.Anywhere with { Monsters = new[] { id }, Races = new[] { Almanax.RaceOf(id) } }));
 
         private static readonly HashSet<int> _wanted = new HashSet<int>();
 
         private static readonly object _gate = new object();
 
-        public static void Initialize(SqliteConnection connection)
+        /// <summary>
+        /// Reads them: the isBounty templates but those <paramref name="placedElsewhere"/> says are
+        /// another's -- by default the wanted posters' criminals.
+        /// </summary>
+        public static void Initialize(SqliteConnection connection, Func<int, bool>? placedElsewhere = null)
         {
+            if (placedElsewhere == null)
+            {
+                WantedPosters.Load();
+                placedElsewhere = WantedPosters.Is;
+            }
             var templates = RareMonsterPool.ReadTemplates(connection);
 
             lock (_gate)
@@ -43,6 +57,7 @@ namespace Jondo.Unity.Server.Managers
                 {
                     if (!pair.Value.TryGetProperty("isBounty", out var bounty)) continue;
                     if (!bounty.TryGetInt32(out int b) || b == 0) continue;
+                    if (placedElsewhere(pair.Key)) continue;
                     _wanted.Add(pair.Key);
                     _pool.AddZones(pair.Key, pair.Value);
                 }

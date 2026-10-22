@@ -47,15 +47,7 @@ namespace Jondo.Unity.Server.Handlers
             foreach (int monster in beaten.ToList())
             {
                 var criminal = WantedPosters.ByMonster(monster);
-                if (criminal == null) continue;
-
-                // A bounty no quest wants goes away for whoever beats it.
-                if (criminal.Quest == 0)
-                {
-                    WantedPosters.Captured(monster, fight.RoleplayMapId, fight.DefenderLeaderId, Now, _dice);
-                    continue;
-                }
-                if (Quests.Log is not { } log || !Wants(log, criminal)) continue;
+                if (criminal == null || Quests.Log is not { } log || !Wants(log, criminal)) continue;
 
                 await Quests.TickAsync(stream, criminal.Quest, criminal.Catch);
                 if (criminal.Follower != 0 && Equipment.HowMany(criminal.Follower) == 0)

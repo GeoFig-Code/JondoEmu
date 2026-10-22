@@ -33,8 +33,8 @@ namespace Jondo.Unity.Server.Managers
     /// </para>
     /// <para>
     /// The client's other bounties, isBounty with no quest wanting them -- the «Jabalí agresivo»
-    /// (366), in 315 groups of its zone, and the «Colmillo blando rabioso» (397), in 97 -- follow the
-    /// same rule, one group of their zone, and whoever beats one sends it away the same three hours.
+    /// (366), in 315 groups of its zone, and the «Colmillo blando rabioso» (397), in 97 -- are
+    /// WantedMonsters': thinned like the archmonsters, and away the same three hours once beaten.
     /// </para>
     /// </remarks>
     public static class WantedPosters
@@ -104,7 +104,6 @@ namespace Jondo.Unity.Server.Managers
                 {
                     using var json = JsonDocument.Parse(File.ReadAllText(path));
                     Read(json.RootElement);
-                    AddUnwantedBounties();
                 }
                 catch (Exception ex)
                 {
@@ -160,63 +159,6 @@ namespace Jondo.Unity.Server.Managers
 
         private static int Int(JsonElement row, string name)
             => row.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
-
-        /// <summary>
-        /// The client's bounties no quest wants (isBounty, and in no wanted poster): criminals with no
-        /// quest nor jailer, their zone the subareas their template names.
-        /// </summary>
-        private static void AddUnwantedBounties()
-        {
-            var byMonster = new Dictionary<int, Criminal>(_byMonster);
-            foreach (var bounty in UnwantedBounties(byMonster.Keys)) byMonster[bounty.Monster] = bounty;
-            _byMonster = byMonster;
-        }
-
-        /// <summary>The bounties no quest wants: the isBounty templates not in <paramref name="wanted"/> that stand somewhere.</summary>
-        internal static List<Criminal> UnwantedBounties(ICollection<int> wanted)
-        {
-            var found = new List<Criminal>();
-            try
-            {
-                using var connection = new Microsoft.Data.Sqlite.SqliteConnection(DatabaseManager.WorldConnectionString);
-                connection.Open();
-                var command = connection.CreateCommand();
-                command.CommandText = "SELECT Id, Data FROM MonsterTemplates;";
-                using var reader = command.ExecuteReader();
-                while (reader.Read())
-                {
-                    int monster = reader.GetInt32(0);
-                    if (wanted.Contains(monster) || reader.IsDBNull(1)) continue;
-                    using var data = JsonDocument.Parse(reader.GetString(1));
-                    if (!IsBounty(data.RootElement)) continue;
-                    var zones = data.RootElement.TryGetProperty("subareas", out var subareas)
-                        ? (subareas.ValueKind == JsonValueKind.Object && subareas.TryGetProperty("Array", out var inner) ? inner : subareas)
-                        : default;
-                    var list = zones.ValueKind == JsonValueKind.Array
-                        ? zones.EnumerateArray().Where(z => z.ValueKind == JsonValueKind.Number).Select(z => z.GetInt32()).ToList()
-                        : new List<int>();
-                    if (list.Count == 0) continue;   // standing nowhere in the world
-                    found.Add(new Criminal(0, monster, list, 0, 0, 0, Array.Empty<Report>()));
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[Wanted] Could not read the bounties no quest wants: {ex.Message}");
-            }
-            return found;
-        }
-
-        private static bool IsBounty(JsonElement data)
-        {
-            if (!data.TryGetProperty("isBounty", out var flag)) return false;
-            return flag.ValueKind switch
-            {
-                JsonValueKind.Number => flag.TryGetInt32(out int n) && n != 0,
-                JsonValueKind.String => flag.GetString() is "1" or "true" or "True",
-                JsonValueKind.True => true,
-                _ => false,
-            };
-        }
 
         /// <summary>Whether a monster is a wanted criminal.</summary>
         public static bool Is(int monster) => _byMonster.ContainsKey(monster);

@@ -233,11 +233,11 @@ namespace Jondo.Unity.Server.Managers
             // Who is an archmonster, who is a wanted monster, and where each one belongs. It has to
             // be known before the groups are read, because they are thinned as they come in.
             Archimonsters.Initialize(connection);
-            WantedMonsters.Initialize(connection);
 
             // And who is wanted: the criminals come out of the groups as they are read, and are
             // put back one to a zone (PlaceCriminals).
             WantedPosters.Load();
+            WantedMonsters.Initialize(connection);
 
             // Who lives in each subarea, which is who a dungeon room is made of.
             _subareaRosters = LoadSubareaRosters(connection);
