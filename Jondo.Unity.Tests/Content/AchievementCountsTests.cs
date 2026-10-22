@@ -84,6 +84,28 @@ namespace Jondo.Unity.Tests.Content
             }
         }
 
+        /// <summary>
+        /// The character as the quests' start conditions ask about him: his class (PG), a job's
+        /// level (PJ), and an alignment this server does not have (Ps, Pa: neutral).
+        /// </summary>
+        [Fact]
+        public void Class_jobs_and_alignment_are_judged()
+        {
+            var session = GameSession.SinSocket();
+            session.State.Breed = 13;
+            session.State.Jobs[26] = new JobExperience.Progress { Experience = JobExperience.Floor(80) };
+            using (SessionContext.Push(session))
+            {
+                Assert.True(Judge("PG=13").Met);                   // «The Tymador Job»
+                Assert.False(Judge("PG=14").Met);
+                Assert.True(Judge("PJ>26,79").Met);                // the alchemist past 79
+                Assert.False(Judge("Pj>26,99").Met);
+                Assert.False(Judge("Ps=1&Pa=0").Met);              // nobody is Bontarian
+                Assert.True(Judge("Ps=1&Pa=0").FullyJudged);
+                Assert.True(Judge("Ps=0").Met);
+            }
+        }
+
         [Fact]
         public void Where_one_stands_and_one_s_league_are_judged_too()
         {

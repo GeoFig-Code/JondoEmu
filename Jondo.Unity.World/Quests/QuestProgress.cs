@@ -107,19 +107,22 @@ namespace Jondo.Unity.World.Quests
         private readonly QuestCatalogue _book;
 
         public QuestLog(QuestCatalogue book, Func<int> level, Func<long> map,
-                        Func<string, long?>? scalar = null, Func<int, bool>? achievement = null)
+                        Func<string, long?>? scalar = null, Func<int, bool>? achievement = null,
+                        Func<string, long, string, long?>? count = null)
         {
             _book = book;
             _level = level;
             _map = map;
             _scalar = scalar;
             _achievement = achievement;
+            _count = count;
         }
 
         private readonly Func<int> _level;
         private readonly Func<long> _map;
         private readonly Func<string, long?>? _scalar;
         private readonly Func<int, bool>? _achievement;
+        private readonly Func<string, long, string, long?>? _count;
 
         public int Level => _level();
         public long MapId => _map();
@@ -129,6 +132,12 @@ namespace Jondo.Unity.World.Quests
         /// entry, for <c>Ad</c>. Null, and so let through, when nothing was handed in.
         /// </summary>
         public long? Scalar(string op) => _scalar?.Invoke(op);
+
+        /// <summary>
+        /// How many of one thing the character has, for the <c>OP&gt;key,n</c> terms the server
+        /// answers -- a job's level, an item held. Null, and so let through, when nothing was handed in.
+        /// </summary>
+        public long? Count(string op, long key, string flag) => _count?.Invoke(op, key, flag);
 
         /// <summary>
         /// Whether an achievement is earned, for the eight quests whose start condition names one.

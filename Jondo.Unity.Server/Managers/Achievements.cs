@@ -670,6 +670,16 @@ namespace Jondo.Unity.Server.Managers
             public long? Scalar(string op) => op switch
             {
                 "SC" => ServerGameType,
+
+                // His class: «The Tymador Job» asks PG=13, the class quests and items theirs.
+                "PG" => S.Breed,
+
+                // His alignment's side, level and rank: this server has none, so everybody is
+                // neutral -- the Bontarian and Brakmarian quests (Ps=1, Ps=2) are not his.
+                "Ps" or "Pa" or "Pr" => 0,
+
+                // Every account is subscribed here: its end date is a year away (Subscription).
+                "PZ" => 1,
                 "QQ" => S.Quests?.Runs.Values.Count(r => r.Finished) ?? 0,
                 "EA" or "Ea" or "NT" => Tally(op, 0),
                 "lB" => BestLeague(),
@@ -693,6 +703,10 @@ namespace Jondo.Unity.Server.Managers
                 // Finished at least once is all the quest log keeps: "QF>1300,4", five times,
                 // is then never met, which is the safe way to be wrong.
                 "QF" => Finished((int)key) ? 1 : 0,
+
+                // A job's level: «PJ>26,79», the alchemist past 79; «Pj» the same in the
+                // Vulkania quests' «Pj>26,99».
+                "PJ" or "Pj" => S.JobLevel((int)key),
 
                 AchievementCatalogue.ExploreKey => Tally(AchievementCatalogue.ExploreKey, key),
                 AchievementCatalogue.JobKey => S.Jobs.Values.Count(j => j.Level >= key),

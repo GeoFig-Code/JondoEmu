@@ -122,16 +122,22 @@ And two Ankama oddities to read without choking: **`E` as a fifth comparator** (
 
 ### What it knows how to judge and what not
 
-Six operators: `PL` level, `Qf` quest finished, `Qa` quest in progress, `Qc` finished as well,
-`Qo` objective met, `Pm` current map. They cover **every** term of 935 of the 1,976
-conditions.
+Its own six: `PL` level, `Qf` quest finished, `Qa` quest in progress, `Qc` finished as well,
+`Qo` objective met, `Pm` current map. And what the server knows of the character and the world:
+`Ad` today's Almanax (its 390 offering quests), `OA` an achievement, `PG` the class (the class
+quests: «The Tymador Job» is `PG=13`), `PJ`/`Pj` a job's level, `PO` an item held, `QF`, `SC` the
+server's type, `PZ` the subscription, and `Ps`, `Pa`, `Pr` the alignment's side, level and rank.
+Together they cover **every** term of 1,716 of the 1,976 conditions.
 
 `Qc` is read as «finished» because of what appears next to it: `(Qa=890|Qc=890)` is «890 is in progress
 or already done». `Qo` carries objective ids, 116 of 116.
 
-What it does not understand —alignment, guild, server flags— **it lets through and says so**.
-Rejecting it would leave 53% of the quests out of anyone's reach, which is a worse answer than
-offering them early. The terms it does understand are still required.
+What it does not understand —the seasons (`Sc`), the world events, a few server flags— **it lets
+through and says so**. Rejecting it would leave quests out of anyone's reach, which is a worse answer
+than offering them early. The terms it does understand are still required.
+
+The alignment is understood, and its answer is that there is none: this server has no alignment,
+so everybody is neutral and the Bontarian and Brakmarian quests (`Ps=1`, `Ps=2`) are nobody's.
 
 ### The chain
 

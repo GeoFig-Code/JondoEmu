@@ -153,11 +153,15 @@ namespace Jondo.Unity.Server.Managers
 
             // The session is read through when asked, not captured: the same connection can come
             // back in with another character, and these must answer for whoever is playing.
+            // And the character as the achievements know him: his class (PG, the class quests),
+            // his jobs (PJ), what he holds (PO), the server's type (SC) and his alignment.
+            var facts = new Achievements.CharacterFacts();
             var log = new QuestLog(_book,
                 () => SessionContext.State.CharacterLevel,
                 () => SessionContext.State.MapId,
-                Almanax.Scalar,
-                achievement => SessionContext.State.Achievements?.Has(achievement) ?? false);
+                op => Almanax.Scalar(op) ?? facts.Scalar(op),
+                achievement => SessionContext.State.Achievements?.Has(achievement) ?? false,
+                (op, key, flag) => facts.Count(op, key, flag));
 
             int rows = 0;
             foreach (var row in DatabaseManager.LoadQuestProgress(characterId))
