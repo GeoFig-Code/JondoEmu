@@ -179,6 +179,84 @@ namespace Jondo.Unity.Server.Handlers
         }
 
         /// <summary>
+        /// An item sent to another tab from the open one, the item's «Transferir» menu:
+        /// <c>kgy { 1 uid, 2 the tab it goes to, 3 how many }</c>, read off the client
+        /// (GuildChestStorageUI.OnValidQuantity builds its action with the item, the quantity and
+        /// the tab, which emq writes in f1, f3 and f2). It needs the right to take out of this tab
+        /// and to put into that one, which must take its type. The open tab loses it as a
+        /// withdrawal does (itc, or itd with what stays), whoever looks at the other tab gets it as
+        /// a deposit (itd), and the journal writes the transfer, from tab and to tab (the chest
+        /// line's move 2). INFERRED: the answer, as no capture moves an item between tabs.
+        /// </summary>
+        public static async Task<bool> TransferAsync(NetworkStream? stream, byte[] payload)
+        {
+            var window = StorageHandler.Current;
+            byte[]? kgy = ConnectionProtocol.ReadPayload(payload, "kgy");
+            if (window == null || window.Kind != StorageHandler.Kind.GuildChest || kgy == null) return false;
+
+            long uid = 0;
+            int destination = 0, quantity = 0;
+            foreach (var field in ProtoMessage.Parse(kgy).Fields)
+            {
+                if (field.WireType != 0) continue;
+                if (field.FieldNumber == 1) uid = field.VarIntValue;
+                else if (field.FieldNumber == 2) destination = (int)field.VarIntValue;
+                else if (field.FieldNumber == 3) quantity = (int)field.VarIntValue;
+            }
+
+            if (!await MayMoveAsync(stream, window, deposit: false, uid)) return true;
+            var to = GuildChests.TabOf(window.GuildId, destination);
+            if (to == null || destination == window.Tab) return true;
+            if (!GuildChests.RightsOf(SessionContext.State.CharacterId).Contains(to.DepositRight))
+            {
+                await RefuseAsync(stream, GuildChests.NoRightToPut);
+                return true;
+            }
+            var stored = StorageStacks.Find(window.Place, uid);
+            if (stored == null) return true;
+            int type = ItemTypeOf(stored.Gid);
+            if (type != 0 && !to.ItemTypes.Contains(type))
+            {
+                await RefuseAsync(stream, GuildChests.TypeRefused);
+                return true;
+            }
+
+            var moved = StorageStacks.Move(window.Place, StorageStacks.GuildChest(window.GuildId, destination), uid, quantity);
+            if (moved == null) return true;
+
+            (string opcode, byte[] body) left = moved.Left == null
+                ? (Op.Itc, ConnectionProtocol.BuildItemGone(moved.FromUid))
+                : (Op.Itd, ConnectionProtocol.BuildItemArrived(1, moved.Left));
+            await StorageHandler.SendAsync(stream, left.opcode, left.body);
+            await TellLookersAsync(window.GuildId, window.Tab, ConnectionProtocol.Push(left.opcode, left.body));
+            await TellLookersAsync(window.GuildId, destination,
+                ConnectionProtocol.Push(Op.Itd, ConnectionProtocol.BuildItemArrived(1, moved.Arrived)));
+
+            var state = SessionContext.State;
+            GuildStore.Log(window.GuildId, GuildLogProtocol.Chest,
+                GuildLogProtocol.ChestLine(state.CharacterId, state.CharacterName, GuildLogProtocol.ChestMove.Transfer,
+                    moved.Moved, ConnectionProtocol.ItemBody(stored.Gid, Equipment.ParseEffects(stored.Effects), moved.Moved, uid),
+                    window.Tab, destination),
+                state.CharacterId, state.CharacterName);
+            Console.WriteLine($"[Guild chest] {state.CharacterName} moves {moved.Moved} x {stored.Gid} from tab {window.Tab} to {destination}.");
+            return true;
+        }
+
+        /// <summary>Everybody else with that tab of the guild's chest open, on the chest's map.</summary>
+        private static async Task TellLookersAsync(long guildId, int tab, byte[] frame)
+        {
+            foreach (var session in SessionRegistry.InWorld())
+            {
+                if (session.Id == SessionContext.Current.Id) continue;
+                var theirs = session.State.Storage;
+                if (theirs == null || theirs.Kind != StorageHandler.Kind.GuildChest || theirs.GuildId != guildId
+                    || theirs.Tab != tab || theirs.MapId != session.State.MapId) continue;
+                try { await session.SendAsync(frame).ConfigureAwait(false); }
+                catch (Exception ex) { Console.WriteLine($"[Guild chest] {session.CharacterId} could not be told of a transfer: {ex.Message}"); }
+            }
+        }
+
+        /// <summary>
         /// Everybody else looking at the same guild chest gets the list of who is (jlo). Nobody
         /// else was there in the capture, so to whom and when is an inference.
         /// </summary>

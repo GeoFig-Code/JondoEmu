@@ -459,6 +459,127 @@ namespace Jondo.Unity.Server.Managers
             }
         }
 
+        /// <summary>What a move between two storages of the shared table left: the stack where it arrived, and what stays where it was.</summary>
+        public sealed class Transfer
+        {
+            public HavenBagStore.StoredItem Arrived { get; init; } = new HavenBagStore.StoredItem();
+
+            /// <summary>False when the units joined a stack that was already there.</summary>
+            public bool NewStack { get; init; }
+
+            public long FromUid { get; init; }
+            public int Moved { get; init; }
+
+            /// <summary>What stays of the stack it left, whole, or null when it went entirely.</summary>
+            public HavenBagStore.StoredItem? Left { get; init; }
+        }
+
+        /// <summary>
+        /// Some units of a stack from one storage of the shared table to another -- one guild chest
+        /// tab to the next --, joining a like stack there. Null when nothing moved.
+        /// </summary>
+        public static Transfer? Move(Place from, Place to, long uid, int quantity)
+        {
+            if (uid == 0 || quantity <= 0 || from.Key == to.Key
+                || from.Table != SharedTable || to.Table != SharedTable) return null;
+            EnsureTables();
+
+            // Both locks, always in the same order: two moves the other way round cannot wait on each other.
+            var (first, second) = string.CompareOrdinal(from.Key, to.Key) < 0 ? (from, to) : (to, from);
+            lock (LockOf(first))
+            lock (LockOf(second))
+            {
+                try
+                {
+                    using var connection = Open();
+
+                    int gid, have;
+                    string effects;
+                    using (var read = connection.CreateCommand())
+                    {
+                        read.CommandText = $"SELECT Gid, Quantity, Effects FROM {SharedTable} WHERE Uid = $uid AND Storage = $o;";
+                        read.Parameters.AddWithValue("$uid", uid);
+                        read.Parameters.AddWithValue("$o", from.Owner);
+                        using var reader = read.ExecuteReader();
+                        if (!reader.Read()) return null;
+                        gid = reader.GetInt32(0);
+                        have = reader.IsDBNull(1) ? 1 : reader.GetInt32(1);
+                        effects = reader.IsDBNull(2) ? "" : reader.GetString(2);
+                    }
+                    if (have <= 0) return null;
+
+                    int moving = Math.Min(quantity, have);
+                    using var transaction = connection.BeginTransaction();
+
+                    long into = SameStack(connection, transaction,
+                        $"SELECT Uid, Quantity FROM {SharedTable} WHERE Storage = $o AND Gid = $gid " +
+                        "AND IFNULL(Effects, '') = $e ORDER BY Uid LIMIT 1;",
+                        to.Owner, gid, effects, out int there);
+
+                    using (var write = connection.CreateCommand())
+                    {
+                        write.Transaction = transaction;
+                        if (into == 0 && moving >= have)
+                        {
+                            // The whole stack, and nothing like it there: it just changes storage.
+                            into = uid;
+                            write.CommandText = $"UPDATE {SharedTable} SET Storage = $to WHERE Uid = $uid AND Storage = $o;";
+                            write.Parameters.AddWithValue("$to", to.Owner);
+                        }
+                        else
+                        {
+                            write.CommandText = moving >= have
+                                ? $"DELETE FROM {SharedTable} WHERE Uid = $uid AND Storage = $o;"
+                                : $"UPDATE {SharedTable} SET Quantity = Quantity - $n WHERE Uid = $uid AND Storage = $o;";
+                            write.Parameters.AddWithValue("$n", moving);
+                        }
+                        write.Parameters.AddWithValue("$uid", uid);
+                        write.Parameters.AddWithValue("$o", from.Owner);
+                        if (write.ExecuteNonQuery() != 1) return null;
+                    }
+
+                    bool newStack = into == 0 || into == uid;
+                    if (into != uid)
+                    {
+                        using var add = connection.CreateCommand();
+                        add.Transaction = transaction;
+                        if (into == 0)
+                        {
+                            into = DatabaseManager.NextItemUid();
+                            add.CommandText = $"INSERT INTO {SharedTable} (Uid, Storage, Gid, Quantity, Effects) VALUES ($uid, $o, $gid, $n, $e);";
+                            add.Parameters.AddWithValue("$gid", gid);
+                            add.Parameters.AddWithValue("$e", effects);
+                        }
+                        else
+                        {
+                            add.CommandText = $"UPDATE {SharedTable} SET Quantity = Quantity + $n WHERE Uid = $uid AND Storage = $o;";
+                        }
+                        add.Parameters.AddWithValue("$uid", into);
+                        add.Parameters.AddWithValue("$o", to.Owner);
+                        add.Parameters.AddWithValue("$n", moving);
+                        add.ExecuteNonQuery();
+                    }
+
+                    transaction.Commit();
+                    return new Transfer
+                    {
+                        Arrived = new HavenBagStore.StoredItem { Uid = into, Gid = gid, Quantity = there + moving, Effects = effects },
+                        NewStack = newStack,
+                        FromUid = uid,
+                        Moved = moving,
+                        Left = moving >= have
+                            ? null
+                            : new HavenBagStore.StoredItem { Uid = uid, Gid = gid, Quantity = have - moving, Effects = effects },
+                    };
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Storage] Could not move {uid} from {from} to {to}: {ex.Message}");
+                    return null;
+                }
+            }
+        }
+
         /// <summary>
         /// Empties every storage whose key starts with <paramref name="prefix"/>, in the shared
         /// table, and returns what was in them. What a house's chests hand over when it is sold.

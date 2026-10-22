@@ -176,6 +176,72 @@ namespace Jondo.Unity.Tests.World
             }
         }
 
+        /// <summary>
+        /// The item's «Transferir» to another tab: kgy { 1 uid, 2 the tab, 3 how many }. The open tab
+        /// keeps what stays (itd) or loses it (itc); the other tab gets it, joining a like stack.
+        /// </summary>
+        [Fact]
+        public async Task An_item_goes_to_another_tab_and_joins_its_like()
+        {
+            const long leader = 8_830_100_003;
+            MakeGuild();
+            using (var connection = new SqliteConnection(GuildStore.ConnectionStringOverride))
+            {
+                connection.Open();
+                using var level = connection.CreateCommand();
+                level.CommandText = "UPDATE Guilds SET Level = 3 WHERE Id = $id;";
+                level.Parameters.AddWithValue("$id", GuildId);
+                level.ExecuteNonQuery();
+            }
+            GuildStore.Join(leader, GuildId, GuildStore.RankLeader);
+            Forget(leader);
+            Assert.NotNull(GuildChests.TabOf(GuildId, 2));
+
+            await using var pipe = await ClientPipe.OpenAsync(8_830_000_103, leader, BankMap, "Sacri-Master");
+            try
+            {
+                using (SessionContext.Push(pipe.Session))
+                {
+                    long uid = DatabaseManager.NextItemUid();
+                    Assert.True(DatabaseManager.InsertCharacterItem(uid, leader, 289, 5, Equipment.Bag, null));
+                    Equipment.Add(uid, 289, 5, Equipment.Bag, null);
+                    await GuildChestHandler.OpenAsync(pipe.ToClient, Chest, GuildChests.UseSkill);
+                    await pipe.Take(6);   // iwn, ivl, kbk, iwb, jlo, jlq
+                    Assert.True(await StorageHandler.MoveAsync(pipe.ToClient, Kcr(5, uid)));
+                    await pipe.Take(3);   // itd, ium, iun
+                    long stored = Assert.Single(StorageStacks.ItemsOf(StorageStacks.GuildChest(GuildId, 1))).Uid;
+
+                    byte[] Kgy(int quantity) => ConnectionProtocol.Push("kgy",
+                        Pb.New().Var(1, stored).Var(2, 2).Var(3, quantity).Build());
+
+                    // Three of five: two stay here (itd), three there.
+                    Assert.True(await GuildChestHandler.TransferAsync(pipe.ToClient, Kgy(3)));
+                    var here = Assert.Single(StorageStacks.ItemsOf(StorageStacks.GuildChest(GuildId, 1)));
+                    Assert.Equal(2, here.Quantity);
+                    Assert.Equal(ConnectionProtocol.BuildItemArrived(1, here), await pipe.Next(Op.Itd));
+                    Assert.Equal(3, Assert.Single(StorageStacks.ItemsOf(StorageStacks.GuildChest(GuildId, 2))).Quantity);
+
+                    // The other two: gone from here (itc), one stack of five there.
+                    Assert.True(await GuildChestHandler.TransferAsync(pipe.ToClient, Kgy(2)));
+                    Assert.Equal(ConnectionProtocol.BuildItemGone(stored), await pipe.Next(Op.Itc));
+                    Assert.Empty(StorageStacks.ItemsOf(StorageStacks.GuildChest(GuildId, 1)));
+                    Assert.Equal(5, Assert.Single(StorageStacks.ItemsOf(StorageStacks.GuildChest(GuildId, 2))).Quantity);
+
+                    // A tab the guild does not have takes nothing.
+                    long there = StorageStacks.ItemsOf(StorageStacks.GuildChest(GuildId, 2)).Single().Uid;
+                    Assert.True(await GuildChestHandler.SelectTabAsync(pipe.ToClient, ConnectionProtocol.Push(Op.Jll, Hex("1002"))));
+                    await pipe.Next(Op.Iwb);
+                    Assert.True(await GuildChestHandler.TransferAsync(pipe.ToClient, ConnectionProtocol.Push("kgy",
+                        Pb.New().Var(1, there).Var(2, 4).Var(3, 5).Build())));
+                    Assert.Equal(5, StorageStacks.ItemsOf(StorageStacks.GuildChest(GuildId, 2)).Single().Quantity);
+                }
+            }
+            finally
+            {
+                Forget(leader);
+            }
+        }
+
         [Fact]
         public async Task A_rank_without_the_right_does_not_look_put_in_or_take_out()
         {

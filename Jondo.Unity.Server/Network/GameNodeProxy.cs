@@ -1420,6 +1420,11 @@ namespace Jondo.Unity.Server.Network
                     // Another tab of the guild chest.
                     await GuildChestHandler.SelectTabAsync(stream, payload);
                 }
+                else if (payloadStr.Contains(Op.Uri("kgy")))
+                {
+                    // An item sent to another tab of the guild chest.
+                    await GuildChestHandler.TransferAsync(stream, payload);
+                }
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jau)))
                     await MerkasakoHandler.ShareAsync(stream, payload);
                 else if (isAuthenticated && payloadStr.Contains(Op.Uri(Op.Jbb)))

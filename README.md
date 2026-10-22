@@ -287,6 +287,7 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ The guild chest, in the 24 banks that have one, with the ranks' rights per tab and a new tab at
   guild levels 3, 7 and 11
 - ✅ The guild chest's history: every deposit and withdrawal in the logbook's chest tab
+- ✅ Items sent from one tab of the guild chest to another, joining their like there
 - ✅ The bank from level 10: under it the banker says so and offers no chest
 - ✅ The seven marketplaces — resources, equipment, consumables, runes, creatures, souls and
   cosmetics — across **40 counters**, the breeders' village's four among them: browse, buy lots of 1, 10, 100 or 1000, sell for the 2 % tax,
