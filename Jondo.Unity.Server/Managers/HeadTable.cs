@@ -110,6 +110,19 @@ namespace Jondo.Unity.Server.Managers
             return el.TryGetProperty(name, out var v) && v.TryGetInt32(out int n) ? n : 0;
         }
 
+        /// <summary>
+        /// Whether the appearance window's faces tab lets this breed and sex take that head with
+        /// nothing unlocked: AppearanceFacesTab.KnownHead takes a head whose HeadData carries
+        /// availableAtCreation -- the creation screen's own -- and asks the server's unlocks for
+        /// the rest, the payable ones. Nobody here has unlocked any.
+        /// </summary>
+        public static bool OfferedFreely(int headId, int breedId, int sex)
+        {
+            Ensure();
+            return _heads.TryGetValue(headId, out var head) && head.Creation
+                && head.Breed == breedId && head.Gender == (sex == 1 ? 1 : 0);
+        }
+
         /// <summary>The head the creation screen offers first for that breed and sex.</summary>
         public static int DefaultHeadId(int breedId, int sex)
         {

@@ -47,5 +47,42 @@ namespace Jondo.Unity.Tests.Social
                 DatabaseManager.DeleteCharacter(character, Account);
             }
         }
+
+        /// <summary>
+        /// The faces tab (lwl): a creation head of one's breed and sex is taken (lxc and lye f2 1);
+        /// a payable one, or another breed's, is answered lye without f2 and leaves the face as it was.
+        /// </summary>
+        [Fact]
+        public async Task The_faces_tab_takes_a_creation_head_of_ones_breed_and_sex()
+        {
+            const int Creation = 162, Payable = 620, OtherBreed = 1;
+            long character = DatabaseManager.CreateCharacter(Account + 1, 1, "Cara-Uno", 11, 0, 1,
+                new long[] { -1, -1, -1, -1, -1 }, 191105026, 50, 0, 0, Array.Empty<(int, int)>());
+            Assert.True(character > 0);
+            try
+            {
+                await using var pipe = await ClientPipe.OpenAsync(Account + 1, character, 990_100_073, "Cara-Uno");
+                using (SessionContext.Push(pipe.Session))
+                {
+                    byte[] Lwl(int head) => ConnectionProtocol.Push(Op.Lwl, Pb.New().Var(1, head).Build());
+
+                    await AppearanceHandler.FaceAsync(pipe.ToClient, Lwl(Creation));
+                    await pipe.Next(Op.Lxc);
+                    Assert.Equal(1, Field(await pipe.Next(Op.Lye), 2).VarIntValue);
+                    Assert.Equal(Creation, DatabaseManager.GetCharacterById(character)!.HeadId);
+
+                    foreach (int refused in new[] { Payable, OtherBreed })
+                    {
+                        await AppearanceHandler.FaceAsync(pipe.ToClient, Lwl(refused));
+                        Assert.DoesNotContain(ProtoMessage.Parse(await pipe.Next(Op.Lye)).Fields, f => f.FieldNumber == 2);
+                        Assert.Equal(Creation, DatabaseManager.GetCharacterById(character)!.HeadId);
+                    }
+                }
+            }
+            finally
+            {
+                DatabaseManager.DeleteCharacter(character, Account + 1);
+            }
+        }
     }
 }

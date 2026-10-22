@@ -21,6 +21,7 @@ namespace Jondo.Unity.Server.Handlers
     ///   client  lxg { f1: slot, f3: 1 } hide                     → server lxc + lxk { f1: 1 }
     ///   client  lxs                     SAVE                     → server jsn + kmb + lxc, and lyu
     ///   client  lww { f1: 1 }           the draft switch         → server lxc + lwq { f1: outfit }
+    ///   client  lwl { f1: head }        a face                   → server lxc + lye { f2: 1 }
     ///
     /// The difference between the two ways of putting on: `lys` lets the server choose the slot --
     /// and gives it back in the `lwz` -- and accepts a variant, which is what the "living items" use
@@ -80,6 +81,30 @@ namespace Jondo.Unity.Server.Handlers
         /// </summary>
         private static bool Owns(int gid)
             => CosmeticCollection.Has(Jondo.Unity.Server.Network.SessionContext.Current.AccountId, gid);
+
+        /// <summary>
+        /// A face from the faces tab (lwl { f1: head }). Only the heads the tab offers with nothing
+        /// unlocked -- the creation screen's, of the character's breed and sex
+        /// (<see cref="HeadTable.OfferedFreely"/>) -- are taken; the answer is lye { f2: 1 }, which
+        /// makes the client copy the head into its drafted outfit, and lye without it otherwise.
+        /// INFERRED from the client: no capture changes a face.
+        /// </summary>
+        public static async Task FaceAsync(NetworkStream stream, byte[] frame)
+        {
+            byte[]? lwl = ConnectionProtocol.ReadPayload(frame, Op.Lwl);
+            if (lwl == null) return;
+            int head = (int)(ProtoMessage.Parse(lwl).Fields
+                .FirstOrDefault(f => f.FieldNumber == 1 && f.WireType == 0)?.VarIntValue ?? 0);
+
+            var character = DatabaseManager.GetCharacterById(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);
+            bool taken = character != null && HeadTable.OfferedFreely(head, character.Breed, character.Sex)
+                         && DatabaseManager.SetCharacterHead(character.Id, head);
+            if (taken) await PreviewAsync(stream);
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Answer(Op.Lye, Pb.New().VarIfNotZero(2, taken ? 1 : 0).Build(),
+                                          ConnectionProtocol.RequestId(frame)));
+            Console.WriteLine(taken ? $"[Appearances] Head {head}." : $"[Appearances] Head {head} is not offered.");
+        }
 
         /// <summary>Putting on a garment and letting the server work out the slot.</summary>
         public static async Task WearAsync(NetworkStream stream, byte[] frame)

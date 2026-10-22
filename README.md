@@ -549,6 +549,7 @@ An alliance is made of characters, not guilds.
 - ✅ The appearance window's draft switch
 - ✅ Mimisymbics: a real item spent into an appearance, kept in the collection for good
 - ✅ Hiding an empty slot hides the real piece under it
+- ✅ The faces tab: any creation face of your class and sex
 
 ### ⛏️ Professions
 

@@ -2387,6 +2387,26 @@ namespace Jondo.Unity.Server
             }
         }
 
+        /// <summary>A character's head, the face the appearance window picked.</summary>
+        public static bool SetCharacterHead(long characterId, int headId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "UPDATE Characters SET HeadId = $h WHERE Id = $id;";
+                command.Parameters.AddWithValue("$h", headId);
+                command.Parameters.AddWithValue("$id", characterId);
+                return command.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DatabaseManager] Could not change the head of {characterId}: {ex.Message}");
+                return false;
+            }
+        }
+
         /// <summary>The character so named, connected or not; zero if nobody bears it.</summary>
         public static long CharacterIdOfName(string name)
         {

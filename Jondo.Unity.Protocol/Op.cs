@@ -3209,6 +3209,15 @@ public static class Op
     /// <summary>Your look has changed: the panel's preview, which nobody else sees. f1 is a uuid constant within the session and different per character; where the client learns it has not been found.</summary>
     public const string Lxc = "lxc";
 
+    /// <summary>C→S: the appearance window's faces tab picks a head { f1: the head } (AppearanceFacesTab.AddHead).</summary>
+    public const string Lwl = "lwl";
+
+    /// <summary>
+    /// S→C: the answer to a face picked { f1, f2: taken }. eqq::bbfz, with f2 set, copies the
+    /// pending head into the drafted outfit's f9 and redraws the window.
+    /// </summary>
+    public const string Lye = "lye";
+
     /// <summary>C→S: a room clicked on the Infinite Dream's map { f1: the room id, as text }.</summary>
     public const string Ixn = "ixn";
 
