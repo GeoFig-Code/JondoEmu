@@ -569,7 +569,8 @@ An alliance is made of characters, not guilds.
   the group's souls go into full stones, each archmonster and guardian in its own, up to the stone's level
 - ✅ Wanted criminals: 81 of them, and the two bounties no quest wants, each in one group of his zone and
   gone three hours once caught;
-  beat him with his quest to take him, hand him to his jailer, who also sells news of him for 500 kamas
+  beat him with his quest to take him — he walks behind you — and hand him to his jailer, in his prison, who
+  also sells news of him for 500 kamas
 - ✅ Every wanted poster can be read on its board — the militias of Astrub, Amakna castle, Frigost, Bonta and
   Brâkmar, the Justiciers' base, Sufokia, Saharach and the divine dimensions' outposts — and starts its quest
 <img width="1700" height="930" alt="image" src="https://github.com/user-attachments/assets/02254e58-ec87-4839-82ac-f142ec5ef9cd" />

@@ -50,11 +50,42 @@ namespace Jondo.Unity.Server.Handlers
                 if (criminal == null || Quests.Log is not { } log || !Wants(log, criminal)) continue;
 
                 await Quests.TickAsync(stream, criminal.Quest, criminal.Catch);
-                if (criminal.Follower != 0 && Equipment.HowMany(criminal.Follower) == 0)
-                    await Equipment.GiveAsync(stream, criminal.Follower, 1);
+                await TakeAlongAsync(stream, criminal);
                 var away = WantedPosters.Captured(monster, fight.RoleplayMapId, fight.DefenderLeaderId, Now, _dice);
                 Console.WriteLine($"[Wanted] {SessionContext.State.CharacterName} takes criminal {monster} " +
                                   $"(quest {criminal.Quest})" + (away is { } h ? $"; he is away for {h.TotalHours:0.#} h." : "."));
+            }
+        }
+
+        /// <summary>
+        /// The caught criminal walking behind his captor, «vous devez l'obtenir en personnage suiveur»
+        /// (DPLN): his item -- type 32, a follower, «148» naming the criminal's own monster -- goes in
+        /// the follower's slot, and the map draws him there once the fight is over. A follower the
+        /// player already has is not thrown out for him: then he goes to the bag, as he used to.
+        /// </summary>
+        internal static async Task TakeAlongAsync(NetworkStream stream, WantedPosters.Criminal criminal)
+        {
+            if (criminal.Follower == 0 || Equipment.HowMany(criminal.Follower) > 0) return;
+            var slots = BonusSlots.SlotsFor(BonusSlots.FollowerType);
+            bool free = slots.Any(s => !Equipment.All.Any(i => i.Position == s));
+            if (free && await BonusItemHandler.PlaceAsync(stream, criminal.Follower, slots) != null) return;
+            await Equipment.GiveAsync(stream, criminal.Follower, 1);
+        }
+
+        /// <summary>The criminal handed over: out of the follower's slot, and the captor drawn again without him.</summary>
+        internal static async Task LetGoAsync(NetworkStream stream, WantedPosters.Criminal criminal)
+        {
+            if (criminal.Follower == 0) return;
+            var item = Equipment.All.FirstOrDefault(i => i.Template == criminal.Follower);
+            if (item == null) return;
+            if (BonusSlots.IsBonusSlot(item.Position))
+            {
+                await AlterationHandler.RemoveSlotItemAsync(stream, SessionContext.State.CharacterId, item);
+                await SlotLookHandler.RedrawAsync(stream);
+            }
+            else
+            {
+                await Equipment.TakeAsync(stream, criminal.Follower, 1);
             }
         }
 
@@ -106,8 +137,7 @@ namespace Jondo.Unity.Server.Handlers
                 if (report.Deliver != reply) continue;
                 if (Carries(log, criminal) && (criminal.Map == 0 || criminal.Map == mapId))
                 {
-                    if (criminal.Follower != 0 && Equipment.HowMany(criminal.Follower) > 0)
-                        await Equipment.TakeAsync(stream, criminal.Follower, 1);
+                    await LetGoAsync(stream, criminal);
                     await Quests.TickAsync(stream, criminal.Quest, criminal.Deliver);
                     Console.WriteLine($"[Wanted] {SessionContext.State.CharacterName} hands criminal " +
                                       $"{criminal.Monster} to jailer {npc}.");
