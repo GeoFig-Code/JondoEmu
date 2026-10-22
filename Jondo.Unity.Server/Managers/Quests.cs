@@ -247,6 +247,9 @@ namespace Jondo.Unity.Server.Managers
                     // see me", and turning up empty-handed must not tick them off.
                     if (objective.ItemId != 0 && !await HandOverAsync(stream, objective)) continue;
 
+                    // Nor "bring me the soul of a Jalató Real": it used to close on a hello.
+                    if (objective.SoulMonster != 0 && !await HandOverSoulsAsync(stream, objective)) continue;
+
                     await TickAsync(stream, run.QuestId, objective.Id);
                 }
 
@@ -292,6 +295,40 @@ namespace Jondo.Unity.Server.Managers
             }
 
             return taken;
+        }
+
+        /// <summary>
+        /// The souls an objective asks for, taken with the full soul stones that hold them.
+        /// </summary>
+        /// <remarks>
+        /// A full stone keeps one 623 «#3 (#2)» a soul (SoulCapture): the monster in the value. The
+        /// stones go whole -- a soul is not taken out of one -- the ones holding the fewest souls
+        /// first, so that a stone full of others is the last to go. Silent when they are not there,
+        /// as the items are.
+        /// </remarks>
+        private static async Task<bool> HandOverSoulsAsync(NetworkStream stream, QuestObjective objective)
+        {
+            int monster = objective.SoulMonster, wanted = objective.SoulCount;
+            int SoulsIn(Equipment.Item stone) => stone.Effects.Count(e => e.Effect == SoulCapture.SoulEffect && e.Value == monster);
+
+            var stones = Equipment.All.Where(i => SoulsIn(i) > 0)
+                                      .OrderBy(i => i.Effects.Count(e => e.Effect == SoulCapture.SoulEffect))
+                                      .ToList();
+            if (stones.Sum(s => SoulsIn(s) * Math.Max(1, s.Quantity)) < wanted) return false;
+
+            int still = wanted;
+            foreach (var stone in stones)
+            {
+                int each = SoulsIn(stone);
+                for (int n = Math.Max(1, stone.Quantity); n > 0 && still > 0; n--)
+                {
+                    if (!await Handlers.ItemUseHandler.SpendOneAsync(stream, stone.Uid)) return false;
+                    still -= each;
+                }
+                if (still <= 0) break;
+            }
+            Console.WriteLine($"[Quests] {wanted} soul(s) of {monster} handed over for objective {objective.Id}.");
+            return true;
         }
 
         /// <summary>The bindings from free-text objectives to the things that finish them.</summary>

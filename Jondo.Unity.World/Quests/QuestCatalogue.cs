@@ -118,6 +118,14 @@ namespace Jondo.Unity.World.Quests
         public bool ConsumesItems => TypeId == QuestCatalogue.BringItems;
 
         /// <summary>
+        /// The monster whose souls this objective wants brought, and how many: «Lleva 1 alma(s) de
+        /// Jalató Real a Asistente de Otomai» is [6693, 147, 1]. Zero for every other type.
+        /// </summary>
+        public int SoulMonster => TypeId == QuestCatalogue.BringSouls && Parameters.Count > 1 ? Parameters[1] : 0;
+
+        public int SoulCount => TypeId == QuestCatalogue.BringSouls ? Math.Max(1, Parameters.Count > 2 ? Parameters[2] : 1) : 0;
+
+        /// <summary>
         /// The map this objective is finished by walking onto, or zero.
         /// </summary>
         /// <remarks>
@@ -306,6 +314,9 @@ namespace Jondo.Unity.World.Quests
 
         /// <summary>"Fabriquer #2 #1 et fermer l'interface". 109 objectives.</summary>
         public const int CraftItem = 17;
+
+        /// <summary>"Lleva #3 alma(s) de #2 a #1" -- [npc, monster, count]. 363 objectives, all valid.</summary>
+        public const int BringSouls = 12;
 
         /// <summary>"Beat #2 x #1 in one fight". 788 objectives.</summary>
         public const int BeatInOneFight = 6;

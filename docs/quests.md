@@ -377,5 +377,5 @@ experience); the others carry conditions whose types the client does not explain
 ## 11. What is missing
 
 - **Editing quests.** Studio shows them; it does not write them.
-- **The gathering, crafting and escorting objectives.** Types 2, 3, 12 and 17.
+- **The escorting objectives.** Type 10, 26 of them: their parameter is a text, not who to escort.
 - **`repeatLimit`**, which needs counting how many times a quest has been done and that is not stored.

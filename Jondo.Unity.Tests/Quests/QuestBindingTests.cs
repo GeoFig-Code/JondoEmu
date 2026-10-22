@@ -39,6 +39,21 @@ namespace Jondo.Unity.Tests.Quests
         }
 
         [Fact]
+        public void Bringing_souls_names_the_npc_the_monster_and_how_many()
+        {
+            // «Lleva 1 alma(s) de Jalató Real a Asistente de Otomai»: [6693, 147, 1]. It names an
+            // NPC like the others, but wants no item: what it wants is souls, and a hello alone
+            // used to close it.
+            var souls = Objective(QuestCatalogue.BringSouls, 6693, 147, 1);
+            Assert.Equal(6693, souls.NpcId);
+            Assert.Equal(147, souls.SoulMonster);
+            Assert.Equal(1, souls.SoulCount);
+            Assert.Equal(0, souls.ItemId);
+
+            Assert.Equal(0, Objective(QuestCatalogue.BringItems, 119, 1746, 3).SoulMonster);
+        }
+
+        [Fact]
         public void Crafting_reads_the_item_out_of_parameter_zero_instead()
         {
             // A different family with a different layout — [item, count] rather than

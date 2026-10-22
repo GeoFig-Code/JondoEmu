@@ -577,7 +577,7 @@ An alliance is made of characters, not guilds.
 **1,976 quests**, with their 2,225 steps and 15,547 objectives.
 
 - ✅ Quests handed over by NPCs
-- ✅ Objectives completed by clicking and by beating monsters
+- ✅ Objectives completed by clicking, by beating monsters and by bringing the souls they ask for in full soul stones
 - ✅ Quest items dropped by monsters to whoever is on the quest, and hunters' meat
 - ✅ Step rewards: experience, kamas and emotes
 - 🟡 Start conditions: 1,770 of the 1,976 are fully understood — the class quests by class, the job
