@@ -1425,7 +1425,10 @@ namespace Jondo.Unity.Server.Network
             bool sinColocacion = false;
             foreach (var action in interactive.Actions)
             {
+                // A house's way out is a sun or a door like any other passage: with an f15 the
+                // client did not draw the sun, and the interior had no way out to click.
                 if (action.Kind == Managers.InteractiveActionKind.Teleport
+                    || action.Kind == Managers.InteractiveActionKind.HouseExit
                     || action.Kind == Managers.InteractiveActionKind.Dream
                     || action.Kind == Managers.InteractiveActionKind.DreamDoor
                     || action.Kind == Managers.InteractiveActionKind.Marketplace
