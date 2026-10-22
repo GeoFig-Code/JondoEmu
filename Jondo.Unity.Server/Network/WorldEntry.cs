@@ -140,6 +140,11 @@ namespace Jondo.Unity.Server.Network
             // with its anagram without any error firing.
             Op.Hhy, Op.Lyt,
 
+            // And its cosmetics collection, lwt: 153 appearance items with that account's uids,
+            // which every character here found in his appearance window. The account's own goes
+            // out with the titles instead (CosmeticCollectionHandler.SendAsync).
+            "lwt",
+
             // The captured account's quest journal: 261 frames in block 1 and 4 more in
             // the map one, each with a quest, its step and its objectives. It is someone else's on two
             // counts: they are the quests that account was carrying, and on top of that they contradict what the

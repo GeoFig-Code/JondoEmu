@@ -661,6 +661,9 @@ namespace Jondo.Unity.Server.Network
                 // The guidebook's suggestions: the cards asked for, and a card locked.
                 else if (payloadStr == Op.Uri("hmo")) await ActivitySuggestionHandler.SuggestAsync(stream, payload);
                 else if (payloadStr == Op.Uri("hmp")) await ActivitySuggestionHandler.LockAsync(stream, payload);
+                // The cosmetics collection: items into it and back out.
+                else if (payloadStr == Op.Uri("lyn")) await CosmeticCollectionHandler.AddAsync(stream, payload);
+                else if (payloadStr == Op.Uri("lxh")) await CosmeticCollectionHandler.RemoveAsync(stream, payload, sessionAccountId);
                 // The «Conjuntos» window: the character's builds.
                 else if (payloadStr == Op.Uri("ifg")) await PresetHandler.PlayerStateAsync(stream);
                 else if (payloadStr == Op.Uri("igp")) await PresetHandler.CreateAsync(stream, payload);

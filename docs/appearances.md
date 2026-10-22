@@ -734,7 +734,37 @@ Regenerate with `py tools/extraer_equipo_real.py --guardar`.
 
 ---
 
-## 18. Repeating the measurement
+## 18. The cosmetics collection
+
+The appearance window draws from the account's **collection**, which the client is sent whole on
+entering the world (`lwt { f6 (rep): item }`, each item `{ f1: template, f2: effects, f3: quantity,
+f4: uid }`). Until 22/10/2026 that `lwt` was the captured account's — 153 items with its own uids —
+replayed to every character. Now each account has its own (`CosmeticCollection`, table
+`AccountCosmetics`), sent by `CosmeticCollectionHandler.SendAsync` right before the `lyt`, which is
+where the capture has it.
+
+Measured in `Apariencias/añadir capa objeviva y anillo objevivo a coleccion cosmeticos` and
+`Apariencias/retirar varias cosas de coleccion de cosmeticos…`:
+
+```
+C→S  lyn { f2: [uids] }               put bag items into the collection
+S→C  ium { f1: uid }                  gone from the bag
+S→C  lyb { f1: [template], f3: item } kept, under a new uid, effects and all
+S→C  iun                              the weight
+S→C  lyg { f1 { f1: old uid, f2: 2 } }
+
+C→S  lxh { f1: [templates] }          take them out, BY TEMPLATE
+S→C  iua { f3 { f1: 63, f5: item } }  back in the bag, under a new uid
+S→C  lym hie hii jsn lxc              only when it was worn as an appearance
+S→C  iun, kmb
+S→C  lya { f1 { f1: template, f2 { f1: [template] } } }
+```
+
+One of each template: a second copy stays in the bag. The real window keeps a garment that left the
+collection in its slot, grey with a red exclamation mark, and stops drawing it; here the slot is
+emptied on every character of the account, which draws the same.
+
+## 19. Repeating the measurement
 
 The method is the point of this document. To extend the table to a family that is not covered, or to
 redo it on a newer client version:

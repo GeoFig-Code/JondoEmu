@@ -138,6 +138,9 @@ namespace Jondo.Unity.Server.Handlers
                 ConnectionProtocol.Push(Op.Hhy, ConnectionProtocol.BuildTitlesOwned(
                     Titles.All, Titles.AllOrnaments)));
 
+            // The account's cosmetics collection, which the capture sends right before the sets.
+            await CosmeticCollectionHandler.SendAsync(stream, accountId);
+
             // The wardrobe's sets. Without this the cosmetics window makes its sound but never gets
             // drawn: the client has no set to show and falls over.
             var character = DatabaseManager.GetCharacterById(Jondo.Unity.Server.Network.SessionContext.State.CharacterId);

@@ -110,6 +110,7 @@ namespace Jondo.Unity.Server
             Managers.HavenBagStore.Initialize();
             Managers.StorageStacks.Initialize();
             Managers.Bank.Initialize();
+            Managers.CosmeticCollection.Initialize();
             Managers.Wardrobe.Initialize();
             Managers.Titles.Initialize();
             Managers.Cosmetics.Initialize();
