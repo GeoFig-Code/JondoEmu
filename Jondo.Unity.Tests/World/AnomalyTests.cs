@@ -45,6 +45,16 @@ namespace Jondo.Unity.Tests.World
             }
         }
 
+        /// <summary>The Almanax's «en todas las zonas influenciadas por una anomalía temporal» (its criterion 13).</summary>
+        [Fact]
+        public void The_almanax_knows_an_anomaly_s_zones()
+        {
+            if (Anomalies.All.Count == 0) return;
+            var bonus = new Jondo.Unity.World.Almanax.AlmanaxBonus { Type = 1, Amount = 100, Criteria = new[] { (13, 1) } };
+            Assert.True(Almanax.Fits(bonus, Almanax.Where.Anywhere with { Subarea = Anomalies.All[0].SubAreaId }));
+            Assert.False(Almanax.Fits(bonus, Almanax.Where.Anywhere with { Subarea = -5 }));
+        }
+
         [Fact]
         public void The_anomaly_missions_count_what_their_text_says()
         {

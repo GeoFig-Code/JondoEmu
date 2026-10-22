@@ -267,7 +267,8 @@ namespace Jondo.Unity.Server.Managers
         /// and 4 a race -- one condition, the race and its archmonsters: «{{monsterRace,51::cuerboks}}»
         /// comes with 2437 --, 5 a job («los pescadores»: 36), 7 an item worn («para todos los
         /// aventureros que lleven equipado»), 10 a job's skill («centeno» and «arroz»: skills 52 and
-        /// 159, «Segar» rye and rice), 15 the dungeons. 13, the zones an anomaly touches, and every other kind are never met here.
+        /// 159, «Segar» rye and rice), 15 the dungeons, 13 «las zonas influenciadas por una anomalía temporal»
+        /// (Anomalies' zones). Every other kind is never met here.
         /// </summary>
         public static bool Fits(AlmanaxBonus bonus, Where where)
         {
@@ -284,6 +285,7 @@ namespace Jondo.Unity.Server.Managers
                     10 => where.Skill == c.Value,
                     16 => where.PaddockGauge == c.Value,
                     15 => where.InDungeon,
+                    13 => Anomalies.TryGet(where.Subarea, out _) == (c.Value != 0),
                     _ => false,
                 });
                 if (!met) return false;
