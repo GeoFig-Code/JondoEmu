@@ -721,7 +721,14 @@ namespace Jondo.Unity.Server.Managers
         /// the latest one; 0 when he holds none. One with no date at all was received before the
         /// dates were kept, so long ago.
         /// </summary>
-        public static long DaysSinceReceived(int template, DateTimeOffset now)
+        public static long DaysSinceReceived(int template, DateTimeOffset now) => (long)SinceReceived(template, now).TotalDays;
+
+        /// <summary>The same in hours, «DH&gt;12,32105», and in minutes, «DM&gt;29,32113».</summary>
+        public static long HoursSinceReceived(int template, DateTimeOffset now) => (long)SinceReceived(template, now).TotalHours;
+
+        public static long MinutesSinceReceived(int template, DateTimeOffset now) => (long)SinceReceived(template, now).TotalMinutes;
+
+        private static TimeSpan SinceReceived(int template, DateTimeOffset now)
         {
             long? latest = null;
             foreach (var item in Items.Values)
@@ -730,8 +737,8 @@ namespace Jondo.Unity.Server.Managers
                 long seconds = item.Effects.Where(e => e.Effect == ReceivedOn).Select(e => e.Value).DefaultIfEmpty(0).Max();
                 if (latest == null || seconds > latest) latest = seconds;
             }
-            if (latest == null) return 0;
-            return (long)(now - DateTimeOffset.FromUnixTimeSeconds(latest.Value)).TotalDays;
+            if (latest == null) return TimeSpan.Zero;
+            return now - DateTimeOffset.FromUnixTimeSeconds(latest.Value);
         }
 
         public static int HowMany(int template)

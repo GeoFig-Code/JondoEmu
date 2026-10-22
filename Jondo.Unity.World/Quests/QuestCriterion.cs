@@ -408,8 +408,8 @@ namespace Jondo.Unity.World.Quests
 
                 // DD>7,31582: more than seven days since item 31582 was received -- the days first,
                 // the item second, the other way round from every other OP>key,n. The facts answer
-                // Count("DD", item) with the days.
-                if (op == "DD" && values.Count >= 2)
+                // Count("DD", item) with the days; DH and DM the same in hours and minutes.
+                if (op is "DD" or "DH" or "DM" && values.Count >= 2)
                 {
                     if (!long.TryParse(values[1], out long item)) return null;
                     long? days = _facts.Count(op, item, "");

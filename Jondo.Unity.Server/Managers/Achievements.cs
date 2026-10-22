@@ -699,6 +699,9 @@ namespace Jondo.Unity.Server.Managers
                 "OV" => SubscribedMinutes,
                 "QQ" => S.Quests?.Runs.Values.Count(r => r.Finished) ?? 0,
                 "EA" or "Ea" or "NT" => Tally(op, 0),
+
+                // The hour on the server's clock, Paris's: «SH>19|SH<8», the night.
+                "SH" => OsavoraSeasons.InParis(DateTimeOffset.UtcNow).Hour,
                 "lB" => BestLeague(),
                 AchievementCatalogue.CraftKey => Tally(AchievementCatalogue.CraftKey, 0),
                 Almanax.DayOperator => Almanax.Scalar(op),
@@ -714,6 +717,11 @@ namespace Jondo.Unity.Server.Managers
 
                 // The days since an item held was received (its 805): «DD>7,31582».
                 "DD" => Equipment.DaysSinceReceived((int)key, DateTimeOffset.UtcNow),
+                "DH" => Equipment.HoursSinceReceived((int)key, DateTimeOffset.UtcNow),
+                "DM" => Equipment.MinutesSinceReceived((int)key, DateTimeOffset.UtcNow),
+
+                // An alteration carried, the client's «HA=88».
+                "HA" => Alterations.Has(S.CharacterId, (int)key) ? 1 : 0,
                 "EM" => Tally(flag == "d" ? DungeonKind : "EM", key),
                 "Ef" => Tally("Ef", key),
                 "EH" => S.ChallengesDone.Contains((int)key) ? 1 : 0,

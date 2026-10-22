@@ -580,7 +580,7 @@ An alliance is made of characters, not guilds.
 - ✅ Objectives completed by clicking and by beating monsters
 - ✅ Quest items dropped by monsters to whoever is on the quest, and hunters' meat
 - ✅ Step rewards: experience, kamas and emotes
-- 🟡 Start conditions: 1,765 of the 1,976 are fully understood — the class quests by class, the job
+- 🟡 Start conditions: 1,770 of the 1,976 are fully understood — the class quests by class, the job
   quests by job level, the Almanax's by the day, Osavora's weekly ones by the season and their marker's week
 - ✅ Items that validate a quest objective when used (316 of them)
 - ✅ Treasure hunts at the Malle aux trésors: Cano Dhain hands out the daily, archaeological and

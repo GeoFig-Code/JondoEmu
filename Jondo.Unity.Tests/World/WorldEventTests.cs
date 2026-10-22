@@ -28,14 +28,31 @@ namespace Jondo.Unity.Tests.World
             public bool ObjectiveDone(int objectiveId) => false;
             public int Event { get; init; }
             public Dictionary<int, long> Days { get; } = new();
+            public Dictionary<int, long> Hours { get; } = new();
 
             public long? Count(string op, long key, string flag) => op switch
             {
                 "WE" => key == Event ? 1 : 0,
-                "PO" => Days.ContainsKey((int)key) ? 1 : 0,
+                "PO" => Days.ContainsKey((int)key) || Hours.ContainsKey((int)key) ? 1 : 0,
                 "DD" => Days.TryGetValue((int)key, out long days) ? days : 0,
+                "DH" => Hours.TryGetValue((int)key, out long hours) ? hours : 0,
                 _ => null,
             };
+        }
+
+        /// <summary>«PL&gt;99&amp;Qf=636&amp;(DH&gt;12,32105|PO!32105)»: the hours first, the item second, as DD.</summary>
+        [Fact]
+        public void The_hours_since_an_item_count_like_its_days()
+        {
+            const string Again = "PL>99&Qf=2515&(DH>12,32105|PO!32105)";
+            Assert.True(QuestCriterion.Judge(Again, new Player()).Met);
+            var soon = new Player();
+            soon.Hours[32105] = 5;
+            Assert.False(QuestCriterion.Judge(Again, soon).Met);
+            var later = new Player();
+            later.Hours[32105] = 13;
+            Assert.True(QuestCriterion.Judge(Again, later).Met);
+            Assert.True(QuestCriterion.Judge(Again, later).FullyJudged);
         }
 
         [Fact]

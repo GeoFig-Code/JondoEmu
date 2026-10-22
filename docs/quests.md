@@ -127,10 +127,11 @@ Its own six: `PL` level, `Qf` quest finished, `Qa` quest in progress, `Qc` finis
 `Ad` today's Almanax (its 390 offering quests), `OA` an achievement, `PG` the class (the class
 quests: «The Tymador Job» is `PG=13`), `PJ`/`Pj` a job's level, `PO` an item held, `QF`, `SC` the
 server's type, `PZ` the subscription, `BT` (the client's AlwaysTrueCriterion), `Ps`, `Pa`, `Pr` the
-alignment's side, level and rank, `WE` a world event going on (Osavora's season) and `DD` the days since
-an item was received (its «Recibido el»). `Sc` is the client's StaticCriterionCriterion, which only the real server
+alignment's side, level and rank, `WE` a world event going on (Osavora's season or Gargandias's weekend),
+`DD`, `DH` and `DM` the days, hours and minutes since an item was received (its «Recibido el»), `SH`
+the server's hour (Paris) and `HA` an alteration carried. `Sc` is the client's StaticCriterionCriterion, which only the real server
 judges and no data describes: it stays let through.
-Together they cover **every** term of 1,765 of the 1,976 conditions.
+Together they cover **every** term of 1,770 of the 1,976 conditions.
 
 `Qc` is read as «finished» because of what appears next to it: `(Qa=890|Qc=890)` is «890 is in progress
 or already done». `Qo` carries objective ids, 116 of 116.
