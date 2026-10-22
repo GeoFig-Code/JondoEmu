@@ -715,6 +715,9 @@ namespace Jondo.Unity.Server.Managers
                 // A world event going on (WorldEvents): «WE=230», Osavora's Repos.
                 "WE" => WorldEvents.IsActive((int)key, DateTimeOffset.UtcNow) ? 1 : 0,
 
+                // A content switch, on, or a yearly event while it runs (SeasonalEvents): «Sc=967», Halouine.
+                "Sc" => SeasonalEvents.IsOn((int)key, Almanax.Clock()) ? 1 : 0,
+
                 // The days since an item held was received (its 805): «DD>7,31582».
                 "DD" => Equipment.DaysSinceReceived((int)key, DateTimeOffset.UtcNow),
                 "DH" => Equipment.HoursSinceReceived((int)key, DateTimeOffset.UtcNow),

@@ -129,9 +129,15 @@ quests: «The Tymador Job» is `PG=13`), `PJ`/`Pj` a job's level, `PO` an item h
 server's type, `PZ` the subscription, `BT` (the client's AlwaysTrueCriterion), `Ps`, `Pa`, `Pr` the
 alignment's side, level and rank, `WE` a world event going on (Osavora's season or Gargandias's weekend),
 `DD`, `DH` and `DM` the days, hours and minutes since an item was received (its «Recibido el»), `SH`
-the server's hour (Paris) and `HA` an alteration carried. `Sc` is the client's StaticCriterionCriterion, which only the real server
-judges and no data describes: it stays let through.
-Together they cover **every** term of 1,770 of the 1,976 conditions.
+the server's hour (Paris) and `HA` an alteration carried. `Sc` is the client's StaticCriterionCriterion,
+which only the real server judges and no data describes; its values were read off the quests each
+guards and Dofus pour les noobs (`SeasonalEvents`): most are content that is simply on -- 703 and 702
+Frigost, 835 and 822 wanted posters, 940 the Ankama building, 842 the Crocabulia line... -- and five
+are the yearly events, on only while they run: 967 Halouine (two weeks at the end of October), 982 Sain
+Ballotin (the week of 14 February), 945 the island of Pwâk (four weeks before May), 979 Vulkania
+(July and August) and 953 the Ripate's feast (two weeks around 19 September).
+Together they cover **every** term of 1,964 of the 1,976 conditions; the rest are the tournament
+server's (`ST`) and three loose ones (`Sv`, `Pz`, `Nf`).
 
 `Qc` is read as «finished» because of what appears next to it: `(Qa=890|Qc=890)` is «890 is in progress
 or already done». `Qo` carries objective ids, 116 of 116.

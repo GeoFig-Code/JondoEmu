@@ -22,7 +22,7 @@ namespace Jondo.Unity.Tests.Social
             Assert.True(character > 0);
             try
             {
-                await using var pipe = await ClientPipe.OpenAsync(Account, character, 191105026, "Ficha-Uno");
+                await using var pipe = await ClientPipe.OpenAsync(Account, character, 990_100_071, "Ficha-Uno");
                 using (SessionContext.Push(pipe.Session))
                 {
                     await PlayerCardHandler.ShowAsync(pipe.ToClient, ConnectionProtocol.Push("kxh", Pb.New().Var(2, character).Build()));

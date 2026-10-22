@@ -43,7 +43,7 @@ namespace Jondo.Unity.Tests.World
             CosmeticCollection.Forget(Account);
             try
             {
-                await using var pipe = await ClientPipe.OpenAsync(Account, character, 191105026, "Coleccion-Uno");
+                await using var pipe = await ClientPipe.OpenAsync(Account, character, 990_100_051, "Coleccion-Uno");
                 using (SessionContext.Push(pipe.Session))
                 {
                     const string effects = "[[971,1,0,0],[972,1,0,0]]";

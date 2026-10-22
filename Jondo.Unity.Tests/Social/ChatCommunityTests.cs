@@ -13,7 +13,7 @@ namespace Jondo.Unity.Tests.Social
         [Fact]
         public async Task The_community_is_acknowledged_with_its_value()
         {
-            await using var pipe = await ClientPipe.OpenAsync(8_900_000_061, 8_900_100_061, 191105026, "Comunidad");
+            await using var pipe = await ClientPipe.OpenAsync(8_900_000_061, 8_900_100_061, 990_100_061, "Comunidad");
             using (SessionContext.Push(pipe.Session))
             {
                 // «crear personaje - borrar personaje», frames 121 and 123: hos 10 02, hou 08 02.

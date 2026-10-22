@@ -58,7 +58,7 @@ namespace Jondo.Unity.Tests.World
             CharacterPresets.Forget(character);
             try
             {
-                await using var pipe = await ClientPipe.OpenAsync(Account, character, 191105026, "Conjunto-Uno");
+                await using var pipe = await ClientPipe.OpenAsync(Account, character, 990_100_041, "Conjunto-Uno");
                 using (SessionContext.Push(pipe.Session))
                 {
                     var state = pipe.Session.State;
@@ -164,7 +164,7 @@ namespace Jondo.Unity.Tests.World
             ItemShortcuts.Forget(character);
             try
             {
-                await using var pipe = await ClientPipe.OpenAsync(Account, character, 191105026, "Barra-Uno");
+                await using var pipe = await ClientPipe.OpenAsync(Account, character, 990_100_042, "Barra-Uno");
                 using (SessionContext.Push(pipe.Session))
                 {
                     // itz { 2 { 2 18, 4 { 2 uuid } } }, byte for byte the capture's, echoed in ivk.

@@ -25,9 +25,9 @@ namespace Jondo.Unity.Tests.Combat
             var active = (ConcurrentDictionary<long, FightInstance>)typeof(FightHandler)
                 .GetField("_activeFights", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
             active[fight.FightId] = fight;
-            await using var mine = await ClientPipe.OpenAsync(8_900_000_091, me, 191105026, "Marca-Uno");
-            await using var theirs = await ClientPipe.OpenAsync(8_900_000_092, friend, 191105026, "Marca-Dos");
-            await using var other = await ClientPipe.OpenAsync(8_900_000_093, enemy, 191105026, "Marca-Tres");
+            await using var mine = await ClientPipe.OpenAsync(8_900_000_091, me, 990_100_091, "Marca-Uno");
+            await using var theirs = await ClientPipe.OpenAsync(8_900_000_092, friend, 990_100_091, "Marca-Dos");
+            await using var other = await ClientPipe.OpenAsync(8_900_000_093, enemy, 990_100_091, "Marca-Tres");
             try
             {
                 using (SessionContext.Push(mine.Session))

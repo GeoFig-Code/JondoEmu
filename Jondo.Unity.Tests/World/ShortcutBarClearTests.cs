@@ -19,7 +19,7 @@ namespace Jondo.Unity.Tests.World
             ItemShortcuts.Forget(character);
             try
             {
-                await using var pipe = await ClientPipe.OpenAsync(8_900_000_101, character, 191105026, "Vaciar-Uno");
+                await using var pipe = await ClientPipe.OpenAsync(8_900_000_101, character, 990_100_101, "Vaciar-Uno");
                 using (SessionContext.Push(pipe.Session))
                 {
                     // The item bar: two slots, emptied with ivr { 2 slot } each.
