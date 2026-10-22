@@ -49,6 +49,22 @@ jobs:
       - name: Test
         run: dotnet test Jondo.Unity.Tests/Jondo.Unity.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=tests.trx" --results-directory TestResults
 
+      # Each failed test as an annotation, readable without signing in -- the log and the trx are
+      # not: the run's page and its API show the annotations to anybody.
+      - name: Annotate failed tests
+        if: failure()
+        shell: pwsh
+        run: |
+          $trx = Get-ChildItem TestResults -Filter *.trx -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $trx) { exit 0 }
+          [xml]$doc = Get-Content $trx.FullName
+          $failed = $doc.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' }
+          foreach ($t in $failed) {
+            $message = ($t.Output.ErrorInfo.Message -replace "`r?`n", ' | ')
+            if ($message.Length -gt 600) { $message = $message.Substring(0, 600) }
+            Write-Output "::error title=Failed test::$($t.testName): $message"
+          }
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v6

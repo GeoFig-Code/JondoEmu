@@ -270,7 +270,6 @@ namespace Jondo.Unity.Server.Managers
                         MobId = mobId,
                         CellId = cellId
                     };
-                    bool hadCriminal = false;
 
                     try {
                         using var doc = System.Text.Json.JsonDocument.Parse(membersJson);
@@ -299,7 +298,7 @@ namespace Jondo.Unity.Server.Managers
                             for (int i = 0; i < ids.Count; i++) {
                                 // A wanted criminal stands in one group of his zone, not in the
                                 // 6,352 the database puts him in.
-                                if (WantedPosters.Is(ids[i])) { criminals++; hadCriminal = true; continue; }
+                                if (WantedPosters.Is(ids[i])) { criminals++; continue; }
                                 if (_monsters.TryGetValue(ids[i], out var mData)) {
                                     // Same as above: the database stores grades the
                                     // client does not accept, and they have to be trimmed here too.
