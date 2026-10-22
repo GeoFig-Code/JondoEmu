@@ -2258,7 +2258,7 @@ namespace Jondo.Unity.Server
             "CharacterChallenges", "CharacterQuests", "CharacterAchievements",
             "CharacterKeyring", "CharacterElements",
             "CharacterEnergy", "CharacterExperienceLimit",
-            "CharacterSavedPositions", "CharacterPresets", "CharacterItemShortcuts",
+            "CharacterSavedPositions", "CharacterPresets", "CharacterItemShortcuts", "CharacterPendingChanges",
         };
 
         /// <summary>
@@ -2403,6 +2403,47 @@ namespace Jondo.Unity.Server
             catch (Exception ex)
             {
                 Console.WriteLine($"[DatabaseManager] Could not change the head of {characterId}: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>A character's sex, changed by its potion.</summary>
+        public static bool SetCharacterSex(long characterId, int sex)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "UPDATE Characters SET Sex = $s WHERE Id = $id;";
+                command.Parameters.AddWithValue("$s", sex);
+                command.Parameters.AddWithValue("$id", characterId);
+                return command.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DatabaseManager] Could not change the sex of {characterId}: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>A character's new name; false when it is somebody else's, names being unique.</summary>
+        public static bool RenameCharacter(long characterId, string name)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(WorldConnectionString);
+                connection.Open();
+                var command = connection.CreateCommand();
+                command.CommandText = "UPDATE Characters SET Name = $n WHERE Id = $id AND NOT EXISTS " +
+                                      "(SELECT 1 FROM Characters WHERE Name = $n COLLATE NOCASE AND Id <> $id);";
+                command.Parameters.AddWithValue("$n", name);
+                command.Parameters.AddWithValue("$id", characterId);
+                return command.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DatabaseManager] Could not rename {characterId}: {ex.Message}");
                 return false;
             }
         }

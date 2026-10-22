@@ -130,6 +130,27 @@ namespace Jondo.Unity.Server.Managers
             return _heads.TryGetValue(headId, out var head) && head.Breed == breedId && head.Gender == (sex == 1 ? 1 : 0);
         }
 
+        /// <summary>
+        /// The same head for the other sex: the one at the same place among the other sex's heads
+        /// of the breed, creation ones with creation ones -- the Ocra's «vanguardista» 616 and 617 are
+        /// one pair --; the other sex's default when there is none.
+        /// </summary>
+        public static int Counterpart(int headId, int breedId, int sex)
+        {
+            Ensure();
+            int other = sex == 1 ? 0 : 1;
+            if (_heads.TryGetValue(headId, out var head))
+            {
+                var mine = _heads.Where(h => h.Value.Breed == breedId && h.Value.Gender == head.Gender
+                                             && h.Value.Creation == head.Creation).Select(h => h.Key).OrderBy(id => id).ToList();
+                var theirs = _heads.Where(h => h.Value.Breed == breedId && h.Value.Gender == other
+                                               && h.Value.Creation == head.Creation).Select(h => h.Key).OrderBy(id => id).ToList();
+                int place = mine.IndexOf(headId);
+                if (place >= 0 && place < theirs.Count) return theirs[place];
+            }
+            return DefaultHeadId(breedId, other);
+        }
+
         /// <summary>The head the creation screen offers first for that breed and sex.</summary>
         public static int DefaultHeadId(int breedId, int sex)
         {

@@ -69,6 +69,9 @@ namespace Jondo.Unity.Server.Handlers
             // A book: its document opens, and the book stays.
             if (await ReadingItemHandler.TryReadAsync(stream, item)) return;
 
+            // A name or sex change potion: the change waits for the next connection.
+            if (await RemodelHandler.TryUseAsync(stream, item)) return;
+
             // A face, a body or a pose for the appearance window: unlocked for the account.
             if (await AppearanceUnlockItemHandler.TryUseAsync(stream, item)) return;
 

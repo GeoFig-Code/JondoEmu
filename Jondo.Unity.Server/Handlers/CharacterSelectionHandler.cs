@@ -161,6 +161,10 @@ namespace Jondo.Unity.Server.Handlers
             }
 
             Console.WriteLine($"[Game Node] Selected character {characterIdToLoad}.");
+
+            // A sex change potion used last time: done now, before the character is read.
+            Managers.CharacterRemodel.ApplySexChange(characterIdToLoad);
+
             bool dbCharacterLoaded = DatabaseManager.LoadCharacter(characterIdToLoad);
             if (!dbCharacterLoaded)
             {

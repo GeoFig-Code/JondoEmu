@@ -487,6 +487,7 @@ An alliance is made of characters, not guilds.
 - ✅ Perlequines: their flavour lasts its hour on the clock
 - ✅ Spell scrolls: the special spells are learnt for good
 - ✅ The guild hall and guild house potions
+- ✅ Name and sex change potions: the name is asked for, and the sex changed, on the next connection
 - ✅ Pets grow from level 0 to 100 fed with resources from their «Alimentar» window, each resource worth
   what the client says, their characteristics growing with the level; the Almanax's day 341 feeds them more
 - ✅ Legendary pets: the bebemot's reflection makes a pet legendary, an impregnated croquette gives it a

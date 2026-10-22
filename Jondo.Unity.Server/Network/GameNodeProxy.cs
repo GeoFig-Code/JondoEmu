@@ -707,6 +707,8 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr == Op.Uri("iiy")) await PresetHandler.DeleteAsync(stream, payload);
                 else if (payloadStr == Op.Uri("iio")) await PresetHandler.EquipAsync(stream, payload, sessionAccountId);
                 else if (payloadStr == Op.Uri("ihg")) await PresetHandler.OutfitAsync(stream, payload);
+                // The Rename window's new name, after a name change potion.
+                else if (payloadStr == Op.Uri("lvw")) await RemodelHandler.RenameAsync(stream, payload, sessionAccountId);
                 else if (payloadStr == Op.Uri("hom"))
                 {
                     // The spouse's information, asked with the contact lists: nobody here is
@@ -2295,6 +2297,9 @@ namespace Jondo.Unity.Server.Network
 
             // His mutual friends see him playing.
             await Handlers.FriendsHandler.AnnouncePresenceAsync(SessionContext.Current.AccountId);
+
+            // A name change potion used last time: the Rename window.
+            await Handlers.RemodelHandler.OnEnterWorldAsync(stream, chosen);
 
             // And the server's welcome line, if its settings have one.
             if (!string.IsNullOrWhiteSpace(ServerSettings.Current.WelcomeMessage))
