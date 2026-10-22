@@ -509,6 +509,7 @@ namespace Jondo.Unity.Server.Network
                         WorkshopHandler.Forget();
                         MarketplaceHandler.Forget();
                         await Handlers.DreamHandler.OnMapLoadedAsync(stream);
+                        Handlers.AnomalyHandler.BeforeMapLoaded(GameState.MapId);
                         await Managers.Quests.SendMarksAsync(stream, GameState.MapId);
 
                         byte[] actors = ConnectionProtocol.Push(Op.Jss,
@@ -542,6 +543,8 @@ namespace Jondo.Unity.Server.Network
                         await Handlers.TravelersTowerHandler.OnMapLoadedAsync(stream, GameState.MapId);
                         // And on Osavora's maps, the look of the season.
                         await Handlers.OsavoraSeasonHandler.OnMapLoadedAsync(stream, GameState.MapId);
+                        // And in a temporal anomaly's zone, the anomaly; on its zaap, the vestige.
+                        await Handlers.AnomalyHandler.OnMapLoadedAsync(stream, GameState.MapId);
                         // And in a guild hall, its banners: the guild's own, or the neutral ones.
                         await Handlers.GuildHallHandler.OnMapLoadedAsync(stream, GameState.CharacterId, GameState.MapId);
 

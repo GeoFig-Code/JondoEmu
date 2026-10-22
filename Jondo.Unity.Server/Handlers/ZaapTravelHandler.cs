@@ -117,6 +117,7 @@ namespace Jondo.Unity.Server.Handlers
             long target;
             long cost;
             string what;
+            int anomalyArrival = -1;
 
             if (kind == Anomalies.Kind)
             {
@@ -128,8 +129,9 @@ namespace Jondo.Unity.Server.Handlers
                 }
 
                 // It is charged by where the vestige is, not by where one ends up: in the capture the
-                // six anomaly costs are identical to those of the normal zaap to that same map.
-                target = Anomalies.ArrivalMap;
+                // six anomaly costs are identical to those of the normal zaap to that same map. One
+                // ends up at the entry of the place the anomaly opens on (AnomalyHandler).
+                (target, anomalyArrival) = AnomalyHandler.Travel(anomaly.SubAreaId);
                 cost = anomaly.MapId == from ? 0 : CostBetween(from, anomaly.MapId);
                 what = $"anomaly «{anomaly.Name}» (subarea {anomaly.SubAreaId})";
             }
@@ -200,9 +202,11 @@ namespace Jondo.Unity.Server.Handlers
             var arrival = zaap.Count > 0 ? zaap[0] : Zaapis.ElementsOn(target).FirstOrDefault();
             if (arrival.Id == 0 && Transports.On(target) is { } stop && stop.Stop.MapId == target)
                 arrival = stop.Stop.Vehicle;
-            Jondo.Unity.Server.Network.SessionContext.State.CellId = arrival.Id != 0
-                ? FightHandler.CellBeside(target, arrival.Cell)
-                : MapManager.GetNearestWalkableCell(target, TeleportHandler.MapCentre);
+            Jondo.Unity.Server.Network.SessionContext.State.CellId = anomalyArrival > 0
+                ? anomalyArrival
+                : arrival.Id != 0
+                    ? FightHandler.CellBeside(target, arrival.Cell)
+                    : MapManager.GetNearestWalkableCell(target, TeleportHandler.MapCentre);
             DatabaseManager.SaveCurrentCharacter();
 
             // A zaap ends the party following him, and his followers are told before the old map

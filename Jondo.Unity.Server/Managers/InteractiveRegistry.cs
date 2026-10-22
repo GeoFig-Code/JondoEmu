@@ -13,6 +13,12 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>The short transport inside Bonta and Brakmar.</summary>
         Zaapi,
 
+        /// <summary>A temporal anomaly's place: its exit back to the anomaly's zaap (AnomalyHandler).</summary>
+        AnomalyExit,
+
+        /// <summary>A clock of Noximilian's Workshop, which tells the hour (AnomalyHandler).</summary>
+        AnomalyClock,
+
         /// <summary>A kart of route 666: its network's stops in the zaapi's window (Transports).</summary>
         Transport,
 
@@ -428,6 +434,7 @@ namespace Jondo.Unity.Server.Managers
             // portal, and the dimensions' portals back. Each skill with its own instance, as the
             // mechanism offers the same skill (184) under six names.
             RegisterTravelersTower();
+            RegisterAnomalyPlaces();
 
             // The passages between maps. Houses have already gone through above with their jqw protocol;
             // only the generic ones TeleportManager has validated and left active come in here.
@@ -695,6 +702,38 @@ namespace Jondo.Unity.Server.Managers
                                      InteractiveActionKind kind, int skillId)
         {
             Declared(mapId, element, type).Add(kind, skillId);
+        }
+
+        /// <summary>
+        /// The anomalies' places: each entry's exit, and the clocks of their maps, skill 184 and
+        /// type -1 as the captures declare them (AnomalyPlaces).
+        /// </summary>
+        private static void RegisterAnomalyPlaces()
+        {
+            const int UseSkill = 184;
+            int exits = 0, clocks = 0;
+            foreach (var place in AnomalyPlaces.All)
+            {
+                foreach (long map in new[] { place.Entry, place.Room })
+                {
+                    foreach (var element in Interactives.ElementsOf(map))
+                    {
+                        if (map == place.Entry && element.Id == place.Exit)
+                        {
+                            Register(map, element, Jondo.Unity.World.Quests.QuestBinding.DefaultType,
+                                     InteractiveActionKind.AnomalyExit, UseSkill);
+                            exits++;
+                        }
+                        else if (element.Gfx == AnomalyPlaces.RightClock || element.Gfx == AnomalyPlaces.WrongClock)
+                        {
+                            Register(map, element, Jondo.Unity.World.Quests.QuestBinding.DefaultType,
+                                     InteractiveActionKind.AnomalyClock, UseSkill);
+                            clocks++;
+                        }
+                    }
+                }
+            }
+            if (exits > 0) Console.WriteLine($"[Anomalies] {exits} place exit(s) and {clocks} clock(s) declared.");
         }
 
         private static void RegisterTravelersTower()

@@ -45,6 +45,9 @@ namespace Jondo.Unity.Server.Managers
             return TimeZoneInfo.Utc;
         }
 
+        /// <summary>A moment on Paris's clock, the one Ankama's servers keep.</summary>
+        public static DateTime InParis(DateTimeOffset moment) => TimeZoneInfo.ConvertTime(moment, Paris).DateTime;
+
         /// <summary>The Monday 8:00 in Paris the week of that moment started on, on Paris's clock.</summary>
         private static DateTime WeekStart(DateTimeOffset moment)
         {

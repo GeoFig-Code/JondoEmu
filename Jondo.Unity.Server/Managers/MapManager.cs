@@ -263,6 +263,10 @@ namespace Jondo.Unity.Server
             long medida = Managers.MeasuredArenas.Of(roleplayMapId);
             if (medida != 0 && Maps.ContainsKey(medida)) return medida;
 
+            // A temporal anomaly's room fights on its place's arena (AnomalyPlaces).
+            long anomaly = Managers.AnomalyPlaces.ArenaOf(roleplayMapId);
+            if (anomaly != 0 && Maps.ContainsKey(anomaly)) return anomaly;
+
             if (!Maps.TryGetValue(roleplayMapId, out var info)) return roleplayMapId;
 
             // A map that is an arena already is fought on as it is.

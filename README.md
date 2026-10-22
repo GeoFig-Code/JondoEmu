@@ -227,6 +227,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
   the dimension's maps
 - ❌ What the seasons change in Osavora's monsters and weekly quests
 - ✅ **16 temporal anomalies** with their 120-minute countdown
+- ✅ Their guardians: each anomaly opens on one of eleven places — Noximilian's workshop, Kelba's
+  market, Bonta's palace, Brâkmar… — where its guardian waits with his brutoforme, cublaforme and
+  kaxaforme; the zone shows the anomaly, its zaap the vestige, and the clocks tell the hour
 <img width="2560" height="1514" alt="image" src="https://github.com/user-attachments/assets/942d4d71-9711-45f1-9156-5381f7ad14b8" />
 
 - ✅ **5,347 interactive teleports** and passages that fire when you step on a cell — the suns and
@@ -343,7 +346,6 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Dream-trial missions, done by finishing the trial
 - ✅ Anomaly missions: monsters and dungeon guardians beaten in an anomaly with an uchronic elixir on,
   and the anomaly fragments and loops it drops there
-- ❌ The anomalies' own guardians: no data says where each one stands
 
 **Raids** — the Eternal Gardens Sanctuary and the Gigalodón Abyss — run on the client's own screens.
 

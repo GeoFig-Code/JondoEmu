@@ -1709,6 +1709,12 @@ public static class Op
     public const string Lzh = "lzh";
 
     /// <summary>
+    /// S→C: a temporal anomaly open in the zone of the map loaded. f1 the subarea, f2 true, f3 when
+    /// it ends in milliseconds (AnomalyHandler).
+    /// </summary>
+    public const string Lzi = "lzi";
+
+    /// <summary>
     /// S→C: an item changed, f1 { f1 its slot, f5 the item }: the bonus slots' fights counting down
     /// at the end of each fight.
     /// </summary>

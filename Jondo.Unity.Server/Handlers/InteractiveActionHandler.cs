@@ -128,6 +128,12 @@ namespace Jondo.Unity.Server.Handlers
                 case InteractiveActionKind.Zaapi:
                     await ZaapiTravelHandler.OpenAsync(stream, interactive.Element, action.SkillId);
                     break;
+                case InteractiveActionKind.AnomalyExit:
+                    await AnomalyHandler.ExitAsync(stream, interactive.Element, action.SkillId);
+                    break;
+                case InteractiveActionKind.AnomalyClock:
+                    await AnomalyHandler.ClockAsync(stream, interactive.Element, action.SkillId);
+                    break;
                 case InteractiveActionKind.Transport:
                     await TransportTravelHandler.OpenAsync(stream, interactive.Element, action.SkillId);
                     break;

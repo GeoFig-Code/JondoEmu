@@ -174,7 +174,7 @@ namespace Jondo.Unity.Server.Managers
             }
 
             Console.WriteLine($"[Anomalies] {_all.Count} active, {_duration} minutes each, " +
-                              $"entered through map {_arrivalMap}.");
+                              $"entered through their places (AnomalyPlaces), map {_arrivalMap} when there is none.");
         }
 
         public static bool TryGet(int subAreaId, out Anomaly anomaly)
