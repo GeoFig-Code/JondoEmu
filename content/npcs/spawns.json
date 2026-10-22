@@ -654,6 +654,55 @@
       "cell": 188,
       "orientation": 3,
       "why": "Gargandias himself, «¡GRRRAAAAARRR!», whose replies lead out of the temple or back to the offerings (GargandiasHandler). INFERRED: the cell, at the top of the titan's room, facing its stairs."
+    },
+    {
+      "map": 192414730,
+      "npc": 606,
+      "cell": 343,
+      "orientation": 3,
+      "why": "the Gardien des Geôles d'Astrub, in the prison under Astrub's militia [5,-19]: «descendez les escaliers sur la droite pour arriver dans le sous-sol où se trouve la prison» (DPLN, «On recherche Padgref Demoël»); the map is the one the delivery objectives of his twelve criminals name. INFERRED: the cell, the walkable one nearest the room's middle that no interactive or NPC takes (343), facing 3, as the bankers."
+    },
+    {
+      "map": 54536207,
+      "npc": 1366,
+      "cell": 398,
+      "orientation": 3,
+      "why": "Fab Berthazien, in the prison of Frigost's Bourgade militia [-76,-42]: «allez sur la droite pour entrer dans la prison» (DPLN, «On recherche Bouflouth»); the map his seven criminals' delivery objectives name. INFERRED: the cell, the walkable one nearest the room's middle that no interactive or NPC takes (398), facing 3, as the bankers."
+    },
+    {
+      "map": 101713427,
+      "npc": 2185,
+      "cell": 343,
+      "orientation": 3,
+      "why": "Maeva Danselumière, in the prison under Amakna castle's militia [5,-6]: «descendez les escaliers vers le sous-sol pour entrer dans la prison» (DPLN, «On recherche Ali Grothor»); the map her thirteen criminals' delivery objectives name. INFERRED: the cell, the walkable one nearest the room's middle that no interactive or NPC takes (343), facing 3, as the bankers."
+    },
+    {
+      "map": 121900032,
+      "npc": 2188,
+      "cell": 371,
+      "orientation": 3,
+      "why": "the Garde des sots, in the Justiciers' prison [4,4]: «encore une fois aller à droite pour descendre dans la prison» (DPLN, «On recherche les Guman»); the map his four criminals' delivery objectives name. INFERRED: the cell, the walkable one nearest the room's middle that no interactive or NPC takes (371), facing 3, as the bankers."
+    },
+    {
+      "map": 170132488,
+      "npc": 3338,
+      "cell": 371,
+      "orientation": 3,
+      "why": "Walter Worde, in the prison at the entrance of Sufokia's depths [23,26]: «allez sur la gauche pour entrer dans la prison» (DPLN, «On recherche Buldalazred»); the map his three criminals' delivery objectives name. INFERRED: the cell, the walkable one nearest the room's middle that no interactive or NPC takes (371), facing 3, as the bankers."
+    },
+    {
+      "map": 216663298,
+      "npc": 3063,
+      "cell": 385,
+      "orientation": 3,
+      "why": "Lobo Tommy, Brâkmar's jailer of the alignment wanted (DPLN, «On recherche Sam Sagaz»: «parlez à Lobo Tommy (si vous êtes Brâkmarien)»). INFERRED: the delivery objectives name no map, so he stands in the militia's wanted room [-25,33]. INFERRED: the cell, the walkable one nearest the room's middle that no interactive or NPC takes (385), facing 3, as the bankers."
+    },
+    {
+      "map": 217449476,
+      "npc": 3064,
+      "cell": 372,
+      "orientation": 3,
+      "why": "Fée Valentine, Bonta's jailer of the alignment wanted (DPLN, «On recherche Sam Sagaz»: «ou à Fée Valentine (si vous êtes Bontarien)»). INFERRED: the delivery objectives name no map, so she stands in the militia's wanted room [-32,-57]. INFERRED: the cell, the walkable one nearest the room's middle that no interactive or NPC takes (372), facing 3, as the bankers."
     }
   ]
 }

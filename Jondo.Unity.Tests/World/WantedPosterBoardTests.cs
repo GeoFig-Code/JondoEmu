@@ -41,4 +41,20 @@ namespace Jondo.Unity.Tests.World
             Assert.Equal(6, Readables.OnMap(111411713).Count());
         }
     }
+
+    /// <summary>Every criminal can be handed over: each jailer of the data stands on some map.</summary>
+    [Collection("MapManager")]
+    public sealed class WantedJailerPlacementTests
+    {
+        [Fact]
+        public void Every_jailer_stands_somewhere()
+        {
+            Npcs.Initialize();
+            WantedPosters.Load();
+            var placed = Npcs.AllSpawns.Select(s => s.NpcId).ToHashSet();
+            var jailers = WantedPosters.All.SelectMany(c => c.Jailers).Select(j => j.Npc).Distinct().ToList();
+            Assert.NotEmpty(jailers);
+            Assert.All(jailers, npc => Assert.Contains(npc, placed));
+        }
+    }
 }
