@@ -32,6 +32,16 @@ namespace Jondo.Unity.Tests.Social
             return 0;
         }
 
+        /// <summary>The aura option of an actor block's humanoid body (f2 f1 f5 f3 f5 { f1 { f1 } }); 0 for none.</summary>
+        private static long AuraOptionOf(byte[] actor)
+        {
+            byte[] humanoid = Field(Field(Field(actor, 2)!.BytesValue, 1)!.BytesValue, 5)!.BytesValue;
+            byte[] body = Field(humanoid, 3)!.BytesValue;
+            var first = ProtoMessage.Parse(body).Fields.First(f => f.FieldNumber == 5);
+            var aura = Field(first.BytesValue, 1);
+            return aura == null ? 0 : (long)(Field(aura.BytesValue, 1)?.VarIntValue ?? 0);
+        }
+
         private static async Task<byte[]> Until(ClientPipe pipe, string opcode)
         {
             for (int i = 0; i < 10; i++)
@@ -67,6 +77,7 @@ namespace Jondo.Unity.Tests.Social
                     var me = DatabaseManager.GetCharacterById(character)!;
                     Assert.Equal(PowerBones, AuraBonesOf(BreedLookTable.MapLook(me)));
                     Assert.Equal(0, AuraBonesOf(BreedLookTable.BuildLook(me, paraLaVentana: true)));
+                    Assert.Equal(Power, AuraOptionOf(ConnectionProtocol.BuildPlayerActorBlock(me, 300, 1, Account)));
 
                     // An aura not known, and an emote that is no aura: refused, the aura as it was.
                     foreach (int refused in new[] { Other, Sit })

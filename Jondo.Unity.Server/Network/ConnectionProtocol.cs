@@ -2698,7 +2698,15 @@ namespace Jondo.Unity.Server.Network
         /// </summary>
         private static void AddCharacterOptions(Pb humanoidBody, long characterId, int level)
         {
-            // The guild, the first of the options. Measured in the founder's jsn right after founding
+            // The aura worn, before everything: f5 { f1 { f1 aura } }, an aura emote's id, which is
+            // how the others' clients draw it -- 140 actors of the captures carry it, always first.
+            int aura = Managers.Wardrobe.AuraOf(characterId);
+            if (aura != Managers.Wardrobe.None)
+            {
+                humanoidBody.Msg(5, Pb.New().Msg(1, Pb.New().Var(1, aura)));
+            }
+
+            // The guild, the first of the other options. Measured in the founder's jsn right after founding
             // «Jondo»: f5 { f4 { f1{f3 emblem}, f2 id, f3 name, f4 level } }, before the
             // ornament and the f7:1. Without this a character with a guild does not carry its name on the
             // map, neither for him nor for the others.
@@ -2720,6 +2728,17 @@ namespace Jondo.Unity.Server.Network
                     .Msg(2, AllianceProtocol.Block(alliance))));
             }
 
+            // Who follows him (SlotLooks): f6 { f1 { f1 look, f2 index } }, one per follower, before
+            // the title -- the captures' order is aura, guild, alliance, followers, title, ornament.
+            var followers = Managers.SlotLooks.FollowerLooks(Managers.SlotLooks.Of(characterId));
+            if (followers.Count > 0)
+            {
+                var lhz = Pb.New();
+                for (int index = 0; index < followers.Count; index++)
+                    lhz.Msg(1, Pb.New().Msg(1, MonsterLook(followers[index], false)).VarIfNotZero(2, index));
+                humanoidBody.Msg(5, Pb.New().Msg(6, lhz));
+            }
+
             var (title, ornament) = Managers.Wardrobe.Of(characterId);
 
             if (title != Managers.Wardrobe.None)
@@ -2732,16 +2751,6 @@ namespace Jondo.Unity.Server.Network
                 humanoidBody.Msg(5, Pb.New().Msg(9, Pb.New()
                     .Var(1, level)
                     .Var(4, ornament)));
-            }
-
-            // Who follows him (SlotLooks): f6 { f1 { f1 look, f2 index } }, one per follower.
-            var followers = Managers.SlotLooks.FollowerLooks(Managers.SlotLooks.Of(characterId));
-            if (followers.Count > 0)
-            {
-                var lhz = Pb.New();
-                for (int index = 0; index < followers.Count; index++)
-                    lhz.Msg(1, Pb.New().Msg(1, MonsterLook(followers[index], false)).VarIfNotZero(2, index));
-                humanoidBody.Msg(5, Pb.New().Msg(6, lhz));
             }
         }
 
