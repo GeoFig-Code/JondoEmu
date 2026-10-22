@@ -567,6 +567,7 @@ namespace Jondo.Unity.Tests.Economy
                 player.State.CharacterId = character;
                 player.State.MapId = bankMap;
                 player.State.Kamas = 66_138_278 + 1_397;
+                player.State.CharacterLevel = 200;   // the capture's character; under 10 the banker refuses
                 player.EnterWorld();
                 Assert.True(SessionRegistry.Register(player));
 
