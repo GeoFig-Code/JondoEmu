@@ -57,6 +57,10 @@ namespace Jondo.Unity.Server.Managers
             int net = RideCapture.SpellOfEquippedNet();
             if (net != 0 && !layout.Spells.Any(s => s.Spell == net)) AddOnFreeSlot(layout, net, 1);
 
+            // And the worn legendary pet's power (LegendaryPets).
+            var (power, powerGrade) = LegendaryPets.PowerOfWornPet();
+            if (power != 0 && !layout.Spells.Any(s => s.Spell == power)) AddOnFreeSlot(layout, power, powerGrade);
+
             // And what the fight gave him (3405): the Princesa's Encantamiento Floral.
             var fighter = Handlers.FightHandler.FightOf(Network.SessionContext.State.CharacterId)?.Buscar(Network.SessionContext.State.CharacterId);
             foreach (var (spell, grade) in fighter?.GrantedSpells ?? new List<(int, int)>())

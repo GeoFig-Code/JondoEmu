@@ -39,6 +39,43 @@ namespace Jondo.Unity.Server.Handlers
         /// <summary>Where an item goes when it is taken off.</summary>
         public const int Bag = 63;
 
+        /// <summary>
+        /// A legendary pet's food dropped on the worn pet: the pet rewritten (iuj, the item changed)
+        /// and one of the food spent. False when the item is no such food, so it is moved as any
+        /// other; true when it was, fed or not.
+        /// </summary>
+        private static async Task<bool> FeedLegendaryPetAsync(NetworkStream stream, long uid)
+        {
+            var food = Managers.Equipment.ByUid(uid);
+            var what = food == null ? null : Managers.LegendaryPets.FoodOf(food.Template);
+            if (food == null || what == null) return false;
+
+            var pet = Managers.Equipment.InSlot(Managers.LegendaryPets.PetSlot);
+            string? why = Managers.LegendaryPets.WhyNotFeed(pet, what);
+            if (why != null)
+            {
+                Console.WriteLine($"[Legendary pets] Item {uid} is not fed: {why}.");
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Ivq, Pb.New().Var(1, uid).Var(2, food.Position).Build()));
+                return true;
+            }
+
+            var fed = Managers.LegendaryPets.Fed(pet!.Effects, what);
+            if (!DatabaseManager.UpdateCharacterItem(SessionContext.State.CharacterId, pet.Uid, pet.Quantity,
+                                                     Managers.Forgemagic.Serialize(fed)))
+                return true;
+            pet.Effects.Clear();
+            pet.Effects.AddRange(fed);
+            Managers.Equipment.RememberWorn(pet.Uid, pet.Position, pet.Effects);
+
+            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                ConnectionProtocol.Push(Op.Iuj, AlterationProtocol.BuildSlotItemChanged(pet)));
+            await ItemUseHandler.SpendOneAsync(stream, uid);
+            Console.WriteLine($"[Legendary pets] {SessionContext.State.CharacterName}'s pet {pet.Uid} " +
+                              (what.GivesStatus ? "is legendary now." : $"has the power of spell {what.Spell} now."));
+            return true;
+        }
+
         public static async Task MoveAsync(NetworkStream stream, byte[] payload, long accountId = 0)
         {
             byte[]? iuk = ConnectionProtocol.ReadPayload(payload, Op.Iuk);
@@ -58,6 +95,9 @@ namespace Jondo.Unity.Server.Handlers
                 else if (f.FieldNumber == 3) position = (int)f.VarIntValue;
             }
             if (uid == 0) return;
+
+            // Food dropped on the worn pet: a legendary pet's status or its power (LegendaryPets).
+            if (position == Managers.LegendaryPets.PetSlot && await FeedLegendaryPetAsync(stream, uid)) return;
 
             // WHAT CANNOT BE WORN IS NOT PUT ON. The server did not look at the item's level, so a
             // level 1 character equipped a level 110 weapon and kept its bonuses: the client draws it

@@ -345,7 +345,7 @@ namespace Jondo.Unity.Server.Managers
         /// <summary>An item's type, cached.</summary>
         private static readonly Dictionary<int, int> _tipos = new Dictionary<int, int>();
 
-        private static int TypeOf(int itemGid)
+        internal static int TypeOf(int itemGid)
         {
             if (_tipos.TryGetValue(itemGid, out int ya)) return ya;
 
