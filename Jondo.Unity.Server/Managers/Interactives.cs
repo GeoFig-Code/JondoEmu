@@ -95,46 +95,80 @@ namespace Jondo.Unity.Server.Managers
             public bool Activated { get; init; }
         }
 
-        private static readonly Dictionary<long, List<Element>> _byMap = new Dictionary<long, List<Element>>();
-        private static readonly Dictionary<int, int> _measuredTypes = new Dictionary<int, int>();
-        private static readonly Dictionary<long, Waypoint> _waypoints = new Dictionary<long, Waypoint>();
-        private static readonly List<Waypoint> _ordered = new List<Waypoint>();
+        /// <summary>
+        /// Everything read from the data, as one set: <see cref="Initialize"/> fills a new one and
+        /// publishes it whole, so whoever reads meanwhile -- another connection, or a test running
+        /// beside -- sees the old tables or the new ones, never one half emptied and refilled. It
+        /// used to clear the tables in place, and a reader in that window found no elements and no
+        /// zaaps on maps that have them.
+        /// </summary>
+        private sealed class Tables
+        {
+            public readonly Dictionary<long, List<Element>> ByMap = new();
+            public readonly Dictionary<int, int> MeasuredTypes = new();
+            public readonly Dictionary<long, Waypoint> Waypoints = new();
+            public readonly List<Waypoint> Ordered = new();
+            public readonly Dictionary<int, int> SubAreaLevels = new();
+            public readonly Dictionary<int, int> SubAreaAreas = new();
+            public readonly HashSet<int> Capturable = new();
+            public readonly Dictionary<int, int[]> SubAreaNeighbours = new();
+            public readonly Dictionary<long, int> Overrides = new();
+        }
+
+        private static volatile Tables _published = new();
+
+        /// <summary>The set being filled, on the thread filling it; everybody else reads the published one.</summary>
+        [ThreadStatic] private static Tables? _building;
+
+        private static Tables Current => _building ?? _published;
+
+        private static Dictionary<long, List<Element>> _byMap => Current.ByMap;
+        private static Dictionary<int, int> _measuredTypes => Current.MeasuredTypes;
+        private static Dictionary<long, Waypoint> _waypoints => Current.Waypoints;
+        private static List<Waypoint> _ordered => Current.Ordered;
 
         /// <summary>Each subzone's level, which is what the zaap list shows per destination.</summary>
-        private static readonly Dictionary<int, int> _subAreaLevels = new Dictionary<int, int>();
+        private static Dictionary<int, int> _subAreaLevels => Current.SubAreaLevels;
 
         /// <summary>
         /// Each subzone's area, the "areaId" of its data: what an item's «Po» asks about. The
         /// table's own AreaId column is empty.
         /// </summary>
-        private static readonly Dictionary<int, int> _subAreaAreas = new Dictionary<int, int>();
+        private static Dictionary<int, int> _subAreaAreas => Current.SubAreaAreas;
 
         /// <summary>
         /// The subzones a prism can hold: «capturable» in their data, and not a conquest village,
         /// which is fought over in its own way.
         /// </summary>
-        private static readonly HashSet<int> _capturable = new HashSet<int>();
+        private static HashSet<int> _capturable => Current.Capturable;
 
         /// <summary>Each subzone's neighbours, the "neighbors" of its data.</summary>
-        private static readonly Dictionary<int, int[]> _subAreaNeighbours = new Dictionary<int, int[]>();
+        private static Dictionary<int, int[]> _subAreaNeighbours => Current.SubAreaNeighbours;
 
         /// <summary>Maps whose zaap has to be stated by hand because it is not recognised by the drawing.</summary>
-        private static readonly Dictionary<long, int> _overrides = new Dictionary<long, int>();
+        private static Dictionary<long, int> _overrides => Current.Overrides;
 
         public static IReadOnlyList<Waypoint> Waypoints => _ordered;
         public static IEnumerable<long> MapIds => _byMap.Keys;
 
         public static void Initialize()
         {
-            _byMap.Clear();
-            _measuredTypes.Clear();
-            _waypoints.Clear();
-            _ordered.Clear();
-            _subAreaLevels.Clear();
-            _subAreaAreas.Clear();
-            _capturable.Clear();
-            _subAreaNeighbours.Clear();
+            var fresh = new Tables();
+            _building = fresh;
+            try
+            {
+                Fill();
+            }
+            finally
+            {
+                _building = null;
+            }
+            _published = fresh;
+        }
 
+        /// <summary>The loading proper, into the set being built (<see cref="Tables"/>).</summary>
+        private static void Fill()
+        {
             LoadWaypoints();
             LoadElements();
             LoadMeasuredTypes();
