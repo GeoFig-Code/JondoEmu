@@ -56,6 +56,46 @@ namespace Jondo.Unity.Server.Managers
         public static void Unfollow(long characterId, int questId)
             => Execute("DELETE FROM CharacterFollowedQuests WHERE CharacterId = $c AND QuestId = $q;", characterId, questId);
 
+        /// <summary>
+        /// The box put in a new order (iek { 1 [quests] }): those named first, as named, then any
+        /// other followed one as it was. MEASURED in «barco hacia vulkania…»: after following 724,
+        /// 725, 730 and 726, frame 365 sends [730, 1869, 725, 726].
+        /// </summary>
+        public static void Order(long characterId, IReadOnlyList<int> quests)
+        {
+            if (characterId <= 0 || quests.Count == 0) return;
+            var ordered = new List<int>();
+            foreach (int quest in quests) if (quest > 0 && !ordered.Contains(quest)) ordered.Add(quest);
+            foreach (int quest in Of(characterId)) if (!ordered.Contains(quest)) ordered.Add(quest);
+            try
+            {
+                EnsureTable();
+                using var connection = Open();
+                using var transaction = connection.BeginTransaction();
+                using (var clear = connection.CreateCommand())
+                {
+                    clear.Transaction = transaction;
+                    clear.CommandText = "DELETE FROM CharacterFollowedQuests WHERE CharacterId = $c;";
+                    clear.Parameters.AddWithValue("$c", characterId);
+                    clear.ExecuteNonQuery();
+                }
+                foreach (int quest in ordered)
+                {
+                    using var insert = connection.CreateCommand();
+                    insert.Transaction = transaction;
+                    insert.CommandText = "INSERT OR IGNORE INTO CharacterFollowedQuests (CharacterId, QuestId) VALUES ($c, $q);";
+                    insert.Parameters.AddWithValue("$c", characterId);
+                    insert.Parameters.AddWithValue("$q", quest);
+                    insert.ExecuteNonQuery();
+                }
+                transaction.Commit();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Quests] Could not order the followed quests of {characterId}: {ex.Message}");
+            }
+        }
+
         private static void Execute(string sql, long characterId, int questId)
         {
             if (characterId <= 0 || questId <= 0) return;

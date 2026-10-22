@@ -592,6 +592,7 @@ An alliance is made of characters, not guilds.
 - ✅ Objectives completed by clicking, by beating monsters and by bringing the souls they ask for in full soul stones
 - ✅ Quest items dropped by monsters to whoever is on the quest, and hunters' meat
 - ✅ Step rewards: experience, kamas and emotes
+- ✅ The followed quests' box keeps the quests you follow, in the order you put them
 - 🟡 Start conditions: 1,770 of the 1,976 are fully understood — the class quests by class, the job
   quests by job level, the Almanax's by the day, Osavora's weekly ones by the season and their marker's week
 - ✅ Items that validate a quest objective when used (316 of them)
@@ -720,6 +721,7 @@ One fight engine serves four kinds of fight:
 - 🟡 Weapon strikes apply their damage; the slash animation does not show
 - ✅ Push and collision damage
 - ✅ Joining someone else's fight; party fights and their options
+- ✅ Cells marked for your side
 - ✅ Watching a fight: the map's list of fights, or a friend's, guild mate's or alliance mate's from
   their lists; the fight's sides can close it to spectators
 - ✅ A won fight is shared among the players

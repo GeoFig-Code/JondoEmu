@@ -91,6 +91,15 @@ namespace Jondo.Unity.Server.Handlers
             if (questId != 0) FollowedQuests.Unfollow(SessionContext.State.CharacterId, questId);
         }
 
+        /// <summary>The followed quests' box put in a new order (iek { 1 [quests] }); answered with nothing.</summary>
+        public static void Reorder(byte[] payload)
+        {
+            byte[]? iek = ConnectionProtocol.ReadPayload(payload, "iek");
+            if (iek == null) return;
+            var quests = BankHandler.PackedOrSingle(ProtoMessage.Parse(iek).Fields, 1).Select(q => (int)q).ToList();
+            FollowedQuests.Order(SessionContext.State.CharacterId, quests);
+        }
+
         /// <summary>
         /// The «start the quest» button of a document (ido { f1 quest }): a wanted poster, a
         /// book's page. The client's document window sends it (ScrollUI.OnStartQuest), and so

@@ -648,6 +648,7 @@ namespace Jondo.Unity.Server.Network
                 else if (payloadStr == Op.Uri("jth")) await GiftHandler.ClaimAllAsync(stream, payload);
                 // A quest no longer followed.
                 else if (payloadStr == Op.Uri("idv")) QuestHandler.Unfollow(payload);
+                else if (payloadStr == Op.Uri("iek")) QuestHandler.Reorder(payload);
                 // A document's «start the quest» button.
                 else if (payloadStr == Op.Uri("ido")) await QuestHandler.StartFromDocumentAsync(stream, payload);
                 // The item tooltips' average prices.
@@ -661,6 +662,8 @@ namespace Jondo.Unity.Server.Network
                 // The guidebook's suggestions: the cards asked for, and a card locked.
                 else if (payloadStr == Op.Uri("hmo")) await ActivitySuggestionHandler.SuggestAsync(stream, payload);
                 else if (payloadStr == Op.Uri("hmp")) await ActivitySuggestionHandler.LockAsync(stream, payload);
+                // A cell marked for one's side in a fight.
+                else if (payloadStr == Op.Uri("kmh")) await FightHandler.MarkCellAsync(stream, payload);
                 // A player's card («Mostrar perfil»).
                 else if (payloadStr == Op.Uri("kxh")) await PlayerCardHandler.ShowAsync(stream, payload);
                 // The chat's community, acknowledged.
