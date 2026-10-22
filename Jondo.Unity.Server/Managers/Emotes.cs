@@ -69,6 +69,9 @@ namespace Jondo.Unity.Server.Managers
                 ConnectionProtocol.Push(Op.Khn, EmoteProtocol.BuildList(list)));
         }
 
+        /// <summary>Whether that emote is an aura, worn rather than played.</summary>
+        public static bool IsAura(int emoteId) => _book?.Of(emoteId)?.Aura == true;
+
         /// <summary>
         /// The player asks to play an emote (khl). Played for everybody on the map, or refused in
         /// silence, as the real server does.

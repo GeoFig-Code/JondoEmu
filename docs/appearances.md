@@ -642,10 +642,14 @@ Pairing the `lym` id with the `kmb` bones is where `cosmetic_skins.json`'s `aura
 The aura id also travels in `f9` of the appearance body inside `lxo` and `lyt` — the same three ids,
 which is how it was identified.
 
-**Known gap.** `AppearanceHandler.AuraAsync` echoes the id in `lym` and stops there; it does not
-attach binding point 6 to the look, and it does not fill `f9`. `Cosmetics` loads the auras' bones
-and nothing reads them yet. The wearer sees their aura because the client resolves the id locally;
-other players would not.
+An aura is an EMOTE: its id is an emote's whose `aura` flag is set (`emotes_*.json`), and the
+outfit's `lk::bno` looks `f9` up as one. `AppearanceHandler.AuraAsync` takes one of the character's
+own aura emotes, keeps it (`CharacterWardrobe.AuraId`), answers `lym` and redraws the character for
+the map. The wearer draws it from the id; the others need the sub-entity, which the map look
+(`jsn`, `jss`, `kmb` -- never the `lxc` preview) carries as `{ f1 { f2: 3, f3: bones }, f4: 6 }`:
+after the pet on foot, before the rider when mounted. Only the three measured auras have bones;
+any other is seen by its wearer alone. `lym` goes out with the current aura after `lyt` on entering
+the world and with every item move -- the 206 every equip capture carries was the recorded account's.
 
 ---
 
@@ -655,9 +659,9 @@ other players would not.
 |---|---|---|---|
 | garment skin | **replaces** the equipped item's skin | **appends** to the skin list | the emulator does not yet do the removal. The real items' skins are now measured — see section 17 — so this can be closed; until it is, the result is identical on screen as long as nothing is worn underneath. |
 | `hhy` | only what the account owns | the whole catalogue (539 + 167) | a single-player emulator with nothing unlocked has nothing to show |
-| aura | also a sub-entity at binding point 6 in `kmb` | `lym` id only | not implemented; see section 15 |
+| aura | a sub-entity at binding point 6 of the map look | the same, for the three auras whose bones are measured | the client data has no bones for the others; see section 15 |
 | `hie` / `hii` | pushed alongside look updates, always `{ f1: 2 }` (129 and 131 occurrences, never any other value) | pushed on equip and unequip (`EquipmentHandler`), not on an appearance save | constant with no established meaning. Copied where a capture shows them, not guessed at elsewhere. |
-| `lxo` / `lyt` `f9` | carries the current aura id | not sent | found while writing this document; see section 12 |
+| `lxo` / `lyt` `f9` | carries the current aura id | the same | see section 15 |
 | miscellaneous items (49) | presumably resolved | not in the tables | they mimic amulet, ring, belt and boots, which are never drawn |
 
 The state lives in two SQLite tables created by `Wardrobe.Initialize`: `CharacterWardrobe`

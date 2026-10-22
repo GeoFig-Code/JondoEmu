@@ -74,6 +74,19 @@ namespace Jondo.Unity.Server.Managers
                     // it was already there
                 }
 
+                // The aura picked in the appearance window or the emotes (lxw); 0 is none.
+                try
+                {
+                    var aura = connection.CreateCommand();
+                    aura.CommandText =
+                        "ALTER TABLE CharacterWardrobe ADD COLUMN AuraId INTEGER NOT NULL DEFAULT 0;";
+                    aura.ExecuteNonQuery();
+                }
+                catch (Microsoft.Data.Sqlite.SqliteException)
+                {
+                    // it was already there
+                }
+
                 // The idle picked in the appearance window's idles tab (lwu); 0 is none picked.
                 try
                 {
@@ -194,6 +207,29 @@ namespace Jondo.Unity.Server.Managers
 
         public static void SaveIdle(long characterId, int idleId)
             => Save(characterId, "IdleId", idleId);
+
+        /// <summary>The aura worn, an aura emote's id; 0 for none.</summary>
+        public static int AuraOf(long characterId)
+        {
+            try
+            {
+                using var connection = new SqliteConnection(DatabaseManager.WorldConnectionString);
+                connection.Open();
+
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT AuraId FROM CharacterWardrobe WHERE CharacterId = $id;";
+                command.Parameters.AddWithValue("$id", characterId);
+                return command.ExecuteScalar() is long aura ? (int)aura : None;
+            }
+            catch (Exception)
+            {
+                // the column comes with Initialize; before it nobody wears an aura
+                return None;
+            }
+        }
+
+        public static void SaveAura(long characterId, int auraId)
+            => Save(characterId, "AuraId", auraId);
 
         public static void SaveCardBackground(long characterId, int background)
             => Save(characterId, "CardBackground", background);

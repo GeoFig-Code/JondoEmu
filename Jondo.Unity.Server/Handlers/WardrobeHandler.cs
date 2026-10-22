@@ -148,6 +148,10 @@ namespace Jondo.Unity.Server.Handlers
             {
                 await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                     ConnectionProtocol.Push(Op.Lyt, ConnectionProtocol.BuildOutfits(character)));
+
+                // The aura worn, right after the outfits as in the captures.
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Lym, ConnectionProtocol.BuildAura(Wardrobe.AuraOf(character.Id))));
             }
 
             await AnnounceAsync(stream, accountId);

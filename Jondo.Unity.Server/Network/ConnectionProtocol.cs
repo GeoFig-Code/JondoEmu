@@ -1987,6 +1987,10 @@ namespace Jondo.Unity.Server.Network
         public static byte[] BuildDraftOutfit(DatabaseManager.DbCharacter character, string draftId)
             => Pb.New().Bytes(1, AppearanceBody(character, draftId)).Build();
 
+        /// <summary>The aura worn (lym { f1: aura }); empty for none.</summary>
+        public static byte[] BuildAura(int aura)
+            => aura == 0 ? Array.Empty<byte>() : Pb.New().Var(1, aura).Build();
+
         /// <summary>The worn outfit as the window drafts it, under the draft's own uuid.</summary>
         private static byte[] AppearanceBody(DatabaseManager.DbCharacter character, string draftId)
             => OutfitBody(character, draftId, Managers.Outfits.Of(character.Id)[0], Managers.Outfits.Worn(character),
@@ -2016,7 +2020,8 @@ namespace Jondo.Unity.Server.Network
         ///
         /// The capture's lyt agrees: its worn outfit carries body 26 and idle 3 -- the Sacrier's
         /// base body and the plain idle -- and the kept one body 66, idle 25, a name and icon 1.
-        /// An empty name is drawn as the window's own default. f9 is the aura, not kept yet.
+        /// An empty name is drawn as the window's own default. f9 is the aura, an emote id
+        /// (lk::bno looks it up as one).
         /// </summary>
         private static byte[] OutfitBody(DatabaseManager.DbCharacter character, string uuid,
                                          Managers.Outfits.Outfit outfit, Managers.Outfits.Look look, byte[] drawn)
@@ -2035,6 +2040,7 @@ namespace Jondo.Unity.Server.Network
                 .VarIfNotZero(6, outfit.Favorite ? 1 : 0)
                 .Str(7, uuid)
                 .Var(8, look.Idle > 0 ? look.Idle : IdleTable.Plain)
+                .VarIfNotZero(9, look.Aura)
                 .VarIfNotZero(10, look.Title)
                 .VarIfNotZero(11, outfit.Number)
                 .Bytes(12, drawn);

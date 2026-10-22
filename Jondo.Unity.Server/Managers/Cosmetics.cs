@@ -494,6 +494,16 @@ namespace Jondo.Unity.Server.Managers
             return _mounts.TryGetValue(gid, out var m) ? m : null;
         }
 
+        /// <summary>
+        /// The bones an aura hangs from binding point 6, measured by pairing each lym with the kmb
+        /// after it; zero for an aura never seen on the wire, which only its wearer then sees.
+        /// </summary>
+        public static int AuraBones(int aura)
+        {
+            Ensure();
+            return _auras.TryGetValue(aura, out int bones) ? bones : 0;
+        }
+
         /// <summary>An appearance pet's subentity, or null.</summary>
         public static PieceLook? PetOf(int gid)
         {

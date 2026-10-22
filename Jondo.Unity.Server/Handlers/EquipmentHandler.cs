@@ -188,10 +188,12 @@ namespace Jondo.Unity.Server.Handlers
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Ivq, Pb.New().Var(1, uid).Var(2, position).Build()));
 
-            // The three of unknown meaning that travel with it, each with the value it carries in
-            // every equip and unequip capture there is.
+            // The three that travel with it: the aura worn (lym) -- the 206 every equip capture
+            // carries is the recorded account's --, and two of unknown meaning, each with the
+            // value it carries in every equip and unequip capture there is.
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.Push(Op.Lym, Pb.New().Var(1, 206).Build()));
+                ConnectionProtocol.Push(Op.Lym, ConnectionProtocol.BuildAura(
+                    Managers.Wardrobe.AuraOf(Jondo.Unity.Server.Network.SessionContext.State.CharacterId))));
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
                 ConnectionProtocol.Push(Op.Hie, Pb.New().Var(1, 2).Build()));
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,

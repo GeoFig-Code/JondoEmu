@@ -3300,7 +3300,7 @@ public static class Op
     /// <summary>Acknowledgement of receipt.</summary>
     public const string Lyj = "lyj";
 
-    /// <summary>It carries the aura in the appearance flow (f1: aura id, empty if none); in every equip and unequip capture it carries the constant 206, whose meaning is not established.</summary>
+    /// <summary>S→C: the aura worn { f1: an aura emote's id }, empty for none; after the outfits on entering the world and with every item moved. The 206 of the equip captures is the recorded account's aura.</summary>
     public const string Lym = "lym";
 
     /// <summary>Putting on a garment letting the server choose the slot; it accepts a variant, which is what living items use to imitate one garment or another.</summary>

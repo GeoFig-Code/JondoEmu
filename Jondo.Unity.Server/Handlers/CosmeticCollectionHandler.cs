@@ -162,7 +162,7 @@ namespace Jondo.Unity.Server.Handlers
             var state = SessionContext.State;
             var character = DatabaseManager.GetCharacterById(state.CharacterId);
             if (character == null) return;
-            await WriteAsync(stream, Op.Lym, Array.Empty<byte>());
+            await WriteAsync(stream, Op.Lym, ConnectionProtocol.BuildAura(Wardrobe.AuraOf(state.CharacterId)));
             await WriteAsync(stream, Op.Hie, Pb.New().Var(1, 2).Build());
             await WriteAsync(stream, Op.Hii, Pb.New().Var(1, 2).Build());
             await WriteAsync(stream, Op.Jsn, ConnectionProtocol.BuildActorRefreshed(character, state.CellId, state.Orientation, accountId));

@@ -271,15 +271,19 @@ namespace Jondo.Unity.Server.Managers
             var colores = ColorsFor(breedId, sex, customColors);
             var cuerpo = BuildBodyLook(breedId, sex, headId, customColors, montado, prendas, quien);
 
-            // On foot the root is the character himself, so the pet hangs off him.
+            // The aura, on the map look only: no preview (lxc) of the captures carries it.
+            int auraBones = paraLaVentana ? 0 : Cosmetics.AuraBones(Wardrobe.AuraOf(quien));
+
+            // On foot the root is the character himself, so the pet hangs off him, and the aura after it.
             if (!montado)
             {
                 AddPets(cuerpo, prendas, colores);
+                AddAura(cuerpo, auraBones);
                 return cuerpo.Build();
             }
 
             return Mounted(cuerpo.Build(), mount!, impuesto,
-                           paraLaVentana ? prendas : null, colores);
+                           paraLaVentana ? prendas : null, colores, auraBones);
         }
 
         /// <summary>
@@ -319,7 +323,8 @@ namespace Jondo.Unity.Server.Managers
         private static byte[] Mounted(byte[] rider, Mounts.Look mount,
                                       Cosmetics.PieceLook? cosmetico = null,
                                       IReadOnlyList<Wardrobe.Worn>? prendas = null,
-                                      IReadOnlyList<long>? coloresDelPortador = null)
+                                      IReadOnlyList<long>? coloresDelPortador = null,
+                                      int auraBones = 0)
         {
             var pb = Pb.New();
 
@@ -335,8 +340,10 @@ namespace Jondo.Unity.Server.Managers
             // Only appearance mounts carry a skin of their own; petsmounts do not touch f6.
             if (cosmetico != null && cosmetico.Skin > 0) pb.Packed(6, new long[] { cosmetico.Skin });
 
-            // The pet goes before the rider, as in the capture.
+            // The pet goes before the rider, as in the capture, and so does the aura: it hangs off
+            // the root, the mount, in all 73 mounted looks that carry one.
             if (prendas != null) AddPets(pb, prendas, coloresDelPortador ?? new List<long>());
+            AddAura(pb, auraBones);
 
             pb.Msg(7, Pb.New()
                 .Bytes(1, rider)
@@ -605,6 +612,21 @@ namespace Jondo.Unity.Server.Managers
 
                 raiz.Msg(7, Pb.New().Bytes(1, cuerpo.Build()).Var(4, PetBindingPoint));
             }
+        }
+
+        /// <summary>Where an aura attaches.</summary>
+        private const int AuraBindingPoint = 6;
+
+        /// <summary>
+        /// Hangs an aura from binding point 6 of the root: { f1 { f2: 3, f3: bones }, f4: 6 }, the
+        /// shape of all 129 looks of the captures that carry one.
+        /// </summary>
+        private static void AddAura(Pb root, int bones)
+        {
+            if (bones <= 0) return;
+            root.Msg(7, Pb.New()
+                .Bytes(1, Pb.New().Var(2, LookType).Var(3, bones).Build())
+                .Var(4, AuraBindingPoint));
         }
 
         /// <summary>The colours the character wears, already indexed as they go on the wire.</summary>

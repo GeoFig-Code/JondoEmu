@@ -30,7 +30,7 @@ namespace Jondo.Unity.Server.Managers
 
         /// <summary>What an outfit puts on: everything the appearance window's tabs change.</summary>
         public sealed record Look(int Head, int Body, int Idle, List<long> Colors, int Title, int Ornament,
-                                  List<Wardrobe.Worn> Garments);
+                                  List<Wardrobe.Worn> Garments, int Aura = 0);
 
         /// <summary>
         /// One outfit. <see cref="Kept"/> is its look when it is not the one worn; the worn one's is
@@ -125,7 +125,7 @@ namespace Jondo.Unity.Server.Managers
             var (title, ornament) = Wardrobe.Of(character.Id);
             return new Look(character.HeadId, Wardrobe.BodyOf(character.Id), Wardrobe.IdleOf(character.Id),
                             BreedLookTable.SavedColors(character), title, ornament,
-                            Wardrobe.AppearanceOf(character.Id));
+                            Wardrobe.AppearanceOf(character.Id), Wardrobe.AuraOf(character.Id));
         }
 
         /// <summary>A new outfit holding that look; null when the character has no room for another.</summary>
@@ -187,6 +187,7 @@ namespace Jondo.Unity.Server.Managers
             Wardrobe.SaveIdle(character.Id, look.Idle);
             Wardrobe.SaveTitle(character.Id, look.Title);
             Wardrobe.SaveOrnament(character.Id, look.Ornament);
+            Wardrobe.SaveAura(character.Id, look.Aura == 0 || Emotes.IsAura(look.Aura) ? look.Aura : 0);
 
             Wardrobe.TakeOff(character.Id, -1);
             foreach (var garment in look.Garments)
@@ -255,14 +256,14 @@ namespace Jondo.Unity.Server.Managers
         }
 
         private sealed record Stored(int Head, int Body, int Idle, List<long> Colors, int Title, int Ornament,
-                                     List<StoredGarment> Garments);
+                                     List<StoredGarment> Garments, int Aura = 0);
 
         private sealed record StoredGarment(int Slot, long Uid, int Gid, bool Hidden);
 
         private static string Serialize(Look? look)
             => look == null ? "" : JsonSerializer.Serialize(new Stored(look.Head, look.Body, look.Idle, look.Colors,
                 look.Title, look.Ornament,
-                look.Garments.Select(g => new StoredGarment(g.Slot, g.Uid, g.Gid, g.Hidden)).ToList()));
+                look.Garments.Select(g => new StoredGarment(g.Slot, g.Uid, g.Gid, g.Hidden)).ToList(), look.Aura));
 
         private static Look? Parse(string text)
         {
@@ -274,7 +275,8 @@ namespace Jondo.Unity.Server.Managers
                 return new Look(stored.Head, stored.Body, stored.Idle, stored.Colors ?? new List<long>(),
                                 stored.Title, stored.Ornament,
                                 (stored.Garments ?? new List<StoredGarment>())
-                                    .Select(g => new Wardrobe.Worn(g.Slot, g.Uid, g.Gid, g.Hidden)).ToList());
+                                    .Select(g => new Wardrobe.Worn(g.Slot, g.Uid, g.Gid, g.Hidden)).ToList(),
+                                stored.Aura);
             }
             catch (JsonException)
             {

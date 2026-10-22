@@ -306,28 +306,32 @@ namespace Jondo.Unity.Server.Handlers
                                           ConnectionProtocol.RequestId(frame)));
         }
 
-        /// <summary>The aura, which is a subentity of attachment 6.</summary>
+        /// <summary>
+        /// The aura (lxw { f2: aura }, empty for none): one of the character's aura emotes, kept.
+        /// lym { f1: aura } tells the wearer, who draws it from the id; the others see it as the
+        /// sub-entity at binding point 6 of the map look, so the character is redrawn for the map.
+        /// Answered lwx { f1: 1 }, and lwx without it for an aura not one's own.
+        /// </summary>
         public static async Task AuraAsync(NetworkStream stream, byte[] frame)
         {
             byte[]? lxw = ConnectionProtocol.ReadPayload(frame, Op.Lxw);
-            int aura = 0;
-            if (lxw != null)
+            int aura = lxw == null ? 0 : (int)NumberOf(lxw, 2);
+
+            var state = Jondo.Unity.Server.Network.SessionContext.State;
+            bool taken = aura == 0 || Emotes.IsAura(aura) && state.Emotes.Contains(aura);
+            if (taken)
             {
-                foreach (var f in ProtoMessage.Parse(lxw).Fields)
-                {
-                    if (f.FieldNumber == 2 && f.WireType == 0) aura = (int)f.VarIntValue;
-                }
+                Wardrobe.SaveAura(state.CharacterId, aura);
+                await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
+                    ConnectionProtocol.Push(Op.Lym, ConnectionProtocol.BuildAura(aura)));
             }
 
             await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.Push(Op.Lym,
-                    aura == 0 ? Array.Empty<byte>() : Pb.New().Var(1, aura).Build()));
-
-            await Jondo.Protocol.NetworkMessage.WriteFrameAsync(stream,
-                ConnectionProtocol.Answer(Op.Lwx, Pb.New().Var(1, 1).Build(),
+                ConnectionProtocol.Answer(Op.Lwx, Pb.New().VarIfNotZero(1, taken ? 1 : 0).Build(),
                                           ConnectionProtocol.RequestId(frame)));
+            if (taken) await SlotLookHandler.RedrawAsync(stream);
 
-            Console.WriteLine($"[Appearances] Aura {aura}.");
+            Console.WriteLine(taken ? $"[Appearances] Aura {aura}." : $"[Appearances] Aura {aura} is not one's own.");
         }
 
         // ─── Outfits ────────────────────────────────────────────────────────────
