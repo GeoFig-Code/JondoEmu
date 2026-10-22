@@ -222,17 +222,45 @@ namespace Jondo.Unity.Server.Managers
     /// </summary>
     public static class InteractiveRegistry
     {
-        private static readonly Dictionary<long, List<RegisteredInteractive>> _byMap =
-            new Dictionary<long, List<RegisteredInteractive>>();
-        private static readonly Dictionary<(long MapId, int ElementId), RegisteredInteractive> _byElement =
-            new Dictionary<(long, int), RegisteredInteractive>();
+        /// <summary>
+        /// The registry as one set: <see cref="Initialize"/> fills a new one on its own thread and
+        /// publishes it whole, so whoever reads meanwhile -- a map being sent, or a test running
+        /// beside -- sees the old registry or the new one. It used to be emptied and refilled in
+        /// place, and a reader enumerating a map's entries then found the list changing under it.
+        /// </summary>
+        private sealed class Tables
+        {
+            public readonly Dictionary<long, List<RegisteredInteractive>> ByMap = new();
+            public readonly Dictionary<(long MapId, int ElementId), RegisteredInteractive> ByElement = new();
+        }
+
+        private static volatile Tables _published = new();
+        [ThreadStatic] private static Tables? _building;
+        private static Tables Current => _building ?? _published;
+
+        private static Dictionary<long, List<RegisteredInteractive>> _byMap => Current.ByMap;
+        private static Dictionary<(long MapId, int ElementId), RegisteredInteractive> _byElement => Current.ByElement;
 
         public static int Count => _byElement.Count;
 
         public static void Initialize()
         {
-            _byMap.Clear();
-            _byElement.Clear();
+            var fresh = new Tables();
+            _building = fresh;
+            try
+            {
+                Fill();
+            }
+            finally
+            {
+                _building = null;
+            }
+            _published = fresh;
+        }
+
+        /// <summary>The registering proper, into the set being built (<see cref="Tables"/>).</summary>
+        private static void Fill()
+        {
 
             // This order keeps exactly the historical order inside the jss.
             foreach (long mapId in Interactives.MapIds)

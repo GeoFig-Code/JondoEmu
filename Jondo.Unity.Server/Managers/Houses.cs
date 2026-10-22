@@ -198,12 +198,34 @@ namespace Jondo.Unity.Server.Managers
             public bool IsRealDoor { get; }
         }
 
-        private static readonly Dictionary<long, List<Door>> _byMap = new();
-        private static readonly Dictionary<(long MapId, int ElementId), Door> _byElement = new();
-        private static readonly Dictionary<long, Exit> _exits = new();
+        /// <summary>
+        /// The houses as one set: <see cref="Initialize"/> fills a new one on its own thread and
+        /// publishes it whole, so whoever reads meanwhile -- a map being sent, the interactives being
+        /// registered, a test running beside -- sees the old houses or the new ones, never a half.
+        /// </summary>
+        private sealed class Tables
+        {
+            public readonly Dictionary<long, List<Door>> ByMap = new();
+            public readonly Dictionary<(long MapId, int ElementId), Door> ByElement = new();
+            public readonly Dictionary<long, Exit> Exits = new();
+            public readonly Dictionary<long, Door> WayBack = new();
+            public readonly Dictionary<int, long> Canonical = new();
+            public readonly Dictionary<(long MapId, int ElementId), int> HouseIds = new();
+            public readonly Dictionary<int, Door> ByHouseId = new();
+            public readonly Dictionary<long, long> HallOf = new();
+            public readonly Dictionary<long, List<long>> Rooms = new();
+        }
+
+        private static volatile Tables _published = new();
+        [ThreadStatic] private static Tables? _building;
+        private static Tables Current => _building ?? _published;
+
+        private static Dictionary<long, List<Door>> _byMap => Current.ByMap;
+        private static Dictionary<(long MapId, int ElementId), Door> _byElement => Current.ByElement;
+        private static Dictionary<long, Exit> _exits => Current.Exits;
 
         /// <summary>Which door leads back to the street from each interior.</summary>
-        private static readonly Dictionary<long, Door> _wayBack = new();
+        private static Dictionary<long, Door> _wayBack => Current.WayBack;
 
         /// <summary>
         /// The map each door's house is kept under: the lowest of the maps its element stands on.
@@ -211,11 +233,11 @@ namespace Jondo.Unity.Server.Managers
         /// crosses the edge --: clicked from any of them it is the same house, with one owner, one
         /// code and the same chests.
         /// </summary>
-        private static readonly Dictionary<int, long> _canonical = new();
+        private static Dictionary<int, long> _canonical => Current.Canonical;
 
         /// <summary>The house id of every door, and the door of every house id.</summary>
-        private static readonly Dictionary<(long MapId, int ElementId), int> _houseIds = new();
-        private static readonly Dictionary<int, Door> _byHouseId = new();
+        private static Dictionary<(long MapId, int ElementId), int> _houseIds => Current.HouseIds;
+        private static Dictionary<int, Door> _byHouseId => Current.ByHouseId;
 
         /// <summary>
         /// The other rooms of a house with its own interior (the data's "habitaciones"), each to
@@ -223,8 +245,8 @@ namespace Jondo.Unity.Server.Managers
         /// house's as its entrance is: its chests, its owner. The ways between them are the client's
         /// own world graph's (interactive_teleports_worldgraph_2.73.json): its stars and doors.
         /// </summary>
-        private static readonly Dictionary<long, long> _hallOf = new();
-        private static readonly Dictionary<long, List<long>> _rooms = new();
+        private static Dictionary<long, long> _hallOf => Current.HallOf;
+        private static Dictionary<long, List<long>> _rooms => Current.Rooms;
 
         /// <summary>Every interior: the entrances, with their exit, and the other rooms of a house.</summary>
         public static IEnumerable<long> Interiors => _exits.Keys.Concat(_hallOf.Keys);
@@ -240,16 +262,22 @@ namespace Jondo.Unity.Server.Managers
 
         public static void Initialize()
         {
-            _byMap.Clear();
-            _byElement.Clear();
-            _exits.Clear();
-            _wayBack.Clear();
-            _hallOf.Clear();
-            _rooms.Clear();
-            _houseIds.Clear();
-            _byHouseId.Clear();
-            _canonical.Clear();
+            var fresh = new Tables();
+            _building = fresh;
+            try
+            {
+                Fill();
+            }
+            finally
+            {
+                _building = null;
+            }
+            _published = fresh;
+        }
 
+        /// <summary>The loading proper, into the set being built (<see cref="Tables"/>).</summary>
+        private static void Fill()
+        {
             string path = Paths.Resolve("casas_mundo_3.6.10.10.json");
             if (!File.Exists(path))
             {
