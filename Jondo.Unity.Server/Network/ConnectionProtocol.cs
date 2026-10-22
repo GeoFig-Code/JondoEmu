@@ -2554,9 +2554,27 @@ namespace Jondo.Unity.Server.Network
                 case Managers.EffectFields.AsDice:
                     entry.Msg(6, Pb.New().VarIfNotZero(1, v1).VarIfNotZero(2, v2).VarIfNotZero(3, v3));
                     break;
+                case Managers.EffectFields.AsDate:
+                    entry.Msg(2, EffectDate(v1));
+                    break;
             }
             return entry.Var(11, effect.Effect);
         }
+
+        /// <summary>
+        /// A date as an item's effect carries it, on Paris's clock and the Twelve's calendar:
+        /// f1 the day, f2 the year less 1370, f3 the month, f4 the minute, f5 the hour. Measured on
+        /// an item received at 00:15 on 13 August 2026 in Paris: { f1: 13, f2: 656, f3: 8, f4: 15 }.
+        /// </summary>
+        internal static Pb EffectDate(long seconds)
+        {
+            var paris = Managers.OsavoraSeasons.InParis(DateTimeOffset.FromUnixTimeSeconds(seconds));
+            return Pb.New().VarIfNotZero(1, paris.Day).VarIfNotZero(2, paris.Year - TwelveYearOffset)
+                     .VarIfNotZero(3, paris.Month).VarIfNotZero(4, paris.Minute).VarIfNotZero(5, paris.Hour);
+        }
+
+        /// <summary>The Twelve's calendar runs 1370 years behind ours: 2026 is its 656.</summary>
+        private const int TwelveYearOffset = 1370;
 
         // ─── World: titles and ornaments ────────────────────────────────────────
 

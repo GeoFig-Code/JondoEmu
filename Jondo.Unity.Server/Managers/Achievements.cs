@@ -708,6 +708,12 @@ namespace Jondo.Unity.Server.Managers
             public long? Count(string op, long key, string flag) => op switch
             {
                 "PO" => Equipment.HowMany((int)key),
+
+                // A world event going on (WorldEvents): «WE=230», Osavora's Repos.
+                "WE" => WorldEvents.IsActive((int)key, DateTimeOffset.UtcNow) ? 1 : 0,
+
+                // The days since an item held was received (its 805): «DD>7,31582».
+                "DD" => Equipment.DaysSinceReceived((int)key, DateTimeOffset.UtcNow),
                 "EM" => Tally(flag == "d" ? DungeonKind : "EM", key),
                 "Ef" => Tally("Ef", key),
                 "EH" => S.ChallengesDone.Contains((int)key) ? 1 : 0,

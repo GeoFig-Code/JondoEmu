@@ -2928,6 +2928,14 @@ namespace Jondo.Unity.Server
                     // The brand-new value: the die's top if there is one, and if not, the fixed one.
                     int fijo = value != 0 ? value : (diceSide != 0 ? diceSide : diceNum);
 
+                    // «Recibido el #1» (805): the moment it is received, in seconds -- what the
+                    // criterion «DD>7,31582» counts the days from and what travels as its date.
+                    if (id == Managers.Equipment.ReceivedOn)
+                    {
+                        salida.Add($"[{id},{DateTimeOffset.UtcNow.ToUnixTimeSeconds()},0,0]");
+                        continue;
+                    }
+
                     // «Gana x#2 #3» rolled (193): the item in the first number and the one it gives in
                     // the third, «f6 { f1: the item, f3: 1 }» in the eight captured.
                     if (id == GainsOneItem)

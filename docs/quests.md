@@ -126,20 +126,27 @@ Its own six: `PL` level, `Qf` quest finished, `Qa` quest in progress, `Qc` finis
 `Qo` objective met, `Pm` current map. And what the server knows of the character and the world:
 `Ad` today's Almanax (its 390 offering quests), `OA` an achievement, `PG` the class (the class
 quests: «The Tymador Job» is `PG=13`), `PJ`/`Pj` a job's level, `PO` an item held, `QF`, `SC` the
-server's type, `PZ` the subscription, `BT` (the client's AlwaysTrueCriterion), and `Ps`, `Pa`, `Pr` the
-alignment's side, level and rank. `Sc` is the client's StaticCriterionCriterion, which only the real server
+server's type, `PZ` the subscription, `BT` (the client's AlwaysTrueCriterion), `Ps`, `Pa`, `Pr` the
+alignment's side, level and rank, `WE` a world event going on (Osavora's season) and `DD` the days since
+an item was received (its «Recibido el»). `Sc` is the client's StaticCriterionCriterion, which only the real server
 judges and no data describes: it stays let through.
-Together they cover **every** term of 1,758 of the 1,976 conditions.
+Together they cover **every** term of 1,765 of the 1,976 conditions.
 
 `Qc` is read as «finished» because of what appears next to it: `(Qa=890|Qc=890)` is «890 is in progress
 or already done». `Qo` carries objective ids, 116 of 116.
 
-What it does not understand —the seasons (`Sc`), the world events, a few server flags— **it lets
+What it does not understand —the seasons (`Sc`), a few server flags— **it lets
 through and says so**. Rejecting it would leave quests out of anyone's reach, which is a worse answer
 than offering them early. The terms it does understand are still required.
 
-The alignment is understood, and its answer is that there is none: this server has no alignment,
-so everybody is neutral and the Bontarian and Brakmarian quests (`Ps=1`, `Ps=2`) are nobody's.
+The alignment's side is the character's own: neutral until Chantal Inea has him swear to a city, so
+the Bontarian and Brakmarian quests (`Ps=1`, `Ps=2`) are for those who have. Its level and rank are
+never earned here.
+
+Osavora's weekly quests ask for their season and a week since their marker: «Una pequeña comezón» is
+`PL>179&Qf=2515&(((WE=230|WE=255)&(DD>7,31582|PO!31582))|...)`, the Repos (world event 230) and not
+having received its marker (31582) in the last seven days. `DD` is the one operator whose first number
+is not the key: the days come first, the item second.
 
 ### The chain
 

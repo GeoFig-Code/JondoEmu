@@ -56,6 +56,9 @@ namespace Jondo.Unity.Server.Managers
         public const int AsRange = 5;
         public const int AsDice = 6;
 
+        /// <summary>A date's value is a moment in seconds from here on: 2001. Smaller is no moment.</summary>
+        public const long DatedSince = 1_000_000_000;
+
         public static void Initialize()
         {
             _fields.Clear();
@@ -127,9 +130,10 @@ namespace Jondo.Unity.Server.Managers
                     case AsRange: return (AsRange, diceSide != 0 ? diceSide : diceNum, diceNum, 0);
                     case AsDice: return (AsDice, value, diceNum, diceSide);
                     case AsNumber: return (AsNumber, OnlyNonZero(value, diceNum, diceSide), 0, 0);
-                    // A string or a date: "Fabricado por", "Intercambiable el". The server puts them on the
-                    // item once made, and nothing is made here. Sending them empty leaves the client
-                    // drawing the label with nothing behind, so they do not go.
+                    // A date the item carries in seconds -- «Recibido el» (805), stamped when it is
+                    // received -- travels as one (EffectDate). A string, or a date the item has no
+                    // moment for, does not: the client would draw the label with nothing behind.
+                    case AsDate when value >= DatedSince: return (AsDate, value, 0, 0);
                     case AsString:
                     case AsDate: return (Skip, 0, 0, 0);
                     default: return (NoValue, 0, 0, 0);

@@ -406,6 +406,16 @@ namespace Jondo.Unity.World.Quests
                 if (comparison == 'E') comparison = '=';
                 if (!long.TryParse(values[0], out long first)) return null;
 
+                // DD>7,31582: more than seven days since item 31582 was received -- the days first,
+                // the item second, the other way round from every other OP>key,n. The facts answer
+                // Count("DD", item) with the days.
+                if (op == "DD" && values.Count >= 2)
+                {
+                    if (!long.TryParse(values[1], out long item)) return null;
+                    long? days = _facts.Count(op, item, "");
+                    return days.HasValue ? Compare(days.Value, comparison, first) : null;
+                }
+
                 if (values.Count >= 2)
                 {
                     if (!long.TryParse(values[1], out long threshold)) return null;

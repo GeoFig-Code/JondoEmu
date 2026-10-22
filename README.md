@@ -225,7 +225,9 @@ Built with **Avalonia**, the same toolkit as the Studio.
 - ✅ Zurcarák's herald at Zurcalia's entry
 - ✅ Osavora's seasons — Naissance, Chasse and Repos, one a week from Monday 8:00 — change the look of
   the dimension's maps
-- ❌ What the seasons change in Osavora's monsters and weekly quests
+- ✅ Osavora's weekly quests come with their season, once a week each: the season is the game's world
+  event and the quest's marker says when you last did it
+- ❌ What the seasons change in Osavora's monsters
 - ✅ **16 temporal anomalies** with their 120-minute countdown
 - ✅ Their guardians: each anomaly opens on one of eleven places — Noximilian's workshop, Kelba's
   market, Bonta's palace, Brâkmar… — where its guardian waits with his brutoforme, cublaforme and
@@ -572,8 +574,8 @@ An alliance is made of characters, not guilds.
 - ✅ Objectives completed by clicking and by beating monsters
 - ✅ Quest items dropped by monsters to whoever is on the quest, and hunters' meat
 - ✅ Step rewards: experience, kamas and emotes
-- 🟡 Start conditions: 1,758 of the 1,976 are fully understood — the class quests by class, the job
-  quests by job level, the Almanax's by the day
+- 🟡 Start conditions: 1,765 of the 1,976 are fully understood — the class quests by class, the job
+  quests by job level, the Almanax's by the day, Osavora's weekly ones by the season and their marker's week
 - ✅ Items that validate a quest objective when used (316 of them)
 - ✅ Treasure hunts at the Malle aux trésors: Cano Dhain hands out the daily, archaeological and
   saints' hunts, the Anutrof box draws the map — three or four stages, flags, digs, four tries —

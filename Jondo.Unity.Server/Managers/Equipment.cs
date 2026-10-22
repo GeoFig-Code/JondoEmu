@@ -713,6 +713,27 @@ namespace Jondo.Unity.Server.Managers
         /// Worn items count. A quest that asks for a ring the player is wearing is asking for the
         /// ring, and refusing it because it is on a finger would be a rule nobody wrote.
         /// </remarks>
+        /// <summary>«Recibido el #1»: the date an item was received, in seconds, in its value.</summary>
+        public const int ReceivedOn = 805;
+
+        /// <summary>
+        /// Whole days since the item of that template the character holds was received (its 805),
+        /// the latest one; 0 when he holds none. One with no date at all was received before the
+        /// dates were kept, so long ago.
+        /// </summary>
+        public static long DaysSinceReceived(int template, DateTimeOffset now)
+        {
+            long? latest = null;
+            foreach (var item in Items.Values)
+            {
+                if (item.Template != template) continue;
+                long seconds = item.Effects.Where(e => e.Effect == ReceivedOn).Select(e => e.Value).DefaultIfEmpty(0).Max();
+                if (latest == null || seconds > latest) latest = seconds;
+            }
+            if (latest == null) return 0;
+            return (long)(now - DateTimeOffset.FromUnixTimeSeconds(latest.Value)).TotalDays;
+        }
+
         public static int HowMany(int template)
         {
             int total = 0;

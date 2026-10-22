@@ -20,9 +20,9 @@ namespace Jondo.Unity.Server.Managers
     /// </para>
     /// <para>
     /// INFERRED: which week is which. The weeks are counted from Monday 21 July 2025, 8:00 in
-    /// Paris, the week the 3.2 update opened Osavora, taken to be a Naissance. What the season
-    /// changes besides the maps' look -- the monsters' passives and spread, the weekly quests --
-    /// is not done: the guide says what, not how.
+    /// Paris, the week the 3.2 update opened Osavora, taken to be a Naissance. The season is also
+    /// the client's world event its weekly quests ask for (WorldEvents). What it changes in the
+    /// monsters -- their passives and spread -- is not done: the guide says what, not how.
     /// </para>
     /// </remarks>
     public static class OsavoraSeasons
